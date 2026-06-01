@@ -1,0 +1,353 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\AiConversation;
+use App\Models\AiMessage;
+use App\Models\Document;
+use App\Models\FileUpload;
+use App\Models\Organization;
+use App\Models\Project;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
+class AdminController extends Controller
+{
+    public function dashboard(Request $request)
+    {
+        $totalCompanies  = Organization::count();
+        $totalProjects   = Project::count();
+        $activeProjects  = Project::where('status', 'active')->count();
+        $totalUsers      = User::count();
+        $totalDocuments  = FileUpload::count();
+
+        // Storage
+        $storageUsedBytes = DB::table('file_uploads')->sum('file_size') ?? 0;
+        $storageUsedGB    = round($storageUsedBytes / (1024 ** 3), 2);
+
+        // Monthly AI usage (conversations started this calendar month)
+        $monthlyAiUsage = AiConversation::whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)
+            ->count();
+
+        $recentCompanies = Organization::select('id', 'name', 'email', 'created_at')
+            ->withCount(['users', 'projects'])
+            ->latest()
+            ->limit(10)
+            ->get();
+
+        // Recent project activity across all companies
+        $recentProjects = Project::select('id', 'name', 'code', 'status', 'organization_id', 'created_at')
+            ->with('organization:id,name')
+            ->latest()
+            ->limit(5)
+            ->get();
+
+        return response()->json([
+            'stats' => [
+                'total_companies'  => $totalCompanies,
+                'total_projects'   => $totalProjects,
+                'active_projects'  => $activeProjects,
+                'total_users'      => $totalUsers,
+                'total_documents'  => $totalDocuments,
+                'monthly_ai_usage' => $monthlyAiUsage,
+                'storage_used_gb'  => $storageUsedGB,
+                'storage_used'     => $storageUsedGB > 0 ? $storageUsedGB . ' GB' : '0 GB',
+            ],
+            'recent_companies' => $recentCompanies,
+            'recent_projects'  => $recentProjects,
+            'activity' => [
+                'docs_today'      => FileUpload::whereDate('created_at', today())->count(),
+                'ai_requests'     => $monthlyAiUsage,
+                'active_sessions' => 0, // extend with session tracking as needed
+                'support_tickets' => 0,
+            ],
+        ]);
+    }
+
+    public function projects(Request $request)
+    {
+        $query = Project::with('organization:id,name')
+            ->select('id', 'organization_id', 'name', 'code', 'status', 'type', 'contract_type',
+                     'contract_value', 'currency', 'start_date', 'end_date', 'created_at');
+
+        if ($search = $request->input('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('code', 'like', "%{$search}%");
+            });
+        }
+
+        if ($status = $request->input('status')) {
+            $query->where('status', $status);
+        }
+
+        if ($orgId = $request->input('organization_id')) {
+            $query->where('organization_id', $orgId);
+        }
+
+        $projects = $query->latest()->paginate(25);
+
+        return response()->json($projects);
+    }
+
+    public function documents(Request $request)
+    {
+        $query = FileUpload::with(['organization:id,name', 'project:id,name,code'])
+            ->select('id', 'organization_id', 'project_id', 'original_name', 'file_size',
+                     'mime_type', 'folder_path', 'created_at', 'uploaded_by');
+
+        if ($search = $request->input('search')) {
+            $query->where('original_name', 'like', "%{$search}%");
+        }
+
+        if ($orgId = $request->input('organization_id')) {
+            $query->where('organization_id', $orgId);
+        }
+
+        if ($projectId = $request->input('project_id')) {
+            $query->where('project_id', $projectId);
+        }
+
+        $documents = $query->latest()->paginate(50);
+
+        return response()->json($documents);
+    }
+
+    public function organizations(Request $request)
+    {
+        $orgs = Organization::withCount(['users', 'projects'])
+            ->with('branding:organization_id,logo_path')
+            ->latest()
+            ->paginate(25);
+
+        $orgs->getCollection()->transform(function ($org) {
+            $org->logo_url = $org->branding?->logo_path
+                ? url('storage/' . $org->branding->logo_path)
+                : null;
+            return $org;
+        });
+
+        return response()->json($orgs);
+    }
+
+    public function templates(Request $request)
+    {
+        // Return document templates scoped to no organization (global templates)
+        $templates = DB::table('document_templates')
+            ->whereNull('organization_id')
+            ->orWhere('is_global', true)
+            ->latest()
+            ->paginate(25);
+
+        return response()->json($templates);
+    }
+
+    public function storage(Request $request)
+    {
+        $byOrg = Organization::select('id', 'name')
+            ->withSum('fileUploads as total_bytes', 'file_size')
+            ->orderByDesc('total_bytes')
+            ->limit(20)
+            ->get();
+
+        $totalBytes = DB::table('file_uploads')->sum('file_size') ?? 0;
+
+        return response()->json([
+            'total_bytes'   => $totalBytes,
+            'total_gb'      => round($totalBytes / (1024 ** 3), 2),
+            'by_organization' => $byOrg,
+        ]);
+    }
+
+    public function support(Request $request)
+    {
+        // Placeholder — extend with a support_tickets table as needed
+        return response()->json([
+            'stats' => [
+                'open'        => 0,
+                'in_progress' => 0,
+                'resolved'    => 0,
+                'total'       => 0,
+            ],
+            'tickets' => [],
+        ]);
+    }
+
+    public function systemLogs(Request $request)
+    {
+        $logPath = storage_path('logs/laravel.log');
+
+        if (!file_exists($logPath)) {
+            return response()->json(['data' => []]);
+        }
+
+        $lines = array_reverse(array_filter(explode("\n", file_get_contents($logPath))));
+        $entries = [];
+
+        foreach (array_slice($lines, 0, 200) as $line) {
+            if (preg_match('/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] (\w+)\.(\w+): (.+)$/', $line, $m)) {
+                $entries[] = [
+                    'timestamp' => $m[1],
+                    'channel'   => $m[2],
+                    'level'     => strtolower($m[3]),
+                    'message'   => $m[4],
+                ];
+            }
+        }
+
+        return response()->json(['data' => $entries]);
+    }
+
+    public function settings(Request $request)
+    {
+        return response()->json([
+            'platform_name'   => config('app.name', 'SureSign'),
+            'support_email'   => config('mail.from.address', ''),
+            'max_upload_mb'   => (int) ini_get('upload_max_filesize'),
+            'features'        => [
+                'ai_enabled'        => true,
+                'billing_enabled'   => false,
+                'storage_quotas'    => false,
+            ],
+        ]);
+    }
+
+    public function updateSettings(Request $request)
+    {
+        // In production, persist to a settings table or .env override
+        return response()->json(['message' => 'Settings updated']);
+    }
+
+    // ── Document Explorer ─────────────────────────────────────────────
+
+    private const MODULE_FOLDERS = [
+        'contracts'            => 'Contracts',
+        'commercial'           => 'Commercial',
+        'payment_applications' => 'Payment Applications',
+        'variations'           => 'Variations',
+        'notices'              => 'Notices',
+        'adjudication'         => 'Adjudication',
+        'rfis'                 => 'RFIs',
+        'meetings'             => 'Meetings',
+        'qa_reports'           => 'QA Reports',
+        'snagging'             => 'Snagging',
+        'closeout'             => 'Closeout',
+        'site_reports'         => 'Site Reports',
+        'general'              => 'General Documents',
+    ];
+
+    /**
+     * GET /api/admin/documents/explorer
+     * Returns all organizations with file/project counts.
+     */
+    public function explorerCompanies(Request $request)
+    {
+        $companies = Organization::select('id', 'name')
+            ->withCount('projects')
+            ->get()
+            ->map(function ($org) {
+                return [
+                    'id'             => $org->id,
+                    'name'           => $org->name,
+                    'projects_count' => $org->projects_count,
+                    'files_count'    => FileUpload::where('organization_id', $org->id)->count(),
+                    'storage_size'   => (int) FileUpload::where('organization_id', $org->id)->sum('file_size'),
+                ];
+            });
+
+        return response()->json(['companies' => $companies]);
+    }
+
+    /**
+     * GET /api/admin/documents/explorer/company/{organization}
+     * Returns projects for an organization with file counts.
+     */
+    public function explorerProjects(Request $request, Organization $organization)
+    {
+        $projects = Project::where('organization_id', $organization->id)
+            ->select('id', 'name', 'code')
+            ->get()
+            ->map(function ($project) {
+                return [
+                    'id'            => $project->id,
+                    'name'          => $project->name,
+                    'code'          => $project->code,
+                    'files_count'   => FileUpload::where('project_id', $project->id)->count(),
+                    'storage_size'  => (int) FileUpload::where('project_id', $project->id)->sum('file_size'),
+                    'last_uploaded' => FileUpload::where('project_id', $project->id)->max('created_at'),
+                ];
+            });
+
+        return response()->json([
+            'organization' => ['id' => $organization->id, 'name' => $organization->name],
+            'projects'     => $projects,
+        ]);
+    }
+
+    /**
+     * GET /api/admin/documents/explorer/project/{project}
+     * Returns module folder summaries for a project.
+     */
+    public function explorerModules(Request $request, Project $project)
+    {
+        $counts = FileUpload::where('project_id', $project->id)
+            ->whereNotNull('module_key')
+            ->select('module_key', DB::raw('count(*) as files_count'), DB::raw('max(created_at) as last_updated'))
+            ->groupBy('module_key')
+            ->get()
+            ->keyBy('module_key');
+
+        $generalExtra = FileUpload::where('project_id', $project->id)
+            ->whereNull('module_key')
+            ->count();
+
+        $folders = [];
+        foreach (self::MODULE_FOLDERS as $key => $name) {
+            $row   = $counts->get($key);
+            $count = ($row ? (int) $row->files_count : 0) + ($key === 'general' ? $generalExtra : 0);
+            $folders[] = [
+                'key'          => $key,
+                'name'         => $name,
+                'files_count'  => $count,
+                'last_updated' => $row ? $row->last_updated : null,
+            ];
+        }
+
+        return response()->json([
+            'project' => [
+                'id'           => $project->id,
+                'name'         => $project->name,
+                'code'         => $project->code,
+                'organization' => $project->organization
+                    ? ['id' => $project->organization->id, 'name' => $project->organization->name]
+                    : null,
+            ],
+            'folders' => $folders,
+        ]);
+    }
+
+    /**
+     * GET /api/admin/documents/explorer/project/{project}/module/{moduleKey}
+     * Returns paginated files in a module folder for a project.
+     */
+    public function explorerModuleFiles(Request $request, Project $project, string $moduleKey)
+    {
+        $query = FileUpload::where('project_id', $project->id)
+            ->with(['uploader:id,name', 'project:id,name,code', 'organization:id,name']);
+
+        if ($moduleKey === 'general') {
+            $query->where(function ($q) {
+                $q->where('module_key', 'general')->orWhereNull('module_key');
+            });
+        } else {
+            $query->where('module_key', $moduleKey);
+        }
+
+        return response()->json($query->latest()->paginate(50));
+    }
+}
+

@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+:root {
+  --gold: #0a0a0a;        /* Accent = black in light mode */
+  --gold-light: #333333;
+  --gold-dark: #000000;
+  --accent-fg: #ffffff;   /* Text colour on top of accent backgrounds */
+  /* Light mode — black & white */
+  --bg-base: #ffffff;
+  --bg-surface: #fafafa;
+  --bg-elevated: #f4f4f4;
+  --bg-panel: #eeeeee;
+  --bg-hover: #e5e5e5;
+  --border: #e0e0e0;
+  --border-light: #cccccc;
+  --text-primary: #0a0a0a;
+  --text-secondary: #525252;
+  --text-muted: #8a8a8a;
+  --text-gold: #B99566;
+}
+
+[data-theme="dark"] {
+  --gold: #f0f0f0;        /* Accent = near-white in dark mode */
+  --gold-light: #ffffff;
+  --gold-dark: #d0d0d0;
+  --accent-fg: #0a0a0a;   /* Text colour on top of accent backgrounds */
+  --bg-base: #0d0d0d;
+  --bg-surface: #141414;
+  --bg-elevated: #1a1a1a;
+  --bg-panel: #1f1f1f;
+  --bg-hover: #252525;
+  --border: #2a2a2a;
+  --border-light: #333333;
+  --text-primary: #f0ece6;
+  --text-secondary: #9a9490;
+  --text-muted: #5a5652;
+  --text-gold: #f0f0f0;
+}
+
+@theme inline {
+  --color-gold: var(--gold);
+  --color-gold-light: var(--gold-light);
+  --color-bg-base: var(--bg-base);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-bg-panel: var(--bg-panel);
+  --color-border: var(--border);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+}
+
+* { box-sizing: border-box; }
+
+html {
+  /* Scale site to equivalent of 125% browser zoom */
+  font-size: 20px;
+}
+
+html, body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Smooth hover transitions for all interactive elements */
+a, button {
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-surface); }
+::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gold-dark); }
+
+::selection { background: rgba(185, 149, 102, 0.3); color: var(--text-primary); }
