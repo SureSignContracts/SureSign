@@ -2,13 +2,14 @@
 
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
+import toast from 'react-hot-toast';
 import {
-  ArrowLeft, Building2, Users, FolderKanban, Search,
+  ArrowLeft, Building2, Users, FolderKanban, Search, Plus, X,
   Calendar, DollarSign, ChevronRight, MapPin, Phone, Mail, Hash, User,
 } from 'lucide-react';
 
@@ -19,11 +20,40 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   cancelled: { bg: 'rgba(239,68,68,0.12)',  text: '#f87171' },
 };
 
+const EMPTY_FORM = {
+  name: '', code: '', description: '', status: 'active',
+  contract_value: '', start_date: '', end_date: '',
+  address: '', city: '', state: '', postcode: '', country: '',
+};
+
 export default function AdminCompanyDetailPage() {
   const formatCurrency = useCurrencyFormatter();
+  const queryClient = useQueryClient();
   const { id } = useParams<{ id: string }>();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  const createMutation = useMutation({
+    mutationFn: (data: typeof EMPTY_FORM) =>
+      api.post(`/admin/companies/${id}/projects`, data).then(r => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-company-projects', id] });
+      toast.success(`Project created for ${org?.name ?? 'company'}.`);
+      setShowModal(false);
+      setForm(EMPTY_FORM);
+      setFormErrors({});
+    },
+    onError: (err: any) => {
+      const errors = err?.response?.data?.errors ?? {};
+      setFormErrors(errors);
+      if (!Object.keys(errors).length) {
+        toast.error(err?.response?.data?.message ?? 'Failed to create project.');
+      }
+    },
+  });
 
   const { data: org, isLoading: orgLoading } = useQuery({
     queryKey: ['admin-company', id],
@@ -193,6 +223,13 @@ export default function AdminCompanyDetailPage() {
         <div className="flex items-center justify-between flex-wrap gap-3">
           <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Projects</h2>
           <div className="flex items-center gap-3 flex-wrap">
+            <button
+              onClick={() => { setForm(EMPTY_FORM); setFormErrors({}); setShowModal(true); }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+              style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
+            >
+              <Plus size={13} /> New Project
+            </button>
             {/* Status filter */}
             <div className="flex gap-1 p-1 rounded-lg" style={{ backgroundColor: 'var(--bg-elevated)' }}>
               {['all', 'active', 'on_hold', 'completed', 'cancelled'].map(s => (
@@ -292,6 +329,163 @@ export default function AdminCompanyDetailPage() {
           </div>
         )}
       </div>
+
+      {/* ── Create Project Modal ── */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+          <div className="w-full max-w-lg rounded-2xl shadow-2xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
+              <div>
+                <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  Create Project for {org?.name}
+                </h2>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                  Project will be owned by this company.
+                </p>
+              </div>
+              <button onClick={() => setShowModal(false)} className="p-1.5 rounded-lg hover:opacity-70" style={{ color: 'var(--text-muted)' }}>
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
+              {/* Name */}
+              <div>
+                <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                  Project Name <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input
+                  value={form.name}
+                  onChange={e => { setForm(f => ({ ...f, name: e.target.value })); setFormErrors(p => ({ ...p, name: '' })); }}
+                  placeholder="e.g. Colchester Phase 2"
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                  style={{ backgroundColor: 'var(--bg-elevated)', border: `1px solid ${formErrors.name ? '#ef4444' : 'var(--border)'}`, color: 'var(--text-primary)' }}
+                />
+                {formErrors.name && <p className="mt-1 text-xs" style={{ color: '#ef4444' }}>{formErrors.name}</p>}
+              </div>
+
+              {/* Code + Status */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Reference / Code</label>
+                  <input
+                    value={form.code}
+                    onChange={e => setForm(f => ({ ...f, code: e.target.value }))}
+                    placeholder="e.g. SP-COL-002"
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                    style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Status</label>
+                  <select
+                    value={form.status}
+                    onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                    style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                  >
+                    <option value="active">Active</option>
+                    <option value="on_hold">On Hold</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Contract Value */}
+              <div>
+                <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Contract Value</label>
+                <input
+                  type="number"
+                  value={form.contract_value}
+                  onChange={e => setForm(f => ({ ...f, contract_value: e.target.value }))}
+                  placeholder="0.00"
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                  style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                />
+              </div>
+
+              {/* Dates */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Start Date</label>
+                  <input
+                    type="date"
+                    value={form.start_date}
+                    onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                    style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>End Date</label>
+                  <input
+                    type="date"
+                    value={form.end_date}
+                    onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                    style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                  />
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Description</label>
+                <textarea
+                  value={form.description}
+                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                  placeholder="Brief project description…"
+                  rows={3}
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none resize-none"
+                  style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                />
+              </div>
+
+              {/* Location */}
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+                <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Location (optional)</p>
+                <div className="space-y-2">
+                  <input
+                    value={form.address}
+                    onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
+                    placeholder="Street address"
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                    style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                  />
+                  <div className="grid grid-cols-3 gap-2">
+                    <input value={form.city}    onChange={e => setForm(f => ({ ...f, city: e.target.value }))}    placeholder="City"     className="px-3 py-2.5 rounded-lg text-sm outline-none" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
+                    <input value={form.state}   onChange={e => setForm(f => ({ ...f, state: e.target.value }))}   placeholder="County"   className="px-3 py-2.5 rounded-lg text-sm outline-none" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
+                    <input value={form.postcode} onChange={e => setForm(f => ({ ...f, postcode: e.target.value }))} placeholder="Postcode" className="px-3 py-2.5 rounded-lg text-sm outline-none" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 px-6 py-4" style={{ borderTop: '1px solid var(--border)' }}>
+              <button
+                onClick={() => setShowModal(false)}
+                className="px-4 py-2 rounded-lg text-sm font-medium"
+                style={{ color: 'var(--text-secondary)', backgroundColor: 'var(--bg-elevated)' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => createMutation.mutate(form)}
+                disabled={!form.name.trim() || createMutation.isPending}
+                className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium transition-opacity disabled:opacity-50"
+                style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
+              >
+                <Plus size={14} />
+                {createMutation.isPending ? 'Creating…' : 'Create Project'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

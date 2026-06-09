@@ -9,6 +9,7 @@ import {
   User, Building2, Palette, ArrowRight, ArrowLeft,
   Check, Upload, X, AlertCircle,
 } from 'lucide-react';
+import PasswordStrengthChecker, { checkPassword, isPasswordValid } from '@/components/ui/PasswordStrengthChecker';
 
 // ─── Form state types ────────────────────────────────────────────────────────
 
@@ -177,10 +178,13 @@ export default function OnboardingPage() {
     if (!profile.email.trim())      errs.email      = 'Email is required.';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.email))
       errs.email = 'Please enter a valid email address.';
-    if (profile.password && profile.password.length < 8)
-      errs.password = 'Password must be at least 8 characters.';
-    if (profile.password && profile.password !== profile.password_confirmation)
-      errs.password_confirmation = 'Passwords do not match.';
+    if (profile.password) {
+      const rules = checkPassword(profile.password);
+      if (!isPasswordValid(rules))
+        errs.password = 'Password does not meet all requirements.';
+      if (profile.password !== profile.password_confirmation)
+        errs.password_confirmation = 'Passwords do not match.';
+    }
     setProfileErrors(errs);
     return Object.keys(errs).length === 0;
   }
@@ -402,12 +406,22 @@ export default function OnboardingPage() {
                   Set New Password
                 </p>
                 <div className="grid grid-cols-2 gap-4">
-                  <Field label="New Password" type="password"
-                    value={profile.password} onChange={setP('password')}
-                    placeholder="Minimum 8 characters" error={profileErrors.password} />
-                  <Field label="Confirm New Password" type="password"
-                    value={profile.password_confirmation} onChange={setP('password_confirmation')}
-                    placeholder="Repeat password" error={profileErrors.password_confirmation} />
+                  <div>
+                    <Field label="New Password" type="password"
+                      value={profile.password} onChange={setP('password')}
+                      placeholder="Min 8 chars, mixed case, number, symbol" error={profileErrors.password} />
+                    <PasswordStrengthChecker password={profile.password} />
+                  </div>
+                  <div>
+                    <Field label="Confirm New Password" type="password"
+                      value={profile.password_confirmation} onChange={setP('password_confirmation')}
+                      placeholder="Repeat password" error={profileErrors.password_confirmation} />
+                    <PasswordStrengthChecker
+                      password={profile.password}
+                      confirmPassword={profile.password_confirmation}
+                      showConfirmMatch
+                    />
+                  </div>
                 </div>
               </div>
 

@@ -11,6 +11,7 @@ class DocumentTemplate extends Model
         'name',
         'slug',
         'category',
+        'template_type',
         'type',
         'description',
         'content',
@@ -26,7 +27,6 @@ class DocumentTemplate extends Model
         'is_active'  => 'boolean',
     ];
 
-    // Category labels used across the system
     const CATEGORIES = [
         'subcontract'          => 'Subcontract',
         'payment_application'  => 'Payment Application',
@@ -38,6 +38,31 @@ class DocumentTemplate extends Model
         'letter'               => 'Letter',
         'eot'                  => 'EOT',
         'other'                => 'Other',
+    ];
+
+    const SUBCONTRACT_TEMPLATE_TYPES = [
+        'master_package'           => 'Master Package',
+        'procurement_summary'      => 'Procurement Summary',
+        'tender_enquiry_letter'    => 'Tender Enquiry Letter',
+        'schedule_of_documents'    => 'Schedule of Documents',
+        'subcontract_draft'        => 'Subcontract Draft',
+        'other'                    => 'Other',
+    ];
+
+    const ALL_TEMPLATE_TYPES = [
+        'master_package'           => 'Master Package',
+        'procurement_summary'      => 'Procurement Summary',
+        'tender_enquiry_letter'    => 'Tender Enquiry Letter',
+        'schedule_of_documents'    => 'Schedule of Documents',
+        'subcontract_draft'        => 'Subcontract Draft',
+        'variation'                => 'Variation',
+        'payment_notice'           => 'Payment Notice',
+        'pay_less_notice'          => 'Pay Less Notice',
+        'eot'                      => 'EOT',
+        'rfi'                      => 'RFI',
+        'meeting_minutes'          => 'Meeting Minutes',
+        'site_report'              => 'Site Report',
+        'other'                    => 'Other',
     ];
 
     public function organization()
@@ -54,5 +79,32 @@ class DocumentTemplate extends Model
             $slug = $base . '-' . $i++;
         }
         return $slug;
+    }
+
+    /**
+     * Find the best matching active template for a given category and template_type.
+     * Prefers company-specific template over global.
+     */
+    public static function findForGeneration(string $category, string $templateType, ?int $organizationId = null): ?self
+    {
+        if ($organizationId) {
+            $companySpecific = static::where('category', $category)
+                ->where('template_type', $templateType)
+                ->where('organization_id', $organizationId)
+                ->where('is_active', true)
+                ->whereNotNull('file_path')
+                ->first();
+
+            if ($companySpecific) {
+                return $companySpecific;
+            }
+        }
+
+        return static::where('category', $category)
+            ->where('template_type', $templateType)
+            ->where('is_global', true)
+            ->where('is_active', true)
+            ->whereNotNull('file_path')
+            ->first();
     }
 }

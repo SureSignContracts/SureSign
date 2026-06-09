@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   BookOpen, Search, Copy, Heart, Star, Plus, X, ChevronDown,
@@ -10,6 +10,7 @@ import api from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
 import PromptContextModal from '@/components/prompts/PromptContextModal';
+import PaginationBar from '@/components/ui/PaginationBar';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -413,13 +414,22 @@ export default function AdminPromptsPage() {
   const isSuperAdmin = user?.roles?.includes('Super Admin') ?? false;
 
   const [search, setSearch]               = useState('');
+  const [debouncedSearch, setDebounced]   = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('');
   const [activeModule, setActiveModule]   = useState('');
   const [featuredOnly, setFeaturedOnly]   = useState(false);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [page, setPage]                   = useState(1);
+  const [perPage, setPerPage]             = useState(25);
   const [viewTemplate, setViewTemplate]   = useState<PromptTemplate | null>(null);
   const [editTemplate, setEditTemplate]   = useState<PromptTemplate | null | undefined>(undefined);
   const [copiedId, setCopiedId]           = useState<number | null>(null);
+
+  // Debounce search
+  useEffect(() => {
+    const t = setTimeout(() => { setDebounced(search); setPage(1); }, 350);
+    return () => clearTimeout(t);
+  }, [search]);
 
   // Fetch categories
   const { data: categories = [] } = useQuery<PromptCategory[]>({
@@ -427,17 +437,18 @@ export default function AdminPromptsPage() {
     queryFn: () => api.get('/admin/prompts/categories').then(r => r.data),
   });
 
-  // Fetch templates
+  // Fetch templates (server-side pagination)
   const { data: templateData, isLoading } = useQuery({
-    queryKey: ['prompt-templates', activeCategory, activeModule, search, featuredOnly],
+    queryKey: ['prompt-templates', activeCategory, activeModule, debouncedSearch, featuredOnly, page, perPage],
     queryFn: () => {
-      const params: Record<string, any> = {};
-      if (activeCategory) params.category = activeCategory;
-      if (activeModule)   params.module   = activeModule;
-      if (search)         params.search   = search;
-      if (featuredOnly)   params.featured = 1;
+      const params: Record<string, any> = { page, per_page: perPage };
+      if (activeCategory)   params.category = activeCategory;
+      if (activeModule)     params.module   = activeModule;
+      if (debouncedSearch)  params.search   = debouncedSearch;
+      if (featuredOnly)     params.featured = 1;
       return api.get('/admin/prompts/templates', { params }).then(r => r.data);
     },
+    placeholderData: (prev: any) => prev,
   });
 
   // Fetch favorites
@@ -447,6 +458,8 @@ export default function AdminPromptsPage() {
   });
 
   const templates: PromptTemplate[] = templateData?.data ?? [];
+  const promptTotal: number  = templateData?.total    ?? 0;
+  const promptLastPage: number = templateData?.last_page ?? 1;
 
   const displayedTemplates = useMemo(() => {
     if (favoritesOnly) return favorites;
@@ -533,7 +546,7 @@ export default function AdminPromptsPage() {
         <nav className="flex-1 py-3 px-2 space-y-0.5">
           {/* All */}
           <button
-            onClick={() => { setActiveCategory(''); setFavoritesOnly(false); }}
+            onClick={() => { setActiveCategory(''); setFavoritesOnly(false); setPage(1); }}
             className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all ${
               !activeCategory && !favoritesOnly ? 'font-medium' : 'hover:bg-[var(--bg-hover)]'
             }`}
@@ -550,7 +563,7 @@ export default function AdminPromptsPage() {
 
           {/* Featured */}
           <button
-            onClick={() => { setFeaturedOnly(f => !f); setFavoritesOnly(false); setActiveCategory(''); }}
+            onClick={() => { setFeaturedOnly(f => !f); setFavoritesOnly(false); setActiveCategory(''); setPage(1); }}
             className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
               featuredOnly ? 'font-medium' : 'hover:bg-[var(--bg-hover)]'
             }`}
@@ -565,7 +578,7 @@ export default function AdminPromptsPage() {
 
           {/* Favorites */}
           <button
-            onClick={() => { setFavoritesOnly(f => !f); setActiveCategory(''); setFeaturedOnly(false); }}
+            onClick={() => { setFavoritesOnly(f => !f); setActiveCategory(''); setFeaturedOnly(false); setPage(1); }}
             className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
               favoritesOnly ? 'font-medium' : 'hover:bg-[var(--bg-hover)]'
             }`}
@@ -591,7 +604,7 @@ export default function AdminPromptsPage() {
           {categories.map(cat => (
             <button
               key={cat.id}
-              onClick={() => { setActiveCategory(cat.slug); setFavoritesOnly(false); setFeaturedOnly(false); }}
+              onClick={() => { setActiveCategory(cat.slug); setFavoritesOnly(false); setFeaturedOnly(false); setPage(1); }}
               className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all ${
                 activeCategory === cat.slug ? 'font-medium' : 'hover:bg-[var(--bg-hover)]'
               }`}
@@ -668,9 +681,11 @@ export default function AdminPromptsPage() {
           )}
 
           {/* Result count */}
-          <span className="text-xs ml-auto" style={{ color: 'var(--text-muted)' }}>
-            {displayedTemplates.length} prompt{displayedTemplates.length !== 1 ? 's' : ''}
-          </span>
+          <div className="flex items-center gap-2 ml-auto">
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              {favoritesOnly ? displayedTemplates.length : promptTotal} prompt{(favoritesOnly ? displayedTemplates.length : promptTotal) !== 1 ? 's' : ''}
+            </span>
+          </div>
         </div>
 
         {/* Grid */}
@@ -706,6 +721,20 @@ export default function AdminPromptsPage() {
                   isSuperAdmin={isSuperAdmin}
                 />
               ))}
+            </div>
+          )}
+
+          {/* Pagination */}
+          {!favoritesOnly && (
+            <div className="pt-2 pb-4 px-6">
+              <PaginationBar
+                page={page}
+                lastPage={promptLastPage}
+                total={promptTotal}
+                perPage={perPage}
+                onPage={setPage}
+                onPerPage={n => { setPerPage(n); setPage(1); }}
+              />
             </div>
           )}
         </div>

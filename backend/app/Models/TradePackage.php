@@ -21,6 +21,10 @@ class TradePackage extends Model
         'description',
         'status',
         'created_by',
+        'is_custom',
+        'created_by_user',
+        'original_name',
+        'source_type',
     ];
 
     // ── Standard folders for every trade package ────────────────────────────

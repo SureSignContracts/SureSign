@@ -51,7 +51,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (_hasHydrated && token && user) {
       const isSystemUser = user.roles?.includes('Super Admin') || user.roles?.includes('Admin');
       const isProjectPath = !!pathname?.startsWith('/app/projects/');
-      if (isSystemUser && !isProjectPath) {
+      const isSettingsSubPath = !!pathname?.startsWith('/app/settings/');
+      if (isSystemUser && !isProjectPath && !isSettingsSubPath) {
         router.push('/admin');
         return;
       }

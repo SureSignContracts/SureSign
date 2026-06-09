@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import AdminSidebar from '@/components/layout/AdminSidebar';
+import NotificationBell from '@/components/notifications/NotificationBell';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -39,9 +40,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--bg-base)' }}>
       <AdminSidebar />
-      <main className="flex-1 overflow-y-auto">
-        {children}
-      </main>
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <header className="h-12 flex items-center justify-end px-4 flex-shrink-0" style={{ backgroundColor: 'var(--bg-surface)', borderBottom: '1px solid var(--border)' }}>
+          <NotificationBell />
+        </header>
+        <main className="flex-1 overflow-y-auto">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

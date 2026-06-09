@@ -2,10 +2,13 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, Save, Check, Upload, X, Palette, Building2 } from 'lucide-react';
+import { Settings, Save, Check, Upload, X, Palette, Building2, KeyRound, ScrollText, Lock, BookOpen } from 'lucide-react';
+import Link from 'next/link';
 import api from '@/lib/api';
+import toast from 'react-hot-toast';
+import PasswordStrengthChecker, { checkPassword, isPasswordValid } from '@/components/ui/PasswordStrengthChecker';
 
-type Tab = 'branding' | 'information';
+type Tab = 'branding' | 'information' | 'password';
 
 interface BrandingData {
   company_name: string;
@@ -208,7 +211,44 @@ export default function SettingsPage() {
   const tabs: { id: Tab; label: string; icon: any }[] = [
     { id: 'branding',     label: 'Company Branding',    icon: Palette },
     { id: 'information',  label: 'Company Information',  icon: Building2 },
+    { id: 'password',     label: 'Change Password',      icon: KeyRound },
   ];
+
+  // ── Change Password ──
+  const [pwForm, setPwForm] = useState({ current: '', password: '', confirm: '' });
+  const [pwErrors, setPwErrors] = useState<{ current?: string; password?: string; confirm?: string }>({});
+  const [pwDone, setPwDone] = useState(false);
+
+  const pwRules = checkPassword(pwForm.password);
+  const pwValid = pwForm.password
+    ? isPasswordValid(pwRules) && pwForm.password === pwForm.confirm && !!pwForm.current
+    : false;
+
+  const pwMutation = useMutation({
+    mutationFn: () => api.put('/auth/password', {
+      current_password: pwForm.current,
+      password: pwForm.password,
+      password_confirmation: pwForm.confirm,
+    }),
+    onSuccess: () => {
+      setPwForm({ current: '', password: '', confirm: '' });
+      setPwErrors({});
+      setPwDone(true);
+      setTimeout(() => setPwDone(false), 3000);
+      toast.success('Password updated successfully.');
+    },
+    onError: (err: any) => {
+      const errs = err?.response?.data?.errors ?? {};
+      setPwErrors({
+        current:  errs.current_password?.[0],
+        password: errs.password?.[0],
+        confirm:  errs.password_confirmation?.[0],
+      });
+      if (!Object.keys(errs).length) {
+        toast.error(err?.response?.data?.message ?? 'Failed to update password.');
+      }
+    },
+  });
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
@@ -346,7 +386,7 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
-        ) : (
+        ) : tab === 'information' ? (
           /* ── Company Information ── */
           <div className="space-y-5">
             <div>
@@ -378,19 +418,118 @@ export default function SettingsPage() {
               <Field label="VAT / Tax Number" value={infoForm.vat_number} onChange={v => setInfoForm(f => ({ ...f, vat_number: v }))} placeholder="GB123456789" />
             </div>
           </div>
-        )}
+        ) : tab === 'password' ? (
+          /* ── Change Password ── */
+          <div className="space-y-5 max-w-sm">
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                Current Password
+              </label>
+              <input
+                type="password"
+                value={pwForm.current}
+                onChange={e => { setPwForm(f => ({ ...f, current: e.target.value })); setPwErrors(p => ({ ...p, current: undefined })); }}
+                placeholder="Enter your current password"
+                className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                style={{ backgroundColor: 'var(--bg-elevated)', border: `1px solid ${pwErrors.current ? '#ef4444' : 'var(--border)'}`, color: 'var(--text-primary)' }}
+              />
+              {pwErrors.current && <p className="mt-1 text-xs" style={{ color: '#ef4444' }}>{pwErrors.current}</p>}
+            </div>
 
-        {/* Save button */}
-        <div className="mt-6 flex justify-end">
-          <button
-            onClick={handleSave}
-            disabled={isPending}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-opacity disabled:opacity-60"
-            style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
-          >
-            {saved ? <Check size={15} /> : <Save size={15} />}
-            {saved ? 'Saved!' : isPending ? 'Saving…' : 'Save Changes'}
-          </button>
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem' }} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                  New Password
+                </label>
+                <input
+                  type="password"
+                  value={pwForm.password}
+                  onChange={e => { setPwForm(f => ({ ...f, password: e.target.value })); setPwErrors(p => ({ ...p, password: undefined })); }}
+                  placeholder="Min 8 chars, mixed case, number, symbol"
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                  style={{ backgroundColor: 'var(--bg-elevated)', border: `1px solid ${pwErrors.password ? '#ef4444' : 'var(--border)'}`, color: 'var(--text-primary)' }}
+                />
+                {pwErrors.password && <p className="mt-1 text-xs" style={{ color: '#ef4444' }}>{pwErrors.password}</p>}
+                <PasswordStrengthChecker password={pwForm.password} />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                  Confirm New Password
+                </label>
+                <input
+                  type="password"
+                  value={pwForm.confirm}
+                  onChange={e => { setPwForm(f => ({ ...f, confirm: e.target.value })); setPwErrors(p => ({ ...p, confirm: undefined })); }}
+                  placeholder="Repeat new password"
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                  style={{ backgroundColor: 'var(--bg-elevated)', border: `1px solid ${pwErrors.confirm ? '#ef4444' : 'var(--border)'}`, color: 'var(--text-primary)' }}
+                />
+                {pwErrors.confirm && <p className="mt-1 text-xs" style={{ color: '#ef4444' }}>{pwErrors.confirm}</p>}
+                <PasswordStrengthChecker
+                  password={pwForm.password}
+                  confirmPassword={pwForm.confirm}
+                  showConfirmMatch
+                />
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <button
+                onClick={() => pwMutation.mutate()}
+                disabled={!pwValid || pwMutation.isPending}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-opacity disabled:opacity-50"
+                style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
+              >
+                {pwDone ? <Check size={15} /> : <KeyRound size={15} />}
+                {pwDone ? 'Password Updated!' : pwMutation.isPending ? 'Updating…' : 'Update Password'}
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {tab !== 'password' && (
+          <div className="mt-6 flex justify-end">
+            <button
+              onClick={handleSave}
+              disabled={isPending}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-opacity disabled:opacity-60"
+              style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
+            >
+              {saved ? <Check size={15} /> : <Save size={15} />}
+              {saved ? 'Saved!' : isPending ? 'Saving…' : 'Save Changes'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Legal & Info */}
+      <div className="mt-8 pt-6" style={{ borderTop: '1px solid var(--border)' }}>
+        <h2 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>
+          Legal &amp; Info
+        </h2>
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { href: '/app/settings/releases', icon: ScrollText, label: 'Release Notes', desc: 'What\'s new in SureSign' },
+            { href: '/app/settings/privacy',  icon: Lock,        label: 'Privacy Policy', desc: 'How we handle your data' },
+            { href: '/app/settings/terms',    icon: BookOpen,    label: 'Terms of Use',   desc: 'Platform usage terms' },
+          ].map(({ href, icon: Icon, label, desc }) => (
+            <Link
+              key={href}
+              href={href}
+              className="flex items-start gap-3 px-4 py-3 rounded-xl transition-colors hover:bg-[var(--bg-hover)]"
+              style={{ border: '1px solid var(--border)' }}
+            >
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+                style={{ backgroundColor: 'rgba(185,149,102,0.12)', color: 'var(--gold)' }}>
+                <Icon size={14} />
+              </div>
+              <div>
+                <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{label}</div>
+                <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{desc}</div>
+              </div>
+            </Link>
+          ))}
         </div>
       </div>
     </div>

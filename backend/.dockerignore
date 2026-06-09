@@ -1,0 +1,10 @@
+storage/app/private
+storage/app/public
+storage/logs
+storage/framework/cache
+storage/framework/sessions
+storage/framework/views
+bootstrap/cache
+vendor
+node_modules
+.env

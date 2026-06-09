@@ -25,6 +25,7 @@ class SureSignFolderPathService
      */
     public const MODULE_FOLDER_MAP = [
         'contracts'            => '01_Contracts',
+        'subcontracts'         => 'Subcontracts',
         'commercial'           => '02_Commercial',
         'payment_applications' => '03_Payment Applications',
         'variations'           => '04_Variations',
@@ -89,6 +90,7 @@ class SureSignFolderPathService
             '01_Contracts/Consultant Agreements',
             '01_Contracts/Supplier Agreements',
             '01_Contracts/Other Contract Documents',
+            'Subcontracts',
             '02_Commercial',
             '03_Payment Applications',
             '04_Variations',

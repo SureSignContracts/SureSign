@@ -14,6 +14,7 @@ import {
   BookOpen, Copy, X, Tag, ChevronDown,
 } from 'lucide-react';
 import PromptContextModal from '@/components/prompts/PromptContextModal';
+import ProjectDocumentsExplorer from '@/components/documents/ProjectDocumentsExplorer';
 
 // ─── Folder meta ──────────────────────────────────────────────────────────────
 const FOLDER_META: Record<string, { icon: any; color: string }> = {
@@ -411,6 +412,7 @@ export default function ProjectDetailPage() {
   ];
 
   return (
+    <>
     <div className="p-6 max-w-7xl mx-auto">
       <Link href={project.client_id ? `/companies/${project.client_id}` : '/companies'}
             className="inline-flex items-center gap-1.5 text-xs mb-4 transition-colors hover:text-[var(--text-primary)]"
@@ -489,25 +491,7 @@ export default function ProjectDetailPage() {
       <div className="rounded-2xl p-6" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
 
         {activeTab === 'documents' && (
-          selectedFolder
-            ? <FolderDetail project={project} folder={selectedFolder} onBack={() => setSelectedFolder(null)} />
-            : <>
-                <div className="flex items-center justify-between mb-5">
-                  <div>
-                    <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Project Documents</h3>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                      {folders.length} folders · select a folder to upload and manage files
-                    </p>
-                  </div>
-                </div>
-                {folders.length === 0
-                  ? <div className="text-center py-16" style={{ color: 'var(--text-muted)' }}>
-                      <FolderOpen size={36} className="mx-auto mb-3" />
-                      <p className="text-sm">No folders yet</p>
-                    </div>
-                  : <FolderGrid folders={folders} onSelect={setSelectedFolder} />
-                }
-              </>
+          <ProjectDocumentsExplorer compact />
         )}
 
         {activeTab === 'overview' && (
@@ -601,9 +585,9 @@ export default function ProjectDetailPage() {
       </div>
     </div>
 
-    {showPrompts && (
-      <ProjectPromptsModal projectId={id} onClose={() => setShowPrompts(false)} />
-    )}
-  </div>
+      {showPrompts && (
+        <ProjectPromptsModal projectId={id} onClose={() => setShowPrompts(false)} />
+      )}
+    </>
   );
 }

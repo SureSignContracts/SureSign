@@ -226,6 +226,7 @@ class AdminController extends Controller
 
     private const MODULE_FOLDERS = [
         'contracts'            => 'Contracts',
+        'subcontracts'         => 'Subcontracts',
         'commercial'           => 'Commercial',
         'payment_applications' => 'Payment Applications',
         'variations'           => 'Variations',
@@ -308,7 +309,19 @@ class AdminController extends Controller
         $folders = [];
         foreach (self::MODULE_FOLDERS as $key => $name) {
             $row   = $counts->get($key);
-            $count = ($row ? (int) $row->files_count : 0) + ($key === 'general' ? $generalExtra : 0);
+            if ($key === 'subcontracts') {
+                $count = FileUpload::where('project_id', $project->id)
+                    ->where(function ($q) {
+                        $q->where('module_key', 'subcontracts')
+                          ->orWhere(function ($q2) {
+                              $q2->where('folder_key', 'contracts/subcontract')
+                                  ->whereNotNull('trade_package_id');
+                          });
+                    })
+                    ->count();
+            } else {
+                $count = ($row ? (int) $row->files_count : 0) + ($key === 'general' ? $generalExtra : 0);
+            }
             $folders[] = [
                 'key'          => $key,
                 'name'         => $name,
@@ -333,9 +346,156 @@ class AdminController extends Controller
     /**
      * GET /api/admin/documents/explorer/project/{project}/module/{moduleKey}
      * Returns paginated files in a module folder for a project.
+     * Special handling for 'contracts' module to show subfolders.
      */
     public function explorerModuleFiles(Request $request, Project $project, string $moduleKey)
     {
+        // Special handling for contracts module — show subfolders instead of files
+        if ($moduleKey === 'contracts') {
+            $contractSubfolders = [
+                ['key' => 'contracts/main_contract',        'name' => 'Main Contract',          'type' => 'folder', 'files_count' => 0],
+                ['key' => 'contracts/consultant_agreement',  'name' => 'Consultant Agreements',  'type' => 'folder', 'files_count' => 0],
+                ['key' => 'contracts/supplier_agreement',    'name' => 'Supplier Agreements',    'type' => 'folder', 'files_count' => 0],
+            ];
+
+            // Get file counts for each subfolder
+            foreach ($contractSubfolders as &$subfolder) {
+                $count = FileUpload::where('project_id', $project->id)
+                    ->where('folder_key', $subfolder['key'])
+                    ->count();
+                $subfolder['files_count'] = $count;
+            }
+
+            return response()->json([
+                'type' => 'folders',
+                'folders' => $contractSubfolders,
+            ]);
+        }
+
+        if ($moduleKey === 'subcontracts') {
+            $tradePackages = \App\Models\TradePackage::where('project_id', $project->id)
+                ->where('status', 'active')
+                ->orderBy('name')
+                ->get(['id', 'name', 'package_code', 'package_reference', 'contractor_name', 'description'])
+                ->map(function ($pkg) use ($project) {
+                    $count = FileUpload::where('project_id', $project->id)
+                        ->where('trade_package_id', $pkg->id)
+                        ->count();
+                    $displayRef = ($project->code && $pkg->package_code)
+                        ? "{$project->code}-{$pkg->package_code}"
+                        : ($pkg->package_reference ?? $pkg->package_code);
+                    return [
+                        'type'              => 'trade_package',
+                        'id'                => $pkg->id,
+                        'name'              => $pkg->name,
+                        'package_code'      => $pkg->package_code,
+                        'package_reference' => $displayRef,
+                        'contractor_name'   => $pkg->contractor_name,
+                        'description'       => $pkg->description,
+                        'key'               => "subcontracts/package/{$pkg->id}",
+                        'files_count'       => $count,
+                    ];
+                });
+
+            return response()->json([
+                'type'           => 'trade_packages',
+                'trade_packages' => $tradePackages,
+            ]);
+        }
+
+        // Special handling for contracts/subcontract — show trade packages as folders + direct files
+        if ($moduleKey === 'contracts/subcontract') {
+            $tradePackages = \App\Models\TradePackage::where('project_id', $project->id)
+                ->where('status', 'active')
+                ->orderBy('name')
+                ->get(['id', 'name', 'package_code', 'package_reference', 'contractor_name', 'description'])
+                ->map(function ($pkg) use ($project) {
+                    $count = FileUpload::where('project_id', $project->id)
+                        ->where('trade_package_id', $pkg->id)
+                        ->count();
+                    $displayRef = ($project->code && $pkg->package_code)
+                        ? "{$project->code}-{$pkg->package_code}"
+                        : ($pkg->package_reference ?? $pkg->package_code);
+                    return [
+                        'type' => 'trade_package',
+                        'id' => $pkg->id,
+                        'name' => $pkg->name,
+                        'package_code' => $pkg->package_code,
+                        'package_reference' => $displayRef,
+                        'contractor_name' => $pkg->contractor_name,
+                        'description' => $pkg->description,
+                        'key' => "contracts/subcontract/package/{$pkg->id}",
+                        'files_count' => $count,
+                    ];
+                });
+
+            return response()->json([
+                'type' => 'trade_packages',
+                'trade_packages' => $tradePackages,
+            ]);
+        }
+
+        if (preg_match('/^subcontracts\/package\/(\d+)$/', $moduleKey, $matches)) {
+            $tradePackageId = (int) $matches[1];
+            $tradePackage = \App\Models\TradePackage::where('project_id', $project->id)
+                ->whereKey($tradePackageId)
+                ->firstOrFail(['id', 'name', 'package_code', 'package_reference', 'contractor_name', 'description']);
+            $query = FileUpload::where('project_id', $project->id)
+                ->where('trade_package_id', $tradePackageId)
+                ->with(['uploader:id,name', 'project:id,name,code', 'organization:id,name'])
+                ->latest();
+
+            $paginated = $query->paginate(50);
+
+            return response()->json([
+                'type'          => 'files',
+                'trade_package' => $tradePackage,
+                'data'          => $paginated->items(),
+                'total'         => $paginated->total(),
+                'per_page'      => $paginated->perPage(),
+                'from'          => $paginated->firstItem(),
+                'to'            => $paginated->lastItem(),
+                'current_page'  => $paginated->currentPage(),
+                'last_page'     => $paginated->lastPage(),
+            ]);
+        }
+
+        // Handle trade package files listing (e.g., 'contracts/subcontract/package/123')
+        if (preg_match('/^contracts\/subcontract\/package\/(\d+)$/', $moduleKey, $matches)) {
+            $tradePackageId = (int) $matches[1];
+            $tradePackage = \App\Models\TradePackage::where('project_id', $project->id)
+                ->whereKey($tradePackageId)
+                ->firstOrFail(['id', 'name', 'package_code', 'package_reference', 'contractor_name', 'description']);
+            $query = FileUpload::where('project_id', $project->id)
+                ->where('trade_package_id', $tradePackageId)
+                ->with(['uploader:id,name', 'project:id,name,code', 'organization:id,name'])
+                ->latest();
+            
+            $paginated = $query->paginate(50);
+            
+            // Return with consistent structure
+            return response()->json([
+                'type' => 'files',
+                'trade_package' => $tradePackage,
+                'data' => $paginated->items(),
+                'total' => $paginated->total(),
+                'per_page' => $paginated->perPage(),
+                'from' => $paginated->firstItem(),
+                'to' => $paginated->lastItem(),
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+            ]);
+        }
+
+        // Handle other contract subfolder files (e.g., 'contracts/main_contract', 'contracts/consultant_agreement')
+        if (str_starts_with($moduleKey, 'contracts/')) {
+            $query = FileUpload::where('project_id', $project->id)
+                ->where('folder_key', $moduleKey)
+                ->with(['uploader:id,name', 'project:id,name,code', 'organization:id,name']);
+            return response()->json($query->latest()->paginate(50));
+        }
+
+        // Standard file listing for other modules
         $query = FileUpload::where('project_id', $project->id)
             ->with(['uploader:id,name', 'project:id,name,code', 'organization:id,name']);
 
@@ -350,4 +510,3 @@ class AdminController extends Controller
         return response()->json($query->latest()->paginate(50));
     }
 }
-

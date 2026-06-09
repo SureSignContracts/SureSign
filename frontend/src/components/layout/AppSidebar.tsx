@@ -14,6 +14,7 @@ import {
   FileText, BarChart2, Brain, Users, Settings, LogOut,
   Sun, Moon, ShieldCheck, ChevronUp,
 } from 'lucide-react';
+import { APP_VERSION_LABEL } from '@/config/app-version';
 
 const navItems = [
   { href: '/app',           label: 'Dashboard',    icon: LayoutDashboard },
@@ -157,6 +158,9 @@ export default function AppSidebar() {
             <LogOut size={15} />
             <span>Log out</span>
           </button>
+          <div className="px-4 py-2 text-center" style={{ borderTop: '1px solid var(--border)' }}>
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{APP_VERSION_LABEL}</span>
+          </div>
         </div>
 
         {/* Clickable profile */}

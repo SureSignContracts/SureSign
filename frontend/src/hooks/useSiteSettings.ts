@@ -18,11 +18,14 @@ const DEFAULTS: SiteSettings = {
 };
 
 export function useSiteSettings() {
-  return useQuery<SiteSettings>({
+  const query = useQuery<SiteSettings>({
     queryKey: ['site-settings'],
     queryFn: () =>
       api.get('/settings').then(r => r.data?.data ?? r.data).catch(() => DEFAULTS),
     staleTime: 5 * 60 * 1000,
     placeholderData: DEFAULTS,
   });
+  // isSettingsReady is false while the initial fetch is in-flight (placeholderData is active).
+  // Sidebar uses this to show a skeleton instead of flashing all-visible items.
+  return { ...query, isSettingsReady: !query.isLoading && !query.isPlaceholderData };
 }

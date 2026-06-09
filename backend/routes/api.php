@@ -20,6 +20,8 @@ use App\Http\Controllers\Api\SiteInstructionController;
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\ProjectActivityController;
 use App\Http\Controllers\Api\SuresignSettingController;
+use App\Http\Controllers\Api\DocumentTemplateController;
+use App\Http\Controllers\Api\TradePackagePackageGenerationController;
 use App\Http\Controllers\Api\SnagController;
 use App\Http\Controllers\Api\QaReportController;
 use App\Http\Controllers\Api\CloseoutController;
@@ -27,6 +29,10 @@ use App\Http\Controllers\Api\AdjudicationCaseController;
 use App\Http\Controllers\Api\AdjudicationDocumentController;
 use App\Http\Controllers\Api\AdjudicationDeadlineController;
 use App\Http\Controllers\Api\PromptController;
+use App\Http\Controllers\Api\CompaniesHouseController;
+use App\Http\Controllers\Api\GenerateTradePackageFoldersController;
+use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\DocumentRegisterController;
 use App\Models\FileUpload;
 use Illuminate\Support\Facades\Route;
 
@@ -122,6 +128,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Documents (generated)
     Route::apiResource('projects.documents', DocumentController::class)->shallow();
     Route::get('/documents/{document}/download', [DocumentController::class, 'download']);
+    Route::get('/documents/{document}/preview',  [DocumentController::class, 'previewDocument']);
 
     // Clients (Companies)
     Route::apiResource('clients', ClientController::class);
@@ -132,11 +139,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/projects/{project}/files', [DocumentController::class, 'indexFiles']);
     Route::post('/projects/{project}/files', [DocumentController::class, 'uploadFile']);
     Route::get('/file-uploads/{fileUpload}/download', [DocumentController::class, 'downloadFile']);
+    Route::get('/file-uploads/{fileUpload}/preview',  [DocumentController::class, 'previewFile']);
     Route::delete('/file-uploads/{fileUpload}', [DocumentController::class, 'destroyFile']);
 
     // Project document module explorer
     Route::get('/projects/{project}/documents/explorer', [DocumentController::class, 'projectExplorer']);
-    Route::get('/projects/{project}/documents/module/{moduleKey}', [DocumentController::class, 'projectModuleFiles']);
+    Route::get('/projects/{project}/documents/module/{moduleKey}', [DocumentController::class, 'projectModuleFiles'])->where('moduleKey', '.+');
+    Route::get('/templates', [DocumentTemplateController::class, 'index']);
+    Route::post('/trade-packages/{tradePackage}/generate-package', [TradePackagePackageGenerationController::class, 'generate']);
+    Route::post('/projects/{project}/subcontracts/generate-trade-packages', [GenerateTradePackageFoldersController::class, 'store']);
+
+    // Document Register & Number types
+    Route::get('/document-types', [DocumentRegisterController::class, 'types']);
+    Route::get('/projects/{project}/document-register', [DocumentRegisterController::class, 'index'])
+         ->where('project', '[0-9]+');
 
     // AI
     Route::prefix('ai')->group(function () {
@@ -175,18 +191,24 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/organizations', [AdminController::class, 'organizations']);
             Route::get('/projects', [AdminController::class, 'projects']);
             Route::get('/documents', [AdminController::class, 'documents']);
-            Route::get('/templates', [AdminController::class, 'templates']);
             Route::get('/storage', [AdminController::class, 'storage']);
+
+            // Document Templates CRUD
+            Route::apiResource('templates', DocumentTemplateController::class);
+            Route::get('/templates/{template}/preview', [DocumentTemplateController::class, 'preview']);
             Route::get('/support', [AdminController::class, 'support']);
             Route::get('/system-logs', [AdminController::class, 'systemLogs']);
             Route::get('/settings', [AdminController::class, 'settings']);
             Route::put('/settings', [AdminController::class, 'updateSettings']);
 
+            // Admin: create project on behalf of a company
+            Route::post('/companies/{organization}/projects', [ProjectController::class, 'storeForCompany']);
+
             // Document Explorer
             Route::get('/documents/explorer', [AdminController::class, 'explorerCompanies']);
             Route::get('/documents/explorer/company/{organization}', [AdminController::class, 'explorerProjects']);
             Route::get('/documents/explorer/project/{project}', [AdminController::class, 'explorerModules']);
-            Route::get('/documents/explorer/project/{project}/module/{moduleKey}', [AdminController::class, 'explorerModuleFiles']);
+            Route::get('/documents/explorer/project/{project}/module/{moduleKey}', [AdminController::class, 'explorerModuleFiles'])->where('moduleKey', '.+');
 
             // SureSign platform settings
             Route::get('/suresign-settings',                         [SuresignSettingController::class, 'show']);
@@ -207,6 +229,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::delete('/suresign-settings/email-footer',         [SuresignSettingController::class, 'removeEmailFooter']);
             Route::post('/suresign-settings/test-pdf',               [SuresignSettingController::class, 'testPdf']);
             Route::post('/suresign-settings/test-email',             [SuresignSettingController::class, 'testEmail']);
+            Route::post('/suresign-settings/sync-from-mirror',       [SuresignSettingController::class, 'syncFromMirror']);
 
             // Prompt Library
             Route::prefix('prompts')->group(function () {
@@ -227,11 +250,35 @@ Route::middleware('auth:sanctum')->group(function () {
                 Route::delete('/templates/{template}/favorite',[PromptController::class, 'unfavoriteTemplate']);
                 Route::get('/favorites',                       [PromptController::class, 'myFavorites']);
             });
+
+            Route::post('/trade-packages/{tradePackage}/generate-package', [TradePackagePackageGenerationController::class, 'generate']);
+
+            // Bulk trade package folder generation
+            Route::post('/projects/{project}/subcontracts/generate-trade-packages', [GenerateTradePackageFoldersController::class, 'store']);
+
+            // Document Register (admin)
+            Route::get('/document-register',          [DocumentRegisterController::class, 'adminIndex']);
+            Route::get('/document-register/projects', [DocumentRegisterController::class, 'adminProjects']);
+
+            // Companies House (UK) lookup
+            Route::get('/companies-house/search', [CompaniesHouseController::class, 'search']);
+            Route::get('/companies-house/{companyNumber}/officers', [CompaniesHouseController::class, 'officers']);
+            Route::get('/companies-house/{companyNumber}', [CompaniesHouseController::class, 'show']);
+
         });
 
         // Show individual organization by ID (admin)
         Route::get('/organizations/{id}', [OrganizationController::class, 'showById']);
     });
+
+    // Notifications
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllRead']);
+    Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
+    Route::delete('/notifications/clear-read', [NotificationController::class, 'clearRead']);
+    Route::delete('/notifications/clear-selected', [NotificationController::class, 'clearSelected']);
+    Route::delete('/notifications/{notification}', [NotificationController::class, 'clearOne']);
 
     // Prompt render (available to all authenticated users)
     Route::post('/prompts/{template}/render', [PromptController::class, 'render']);

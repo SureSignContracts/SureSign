@@ -13,7 +13,7 @@ class Document extends Model
         'project_id', 'organization_id', 'created_by', 'template_id',
         'documentable_type', 'documentable_id',
         'title', 'type', 'category', 'reference_number',
-        'status', 'file_path', 'file_name', 'mime_type', 'file_size',
+        'status', 'file_path', 'preview_pdf_path', 'file_name', 'mime_type', 'file_size',
         'version', 'ai_generated', 'template_data',
         // Mirror tracking
         'mirror_status', 'mirror_path', 'mirrored_at',

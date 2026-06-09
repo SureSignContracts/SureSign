@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
+import { useAuthStore } from '@/store/authStore';
 import {
   Gem, Check, Save, RefreshCw, FileText, Mail, ImageIcon,
   X, Upload, Palette, Globe, FileUp, Download, Send, Eye, EyeOff,
@@ -198,6 +199,8 @@ function UploadTile({ label, hint, accept, currentUrl, onUpload, onRemove, uploa
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function AdminSureSignPage() {
   const qc = useQueryClient();
+  const { user } = useAuthStore();
+  const isSuperAdmin = user?.roles?.includes('Super Admin');
   const [activeTab, setActiveTab] = useState<TabId>(() => {
     if (typeof window === 'undefined') return 'branding';
     const stored = localStorage.getItem('suresign_settings_tab') as TabId;
@@ -763,15 +766,24 @@ export default function AdminSureSignPage() {
             </div>
             <div className="grid grid-cols-2 gap-2">
               {([
-                { key: 'companies',      label: 'Companies' },
-                { key: 'documents',      label: 'Documents' },
-                { key: 'prompts',        label: 'Prompt Library' },
-                { key: 'projects',       label: 'Projects' },
-                { key: 'templates',      label: 'Templates' },
-                { key: 'billing',        label: 'Billing' },
-                { key: 'users',          label: 'Users' },
-              ] as const).map(({ key, label }) => {
-                const hidden = siteForm.hidden_pages.includes(key);
+                // Pages available to all Admin users
+                { key: 'companies',         label: 'Companies',      superAdminOnly: false },
+                { key: 'documents',         label: 'Documents',      superAdminOnly: false },
+                { key: 'prompts',           label: 'Prompt Library', superAdminOnly: false },
+                { key: 'projects',          label: 'Projects',       superAdminOnly: false },
+                { key: 'templates',         label: 'Templates',      superAdminOnly: false },
+                { key: 'find',              label: 'Find Company',   superAdminOnly: false },
+                { key: 'users',             label: 'Users',          superAdminOnly: false },
+                // Super Admin-only pages — only show to Super Admins
+                { key: 'billing',           label: 'Billing',        superAdminOnly: true },
+                { key: 'ai-configurations', label: 'AI Config',      superAdminOnly: true },
+                { key: 'storage',           label: 'Storage',        superAdminOnly: true },
+                { key: 'support',           label: 'Support',        superAdminOnly: true },
+                { key: 'system-logs',       label: 'System Logs',    superAdminOnly: true },
+              ] as { key: string; label: string; superAdminOnly: boolean }[])
+              .filter(p => !p.superAdminOnly || isSuperAdmin)
+              .map(({ key, label }) => {
+                const hidden = siteForm.hidden_pages.includes(key as string);
                 return (
                   <button
                     key={key}
@@ -780,8 +792,8 @@ export default function AdminSureSignPage() {
                       setSiteForm(p => ({
                         ...p,
                         hidden_pages: hidden
-                          ? p.hidden_pages.filter(k => k !== key)
-                          : [...p.hidden_pages, key],
+                          ? p.hidden_pages.filter(k => k !== (key as string))
+                          : [...p.hidden_pages, key as string],
                       }));
                     }}
                     className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-sm transition-all"

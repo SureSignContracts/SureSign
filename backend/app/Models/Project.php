@@ -31,4 +31,5 @@ class Project extends Model {
     public function qaReports()       { return $this->hasMany(QaReport::class); }
     public function closeouts()          { return $this->hasMany(Closeout::class); }
     public function adjudicationCases()  { return $this->hasMany(AdjudicationCase::class); }
+    public function documentRegister()   { return $this->hasMany(DocumentRegister::class); }
 }

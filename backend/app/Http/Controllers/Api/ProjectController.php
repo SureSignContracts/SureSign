@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\FileUpload;
+use App\Models\Organization;
 use App\Models\Project;
 use App\Models\ProjectFolder;
 use App\Services\ProjectActivityService;
@@ -86,6 +87,50 @@ class ProjectController extends Controller
         );
 
         return response()->json($project->load(['creator:id,name', 'folders']), 201);
+    }
+
+    /**
+     * Admin: create a project on behalf of a client company.
+     * Route: POST /admin/companies/{organization}/projects
+     */
+    public function storeForCompany(Request $request, Organization $organization)
+    {
+        $admin = $request->user();
+
+        $validated = $request->validate([
+            'name'             => 'required|string|max:255',
+            'code'             => 'nullable|string|max:50',
+            'description'      => 'nullable|string',
+            'status'           => 'nullable|in:active,on_hold,completed,cancelled',
+            'contract_value'   => 'nullable|numeric|min:0',
+            'start_date'       => 'nullable|date',
+            'end_date'         => 'nullable|date|after_or_equal:start_date',
+            'address'          => 'nullable|string',
+            'city'             => 'nullable|string',
+            'state'            => 'nullable|string',
+            'postcode'         => 'nullable|string',
+            'country'          => 'nullable|string',
+        ]);
+
+        $project = Project::create(array_merge($validated, [
+            'organization_id' => $organization->id,
+            'created_by'      => $admin->id,
+            'status'          => $validated['status'] ?? 'active',
+        ]));
+
+        $this->createDefaultFolders($project);
+        ProjectStorageService::createProjectFolders($project);
+
+        ProjectActivityService::record(
+            $project,
+            $admin,
+            'project_created',
+            "Project \"{$project->name}\" created by admin {$admin->name} on behalf of {$organization->name}.",
+            null,
+            $project
+        );
+
+        return response()->json($project->load(['creator:id,name', 'folders', 'organization:id,name']), 201);
     }
 
     public function show(Request $request, Project $project)

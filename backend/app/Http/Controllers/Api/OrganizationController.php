@@ -7,6 +7,7 @@ use App\Models\BrandingSetting;
 use App\Models\Organization;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password;
 
 class OrganizationController extends Controller
 {
@@ -25,7 +26,7 @@ class OrganizationController extends Controller
             'last_name'   => 'required|string|max:100',
             'email'       => 'required|email|max:255|unique:users,email,' . $user->id,
             'phone'       => 'nullable|string|max:50',
-            'password'    => 'nullable|string|min:8|confirmed',
+            'password'    => ['nullable', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
             'address'     => 'nullable|string|max:500',
             'city'        => 'nullable|string|max:100',
             'province'    => 'nullable|string|max:100',

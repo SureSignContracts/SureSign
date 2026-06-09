@@ -322,17 +322,29 @@ class LocalDocumentMirrorService
      */
     private static function resolveModuleDir(string $moduleKey, string $folderKey, ?FileUpload $upload = null): string
     {
+        // New top-level subcontracts module — route directly into Subcontracts/{PackageName}/
+        if ($moduleKey === 'subcontracts') {
+            if ($upload && $upload->trade_package_id) {
+                $package = \App\Models\TradePackage::find($upload->trade_package_id);
+                if ($package) {
+                    $packageFolder = SureSignFolderPathService::sanitizeSegment($package->name);
+                    return 'Subcontracts' . DIRECTORY_SEPARATOR . $packageFolder;
+                }
+            }
+            return 'Subcontracts';
+        }
+
         $moduleDir = SureSignFolderPathService::moduleKeyToFolderName($moduleKey);
 
         if ($moduleKey === 'contracts' && str_contains($folderKey, '/')) {
             $contractDocType = explode('/', $folderKey, 2)[1];
 
-            // Trade package files → route into the package folder directly
+            // Backward compat: old trade package files stored under contracts/subcontract
             if ($contractDocType === 'subcontract' && $upload && $upload->trade_package_id) {
                 $package = \App\Models\TradePackage::find($upload->trade_package_id);
                 if ($package) {
                     $packageFolder = SureSignFolderPathService::sanitizeSegment($package->name);
-                    return $moduleDir . DIRECTORY_SEPARATOR . 'Subcontracts' . DIRECTORY_SEPARATOR . $packageFolder;
+                    return 'Subcontracts' . DIRECTORY_SEPARATOR . $packageFolder;
                 }
             }
 

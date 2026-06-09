@@ -25,27 +25,6 @@ npm install
 npm run dev
 ```
 
-## Access
-| URL | Purpose |
-|-----|---------|
-| http://localhost:3000 | Frontend |
-| http://localhost:8000/api | API |
-
-## Default Login
-| Field | Value |
-|-------|-------|
-| Email | admin@suresign.app |
-| Password | Admin@2024! |
-
-## MySQL Workbench Connection
-| Setting | Value |
-|---------|-------|
-| Host | 127.0.0.1 |
-| Port | 3306 |
-| Database | suresign |
-| Username | suresign |
-| Password | SET_IN_ENV_FILE |
-
 ## Docker
 ```bash
 docker-compose up -d

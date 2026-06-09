@@ -45,6 +45,7 @@ class ProjectStorageService
         '01_Contracts/Subcontracts',
         '01_Contracts/Consultant Agreements',
         '01_Contracts/Supplier Agreements',
+        'Subcontracts',
         '02_Commercial',
         '03_Payment Applications',
         '04_Variations',
@@ -64,6 +65,7 @@ class ProjectStorageService
      */
     private const MODULE_PATHS = [
         'contracts'            => '01_Contracts',
+        'subcontracts'         => 'Subcontracts',
         'commercial'           => '02_Commercial',
         'payment_applications' => '03_Payment Applications',
         'variations'           => '04_Variations',
