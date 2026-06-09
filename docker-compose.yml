@@ -33,7 +33,7 @@ services:
       - DB_HOST=mysql
       - DB_DATABASE=suresign
       - DB_USERNAME=suresign
-      - DB_PASSWORD=REDACTED_SEE_ENV_FILE
+      - DB_PASSWORD=${DB_PASSWORD}
       - REDIS_HOST=redis
     depends_on:
       mysql:
@@ -69,14 +69,14 @@ services:
     ports:
       - "3307:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: REDACTED_SEE_ENV_FILE
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: suresign
       MYSQL_USER: suresign
-      MYSQL_PASSWORD: REDACTED_SEE_ENV_FILE
+      MYSQL_PASSWORD: ${DB_PASSWORD}
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-usuresign", "-pREDACTED_SEE_ENV_FILE"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-usuresign", "-p${DB_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 5

@@ -1,0 +1,44 @@
+# ──────────────────────────────────────────
+# AI assistant workspace files
+# ──────────────────────────────────────────
+.claude/
+.agents/
+.codex/
+CLAUDE.md
+AGENTS.md
+frontend/CLAUDE.md
+frontend/AGENTS.md
+
+# ──────────────────────────────────────────
+# Internal planning / AI context documents
+# ──────────────────────────────────────────
+SYSTEM_ANALYSIS.md
+project-context.md
+suresign-context.md
+document-management.md
+task.md
+task[0-9]*.md
+
+# ──────────────────────────────────────────
+# Environment files (never commit secrets)
+# ──────────────────────────────────────────
+.env
+backend/.env
+backend/.env.docker
+frontend/.env.local
+frontend/.env*.local
+
+# ──────────────────────────────────────────
+# Build artifacts
+# ──────────────────────────────────────────
+backend/.phpunit.result.cache
+frontend/.next/
+frontend/tsconfig.tsbuildinfo
+
+# ──────────────────────────────────────────
+# OS / editor
+# ──────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
