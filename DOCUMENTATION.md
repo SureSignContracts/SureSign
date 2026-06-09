@@ -963,7 +963,7 @@ npm run dev
 | Port | `3306` (local) / `3307` (Docker) |
 | Database | `suresign` |
 | Username | `suresign` |
-| Password | `SET_IN_ENV_FILE` |
+| Password | *(set in your `.env` / `.env.docker`)* |
 
 ### Default Admin Login
 
