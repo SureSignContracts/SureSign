@@ -188,7 +188,7 @@ export default function ProjectCloseoutPage() {
                   const isUpdating = updateItemMutation.isPending && updateItemMutation.variables?.itemId === item.id;
                   return (
                     <div key={item.id}
-                      className="flex items-center justify-between px-5 py-3.5 transition-colors hover:bg-[var(--bg-elevated)]"
+                      className="flex items-center justify-between px-5 py-3.5 transition-colors hover:bg-[var(--bg-hover)]"
                       style={{ borderBottom: idx < catItems.length - 1 ? '1px solid var(--border)' : undefined }}>
                       <div className="flex items-center gap-3 flex-1 min-w-0">
                         <button

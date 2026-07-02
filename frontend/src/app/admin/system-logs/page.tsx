@@ -103,7 +103,7 @@ export default function AdminSystemLogsPage() {
             return (
               <div
                 key={i}
-                className="grid px-5 py-2.5 items-start hover:bg-[var(--bg-elevated)] transition-colors"
+                className="grid px-5 py-2.5 items-start hover:bg-[var(--bg-hover)] transition-colors"
                 style={{
                   borderBottom: '1px solid var(--border)',
                   gridTemplateColumns: '160px 70px 120px 1fr',

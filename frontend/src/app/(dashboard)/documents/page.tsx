@@ -566,7 +566,7 @@ export default function DocumentsPage() {
                           {/* Actions dropdown */}
                           <div className="relative" onClick={e => e.stopPropagation()}>
                             <button onClick={() => setActiveMenu(activeMenu === file.id ? null : file.id)}
-                              className="p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100 hover:bg-[var(--bg-elevated)]"
+                              className="p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100 hover:bg-[var(--bg-hover)]"
                               title="Actions">
                               <MoreVertical size={13} style={{ color: 'var(--text-muted)' }} />
                             </button>

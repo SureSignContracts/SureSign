@@ -293,7 +293,7 @@ export default function GenerateTradePackageFolderModal({
               </h3>
 
               {/* Select All */}
-              <label className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-[var(--bg-elevated)]">
+              <label className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-[var(--bg-hover)]">
                 <input
                   type="checkbox"
                   checked={allChecked}
@@ -316,7 +316,7 @@ export default function GenerateTradePackageFolderModal({
                   return (
                     <label
                       key={pkg.name}
-                      className={`flex cursor-pointer items-center gap-3 px-4 py-2.5 transition-colors ${alreadyExists ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[var(--bg-elevated)]'}`}
+                      className={`flex cursor-pointer items-center gap-3 px-4 py-2.5 transition-colors ${alreadyExists ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[var(--bg-hover)]'}`}
                       style={{ backgroundColor: 'var(--bg-surface)' }}
                     >
                       <input
@@ -346,7 +346,7 @@ export default function GenerateTradePackageFolderModal({
 
                 {/* Other */}
                 <label
-                  className="flex cursor-pointer items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--bg-elevated)]"
+                  className="flex cursor-pointer items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--bg-hover)]"
                   style={{ backgroundColor: 'var(--bg-surface)' }}
                 >
                   <input

@@ -301,11 +301,11 @@ export default function ProjectSnaggingPage() {
                   {STATUS_LABELS[s.status] ?? s.status}
                 </span>
                 <button onClick={() => setModal({ open: true, snag: s })}
-                  className="px-3 py-1 rounded-lg text-xs hover:bg-[var(--bg-elevated)] transition-colors"
+                  className="px-3 py-1 rounded-lg text-xs hover:bg-[var(--bg-hover)] transition-colors"
                   style={{ color: 'var(--text-muted)' }}>Edit</button>
                 <button
                   onClick={() => { if (confirm('Delete this snag?')) deleteMutation.mutate(s.id); }}
-                  className="px-3 py-1 rounded-lg text-xs hover:bg-[var(--bg-elevated)] transition-colors"
+                  className="px-3 py-1 rounded-lg text-xs hover:bg-[var(--bg-hover)] transition-colors"
                   style={{ color: '#f87171' }}>Delete</button>
               </div>
             </div>

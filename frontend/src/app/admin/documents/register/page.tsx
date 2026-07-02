@@ -270,7 +270,7 @@ export default function AdminDocumentRegisterPage() {
         {hasFilters && (
           <button
             onClick={() => { setSearch(''); setDebounced(''); setTypeFilter(''); setProjectFilter(''); setPage(1); }}
-            className="text-xs px-3 py-2 rounded-lg hover:bg-[var(--bg-elevated)] transition-colors"
+            className="text-xs px-3 py-2 rounded-lg hover:bg-[var(--bg-hover)] transition-colors"
             style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
           >
             Clear filters
@@ -279,8 +279,8 @@ export default function AdminDocumentRegisterPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
-        <table className="w-full">
+      <div className="rounded-2xl overflow-x-auto" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+        <table className="w-full min-w-[720px]">
           <thead>
             <tr
               style={{
@@ -308,7 +308,7 @@ export default function AdminDocumentRegisterPage() {
               entries.map(entry => (
                 <tr
                   key={entry.id}
-                  className="hover:bg-[var(--bg-elevated)] transition-colors"
+                  className="hover:bg-[var(--bg-hover)] transition-colors"
                   style={{ borderBottom: '1px solid var(--border)' }}
                 >
                   {/* Document Number */}

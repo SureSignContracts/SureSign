@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/authStore';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import CountUp from '@/components/ui/CountUp';
 import {
   FolderKanban, AlertCircle, FileText, DollarSign, TrendingUp, Clock,
   ArrowRight, Activity,
@@ -23,16 +24,18 @@ interface DashboardStats {
   recent_documents: any[];
 }
 
-function StatCard({ label, value, icon: Icon, accent, href }: {
-  label: string; value: number | string; icon: any; accent?: boolean; href?: string;
+function StatCard({ label, value, icon: Icon, accent, href, index = 0 }: {
+  label: string; value: number | string; icon: any; accent?: boolean; href?: string; index?: number;
 }) {
+  const delay = index * 70;
   const inner = (
     <div
-      className="group relative rounded-2xl p-5 flex flex-col justify-between overflow-hidden transition-all hover:scale-[1.01]"
+      className="group relative ss-animate-in rounded-2xl p-5 flex flex-col justify-between overflow-hidden transition-all hover:scale-[1.01]"
       style={{
         backgroundColor: accent ? 'rgba(185,149,102,0.08)' : 'var(--bg-surface)',
         border: `1px solid ${accent ? 'rgba(185,149,102,0.3)' : 'var(--border)'}`,
         minHeight: '110px',
+        animationDelay: `${delay}ms`,
       }}
     >
       {accent && (
@@ -51,7 +54,7 @@ function StatCard({ label, value, icon: Icon, accent, href }: {
       </div>
       <p className="text-3xl font-bold tracking-tight"
          style={{ color: accent ? 'var(--gold)' : 'var(--text-primary)' }}>
-        {value}
+        {typeof value === 'number' ? <CountUp value={value} delay={delay} /> : value}
       </p>
     </div>
   );
@@ -151,12 +154,12 @@ export default function AppDashboardPage() {
       {/* Stats grid */}
       {stats && (
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-          <StatCard label="Total Projects"     value={stats.total_projects}       icon={FolderKanban} href="/app/projects" />
-          <StatCard label="Active Projects"    value={stats.active_projects}      icon={TrendingUp}   accent href="/app/projects" />
-          <StatCard label="Open RFIs"          value={stats.open_rfis}            icon={AlertCircle}  href="/app/site" />
-          <StatCard label="Pending Variations" value={stats.pending_variations}   icon={DollarSign}   href="/app/commercial" />
-          <StatCard label="Docs This Month"    value={stats.documents_this_month} icon={FileText}     href="/app/documents" />
-          <StatCard label="Payment Apps"       value={stats.payment_apps_pending} icon={Clock}        accent href="/app/commercial" />
+          <StatCard label="Total Projects"     value={stats.total_projects}       icon={FolderKanban} href="/app/projects"   index={0} />
+          <StatCard label="Active Projects"    value={stats.active_projects}      icon={TrendingUp}   accent href="/app/projects"   index={1} />
+          <StatCard label="Open RFIs"          value={stats.open_rfis}            icon={AlertCircle}  href="/app/site"       index={2} />
+          <StatCard label="Pending Variations" value={stats.pending_variations}   icon={DollarSign}   href="/app/commercial" index={3} />
+          <StatCard label="Docs This Month"    value={stats.documents_this_month} icon={FileText}     href="/app/documents"  index={4} />
+          <StatCard label="Payment Apps"       value={stats.payment_apps_pending} icon={Clock}        accent href="/app/commercial" index={5} />
         </div>
       )}
 
@@ -169,7 +172,7 @@ export default function AppDashboardPage() {
             <a
               key={p.id}
               href={`/app/projects/${p.id}/overview`}
-              className="flex items-center justify-between px-5 py-3 hover:bg-[var(--bg-elevated)] transition-colors"
+              className="flex items-center justify-between px-5 py-3 hover:bg-[var(--bg-hover)] transition-colors"
             >
               <div className="flex items-center gap-3 min-w-0">
                 <div

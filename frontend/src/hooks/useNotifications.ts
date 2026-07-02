@@ -1,11 +1,27 @@
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 
+export type NotificationStatus   = 'unread' | 'read' | 'dismissed' | 'resolved' | 'expired';
+export type NotificationPriority = 'critical' | 'warning' | 'reminder' | 'info';
+export type NotificationCategory =
+  | 'commercial' | 'contract' | 'programme' | 'compliance'
+  | 'payment' | 'variation' | 'retention' | 'deliverable'
+  | 'notice' | 'risk' | 'general';
+
 export interface SuresignNotification {
   id: number;
   type: string;
+  category: NotificationCategory | null;
+  priority: NotificationPriority | null;
+  status: NotificationStatus;
   title: string;
   message: string;
+  source_type: string | null;
+  source_id: number | null;
+  source_field: string | null;
+  action_url: string | null;
+  project_id: number | null;
+  organization_id: number | null;
   data?: Record<string, unknown> | null;
   is_read: boolean;
   read_at: string | null;
@@ -21,7 +37,13 @@ export interface NotificationsResponse {
   last_page: number;
 }
 
-export function useNotifications(filter?: 'all' | 'unread', type?: string) {
+export type NotificationFilter =
+  | 'active' | 'all' | 'unread' | 'read' | 'dismissed' | 'resolved' | 'expired'
+  | 'critical' | 'warning' | 'reminder' | 'info'
+  | 'commercial' | 'contract' | 'payment' | 'variation' | 'risk' | 'deliverable'
+  | 'programme' | 'compliance' | 'notice' | 'retention' | 'general';
+
+export function useNotifications(filter?: NotificationFilter, type?: string) {
   const { data, isLoading, error, refetch } = useQuery<NotificationsResponse>({
     queryKey: ['notifications', filter, type],
     queryFn: async () => {

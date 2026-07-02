@@ -12,7 +12,14 @@ class PayLessNoticeController extends Controller
     public function index(Request $request, Project $project)
     {
         $notices = PayLessNotice::where('project_id', $project->id)
-            ->with('creator:id,name')
+            ->with([
+                'creator:id,name',
+                'paymentApplication:id,application_number,amount_due,certified_amount,status,contract_id,trade_package_id',
+                'paymentApplication.contract:id,title,reference_number',
+                'paymentApplication.tradePackage:id,name,package_reference',
+                'paymentNotice:id,reference,notice_date,notified_sum',
+                'documents:id,documentable_type,documentable_id,file_name,file_size,created_at',
+            ])
             ->latest('notice_date')
             ->paginate(25);
 

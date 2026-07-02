@@ -175,7 +175,7 @@ function CompanyPanel({ companyNumber, onClose }: { companyNumber: string; onClo
               <ArrowUpRight size={12} />
               CH
             </a>
-            <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-[var(--bg-elevated)] transition-colors">
+            <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-[var(--bg-hover)] transition-colors">
               <X size={16} style={{ color: 'var(--text-muted)' }} />
             </button>
           </div>
@@ -531,7 +531,7 @@ export default function FindCompanyPage() {
                   return (
                     <div
                       key={company.company_number}
-                      className="flex items-start justify-between gap-4 px-5 py-4 transition-colors hover:bg-[var(--bg-elevated)]"
+                      className="flex items-start justify-between gap-4 px-5 py-4 transition-colors hover:bg-[var(--bg-hover)]"
                       style={{
                         backgroundColor: 'var(--bg-surface)',
                         borderBottom: index < results.length - 1 ? '1px solid var(--border)' : undefined,
@@ -606,7 +606,7 @@ export default function FindCompanyPage() {
                   <button
                     onClick={() => goToPage(page - 1)}
                     disabled={page === 1 || searchMutation.isPending}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium disabled:opacity-40 transition-colors hover:bg-[var(--bg-elevated)]"
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium disabled:opacity-40 transition-colors hover:bg-[var(--bg-hover)]"
                     style={{ color: 'var(--text-secondary)' }}
                   >
                     <ChevronLeft size={14} /> Previous
@@ -645,7 +645,7 @@ export default function FindCompanyPage() {
                   <button
                     onClick={() => goToPage(page + 1)}
                     disabled={page === totalPages || searchMutation.isPending}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium disabled:opacity-40 transition-colors hover:bg-[var(--bg-elevated)]"
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium disabled:opacity-40 transition-colors hover:bg-[var(--bg-hover)]"
                     style={{ color: 'var(--text-secondary)' }}
                   >
                     Next <ChevronRight size={14} />

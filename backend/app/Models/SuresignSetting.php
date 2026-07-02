@@ -10,6 +10,12 @@ class SuresignSetting extends Model
     protected $table = 'suresign_settings';
 
     protected $fillable = [
+        'ai_enabled',
+        'prompts_enabled',
+        'notification_settings',
+        'ai_provider',
+        'ai_model',
+        'anthropic_api_key',
         'logo_path',
         'letterhead_header_path',
         'letterhead_footer_path',
@@ -30,7 +36,10 @@ class SuresignSetting extends Model
     ];
 
     protected $casts = [
-        'hidden_pages' => 'array',
+        'hidden_pages'          => 'array',
+        'ai_enabled'            => 'boolean',
+        'prompts_enabled'       => 'boolean',
+        'notification_settings' => 'array',
     ];
 
     // ─── Accessors — return public URLs ──────────────────────────────────────
@@ -81,7 +90,8 @@ class SuresignSetting extends Model
         'letterhead_pdf_path',
         'email_header_path',
         'email_footer_path',
-        'brevo_api_key', // never expose raw API key in list responses
+        'brevo_api_key',      // never expose raw API key in list responses
+        'anthropic_api_key',  // never expose raw API key in list responses
     ];
 
     /**
@@ -90,10 +100,11 @@ class SuresignSetting extends Model
     public static function instance(): self
     {
         return static::firstOrCreate([], [
-            'currency'        => 'GBP',
-            'currency_symbol' => '£',
-            'date_format'     => 'DD/MM/YYYY',
-            'timezone'        => 'Europe/London',
+            'currency'         => 'GBP',
+            'currency_symbol'  => '£',
+            'date_format'      => 'DD/MM/YYYY',
+            'timezone'         => 'Europe/London',
+            'prompts_enabled'  => true,
         ]);
     }
 }

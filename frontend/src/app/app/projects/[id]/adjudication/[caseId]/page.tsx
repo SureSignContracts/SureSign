@@ -679,7 +679,7 @@ function LinkedRecordsPanel({ adjCase, projectId }: { adjCase: any; projectId: s
       <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
         {records.map(r => (
           <a key={r.type} href={r.href}
-            className="flex items-center justify-between px-5 py-3 hover:bg-[var(--bg-elevated)] transition-colors">
+            className="flex items-center justify-between px-5 py-3 hover:bg-[var(--bg-hover)] transition-colors">
             <div>
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{r.type}</p>
               <p className="text-xs font-medium mt-0.5 truncate max-w-[200px]" style={{ color: 'var(--text-primary)' }}>{r.label}</p>
@@ -828,7 +828,7 @@ export default function AdjudicationCaseDetailPage() {
       <div>
         <button
           onClick={() => router.push(`/app/projects/${id}/adjudication`)}
-          className="flex items-center gap-1.5 text-xs mb-4 rounded-lg transition-all hover:bg-[var(--bg-elevated)] px-2 py-1"
+          className="flex items-center gap-1.5 text-xs mb-4 rounded-lg transition-all hover:bg-[var(--bg-hover)] px-2 py-1"
           style={{ color: 'var(--text-muted)' }}
         >
           <ArrowLeft size={12} /> All Cases
@@ -895,7 +895,7 @@ export default function AdjudicationCaseDetailPage() {
             {canWrite && adjCase.status !== 'closed' && adjCase.status !== 'archived' && (
               <button
                 onClick={() => { if (confirm('Mark this case as closed?')) updateStatusMutation.mutate('closed'); }}
-                className="px-4 py-2 rounded-lg text-sm transition-colors hover:bg-[var(--bg-elevated)]"
+                className="px-4 py-2 rounded-lg text-sm transition-colors hover:bg-[var(--bg-hover)]"
                 style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
               >
                 Close Case
@@ -904,7 +904,7 @@ export default function AdjudicationCaseDetailPage() {
             {canWrite && adjCase.status !== 'archived' && (
               <button
                 onClick={() => { if (confirm('Archive this case? It will not be deleted.')) archiveMutation.mutate(); }}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-[var(--bg-elevated)]"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-[var(--bg-hover)]"
                 style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
               >
                 <Archive size={13} /> Archive
@@ -994,7 +994,7 @@ export default function AdjudicationCaseDetailPage() {
               ) : allDocs.map((doc: any) => {
                 const docStatusBadge = DOC_STATUS_COLORS[doc.status] ?? DOC_STATUS_COLORS.draft;
                 return (
-                  <div key={doc.id} className="flex items-center justify-between px-5 py-3 hover:bg-[var(--bg-elevated)] transition-colors">
+                  <div key={doc.id} className="flex items-center justify-between px-5 py-3 hover:bg-[var(--bg-hover)] transition-colors">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
                         style={{ backgroundColor: 'rgba(59,130,246,0.1)' }}>
@@ -1106,7 +1106,7 @@ export default function AdjudicationCaseDetailPage() {
                           {dlStatus !== 'completed' && (
                             <button
                               onClick={() => completeDeadlineMutation.mutate(dl.id)}
-                              className="p-1 rounded hover:bg-[var(--bg-elevated)]"
+                              className="p-1 rounded hover:bg-[var(--bg-hover)]"
                               title="Mark complete"
                               style={{ color: '#4ade80' }}
                             >
@@ -1115,7 +1115,7 @@ export default function AdjudicationCaseDetailPage() {
                           )}
                           <button
                             onClick={() => deleteDeadlineMutation.mutate(dl.id)}
-                            className="p-1 rounded hover:bg-[var(--bg-elevated)]"
+                            className="p-1 rounded hover:bg-[var(--bg-hover)]"
                             style={{ color: 'var(--text-muted)' }}
                           >
                             <X size={12} />

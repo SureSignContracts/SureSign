@@ -213,14 +213,20 @@ class DocumentController extends Controller
         $this->authorizeProject($request, $project);
 
         $request->validate([
-            'file'        => 'required|file|max:51200',
-            'folder_path' => 'nullable|string|max:255',
+            'file'          => 'required|file|max:51200',
+            'folder_path'   => 'nullable|string|max:255',
+            'module_key'    => 'nullable|string|max:100',
+            'folder_key'    => 'nullable|string|max:255',
+            'document_type' => 'nullable|string|max:100',
+            'title'         => 'nullable|string|max:255',
         ]);
 
         $file       = $request->file('file');
-        $folder     = $request->input('folder_path', 'general');
+        $moduleKey  = $request->input('module_key', 'general');
+        $folderKey  = $request->input('folder_key') ?: $moduleKey;
+        $folderPath = $request->input('folder_path', $moduleKey);
         $storedName = Str::uuid() . '.' . $file->getClientOriginalExtension();
-        $path       = "projects/{$project->id}/{$folder}/{$storedName}";
+        $path       = "projects/{$project->id}/{$folderPath}/{$storedName}";
 
         Storage::disk('local')->put($path, file_get_contents($file->getRealPath()));
 
@@ -228,12 +234,16 @@ class DocumentController extends Controller
             'project_id'      => $project->id,
             'organization_id' => $project->organization_id,
             'uploaded_by'     => $request->user()->id,
-            'original_name'   => $file->getClientOriginalName(),
+            'original_name'   => $request->input('title') ?: $file->getClientOriginalName(),
             'stored_name'     => $storedName,
             'file_path'       => $path,
             'mime_type'       => $file->getMimeType(),
             'file_size'       => $file->getSize(),
-            'folder_path'     => $folder,
+            'folder_path'     => $folderPath,
+            'module_key'      => $moduleKey,
+            'folder_key'      => $folderKey,
+            'document_type'   => $request->input('document_type'),
+            'source_type'     => 'uploaded',
             'disk'            => 'local',
         ]);
 
@@ -349,6 +359,19 @@ class DocumentController extends Controller
     ];
 
     /**
+     * Maps module keys to the Document.category values used by DocumentGenerationService.
+     * Used to surface generated PDF Documents alongside uploaded FileUploads.
+     */
+    private const MODULE_DOCUMENT_CATEGORY_MAP = [
+        'contracts'            => '01_Contracts',
+        'contracts/main_contract' => '01_Contracts',
+        'commercial'           => '02_Commercial',
+        'payment_applications' => '02_Commercial',
+        'variations'           => '04_Variations',
+        'notices'              => '02_Commercial',
+    ];
+
+    /**
      * GET /projects/{project}/documents/explorer
      * Returns module folder summaries for a project.
      */
@@ -367,6 +390,13 @@ class DocumentController extends Controller
             ->whereNull('module_key')
             ->count();
 
+        // Count generated Document records per category so folder badges reflect them too
+        $docCounts = Document::where('project_id', $project->id)
+            ->select('category', DB::raw('count(*) as doc_count'), DB::raw('max(created_at) as last_doc'))
+            ->groupBy('category')
+            ->get()
+            ->keyBy('category');
+
         $folders = [];
         foreach (self::MODULE_FOLDERS as $key => $name) {
             $row   = $counts->get($key);
@@ -384,6 +414,20 @@ class DocumentController extends Controller
             } else {
                 $count = ($row ? (int) $row->files_count : 0) + ($key === 'general' ? $generalExtra : 0);
             }
+
+            // Add generated Document counts for modules that produce PDFs
+            $docCategory = self::MODULE_DOCUMENT_CATEGORY_MAP[$key] ?? null;
+            if ($docCategory) {
+                $docRow = $docCounts->get($docCategory);
+                if ($docRow) {
+                    $count += (int) $docRow->doc_count;
+                    // Use the more recent timestamp for last_updated
+                    $docLast  = $row?->last_updated;
+                    $fileLast = $docRow->last_doc;
+                    $row = (object) ['last_updated' => max($docLast, $fileLast)];
+                }
+            }
+
             $folders[] = [
                 'key'          => $key,
                 'name'         => $name,
@@ -415,12 +459,29 @@ class DocumentController extends Controller
                 ['key' => 'contracts/main_contract',       'name' => 'Main Contract',         'type' => 'folder', 'files_count' => 0],
                 ['key' => 'contracts/consultant_agreement','name' => 'Consultant Agreements', 'type' => 'folder', 'files_count' => 0],
                 ['key' => 'contracts/supplier_agreement',  'name' => 'Supplier Agreements',   'type' => 'folder', 'files_count' => 0],
+                ['key' => 'contracts/subcontract',         'name' => 'Subcontract Agreements','type' => 'folder', 'files_count' => 0],
             ];
 
             foreach ($contractSubfolders as &$subfolder) {
-                $subfolder['files_count'] = FileUpload::where('project_id', $project->id)
-                    ->where('folder_key', $subfolder['key'])
-                    ->count();
+                if ($subfolder['key'] === 'contracts/main_contract') {
+                    // Backward-compat: old uploads used folder_key='contracts'; treat them as main contract
+                    $subfolder['files_count'] = FileUpload::where('project_id', $project->id)
+                        ->where(function ($q) {
+                            $q->where('folder_key', 'contracts/main_contract')
+                              ->orWhere(function ($q2) {
+                                  $q2->where('module_key', 'contracts')
+                                     ->whereIn('folder_key', ['contracts', ''])
+                                     ->orWhere(function ($q3) {
+                                         $q3->where('module_key', 'contracts')->whereNull('folder_key');
+                                     });
+                              });
+                        })
+                        ->count();
+                } else {
+                    $subfolder['files_count'] = FileUpload::where('project_id', $project->id)
+                        ->where('folder_key', $subfolder['key'])
+                        ->count();
+                }
             }
             unset($subfolder);
 
@@ -432,9 +493,9 @@ class DocumentController extends Controller
 
         if ($moduleKey === 'subcontracts') {
             $tradePackages = \App\Models\TradePackage::where('project_id', $project->id)
-                ->where('status', 'active')
+                ->whereNotIn('status', ['archived', 'inactive'])
                 ->orderBy('name')
-                ->get(['id', 'name', 'package_code', 'package_reference', 'contractor_name', 'description'])
+                ->get(['id', 'name', 'package_code', 'package_reference', 'contractor_name', 'description', 'status', 'contract_value', 'retention_percentage'])
                 ->map(function ($pkg) use ($project) {
                     return [
                         'type'              => 'trade_package',
@@ -444,6 +505,9 @@ class DocumentController extends Controller
                         'package_reference' => $pkg->package_reference,
                         'contractor_name'   => $pkg->contractor_name,
                         'description'       => $pkg->description,
+                        'status'            => $pkg->status,
+                        'contract_value'    => $pkg->contract_value,
+                        'retention_percentage' => $pkg->retention_percentage,
                         'key'               => "subcontracts/package/{$pkg->id}",
                         'files_count'       => FileUpload::where('project_id', $project->id)
                                                 ->where('trade_package_id', $pkg->id)
@@ -459,7 +523,7 @@ class DocumentController extends Controller
 
         if ($moduleKey === 'contracts/subcontract') {
             $tradePackages = \App\Models\TradePackage::where('project_id', $project->id)
-                ->where('status', 'active')
+                ->whereNotIn('status', ['archived', 'inactive'])
                 ->orderBy('name')
                 ->get(['id', 'name', 'package_code', 'package_reference'])
                 ->map(function ($pkg) use ($project) {
@@ -537,7 +601,20 @@ class DocumentController extends Controller
         $query = FileUpload::where('project_id', $project->id)
             ->with('uploader:id,name');
 
-        if (str_starts_with($moduleKey, 'contracts/')) {
+        if ($moduleKey === 'contracts/main_contract') {
+            // Also surface old uploads that used the legacy folder_key='contracts'
+            $query->where(function ($q) {
+                $q->where('folder_key', 'contracts/main_contract')
+                  ->orWhere(function ($q2) {
+                      $q2->where('module_key', 'contracts')
+                         ->where(function ($q3) {
+                             $q3->where('folder_key', 'contracts')
+                                ->orWhere('folder_key', '')
+                                ->orWhereNull('folder_key');
+                         });
+                  });
+            });
+        } elseif (str_starts_with($moduleKey, 'contracts/')) {
             $query->where('folder_key', $moduleKey);
         } elseif ($moduleKey === 'general') {
             $query->where(function ($q) {
@@ -547,6 +624,39 @@ class DocumentController extends Controller
             $query->where('module_key', $moduleKey);
         }
 
-        return response()->json($query->latest()->paginate(50));
+        $paginated = $query->latest()->paginate(50);
+
+        // Attach generated Document records for modules that produce PDFs
+        // (e.g. Contract Intelligence Briefs in 'contracts', Variation PDFs in 'variations').
+        // Returned as a separate `generated_docs` array so pagination isn't affected and
+        // the frontend can use Document-specific download/preview endpoints.
+        $generatedDocs = [];
+        $docCategory   = self::MODULE_DOCUMENT_CATEGORY_MAP[$moduleKey] ?? null;
+        if ($docCategory) {
+            $generatedDocs = Document::where('project_id', $project->id)
+                ->where('category', $docCategory)
+                ->with('creator:id,name')
+                ->latest()
+                ->get()
+                ->map(fn ($doc) => [
+                    'id'               => $doc->id,
+                    'title'            => $doc->title,
+                    'file_name'        => $doc->file_name,
+                    'type'             => $doc->type,
+                    'reference_number' => $doc->reference_number,
+                    'mime_type'        => $doc->mime_type ?? 'application/pdf',
+                    'file_size'        => $doc->file_size ?? 0,
+                    'created_at'       => $doc->created_at,
+                    'creator'          => $doc->creator
+                        ? ['id' => $doc->creator->id, 'name' => $doc->creator->name]
+                        : null,
+                ])
+                ->toArray();
+        }
+
+        return response()->json(array_merge(
+            $paginated->toArray(),
+            ['generated_docs' => $generatedDocs],
+        ));
     }
 }

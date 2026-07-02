@@ -49,6 +49,15 @@ class DocumentTemplate extends Model
         'other'                    => 'Other',
     ];
 
+    const COMMERCIAL_TEMPLATE_TYPES = [
+        'payment_application'  => 'Payment Application',
+        'payment_certificate'  => 'Payment Certificate',
+        'pay_less_notice'      => 'Pay Less Notice',
+        'payment_notice'       => 'Payment Notice',
+        'variation_schedule'   => 'Variation Schedule',
+        'commercial_schedule'  => 'Commercial Schedule',
+    ];
+
     const ALL_TEMPLATE_TYPES = [
         'master_package'           => 'Master Package',
         'procurement_summary'      => 'Procurement Summary',
@@ -56,8 +65,12 @@ class DocumentTemplate extends Model
         'schedule_of_documents'    => 'Schedule of Documents',
         'subcontract_draft'        => 'Subcontract Draft',
         'variation'                => 'Variation',
+        'payment_application'      => 'Payment Application',
+        'payment_certificate'      => 'Payment Certificate',
         'payment_notice'           => 'Payment Notice',
         'pay_less_notice'          => 'Pay Less Notice',
+        'variation_schedule'       => 'Variation Schedule',
+        'commercial_schedule'      => 'Commercial Schedule',
         'eot'                      => 'EOT',
         'rfi'                      => 'RFI',
         'meeting_minutes'          => 'Meeting Minutes',

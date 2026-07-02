@@ -150,8 +150,8 @@ export default function DocumentRegisterPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
-        <table className="w-full text-sm">
+      <div className="rounded-2xl overflow-x-auto" style={{ border: '1px solid var(--border)' }}>
+        <table className="w-full min-w-[720px] text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
               {['Document No.', 'Title', 'Type', 'Package', 'Date'].map(h => (
@@ -203,7 +203,7 @@ export default function DocumentRegisterPage() {
                 return (
                   <tr
                     key={entry.id}
-                    className="hover:bg-[var(--bg-elevated)] transition-colors"
+                    className="hover:bg-[var(--bg-hover)] transition-colors"
                     style={{ borderBottom: '1px solid var(--border)' }}
                   >
                     <td className="px-5 py-3 font-mono text-xs font-semibold" style={{ color: 'var(--gold)' }}>

@@ -1,5 +1,23 @@
 <?php
 
+// ── CORS: must run before Laravel boots so headers are always sent ────────────
+$allowedOrigins = ['http://localhost:3000', 'http://localhost'];
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if (in_array($origin, $allowedOrigins, true) || empty($allowedOrigins)) {
+    header('Access-Control-Allow-Origin: ' . ($origin ?: '*'));
+} else {
+    header('Access-Control-Allow-Origin: ' . $allowedOrigins[0]);
+}
+header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Authorization, Content-Type, Accept, X-Requested-With');
+header('Access-Control-Max-Age: 3600');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 

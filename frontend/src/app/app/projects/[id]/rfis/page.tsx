@@ -297,8 +297,8 @@ export default function ProjectRfisPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
-        <table className="w-full text-sm">
+      <div className="rounded-2xl overflow-x-auto" style={{ border: '1px solid var(--border)' }}>
+        <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
               {['RFI #', 'Subject', 'Priority', 'Status', 'Raised', 'Response Due', ''].map(h => (
@@ -332,7 +332,7 @@ export default function ProjectRfisPage() {
             ) : rfis.map((r: any) => {
               const badge = STATUS_COLORS[r.status] ?? { bg: 'var(--bg-elevated)', text: 'var(--text-muted)' };
               return (
-                <tr key={r.id} className="hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer" style={{ borderBottom: '1px solid var(--border)' }}>
+                <tr key={r.id} className="hover:bg-[var(--bg-hover)] transition-colors cursor-pointer" style={{ borderBottom: '1px solid var(--border)' }}>
                   <td className="px-5 py-3 font-mono font-semibold" style={{ color: 'var(--gold)' }}>#{r.rfi_number}</td>
                   <td className="px-5 py-3 font-medium max-w-[240px] truncate" style={{ color: 'var(--text-primary)' }}>{r.subject}</td>
                   <td className="px-5 py-3">
@@ -355,13 +355,13 @@ export default function ProjectRfisPage() {
                       <div className="flex gap-1">
                         {r.status !== 'responded' && (
                           <button onClick={e => { e.stopPropagation(); setRespondRfi(r); }}
-                            className="text-xs px-2 py-1 rounded-lg transition-colors hover:bg-[var(--bg-elevated)]"
+                            className="text-xs px-2 py-1 rounded-lg transition-colors hover:bg-[var(--bg-hover)]"
                             style={{ color: 'var(--gold)' }}>
                             Respond
                           </button>
                         )}
                         <button onClick={e => { e.stopPropagation(); closeRfi(r); }}
-                          className="text-xs px-2 py-1 rounded-lg transition-colors hover:bg-[var(--bg-elevated)]"
+                          className="text-xs px-2 py-1 rounded-lg transition-colors hover:bg-[var(--bg-hover)]"
                           style={{ color: 'var(--text-muted)' }}>
                           Close
                         </button>

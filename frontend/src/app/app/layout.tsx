@@ -1,10 +1,13 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { useQuery } from '@tanstack/react-query';
 import AppSidebar from '@/components/layout/AppSidebar';
+import MobileTopBar from '@/components/layout/MobileTopBar';
+import SureSignLoader from '@/components/ui/SureSignLoader';
+import AiAnalysisWidget from '@/components/ai/AiAnalysisWidget';
 import api from '@/lib/api';
 
 function isLightColor(hex: string): boolean {
@@ -16,10 +19,22 @@ function isLightColor(hex: string): boolean {
   return (r * 299 + g * 587 + b * 114) / 1000 > 128;
 }
 
+const MIN_SPLASH_MS = 1800;
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, token, _hasHydrated } = useAuthStore();
+  // Skip splash if we already have a token in localStorage (returning user / new tab)
+  const alreadyAuthed = typeof window !== 'undefined' && !!localStorage.getItem('suresign_token');
+  const [splashDone, setSplashDone] = useState(alreadyAuthed);
+  const [navOpen, setNavOpen] = useState(false);
+
+  useEffect(() => {
+    if (alreadyAuthed) return; // skip timer — already showing app
+    const t = setTimeout(() => setSplashDone(true), MIN_SPLASH_MS);
+    return () => clearTimeout(t);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch branding to apply client-specific accent colour
   const { data: branding } = useQuery({
@@ -71,15 +86,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [_hasHydrated, token, user, pathname, router]);
 
-  if (!_hasHydrated || !token || !user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg-base)' }}>
-        <div
-          className="w-8 h-8 rounded-full border-2 animate-spin"
-          style={{ borderColor: 'var(--border)', borderTopColor: 'var(--gold)' }}
-        />
-      </div>
-    );
+  if (!_hasHydrated || !token || !user || !splashDone) {
+    return <SureSignLoader />;
   }
 
   // On the onboarding page, don't show the sidebar
@@ -93,12 +101,26 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
+  const orgName = branding?.company_name || user?.organization?.name || 'Company Portal';
+  const logoUrl = branding?.logo_url ?? null;
+
   return (
     <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--bg-base)' }}>
-      <AppSidebar />
-      <main className="flex-1 overflow-y-auto">
-        {children}
-      </main>
+      <AppSidebar mobileOpen={navOpen} onMobileClose={() => setNavOpen(false)} />
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+        <MobileTopBar
+          onMenu={() => setNavOpen(true)}
+          title={orgName}
+          logoUrl={logoUrl}
+          fallbackInitial={orgName.charAt(0).toUpperCase()}
+        />
+        <main className="flex-1 overflow-y-auto">
+          {children}
+        </main>
+      </div>
+      {/* Global — persists across all app pages so analysis progress stays visible
+          even after navigating away from the project. */}
+      <AiAnalysisWidget />
     </div>
   );
 }

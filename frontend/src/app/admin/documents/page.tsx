@@ -37,7 +37,7 @@ function mimeIcon(mime: string) {
 
 type Level = 'companies' | 'projects' | 'modules' | 'files';
 
-interface OrgItem { id: number; name: string; projects_count: number; files_count: number; storage_size: number; }
+interface OrgItem { id: number; name: string; projects_count: number; files_count: number; storage_size: number; logo_url?: string | null; }
 interface ProjectItem { id: number; name: string; code?: string; files_count: number; storage_size: number; last_uploaded?: string; }
 interface ModuleFolder { key: string; name: string; files_count: number; last_updated?: string; }
 interface FileItem {
@@ -56,6 +56,15 @@ interface TradePackageItem {
   package_code?: string | null; package_reference?: string | null;
   contractor_name?: string | null; description?: string | null;
 }
+
+// ── Subfolder display labels ────────────────────────────────────────────────
+
+const SUBFOLDER_LABELS: Record<string, string> = {
+  'contracts/main_contract':        'Main Contract',
+  'contracts/consultant_agreement': 'Consultant Agreements',
+  'contracts/supplier_agreement':   'Supplier Agreements',
+  'contracts/subcontract':          'Subcontract Agreements',
+};
 
 // ── URL helpers ────────────────────────────────────────────────────────────
 
@@ -513,7 +522,16 @@ export default function AdminDocumentsPage() {
   const crumbs: Crumb[] = [{ label: 'Documents', level: 'companies' }];
   if (selectedOrg)           crumbs.push({ label: selectedOrg.name, level: 'projects', orgId: selectedOrg.id });
   if (selectedProject?.name) crumbs.push({ label: selectedProject.name, level: 'modules' });
-  if (selectedModule?.name)  crumbs.push({ label: selectedModule.name, level: 'files' });
+  if (selectedModule?.name) {
+    const inSubfolder = moduleKeyPath && moduleKeyPath !== selectedModule.key && !currentTradePackage;
+    if (inSubfolder) {
+      crumbs.push({ label: selectedModule.name, level: 'files', packagePath: selectedModule.key });
+      const subLabel = SUBFOLDER_LABELS[moduleKeyPath] ?? moduleKeyPath.split('/').pop()?.replace(/_/g, ' ') ?? moduleKeyPath;
+      crumbs.push({ label: subLabel, level: 'files' });
+    } else {
+      crumbs.push({ label: selectedModule.name, level: 'files' });
+    }
+  }
   if (currentTradePackage && !crumbs.some(c => c.label === currentTradePackage.name)) {
     crumbs.push({ label: currentTradePackage.name, level: 'files', packagePath: currentTradePackage.key });
   }
@@ -598,7 +616,7 @@ export default function AdminDocumentsPage() {
                     <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{formatDate(doc.created_at)}</span>
                     <button
                       onClick={() => setPreviewTarget({ id: doc.id, name: doc.original_name || 'document', mimeType: doc.mime_type, previewEndpoint: `/file-uploads/${doc.id}/preview`, downloadEndpoint: `/file-uploads/${doc.id}/download` })}
-                      className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-[var(--bg-elevated)]"
+                      className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-[var(--bg-hover)]"
                       title="Preview">
                       <Eye size={13} style={{ color: 'var(--text-muted)' }} />
                     </button>
@@ -631,7 +649,11 @@ export default function AdminDocumentsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {companies.map(org => (
                   <FolderCard key={org.id}
-                    icon={<Building2 size={20} style={{ color: 'var(--gold)' }} />}
+                    icon={
+                      org.logo_url
+                        ? <img src={org.logo_url} alt={org.name} className="w-full h-full object-contain p-1" />
+                        : <Building2 size={20} style={{ color: 'var(--gold)' }} />
+                    }
                     title={org.name}
                     subtitle={`${org.projects_count} project${org.projects_count !== 1 ? 's' : ''}`}
                     fileCount={org.files_count}
@@ -742,7 +764,7 @@ export default function AdminDocumentsPage() {
                         <div className="relative">
                           <button
                             onClick={() => setActiveMenu(activeMenu === file.id ? null : file.id)}
-                            className="p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100 hover:bg-[var(--bg-elevated)]"
+                            className="p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100 hover:bg-[var(--bg-hover)]"
                             title="Actions">
                             <MoreVertical size={13} style={{ color: 'var(--text-muted)' }} />
                           </button>

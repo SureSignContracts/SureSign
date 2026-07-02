@@ -47,19 +47,24 @@ SureSign is a **white-label, multi-tenant Construction Operations and Contract A
 
 | Layer | Technology |
 |---|---|
-| **Backend** | Laravel 11 (PHP 8.3) |
+| **Backend** | Laravel 11 (PHP 8.2+) |
 | **Authentication** | Laravel Sanctum (token-based) |
 | **Authorization** | Spatie Laravel Permission (RBAC) |
 | **Database** | MySQL 8.0 |
 | **Cache / Queues** | Redis 7 |
-| **Frontend** | Next.js 15 + TypeScript |
-| **Styling** | TailwindCSS v4 + CSS Variables (theming) |
+| **Frontend** | Next.js 14 + TypeScript |
+| **Styling** | TailwindCSS + CSS Variables (theming) |
 | **State Management** | Zustand (with localStorage persistence) |
 | **Data Fetching** | TanStack React Query v5 |
 | **HTTP Client** | Axios |
 | **Containerisation** | Docker + Docker Compose |
 | **Reverse Proxy** | Nginx (Alpine) |
-| **PDF Generation** | DomPDF (via Laravel) |
+| **PDF Generation** | DomPDF (via Laravel) — branding header/footer canvas injection for most documents; Payment Notices use inline self-contained layout (`skipCanvas = true`) |
+| **Excel Generation** | PhpSpreadsheet — branded `.xlsx` workbooks for payment applications |
+| **DOCX Generation** | PHPWord (`phpoffice/phpword`) |
+| **DOCX → PDF Preview** | LibreOffice headless (`DocxToPdfService`) |
+| **AI Provider** | Anthropic Claude API (`ClaudeAiProvider`) — opt-in, configured in admin settings |
+| **Transactional Email** | Brevo (Sendinblue) API (`EmailNotificationService`) |
 | **File Storage** | Local filesystem (cloud-ready via Laravel disks) |
 
 ---
@@ -191,9 +196,16 @@ organizations
             ├── project_users  (pivot: user ↔ project)
             ├── project_contacts
             ├── project_folders
+            ├── project_activities
+            ├── trade_packages (1:many)
+            │       └── trade_package_folders
             ├── contracts (1:many)
+            │       ├── contract_ai_analyses
+            │       ├── contract_programme_milestones
             │       ├── payment_applications
-            │       │       └── pay_less_notices
+            │       │       ├── pay_less_notices
+            │       │       ├── payment_notices
+            │       │       └── retention_releases
             │       ├── variations
             │       └── eot_requests
             ├── rfis
@@ -203,6 +215,8 @@ organizations
             ├── documents
             │       ├── document_versions
             │       └── document_approvals
+            ├── document_registers
+            ├── document_number_sequences
             ├── file_uploads
             ├── ai_conversations
             │       ├── ai_messages
@@ -212,10 +226,12 @@ organizations
             └── reports
 
 suresign_settings (singleton — platform-wide)
+suresign_notifications (per-user in-app notifications)
+activity_logs (platform-wide audit trail)
 workflows / workflow_steps (definitions/templates)
 document_templates
+prompt_templates / prompt_categories
 audit_logs
-notifications
 ```
 
 ---
@@ -339,6 +355,10 @@ Virtual folder hierarchy auto-created per project for the file library.
 | contract_sum | decimal(15,2) | |
 | retention_percentage / retention_cap_percentage | decimal | |
 | payment_terms_days | integer | |
+| due_date_offset_days | integer | Days from application date → due date |
+| final_date_offset_days | integer | Days from due date → final date for payment |
+| payment_notice_offset_days | integer | Days from due date → payment notice deadline |
+| pay_less_notice_offset_days | integer | Days before final date → pay-less notice deadline |
 | execution_date / commencement_date / completion_date | date | |
 | status | string | `draft`, `active`, `on_hold`, `completed`, `terminated`, `disputed` |
 | notes | text | |
@@ -346,18 +366,79 @@ Virtual folder hierarchy auto-created per project for the file library.
 
 ---
 
+#### `contract_ai_analyses`
+Results of AI contract document analysis.
+
+| Column | Type | Notes |
+|---|---|---|
+| contract_id / organization_id / project_id / file_upload_id / created_by | FK | |
+| status | string | `pending`, `processing`, `completed`, `confirmed`, `failed` |
+| provider | string | e.g. `anthropic` |
+| model | string | e.g. `claude-3-5-sonnet-latest` |
+| document_hash | string | SHA of the analysed file |
+| summary | text | Human-readable summary |
+| raw_response_json | json | Full structured AI response |
+| raw_response_text | text | Raw AI text output |
+| stop_reason | string | `end_turn` or `max_tokens` |
+| confirmed_data_json | json | Admin-confirmed subset used for payment date calculations |
+| error_message | text | |
+| tokens_input / tokens_output | integer | |
+| estimated_cost | float | |
+| started_at / completed_at | timestamp | |
+
+---
+
+#### `contract_programme_milestones`
+Programme timeline entries for a contract.
+
+| Column | Type | Notes |
+|---|---|---|
+| contract_id / project_id | FK | |
+| title | string | Milestone name |
+| milestone_date | date | |
+| type | string | e.g. `commencement`, `completion`, `sectional_completion`, `key_milestone` |
+| notes | text | |
+| seeded_from_ai | boolean | True if auto-seeded from confirmed AI analysis |
+
+---
+
+#### `trade_packages`
+Subcontract work packages within a project.
+
+| Column | Type | Notes |
+|---|---|---|
+| project_id / organization_id / created_by | FK | |
+| name | string | Package name (e.g. "Groundworks") |
+| code | string | Short code (e.g. `GW`) |
+| package_reference | string | Full reference for document numbering |
+| status | string | |
+
+#### `trade_package_folders`
+Standard sub-folders auto-created for each trade package.
+
+---
+
 #### `payment_applications`
-Interim payment certificates / applications.
+Interim payment certificates / applications. Can be raised against a main contract **or** a trade package.
 
 | Column | Notes |
 |---|---|
-| contract_id / project_id / created_by | FK |
+| contract_id / trade_package_id / project_id / created_by | FK — one of contract_id or trade_package_id is set |
 | application_number | integer |
-| application_date / due_date | date |
+| application_date | date |
+| valuation_period_start / valuation_period_end | date |
+| due_date / final_date_for_payment | date — statutory dates from PaymentDateService |
+| payment_notice_deadline / pay_less_notice_deadline | date — statutory deadlines |
 | gross_valuation / less_retention / less_previous_payments / amount_due | decimal |
+| previous_certified_value / previous_paid_value / previous_retention_held | decimal — carried forward |
+| less_previous_payments | decimal |
 | certified_amount / certified_date / payment_date / paid_amount | decimal / date |
-| status | `draft`, `submitted`, `certified`, `pay_less_notice_issued`, `paid`, `disputed` |
+| status | `draft`, `submitted`, `payment_notice_issued`, `pay_less_notice_issued`, `certified`, `paid`, `cancelled` |
+| submitted_at / submitted_by | timestamp / FK — set on submit, cleared on withdraw |
+| withdrawal_count | integer (default 0) — incremented each time a submitted application is withdrawn |
+| withdrawn_at / withdrawn_by / withdrawal_reason | timestamp / FK / string — most recent withdrawal metadata |
 | breakdown | json (line items) |
+| deleted_at | timestamp — soft-delete (draft/cancelled only) |
 
 #### `pay_less_notices`
 Issued against a payment application.
@@ -369,6 +450,27 @@ Issued against a payment application.
 | notified_sum | decimal |
 | basis_of_difference | text |
 | status | `draft`, `issued`, `disputed` |
+
+#### `payment_notices`
+Standalone payment notices (separate from pay-less notices).
+
+| Column | Notes |
+|---|---|
+| payment_application_id / project_id / created_by | FK |
+| notice_date | date |
+| notified_sum | decimal |
+| notes | text |
+
+#### `retention_releases`
+Tracks partial or full releases of retention held.
+
+| Column | Notes |
+|---|---|
+| payment_application_id / contract_id / project_id / created_by | FK |
+| release_date | date |
+| amount_released | decimal |
+| type | `practical_completion`, `making_good_defects`, `partial`, `other` |
+| notes | text |
 
 #### `variations`
 Contract variation orders.
@@ -569,6 +671,55 @@ Full audit trail of all user actions.
 
 ---
 
+#### `document_registers`
+Project-level document register entries for formal document tracking.
+
+#### `document_number_sequences`
+Atomic counters per project/package/type, used by `DocumentNumberService` to generate unique document numbers (e.g. `SP-COL-001-RF-RFI-015`).
+
+#### `suresign_notifications`
+In-app user notifications.
+
+| Column | Notes |
+|---|---|
+| user_id | FK |
+| type | e.g. `file_uploaded`, `document_generated`, `ai_analysis_completed`, `payment_deadline_approaching` |
+| title / message | string / text |
+| is_read | boolean |
+| data | json (extra context) |
+
+#### `activity_logs`
+Platform-wide audit trail for all significant user actions.
+
+| Column | Notes |
+|---|---|
+| user_id / organization_id / project_id | FK (nullable) |
+| action | string (e.g. `contract.created`, `payment_application.certified`) |
+| description | text |
+| ip_address / user_agent | string |
+
+#### `project_activities`
+Per-project activity feed (uploads, document generation, status changes, etc.).
+
+| Column | Notes |
+|---|---|
+| project_id / organization_id / user_id | FK |
+| activity_type | string |
+| title / description | string / text |
+
+#### `prompt_templates` / `prompt_categories`
+Admin-editable prompt library for the manual copy/paste AI workflow.
+
+| Column | Notes |
+|---|---|
+| category_id | FK → prompt_categories |
+| name / slug | string |
+| prompt_text | longText (with `{{placeholder}}` variables) |
+| is_global | boolean |
+| is_active | boolean |
+
+---
+
 #### `suresign_settings` (singleton)
 Platform-wide settings for the SureSign instance itself (not per-tenant).
 
@@ -579,8 +730,13 @@ Platform-wide settings for the SureSign instance itself (not per-tenant).
 | email_header_path / email_footer_path | Email branding |
 | email_reply_to / email_subject_line / email_body_template | Email defaults |
 | brevo_api_key | Transactional email (Brevo/Sendinblue) |
-| email_sender_name / email_sender_address | Sender identity fields |
+| email_sender_name / email_sender_email | Sender identity fields |
 | currency / currency_symbol / date_format / timezone | Locale settings |
+| ai_enabled | boolean — toggles contract AI analysis feature platform-wide |
+| anthropic_api_key | Anthropic Claude API key for contract analysis |
+| ai_model | Claude model ID (e.g. `claude-3-5-sonnet-latest`) |
+| notification_settings | json — array of enabled email event keys (e.g. `["payment_application.submitted"]`) |
+| local_mirror_path | Container-side path for local Windows document mirror |
 
 ---
 
@@ -592,23 +748,28 @@ Platform-wide settings for the SureSign instance itself (not per-tenant).
 |---|---|
 | `AuthController` | Login, logout, `me`, password update |
 | `DashboardController` | Org-scoped stats for tenant dashboard |
-| `AdminController` | Platform-wide stats and management for Super Admin |
+| `AdminController` | Platform-wide stats, document explorer, audit log for Super Admin |
 | `OrganizationController` | Org CRUD, branding, logo/letterhead uploads, onboarding |
-| `ProjectController` | Project CRUD, stats, folder tree |
-| `ContractController` | Contract CRUD (nested under projects) |
-| `PaymentApplicationController` | Payment apps (nested under contracts) |
-| `VariationController` | Variations (nested under contracts) |
-| `PayLessNoticeController` | Pay Less Notices (nested under projects) |
+| `ProjectController` | Project CRUD, stats, folder tree, dashboard intelligence |
+| `ContractController` | Contract CRUD, attach file, archive/restore |
+| `PaymentApplicationController` | Full payment application lifecycle (create, submit, withdraw, certify, mark-paid, cancel, soft-delete, PDF/Excel generation, pay-less/payment notices, breakdown, defaults pre-fill) |
+| `PaymentNoticeController` | Standalone payment notices |
+| `RetentionReleaseController` | Retention release records |
+| `PayLessNoticeController` | Pay Less Notices |
+| `VariationController` | Variations, PDF generation |
+| `ProgrammeMilestoneController` | Contract programme milestones, seed from AI analysis |
+| `CalendarController` | Project calendar events (unified cross-module dates) |
+| `TradePackageController` | Trade package CRUD, bulk folder generation |
 | `RfiController` | RFIs (nested under projects) |
 | `SiteInstructionController` | Site Instructions |
 | `SiteDiaryController` | Site Diary entries |
 | `MeetingMinutesController` | Meeting Minutes |
 | `EotRequestController` | EOT Requests |
-| `DocumentController` | Document generation, download, file library |
-| `AiController` | AI conversations, messages, summarise, draft document |
+| `DocumentController` | Document generation, download, document register, file library |
+| `AiController` | Contract AI analysis: start, get latest, list, confirm, cancel, re-parse, generate brief; also legacy AI conversations |
 | `ClientController` | Client (company) CRUD |
 | `UserController` | User CRUD (admin only) |
-| `SuresignSettingController` | Platform settings CRUD, asset uploads |
+| `SuresignSettingController` | Platform settings CRUD, AI settings, notification settings, asset uploads |
 
 ### Route Protection
 
@@ -630,13 +791,64 @@ GET    /api/projects
 POST   /api/projects
 GET    /api/projects/{id}
 GET    /api/projects/{id}/stats
+GET    /api/projects/{id}/dashboard-intelligence
 GET    /api/projects/{id}/folders
 GET    /api/projects/{id}/files
 POST   /api/projects/{id}/files
+GET    /api/projects/{id}/programme
+GET    /api/projects/{id}/calendar-events
+GET    /api/projects/{id}/ai-analyses
+GET    /api/projects/{id}/payment-application-defaults
+GET    /api/projects/{id}/payment-notices
+GET    /api/projects/{id}/retention-releases
+POST   /api/projects/{id}/retention-releases
 
+# Contracts
 GET/POST/PUT/DELETE  /api/projects/{project}/contracts
-GET/POST/PUT/DELETE  /api/contracts/{contract}/payment-applications
+POST   /api/contracts/{contract}/attach-file
+POST   /api/contracts/{contract}/archive
+POST   /api/contracts/{contract}/restore
+GET    /api/contracts/{contract}/programme
+POST   /api/contracts/{contract}/programme
+POST   /api/contracts/{contract}/programme/seed-from-analysis
+PUT    /api/programme/{milestone}
+DELETE /api/programme/{milestone}
+
+# Contract AI Analysis
+POST   /api/contracts/{contract}/ai-analysis
+GET    /api/contracts/{contract}/ai-analysis
+GET    /api/contracts/{contract}/ai-analyses
+GET    /api/ai/status
+GET    /api/ai/analyses/{analysis}
+POST   /api/ai/analyses/{analysis}/confirm
+POST   /api/ai/analyses/{analysis}/cancel
+POST   /api/ai/analyses/{analysis}/reparse
+POST   /api/ai/analyses/{analysis}/generate-brief
+
+# Payment Applications
+GET/POST             /api/contracts/{contract}/payment-applications
+POST                 /api/projects/{project}/trade-packages/{pkg}/payment-applications
+POST   /api/payment-applications/{pa}/submit
+POST   /api/payment-applications/{pa}/withdraw
+POST   /api/payment-applications/{pa}/certify
+POST   /api/payment-applications/{pa}/mark-paid
+POST   /api/payment-applications/{pa}/cancel
+POST   /api/payment-applications/{pa}/generate-pdf
+POST   /api/payment-applications/{pa}/generate-certificate
+POST   /api/payment-applications/{pa}/generate-excel
+POST   /api/payment-applications/{pa}/breakdown
+GET    /api/payment-applications/{pa}/previous-values
+POST   /api/payment-applications/{pa}/pay-less-notice
+POST   /api/payment-applications/{pa}/payment-notice
+DELETE /api/payment-applications/{pa}
+GET    /api/payment-notices/{paymentNotice}
+DELETE /api/payment-notices/{paymentNotice}
+DELETE /api/retention-releases/{retentionRelease}
+
+# Variations
 GET/POST/PUT/DELETE  /api/contracts/{contract}/variations
+POST   /api/variations/{variation}/generate-pdf
+
 GET/POST/PUT/DELETE  /api/projects/{project}/rfis
 GET/POST/PUT/DELETE  /api/projects/{project}/site-diaries
 GET/POST/PUT/DELETE  /api/projects/{project}/meetings
@@ -646,6 +858,7 @@ GET/POST/PUT/DELETE  /api/projects/{project}/site-instructions
 
 GET    /api/documents/{id}/download
 GET/POST  /api/projects/{project}/documents
+GET    /api/projects/{project}/documents/register
 
 POST   /api/ai/conversations
 GET    /api/ai/conversations
@@ -670,8 +883,11 @@ GET    /api/admin/projects
 GET    /api/admin/documents
 GET    /api/admin/storage
 GET    /api/admin/system-logs
+GET    /api/admin/audit-log
 GET/PUT  /api/admin/settings
 GET/PUT  /api/admin/suresign-settings
+PUT    /api/admin/suresign-settings/ai
+PUT    /api/admin/suresign-settings/notifications
 POST   /api/admin/suresign-settings/logo
 POST   /api/admin/suresign-settings/test-email
 POST   /api/admin/suresign-settings/test-pdf
@@ -725,19 +941,17 @@ Protected by auth + role check (`Super Admin` or `Admin` only). Redirects non-ad
 
 | Path | Page |
 |---|---|
-| `/admin` | **Admin Dashboard** — total companies, projects, users, storage, AI usage |
-| `/admin/companies` | All tenant companies (create, manage, view) |
+| `/admin` | **Admin Dashboard** — total companies, projects, users, storage, AI usage, recent documents, recent activity, recent notifications, unread notification count |
+| `/admin/companies` | All tenant companies — with branding logo displayed |
 | `/admin/projects` | All projects across all tenants |
 | `/admin/users` | All user accounts |
 | `/admin/templates` | Global document templates |
-| `/admin/ai-configurations` | AI model and prompt configuration |
-| `/admin/storage` | File storage usage |
-| `/admin/billing` | Subscription / billing management |
+| `/admin/documents` | All platform documents + document register |
+| `/admin/documents/register` | Admin document register view |
+| `/admin/notifications` | User notification centre |
+| `/admin/prompts` | Prompt library / template management |
 | `/admin/support` | Support tickets |
-| `/admin/system-logs` | Audit and system logs |
-| `/admin/documents` | All platform documents |
-| `/admin/suresign` | **Platform settings** — branding, email, PDF, letterheads |
-| `/admin/settings` | System-level settings |
+| `/admin/settings` | **Platform settings** — branding, email (Brevo), PDF letterheads, AI (enable/disable, API key, model), notification event toggles, currency, mirror path |
 
 ---
 
@@ -817,9 +1031,34 @@ Frontend checks user.roles:
 - Tracks contract sum, retention, payment terms, key dates.
 
 ### Module: Commercial Administration
-- **Payment Applications** — progressive claim cycle against a contract. Tracks gross valuation, retention, previous payments, net amount due, certification, and payment date.
-- **Variations** — change order management. Types: addition, omission, substitution, provisional sum, daywork. Tracks programme impact.
-- **Pay Less Notices** — formal counter-notice against a payment application.
+
+#### Payment Applications
+Full lifecycle payment claim workflow. Can be raised against a **main contract** or a **trade package**.
+
+- **Status lifecycle**: `draft` → `submitted` → `payment_notice_issued` / `pay_less_notice_issued` → `certified` → `paid`; `cancelled` available post-submission only
+- **Withdraw**: a submitted application can be withdrawn back to `draft` (same number retained, `withdrawal_count` incremented, audit log entry created). Not a permanent status — it simply reverts the application to draft for correction and resubmission.
+- **Delete**: only available for `draft` and `cancelled` applications (soft delete via `deleted_at`). UI labels this "Delete Draft".
+- **Cancel**: restricted to `submitted`, `payment_notice_issued`, `pay_less_notice_issued` — not available on draft or certified.
+- **Defaults pre-fill**: `GET /projects/{project}/payment-application-defaults` returns next application number, valuation period, statutory dates, and carried-forward values before the user saves
+- **Statutory dates**: calculated by `PaymentDateService` from contract offset rules and/or confirmed AI analysis — due date, final date for payment, payment notice deadline, pay-less notice deadline
+- **Retention cap**: optional `retention_cap_percentage` on the contract prevents total retention from exceeding `contract_sum × cap%`
+- **Carried-forward values**: previous certified value, previous paid value, previous retention held — accumulated from all prior certified/paid applications
+- **Documents**: PDF (DomPDF) and Excel workbook (PhpSpreadsheet) generated on demand
+- **Payment Notices**: standalone notices linked to an application; PDF generated with inline branding (no canvas letterhead)
+- **Pay Less Notices**: issued against a specific application
+- **Retention Releases**: track partial or full release of held retention
+
+#### Variations
+Change order management. Types: addition, omission, substitution, provisional sum, daywork. Tracks programme impact. PDF generation supported.
+
+#### Pay Less Notices
+Formal counter-notice against a payment application. Status: `draft` → `issued` → `disputed`.
+
+#### Trade Packages (Subcontract Management)
+- Each trade package gets a code (`GW`, `BW`, `ME`, etc.) and package reference
+- Standard sub-folders auto-created on disk and in database
+- Payment applications can be raised per trade package (independent of main contract applications)
+- Bulk generation via **Generate Trade Package Folder** feature
 
 ### Module: Site Administration
 - **RFIs** — formal query/response workflow. Priority levels. Programme and cost impact flags.
@@ -861,34 +1100,93 @@ Frontend checks user.roles:
 
 ## 10. AI Integration
 
-### Architecture
-AI is designed to be **invisible to users**. It works as a background automation layer:
+SureSign has **two distinct AI systems**. Do not conflate them.
 
-- Users work on Meeting Minutes → AI silently generates a summary (`ai_summary` column).
-- Users ask to draft a document → AI returns a draft for human review before it becomes a formal document.
-- AI analysis of variations → surfaced as a suggestion, not automated action.
+---
 
-### Data Flow
+### System 1 — Prompt Library (manual copy/paste)
+
+The original AI feature. No API calls are made — users copy prompts and paste them into an external AI tool manually.
+
+- Admin-editable `prompt_templates` records organised into `prompt_categories`
+- `PromptRenderService` substitutes `{{project_name}}`, `{{contract_sum}}`, etc. into templates
+- Users can favourite prompts (`prompt_favorites`) and copy logs are tracked (`prompt_copy_logs`)
+- Accessible via the `/app/ai` page
+
+---
+
+### System 2 — Contract AI Analysis (Anthropic Claude API)
+
+A real API integration specifically for analysing uploaded contract documents. Opt-in, configured per-org in admin settings.
+
+#### Provider Architecture
+
+```php
+interface AiProviderInterface {
+    public function complete(string $systemPrompt, string $userPrompt): array;
+    // Returns: ['text', 'tokens_input', 'tokens_output', 'stop_reason']
+}
 ```
-User action (e.g. "Summarise this meeting")
+
+Currently implemented by `ClaudeAiProvider`. The model, API key, and enabled toggle are stored in `suresign_settings` and resolved by `ContractAnalysisService::makeProvider()`.
+
+#### Analysis Flow
+
+```
+Admin uploads contract PDF/DOCX/TXT
         ↓
-POST /api/ai/conversations   (create/select session)
-POST /api/ai/conversations/{id}/messages  (send message)
+POST /api/contracts/{contract}/ai-analysis
         ↓
-Backend calls AI provider API
+ContractAnalysisService::extractText() — extracts plain text from file
         ↓
-Response stored in ai_messages
-Output stored in ai_outputs (pending_review)
+ClaudeAiProvider::complete() — sends to Anthropic Claude API
         ↓
-User reviews → approves/rejects
+Response stored in contract_ai_analyses (status: completed)
+Token usage + estimated cost recorded
         ↓
-On approval → content applied to the record (e.g. meeting_minutes.ai_summary)
+Admin reviews extracted data in UI
+        ↓
+POST /api/ai/analyses/{analysis}/confirm
+  → status = confirmed
+  → confirmed_data_json saved
+        ↓
+PaymentDateService uses confirmed_data_json for statutory date calculations
+ProgrammeMilestoneController can seed milestones from confirmed analysis
 ```
 
-### Storage
-- All AI conversations, messages, and outputs are persisted in MySQL.
-- Token counts tracked per message and per conversation.
-- Model metadata stored in `ai_messages.metadata` JSON.
+#### Analysis Status Lifecycle
+
+```
+pending → processing → completed → confirmed
+                    → failed
+confirmed → (admin can re-parse) → processing
+```
+
+#### What AI Extracts
+- Payment terms and offset rules (due date, final date, notice deadlines)
+- Key contract parties
+- Contract sum and retention terms
+- Programme milestones and key dates
+- Retention cap percentage
+
+#### Token Tracking
+- `tokens_input`, `tokens_output`, `estimated_cost` stored per analysis
+- Monthly AI usage aggregated in admin dashboard stats
+
+---
+
+### Legacy AI Conversations (chat-style)
+
+The original conversation interface still exists:
+
+```
+POST /api/ai/conversations   → create/select session
+POST /api/ai/conversations/{id}/messages → send message
+POST /api/ai/summarize → summarise text
+POST /api/ai/draft-document → draft from template data
+```
+
+All conversations, messages (`ai_messages`), and outputs (`ai_outputs`) are persisted in MySQL. Token counts tracked per message.
 
 ---
 
@@ -947,7 +1245,12 @@ npm run dev
 | `REDIS_HOST` | Redis for cache and queues |
 | `SANCTUM_STATEFUL_DOMAINS` | Allowed frontend origins |
 | `FILESYSTEM_DISK` | `local` or `s3` |
-| `MAIL_MAILER` / `BREVO_API_KEY` | Email sending |
+| `MAIL_MAILER` / `BREVO_API_KEY` | Email sending (most email config lives in `suresign_settings`) |
+| `COMPANIES_HOUSE_API_KEY` | UK Companies House Public Data API |
+| `SURESIGN_LOCAL_MIRROR_PATH` | Container-side path for local Windows document mirror |
+| `AI_ENABLED` | Hard-disables AI regardless of DB `suresign_settings.ai_enabled` |
+
+> **Note**: Most runtime configuration (AI API key, model, email settings, mirror path, currency, notification toggles) is managed in the admin settings panel via `suresign_settings`. DB values take precedence over env values.
 
 ### Key Environment Variables (Frontend `.env.local`)
 
@@ -974,4 +1277,4 @@ npm run dev
 
 ---
 
-*Documentation generated: May 2026*
+*Last updated: June 2026 (v1.2)*

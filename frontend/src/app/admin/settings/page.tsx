@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { Settings, Save, FolderOpen, CheckCircle, XCircle, Copy, RefreshCw } from 'lucide-react';
+import { Save, CheckCircle, XCircle, Copy, RefreshCw, Sparkles, Eye, EyeOff } from 'lucide-react';
+import Toggle from '@/components/ui/Toggle';
 
 export default function AdminSettingsPage() {
   const qc = useQueryClient();
@@ -15,19 +16,41 @@ export default function AdminSettingsPage() {
   const [testResult, setTestResult]       = useState<{ ok: boolean; message: string } | null>(null);
   const [copied, setCopied]               = useState(false);
 
+  // ── AI settings state ──
+  const [aiEnabled, setAiEnabled]           = useState<boolean | null>(null);
+  const [promptsEnabled, setPromptsEnabled] = useState<boolean | null>(null);
+  const [aiModel, setAiModel]               = useState<string | null>(null);
+  const [anthropicKey, setAnthropicKey]     = useState('');
+  const [showAiKey, setShowAiKey]           = useState(false);
+  const [aiSaved, setAiSaved]               = useState(false);
+
+  // ── Notifications state ──
+  const [notificationEvents, setNotificationEvents] = useState<string[]>([]);
+  const [notifSeeded, setNotifSeeded]               = useState(false);
+  const [notifSaved, setNotifSaved]                 = useState(false);
+
   const { data, isLoading } = useQuery({
     queryKey: ['admin-settings'],
     queryFn: () => api.get('/admin/settings').then(r => r.data).catch(() => ({})),
   });
 
-  const { data: suresignData, isLoading: suresignLoading } = useQuery({
+  const { data: suresignData } = useQuery({
     queryKey: ['admin-suresign-settings'],
     queryFn: () => api.get('/admin/suresign-settings').then(r => r.data?.data ?? {}),
-    onSuccess: (d: any) => {
-      if (mirrorEnabled === null) setMirrorEnabled(!!d.local_export_enabled);
-      if (mirrorPath === null) setMirrorPath(d.local_export_path ?? '');
-    },
   });
+
+  useEffect(() => {
+    if (!suresignData) return;
+    if (mirrorEnabled === null) setMirrorEnabled(!!(suresignData as any).local_export_enabled);
+    if (mirrorPath === null)    setMirrorPath((suresignData as any).local_export_path ?? '');
+    if (aiEnabled === null)       setAiEnabled(!!(suresignData as any).ai_enabled);
+    if (promptsEnabled === null)  setPromptsEnabled((suresignData as any).prompts_enabled ?? true);
+    if (aiModel === null)         setAiModel((suresignData as any).ai_model ?? 'claude-3-5-sonnet-latest');
+    if (!notifSeeded) {
+      setNotificationEvents(Array.isArray((suresignData as any).notification_settings) ? (suresignData as any).notification_settings : []);
+      setNotifSeeded(true);
+    }
+  }, [suresignData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveMutation = useMutation({
     mutationFn: (payload: any) => api.put('/admin/settings', payload),
@@ -55,8 +78,47 @@ export default function AdminSettingsPage() {
     onError: (err: any) => setTestResult({ ok: false, message: err?.response?.data?.message ?? 'Test failed.' }),
   });
 
-  const currentMirrorEnabled = mirrorEnabled ?? !!suresignData?.local_export_enabled;
-  const currentMirrorPath    = mirrorPath !== null ? mirrorPath : (suresignData?.local_export_path ?? '');
+  const aiMutation = useMutation({
+    mutationFn: (payload: any) => api.put('/admin/suresign-settings/ai', payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-suresign-settings'] });
+      setAnthropicKey('');
+      setAiSaved(true);
+      setTimeout(() => setAiSaved(false), 2500);
+    },
+  });
+
+  const notifMutation = useMutation({
+    mutationFn: (payload: { notification_settings: string[] }) =>
+      api.put('/admin/suresign-settings/notifications', payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-suresign-settings'] });
+      setNotifSaved(true);
+      setTimeout(() => setNotifSaved(false), 2500);
+    },
+  });
+
+  const currentMirrorEnabled  = mirrorEnabled ?? !!(suresignData as any)?.local_export_enabled;
+  const currentMirrorPath     = mirrorPath !== null ? mirrorPath : ((suresignData as any)?.local_export_path ?? '');
+  const currentAiEnabled      = aiEnabled ?? !!(suresignData as any)?.ai_enabled;
+  const currentPromptsEnabled = promptsEnabled ?? ((suresignData as any)?.prompts_enabled ?? true);
+  const currentAiModel        = aiModel !== null ? aiModel : ((suresignData as any)?.ai_model ?? 'claude-3-5-sonnet-latest');
+  const hasAnthropicKey       = !!(suresignData as any)?.has_anthropic_key;
+
+  const NOTIFICATION_EVENTS: { key: string; label: string }[] = [
+    { key: 'payment_application.submitted', label: 'New payment application submitted' },
+    { key: 'payment_application.certified', label: 'Payment application certified' },
+    { key: 'pay_less_notice.issued',        label: 'Pay Less Notice issued' },
+    { key: 'variation.approved',            label: 'Variation approved' },
+    { key: 'variation.rejected',            label: 'Variation rejected' },
+    { key: 'deadline.reminder',             label: 'Payment deadline approaching (3 days before)' },
+  ];
+
+  function toggleNotifEvent(key: string) {
+    setNotificationEvents(prev =>
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    );
+  }
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-8">
@@ -82,7 +144,7 @@ export default function AdminSettingsPage() {
               </label>
               <input
                 type={field.type ?? 'text'}
-                defaultValue={isLoading ? '' : (data?.[field.key] ?? '')}
+                defaultValue={isLoading ? '' : ((data as any)?.[field.key] ?? '')}
                 placeholder={field.placeholder}
                 className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
                 style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
@@ -94,13 +156,13 @@ export default function AdminSettingsPage() {
 
       {/* Feature flags */}
       <section className="space-y-4">
-        <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Feature Flags</h2>        <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
-          {[
-            { label: 'AI Assistant', key: 'ai_enabled', description: 'Enable AI features platform-wide' },
+        <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Feature Flags</h2>
+        <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+          {([
             { label: 'Document Generation', key: 'doc_gen_enabled', description: 'PDF and Word document generation' },
             { label: 'White-label Branding', key: 'white_label_enabled', description: 'Company custom branding' },
             { label: 'Self-registration', key: 'self_register_enabled', description: 'Allow companies to self-register' },
-          ].map((flag, i, arr) => (
+          ] as const).map((flag, i, arr) => (
             <div
               key={flag.key}
               className="flex items-center justify-between px-5 py-4"
@@ -110,10 +172,10 @@ export default function AdminSettingsPage() {
                 <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{flag.label}</p>
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{flag.description}</p>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" className="sr-only peer" defaultChecked={!!data?.[flag.key]} />
-                <div className="relative w-11 h-6 rounded-full transition-colors duration-200 peer-checked:bg-[var(--gold)] bg-[var(--bg-elevated)] border border-[var(--border)] peer-focus:ring-2 peer-focus:ring-[var(--gold)] peer-focus:ring-offset-1 peer-focus:ring-offset-[var(--bg-surface)] after:content-[''] after:absolute after:top-1/2 after:-translate-y-1/2 after:left-[3px] after:rounded-full after:h-[18px] after:w-[18px] dark:after:bg-white after:bg-black after:shadow after:transition-transform after:duration-200 peer-checked:after:translate-x-5" />
-              </label>
+              <Toggle
+                checked={!!(data as any)?.[flag.key]}
+                onChange={() => {}}
+              />
             </div>
           ))}
         </div>
@@ -130,6 +192,164 @@ export default function AdminSettingsPage() {
           {saved ? 'Saved!' : saveMutation.isPending ? 'Saving…' : 'Save Settings'}
         </button>
       </div>
+
+      {/* ── AI Assistant ── */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold flex items-center gap-1.5" style={{ color: 'var(--text-secondary)' }}>
+            <Sparkles size={13} />
+            AI Assistant
+          </h2>
+          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+            Enable AI-assisted contract analysis. API keys are stored securely and never exposed to the frontend.
+          </p>
+        </div>
+
+        <div className="rounded-2xl p-5 space-y-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+
+          {/* Enable AI toggle */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Enable AI Analysis</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                Show &ldquo;Analyse Contract&rdquo; button when a contract file is uploaded
+              </p>
+            </div>
+            <Toggle checked={currentAiEnabled} onChange={setAiEnabled} />
+          </div>
+
+          {/* Enable Prompt Library toggle */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Enable Prompt Library</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                Show prompt buttons on variations, RFIs, and other records
+              </p>
+            </div>
+            <Toggle checked={currentPromptsEnabled} onChange={setPromptsEnabled} />
+          </div>
+
+          {/* Provider (currently only Anthropic) */}
+          <div>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+              Provider
+            </label>
+            <input
+              type="text"
+              value="Anthropic (Claude)"
+              readOnly
+              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none opacity-60 cursor-not-allowed"
+              style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+            />
+          </div>
+
+          {/* Model */}
+          <div>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+              Model
+            </label>
+            <select
+              value={currentAiModel}
+              onChange={e => setAiModel(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+              style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+            >
+              <option value="claude-sonnet-4-6">claude-sonnet-4-6 (recommended)</option>
+              <option value="claude-haiku-4-5-20251001">claude-haiku-4-5-20251001 (faster / lower cost)</option>
+              <option value="claude-opus-4-8">claude-opus-4-8 (most capable)</option>
+            </select>
+          </div>
+
+          {/* Anthropic API Key */}
+          <div>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+              Anthropic API Key
+            </label>
+            <div className="relative">
+              <input
+                type={showAiKey ? 'text' : 'password'}
+                value={anthropicKey}
+                onChange={e => setAnthropicKey(e.target.value)}
+                placeholder={hasAnthropicKey ? '••••••••  (key saved — enter new key to replace)' : 'sk-ant-…'}
+                autoComplete="new-password"
+                className="w-full px-3 py-2.5 pr-10 rounded-lg text-sm outline-none font-mono"
+                style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowAiKey(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 opacity-50 hover:opacity-80"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                {showAiKey ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </div>
+            <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>
+              API keys are stored encrypted and never sent to the browser.
+              {hasAnthropicKey && <span className="ml-1 text-green-600">A key is currently saved.</span>}
+            </p>
+          </div>
+
+          <div className="flex justify-end pt-1">
+            <button
+              type="button"
+              onClick={() =>
+                aiMutation.mutate({
+                  ai_enabled: currentAiEnabled,
+                  prompts_enabled: currentPromptsEnabled,
+                  ai_model: currentAiModel,
+                  ...(anthropicKey ? { anthropic_api_key: anthropicKey } : {}),
+                })
+              }
+              disabled={aiMutation.isPending}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-opacity disabled:opacity-50"
+              style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
+            >
+              <Save size={12} />
+              {aiSaved ? 'Saved!' : aiMutation.isPending ? 'Saving…' : 'Save AI Settings'}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Notifications ── */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Notifications</h2>
+          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+            Choose which events trigger an email notification.
+            Emails are sent to the address configured in SureSign Settings → Email.
+          </p>
+        </div>
+
+        <div className="rounded-2xl p-5 space-y-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          {NOTIFICATION_EVENTS.map(ev => {
+            const isChecked = (notificationEvents ?? []).includes(ev.key);
+            return (
+              <div
+                key={ev.key}
+                className="flex items-center gap-3 select-none"
+              >
+                <Toggle checked={isChecked} onChange={() => toggleNotifEvent(ev.key)} />
+                <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{ev.label}</span>
+              </div>
+            );
+          })}
+
+          <div className="flex justify-end pt-1">
+            <button
+              type="button"
+              onClick={() => notifMutation.mutate({ notification_settings: notificationEvents })}
+              disabled={notifMutation.isPending}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-opacity disabled:opacity-50"
+              style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
+            >
+              <Save size={12} />
+              {notifSaved ? 'Saved!' : notifMutation.isPending ? 'Saving…' : 'Save Notification Settings'}
+            </button>
+          </div>
+        </div>
+      </section>
 
       {/* ── Local Document Mirror ── */}
       <section className="space-y-4">
@@ -151,15 +371,7 @@ export default function AdminSettingsPage() {
                 Copy uploaded files to the path below after each upload
               </p>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                className="sr-only peer"
-                checked={currentMirrorEnabled}
-                onChange={e => setMirrorEnabled(e.target.checked)}
-              />
-              <div className="relative w-11 h-6 rounded-full transition-colors duration-200 peer-checked:bg-[var(--gold)] bg-[var(--bg-elevated)] border border-[var(--border)] peer-focus:ring-2 peer-focus:ring-[var(--gold)] peer-focus:ring-offset-1 peer-focus:ring-offset-[var(--bg-surface)] after:content-[''] after:absolute after:top-1/2 after:-translate-y-1/2 after:left-[3px] after:rounded-full after:h-[18px] after:w-[18px] dark:after:bg-white after:bg-black after:shadow after:transition-transform after:duration-200 peer-checked:after:translate-x-5" />
-            </label>
+            <Toggle checked={currentMirrorEnabled} onChange={setMirrorEnabled} />
           </div>
 
           {/* Mirror path input */}
@@ -172,11 +384,7 @@ export default function AdminSettingsPage() {
                 type="text"
                 value={currentMirrorPath}
                 onChange={e => { setMirrorPath(e.target.value); setTestResult(null); }}
-                placeholder={
-                  typeof window !== 'undefined' && navigator.platform.startsWith('Win')
-                    ? 'C:/Users/Admin/Documents/SureSign'
-                    : '/home/admin/Documents/SureSign'
-                }
+                placeholder="C:/Users/Admin/Documents/SureSign"
                 className="flex-1 px-3 py-2.5 rounded-lg text-sm outline-none font-mono"
                 style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
               />
@@ -196,11 +404,6 @@ export default function AdminSettingsPage() {
                 </button>
               )}
             </div>
-            <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>
-              Windows: <span className="font-mono">C:/Users/Admin/Documents/SureSign</span> ·
-              Mac: <span className="font-mono">/Users/admin/Documents/SureSign</span> ·
-              Docker: mount a volume and set the container path
-            </p>
           </div>
 
           {/* Test result */}

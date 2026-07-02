@@ -122,7 +122,7 @@ export default function AdminProjectsPage() {
                 <Link
                   key={p.id}
                   href={`/app/projects/${p.id}/overview`}
-                  className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr_40px] gap-4 items-center px-5 py-3.5 hover:bg-[var(--bg-elevated)] transition-colors"
+                  className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr_40px] gap-4 items-center px-5 py-3.5 hover:bg-[var(--bg-hover)] transition-colors"
                 >
                   {/* Project name + code */}
                   <div className="min-w-0">

@@ -16,6 +16,51 @@ use Illuminate\Support\Str;
 
 class TradePackageController extends Controller
 {
+    /**
+     * Validation rules for subcontract administration fields.
+     * Shared between create, update, and project-scoped update.
+     */
+    private function subcontractRules(): array
+    {
+        return [
+            'contract_value'       => 'nullable|numeric|min:0',
+            'retention_percentage' => 'nullable|numeric|min:0|max:100',
+            'payment_terms_days'   => 'nullable|integer|min:1|max:365',
+            'payment_frequency'    => 'nullable|string|in:weekly,fortnightly,monthly,manual',
+            // Subcontract dates
+            'letter_of_intent_date'      => 'nullable|date',
+            'award_date'                 => 'nullable|date',
+            'execution_date'             => 'nullable|date',
+            'commencement_date'          => 'nullable|date',
+            'completion_date'            => 'nullable|date',
+            'defects_liability_end_date' => 'nullable|date',
+            // Extended contractor details
+            'contractor_contact_name'   => 'nullable|string|max:255',
+            'contractor_email'          => 'nullable|email|max:255',
+            'contractor_phone'          => 'nullable|string|max:60',
+            'contractor_address'        => 'nullable|string|max:255',
+            'contractor_company_reg_no' => 'nullable|string|max:60',
+            'contractor_vat_number'     => 'nullable|string|max:60',
+            // Payment rule offsets
+            'due_date_offset_days'        => 'nullable|integer|min:0|max:365',
+            'final_date_offset_days'      => 'nullable|integer|min:0|max:365',
+            'payment_notice_offset_days'  => 'nullable|integer|min:0|max:365',
+            'pay_less_notice_offset_days' => 'nullable|integer|min:0|max:365',
+        ];
+    }
+
+    private function authorizeProjectPackage(Request $request, Project $project, TradePackage $tradePackage): void
+    {
+        $user = $request->user();
+        if (!$user->hasRole('Super Admin') && !$user->hasRole('Admin')
+            && $user->organization_id !== $project->organization_id) {
+            abort(403, 'Access denied.');
+        }
+        if ($tradePackage->project_id !== $project->id) {
+            abort(404, 'Trade package not found for this project.');
+        }
+    }
+
     // ── List ────────────────────────────────────────────────────────────────
 
     /**
@@ -49,31 +94,36 @@ class TradePackageController extends Controller
      */
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'project_id'        => 'required|integer|exists:projects,id',
-            'name'              => 'required|string|max:255',
-            'package_code'      => 'nullable|string|max:50',
-            'package_reference' => 'nullable|string|max:100',
-            'contractor_name'   => 'nullable|string|max:255',
-            'description'       => 'nullable|string|max:2000',
-        ]);
+        $data = $request->validate(array_merge([
+            'project_id'          => 'required|integer|exists:projects,id',
+            'name'                => 'required|string|max:255',
+            'package_code'        => 'nullable|string|max:50',
+            'package_reference'   => 'nullable|string|max:100',
+            'contractor_name'     => 'nullable|string|max:255',
+            'description'         => 'nullable|string|max:2000',
+            'status'              => 'nullable|string|in:' . implode(',', TradePackage::STATUSES),
+        ], $this->subcontractRules()));
 
         $project = Project::findOrFail($data['project_id']);
 
         $slug = TradePackage::makeSlug($data['name'], $project->id);
 
-        $package = TradePackage::create([
-            'organization_id'   => $project->organization_id,
-            'project_id'        => $project->id,
-            'name'              => $data['name'],
-            'slug'              => $slug,
-            'package_code'      => $data['package_code'] ?? null,
-            'package_reference' => $data['package_reference'] ?? null,
-            'contractor_name'   => $data['contractor_name'] ?? null,
-            'description'       => $data['description'] ?? null,
-            'status'            => 'active',
-            'created_by'        => $request->user()?->id,
-        ]);
+        // Build creatable attributes: core fields + any supplied subcontract fields.
+        $package = TradePackage::create(array_merge(
+            array_intersect_key($data, $this->subcontractRules()),
+            [
+                'organization_id'   => $project->organization_id,
+                'project_id'        => $project->id,
+                'name'              => $data['name'],
+                'slug'              => $slug,
+                'package_code'      => $data['package_code'] ?? null,
+                'package_reference' => $data['package_reference'] ?? null,
+                'contractor_name'   => $data['contractor_name'] ?? null,
+                'description'       => $data['description'] ?? null,
+                'status'            => $data['status'] ?? 'active',
+                'created_by'        => $request->user()?->id,
+            ]
+        ));
 
         // Create local mirror folder for this package (flat — no subfolders)
         $this->mirrorTradePackageFolders($package, $project);
@@ -128,6 +178,97 @@ class TradePackageController extends Controller
         }
 
         return response()->json(['trade_packages' => $created], 201);
+    }
+
+    // ── Update ──────────────────────────────────────────────────────────────
+
+    /**
+     * PUT /api/admin/trade-packages/{tradePackage}
+     */
+    public function update(Request $request, TradePackage $tradePackage)
+    {
+        $data = $request->validate(array_merge([
+            'name'                => 'sometimes|required|string|max:255',
+            'package_code'        => 'nullable|string|max:50',
+            'package_reference'   => 'nullable|string|max:100',
+            'contractor_name'     => 'nullable|string|max:255',
+            'description'         => 'nullable|string|max:2000',
+            'status'              => 'nullable|string|in:' . implode(',', TradePackage::STATUSES),
+        ], $this->subcontractRules()));
+
+        $tradePackage->update($data);
+
+        return response()->json($tradePackage->fresh());
+    }
+
+    // ── Project-scoped workspace + update (tenant-isolated) ───────────────────
+
+    /**
+     * GET /api/projects/{project}/trade-packages/{tradePackage}/workspace
+     *
+     * Returns the full trade package plus a read-only commercial summary and
+     * folder/file overview, for the dedicated subcontract workspace page.
+     */
+    public function workspace(Request $request, Project $project, TradePackage $tradePackage)
+    {
+        $this->authorizeProjectPackage($request, $project, $tradePackage);
+
+        $tradePackage->load('folders');
+
+        $apps = $tradePackage->paymentApplications()
+            ->select('id', 'application_number', 'status', 'application_date',
+                     'gross_valuation', 'certified_amount', 'paid_amount',
+                     'less_retention', 'amount_due')
+            ->orderByDesc('application_number')
+            ->get();
+
+        $certifiedToDate = (float) $apps->whereIn('status', ['certified', 'paid'])->sum('certified_amount');
+        $paidToDate      = (float) $apps->where('status', 'paid')->sum('paid_amount');
+        $retentionHeld   = (float) $apps->whereIn('status', ['certified', 'paid'])->sum('less_retention');
+
+        $released = (float) $tradePackage->retentionReleases()->sum('release_amount');
+        $retentionHeld = max(0, $retentionHeld - $released);
+
+        $outstanding = max(0, $certifiedToDate - $paidToDate);
+
+        $filesCount = FileUpload::where('trade_package_id', $tradePackage->id)->count();
+
+        return response()->json([
+            'trade_package'      => $tradePackage,
+            'files_count'        => $filesCount,
+            'commercial_summary' => [
+                'applications_count'  => $apps->count(),
+                'certified_to_date'   => round($certifiedToDate, 2),
+                'paid_to_date'        => round($paidToDate, 2),
+                'retention_held'      => round($retentionHeld, 2),
+                'retention_released'  => round($released, 2),
+                'outstanding_balance' => round($outstanding, 2),
+            ],
+            'applications' => $apps,
+        ]);
+    }
+
+    /**
+     * PUT /api/projects/{project}/trade-packages/{tradePackage}
+     *
+     * Tenant-isolated update used by the project workspace / contracts page.
+     */
+    public function updateForProject(Request $request, Project $project, TradePackage $tradePackage)
+    {
+        $this->authorizeProjectPackage($request, $project, $tradePackage);
+
+        $data = $request->validate(array_merge([
+            'name'              => 'sometimes|required|string|max:255',
+            'package_code'      => 'nullable|string|max:50',
+            'package_reference' => 'nullable|string|max:100',
+            'contractor_name'   => 'nullable|string|max:255',
+            'description'       => 'nullable|string|max:2000',
+            'status'            => 'nullable|string|in:' . implode(',', TradePackage::STATUSES),
+        ], $this->subcontractRules()));
+
+        $tradePackage->update($data);
+
+        return response()->json($tradePackage->fresh());
     }
 
     // ── Show ────────────────────────────────────────────────────────────────

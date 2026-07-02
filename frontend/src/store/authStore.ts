@@ -86,7 +86,17 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'suresign-auth',
       partialize: (s) => ({ token: s.token, user: s.user }),
-      onRehydrateStorage: () => (state) => { state?.setHasHydrated(true); },
+      onRehydrateStorage: () => (state) => {
+        // Keep suresign_token in sync with the persisted Zustand token so that
+        // components checking localStorage directly (login redirect, axios) always
+        // see the correct value even in new tabs or after a page refresh.
+        if (state?.token) {
+          localStorage.setItem('suresign_token', state.token);
+        } else {
+          localStorage.removeItem('suresign_token');
+        }
+        state?.setHasHydrated(true);
+      },
     }
   )
 );

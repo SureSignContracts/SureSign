@@ -25,6 +25,65 @@ class TradePackage extends Model
         'created_by_user',
         'original_name',
         'source_type',
+        // Commercial terms
+        'contract_value',
+        'retention_percentage',
+        'payment_terms_days',
+        'payment_frequency',
+        // Subcontract dates
+        'letter_of_intent_date',
+        'award_date',
+        'execution_date',
+        'commencement_date',
+        'completion_date',
+        'defects_liability_end_date',
+        // Extended contractor details
+        'contractor_contact_name',
+        'contractor_email',
+        'contractor_phone',
+        'contractor_address',
+        'contractor_company_reg_no',
+        'contractor_vat_number',
+        // Payment rule offsets (mirror contracts)
+        'due_date_offset_days',
+        'final_date_offset_days',
+        'payment_notice_offset_days',
+        'pay_less_notice_offset_days',
+    ];
+
+    protected $casts = [
+        'contract_value'             => 'decimal:2',
+        'retention_percentage'       => 'decimal:2',
+        'payment_terms_days'         => 'integer',
+        'letter_of_intent_date'      => 'date',
+        'award_date'                 => 'date',
+        'execution_date'             => 'date',
+        'commencement_date'          => 'date',
+        'completion_date'            => 'date',
+        'defects_liability_end_date' => 'date',
+        'due_date_offset_days'        => 'integer',
+        'final_date_offset_days'      => 'integer',
+        'payment_notice_offset_days'  => 'integer',
+        'pay_less_notice_offset_days' => 'integer',
+    ];
+
+    /**
+     * Valid procurement / subcontract lifecycle statuses.
+     * Legacy values (active, inactive, archived) remain valid for backward compatibility.
+     */
+    public const STATUSES = [
+        'tendering',
+        'tender_returned',
+        'under_review',
+        'awarded',
+        'documents_issued',
+        'executed',
+        'active',
+        'completed',
+        'closed',
+        'archived',
+        // legacy
+        'inactive',
     ];
 
     // ── Standard folders for every trade package ────────────────────────────
@@ -66,6 +125,26 @@ class TradePackage extends Model
     public function fileUploads()
     {
         return $this->hasMany(FileUpload::class, 'trade_package_id');
+    }
+
+    public function paymentApplications()
+    {
+        return $this->hasMany(PaymentApplication::class, 'trade_package_id');
+    }
+
+    public function retentionReleases()
+    {
+        return $this->hasMany(RetentionRelease::class, 'trade_package_id');
+    }
+
+    public function variations()
+    {
+        return $this->hasMany(Variation::class, 'trade_package_id');
+    }
+
+    public function finalAccount()
+    {
+        return $this->hasOne(FinalAccount::class, 'trade_package_id');
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────

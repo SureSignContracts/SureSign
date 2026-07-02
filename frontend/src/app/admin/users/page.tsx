@@ -68,7 +68,7 @@ function ActionMenu({
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(o => !o)}
-        className="p-1.5 rounded-lg transition-colors hover:bg-[var(--bg-elevated)]"
+        className="p-1.5 rounded-lg transition-colors hover:bg-[var(--bg-hover)]"
       >
         <MoreVertical size={14} style={{ color: 'var(--text-muted)' }} />
       </button>
@@ -309,8 +309,8 @@ export default function AdminUsersPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
-        <table className="w-full">
+      <div className="rounded-2xl overflow-x-auto" style={{ border: '1px solid var(--border)' }}>
+        <table className="w-full min-w-[720px]">
           <thead>
             <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
               {['User', 'Role', 'Status', 'Joined', 'Last Active', ''].map((h, i) => (

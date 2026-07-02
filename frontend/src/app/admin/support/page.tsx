@@ -71,8 +71,8 @@ export default function AdminSupportPage() {
       </div>
 
       {/* Tickets table */}
-      <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
-        <table className="w-full text-sm">
+      <div className="rounded-2xl overflow-x-auto" style={{ border: '1px solid var(--border)' }}>
+        <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
               {['#', 'Subject', 'Company', 'Status', 'Created'].map(h => (

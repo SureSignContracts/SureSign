@@ -256,8 +256,8 @@ export default function ProjectQaPage() {
           </button>
         </div>
       ) : (
-        <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
-          <table className="w-full text-sm">
+        <div className="rounded-2xl overflow-x-auto" style={{ border: '1px solid var(--border)' }}>
+          <table className="w-full min-w-[640px] text-sm">
             <thead>
               <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
                 {['#', 'Title', 'Type', 'Area', 'Date', 'Status', ''].map(h => (
@@ -269,7 +269,7 @@ export default function ProjectQaPage() {
               {reports.map((r: any) => {
                 const badge = STATUS_COLORS[r.status] ?? { bg: 'var(--bg-elevated)', text: 'var(--text-muted)' };
                 return (
-                  <tr key={r.id} className="hover:bg-[var(--bg-elevated)] transition-colors" style={{ borderBottom: '1px solid var(--border)' }}>
+                  <tr key={r.id} className="hover:bg-[var(--bg-hover)] transition-colors" style={{ borderBottom: '1px solid var(--border)' }}>
                     <td className="px-5 py-3 font-mono text-xs" style={{ color: 'var(--text-muted)' }}>#{r.report_number ?? r.id}</td>
                     <td className="px-5 py-3 font-medium" style={{ color: 'var(--text-primary)' }}>{r.title}</td>
                     <td className="px-5 py-3 text-xs capitalize" style={{ color: 'var(--text-secondary)' }}>{r.inspection_type || '—'}</td>

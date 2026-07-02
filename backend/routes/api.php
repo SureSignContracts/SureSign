@@ -1,4 +1,4 @@
-<?php
+               <?php
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ProjectController;
@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\ProjectActivityController;
 use App\Http\Controllers\Api\SuresignSettingController;
 use App\Http\Controllers\Api\DocumentTemplateController;
+use App\Http\Controllers\Api\TradePackageController;
 use App\Http\Controllers\Api\TradePackagePackageGenerationController;
 use App\Http\Controllers\Api\SnagController;
 use App\Http\Controllers\Api\QaReportController;
@@ -28,11 +29,16 @@ use App\Http\Controllers\Api\CloseoutController;
 use App\Http\Controllers\Api\AdjudicationCaseController;
 use App\Http\Controllers\Api\AdjudicationDocumentController;
 use App\Http\Controllers\Api\AdjudicationDeadlineController;
+use App\Http\Controllers\Api\ProgrammeMilestoneController;
 use App\Http\Controllers\Api\PromptController;
 use App\Http\Controllers\Api\CompaniesHouseController;
 use App\Http\Controllers\Api\GenerateTradePackageFoldersController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\DocumentRegisterController;
+use App\Http\Controllers\Api\PaymentNoticeController;
+use App\Http\Controllers\Api\RetentionReleaseController;
+use App\Http\Controllers\Api\CalendarController;
+use App\Http\Controllers\Api\FinalAccountController;
 use App\Models\FileUpload;
 use Illuminate\Support\Facades\Route;
 
@@ -72,26 +78,99 @@ Route::middleware('auth:sanctum')->group(function () {
     // Commercial
     Route::apiResource('contracts.payment-applications', PaymentApplicationController::class)->shallow();
     Route::apiResource('contracts.variations', VariationController::class)->shallow();
+    Route::post('variations/{variation}/generate-pdf', [VariationController::class, 'generatePdf']);
+    // Variation approval state machine
+    Route::post('variations/{variation}/submit',    [VariationController::class, 'submit']);
+    Route::post('variations/{variation}/instruct',  [VariationController::class, 'instruct']);
+    Route::post('variations/{variation}/quote',     [VariationController::class, 'quote']);
+    Route::post('variations/{variation}/assess',    [VariationController::class, 'assess']);
+    Route::post('variations/{variation}/approve',   [VariationController::class, 'approve']);
+    Route::post('variations/{variation}/reject',    [VariationController::class, 'reject']);
+    Route::post('variations/{variation}/resubmit',  [VariationController::class, 'resubmit']);
+
+    // Final Account (contract-scoped)
+    Route::get('contracts/{contract}/final-account',  [FinalAccountController::class, 'showForContract']);
+    Route::post('contracts/{contract}/final-account', [FinalAccountController::class, 'storeForContract']);
+
+    // Final Account (trade-package-scoped) — uses project-scoped prefix defined below
+    // POST /projects/{project}/trade-packages/{tradePackage}/final-account
+    // GET  /projects/{project}/trade-packages/{tradePackage}/final-account
+
+    // Programme milestones
+    Route::get('contracts/{contract}/programme', [ProgrammeMilestoneController::class, 'index']);
+    Route::post('contracts/{contract}/programme', [ProgrammeMilestoneController::class, 'store']);
+    Route::post('contracts/{contract}/programme/seed-from-analysis', [ProgrammeMilestoneController::class, 'seedFromAnalysis']);
+    Route::put('programme/{milestone}', [ProgrammeMilestoneController::class, 'update']);
+    Route::delete('programme/{milestone}', [ProgrammeMilestoneController::class, 'destroy']);
 
     // Payment application workflow actions
-    Route::post('/payment-applications/{paymentApplication}/submit',      [PaymentApplicationController::class, 'submit']);
-    Route::post('/payment-applications/{paymentApplication}/certify',     [PaymentApplicationController::class, 'certify']);
-    Route::post('/payment-applications/{paymentApplication}/mark-paid',   [PaymentApplicationController::class, 'markPaid']);
-    Route::post('/payment-applications/{paymentApplication}/generate-pdf',[PaymentApplicationController::class, 'generatePdf']);
+    Route::post('/payment-applications/{paymentApplication}/submit',              [PaymentApplicationController::class, 'submit']);
+    Route::post('/payment-applications/{paymentApplication}/certify',             [PaymentApplicationController::class, 'certify']);
+    Route::post('/payment-applications/{paymentApplication}/mark-paid',           [PaymentApplicationController::class, 'markPaid']);
+    Route::post('/payment-applications/{paymentApplication}/cancel',              [PaymentApplicationController::class, 'cancel']);
+    Route::post('/payment-applications/{paymentApplication}/withdraw',            [PaymentApplicationController::class, 'withdraw']);
+    Route::post('/payment-applications/{paymentApplication}/generate-pdf',        [PaymentApplicationController::class, 'generatePdf']);
+    Route::post('/payment-applications/{paymentApplication}/generate-certificate',[PaymentApplicationController::class, 'generateCertificate']);
+    Route::post('/payment-applications/{paymentApplication}/pay-less-notice',     [PaymentApplicationController::class, 'createPayLessNotice']);
+    Route::post('/payment-applications/{paymentApplication}/payment-notice',      [PaymentApplicationController::class, 'createPaymentNotice']);
+    Route::get('/payment-applications/{paymentApplication}/previous-values',       [PaymentApplicationController::class, 'previousValues']);
+    Route::post('/payment-applications/{paymentApplication}/breakdown',            [PaymentApplicationController::class, 'updateBreakdown']);
+    Route::post('/payment-applications/{paymentApplication}/generate-excel',       [PaymentApplicationController::class, 'generateExcel']);
+    Route::get('/payment-applications/{paymentApplication}/eligible-variations',   [PaymentApplicationController::class, 'eligibleVariations']);
+    Route::post('/payment-applications/{paymentApplication}/sync-variations',      [PaymentApplicationController::class, 'syncLinkedVariations']);
+    Route::delete('/payment-applications/{paymentApplication}',                   [PaymentApplicationController::class, 'destroy']);
+
+    // Payment notices (standalone)
+    Route::get('/payment-notices/{paymentNotice}', [PaymentNoticeController::class, 'show']);
+    Route::delete('/payment-notices/{paymentNotice}', [PaymentNoticeController::class, 'destroy']);
+
+    // Retention releases (standalone)
+    Route::delete('/retention-releases/{retentionRelease}', [RetentionReleaseController::class, 'destroy']);
+
+    // Final Accounts
+    Route::get('/final-accounts/{finalAccount}',                    [FinalAccountController::class, 'show']);
+    Route::put('/final-accounts/{finalAccount}',                    [FinalAccountController::class, 'update']);
+    Route::get('/final-accounts/{finalAccount}/totals',             [FinalAccountController::class, 'totals']);
+    Route::post('/final-accounts/{finalAccount}/submit',            [FinalAccountController::class, 'submit']);
+    Route::post('/final-accounts/{finalAccount}/start-review',      [FinalAccountController::class, 'startReview']);
+    Route::post('/final-accounts/{finalAccount}/revise',            [FinalAccountController::class, 'revise']);
+    Route::post('/final-accounts/{finalAccount}/agree',             [FinalAccountController::class, 'agree']);
+    Route::post('/final-accounts/{finalAccount}/sign',              [FinalAccountController::class, 'sign']);
+    Route::post('/final-accounts/{finalAccount}/issue-certificate', [FinalAccountController::class, 'issueFinalCertificate']);
+    Route::post('/final-accounts/{finalAccount}/close',             [FinalAccountController::class, 'close']);
+    Route::post('/final-accounts/{finalAccount}/generate-statement',   [FinalAccountController::class, 'generateStatement']);
+    Route::post('/final-accounts/{finalAccount}/generate-certificate', [FinalAccountController::class, 'generateCertificate']);
+    Route::post('/final-accounts/{finalAccount}/items',             [FinalAccountController::class, 'storeItem']);
+    Route::put('/final-accounts/{finalAccount}/items/{item}',       [FinalAccountController::class, 'updateItem']);
+    Route::delete('/final-accounts/{finalAccount}/items/{item}',    [FinalAccountController::class, 'destroyItem']);
 
     // Site Administration
     Route::apiResource('projects.rfis', RfiController::class)->shallow();
 
     // Project sub-resources
     Route::prefix('projects/{project}')->group(function () {
-        Route::get('/stats',      [ProjectController::class, 'stats']);
+        Route::get('/stats',                [ProjectController::class, 'stats']);
+        Route::get('/dashboard-intelligence', [ProjectController::class, 'dashboardIntelligence']);
         Route::get('/activities', [ProjectActivityController::class, 'index']);
         Route::get('/payment-applications', [PaymentApplicationController::class, 'indexByProject']);
+        Route::get('/payment-application-defaults', [PaymentApplicationController::class, 'applicationDefaults']);
+        Route::post('/trade-packages/{tradePackage}/payment-applications', [PaymentApplicationController::class, 'storeForTradePackage']);
+        Route::get('/trade-packages/{tradePackage}/final-account',  [FinalAccountController::class, 'showForTradePackage']);
+        Route::post('/trade-packages/{tradePackage}/final-account', [FinalAccountController::class, 'storeForTradePackage']);
+        // Trade package (subcontract) workspace + tenant-scoped update
+        Route::get('/trade-packages/{tradePackage}/workspace', [TradePackageController::class, 'workspace']);
+        Route::put('/trade-packages/{tradePackage}', [TradePackageController::class, 'updateForProject']);
+        Route::get('/payment-notices', [PaymentNoticeController::class, 'index']);
+        Route::get('/retention-releases', [RetentionReleaseController::class, 'index']);
+        Route::post('/retention-releases', [RetentionReleaseController::class, 'store']);
         Route::get('/variations', [VariationController::class, 'indexByProject']);
+        Route::get('/final-accounts', [FinalAccountController::class, 'indexByProject']);
+            Route::get('/programme', [ProgrammeMilestoneController::class, 'indexByProject']);
         Route::apiResource('site-diaries', SiteDiaryController::class)->shallow();
         Route::apiResource('meetings', MeetingMinutesController::class)->shallow();
         Route::apiResource('eot-requests', EotRequestController::class)->shallow();
         Route::apiResource('pay-less-notices', PayLessNoticeController::class)->shallow();
+
         Route::apiResource('site-instructions', SiteInstructionController::class)->shallow();
 
         // Snagging
@@ -162,7 +241,25 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/conversations/{conversation}/messages', [AiController::class, 'getMessages']);
         Route::post('/summarize', [AiController::class, 'summarize']);
         Route::post('/draft-document', [AiController::class, 'draftDocument']);
+
+        // Contract AI analysis
+        Route::get('/status', [AiController::class, 'status']);
+        Route::get('/analyses/{analysis}', [AiController::class, 'showAnalysis']);
+        Route::post('/analyses/{analysis}/confirm', [AiController::class, 'confirmAnalysis']);
+        Route::post('/analyses/{analysis}/cancel',          [AiController::class, 'cancelAnalysis']);
+        Route::post('/analyses/{analysis}/reparse',         [AiController::class, 'reparseAnalysis']);
+        Route::post('/analyses/{analysis}/generate-brief',  [AiController::class, 'generateBrief']);
     });
+
+    // Contract AI analysis (contract-scoped)
+    Route::post('/contracts/{contract}/ai-analysis',   [AiController::class, 'startAnalysis']);
+    Route::get('/contracts/{contract}/ai-analysis',    [AiController::class, 'getLatestAnalysis']);
+    Route::get('/contracts/{contract}/ai-analyses',    [AiController::class, 'listAnalyses']);
+    Route::get('/projects/{project}/ai-analyses',      [AiController::class, 'listForProject']);
+    Route::get('/projects/{project}/calendar-events',  [CalendarController::class, 'events']);
+    Route::post('/contracts/{contract}/attach-file',   [ContractController::class, 'attachFile']);
+    Route::post('/contracts/{contract}/archive',       [ContractController::class, 'archive']);
+    Route::post('/contracts/{contract}/restore',       [ContractController::class, 'restore']);
 
     // Organization & Branding
     Route::post('/organization/onboard',             [OrganizationController::class, 'onboard']);
@@ -198,6 +295,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/templates/{template}/preview', [DocumentTemplateController::class, 'preview']);
             Route::get('/support', [AdminController::class, 'support']);
             Route::get('/system-logs', [AdminController::class, 'systemLogs']);
+            Route::get('/audit-log', [AdminController::class, 'auditLog']);
             Route::get('/settings', [AdminController::class, 'settings']);
             Route::put('/settings', [AdminController::class, 'updateSettings']);
 
@@ -230,6 +328,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/suresign-settings/test-pdf',               [SuresignSettingController::class, 'testPdf']);
             Route::post('/suresign-settings/test-email',             [SuresignSettingController::class, 'testEmail']);
             Route::post('/suresign-settings/sync-from-mirror',       [SuresignSettingController::class, 'syncFromMirror']);
+            Route::put('/suresign-settings/ai',                      [SuresignSettingController::class, 'updateAi']);
+            Route::put('/suresign-settings/notifications',           [SuresignSettingController::class, 'updateNotifications']);
 
             // Prompt Library
             Route::prefix('prompts')->group(function () {
@@ -275,7 +375,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllRead']);
-    Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
+    Route::patch('/notifications/{notification}/read',    [NotificationController::class, 'markRead']);
+    Route::patch('/notifications/{notification}/dismiss', [NotificationController::class, 'dismiss']);
     Route::delete('/notifications/clear-read', [NotificationController::class, 'clearRead']);
     Route::delete('/notifications/clear-selected', [NotificationController::class, 'clearSelected']);
     Route::delete('/notifications/{notification}', [NotificationController::class, 'clearOne']);

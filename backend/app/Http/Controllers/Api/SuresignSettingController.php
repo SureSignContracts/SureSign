@@ -35,10 +35,11 @@ class SuresignSettingController extends Controller
     {
         $settings = SuresignSetting::instance();
 
-        // Expose brevo_api_key presence (but not the value) for the UI
-        $data                    = $settings->toArray();
-        $data['has_brevo_key']   = !empty($settings->brevo_api_key);
-        $data['brevo_api_key']   = $settings->brevo_api_key ? '••••••••' : '';
+        $data                         = $settings->toArray();
+        $data['has_brevo_key']        = !empty($settings->brevo_api_key);
+        $data['brevo_api_key']        = $settings->brevo_api_key ? '••••••••' : '';
+        $data['has_anthropic_key']    = !empty($settings->anthropic_api_key);
+        $data['anthropic_api_key']    = $settings->anthropic_api_key ? '••••••••' : '';
 
         return response()->json(['data' => $data]);
     }
@@ -75,6 +76,39 @@ class SuresignSettingController extends Controller
         $settings->update($validated);
 
         return response()->json(['data' => $settings->fresh()->toArray(), 'message' => 'Settings saved.']);
+    }
+
+    // ─── PUT /admin/suresign-settings/ai ─────────────────────────────────────
+
+    public function updateAi(Request $request)
+    {
+        $validated = $request->validate([
+            'ai_enabled'        => 'nullable|boolean',
+            'prompts_enabled'   => 'nullable|boolean',
+            'ai_provider'       => 'nullable|string|in:anthropic',
+            'ai_model'          => 'nullable|string|max:100',
+            'anthropic_api_key' => 'nullable|string|max:500',
+        ]);
+
+        $settings = SuresignSetting::instance();
+
+        // Only update anthropic_api_key if a real (unmasked) value is provided
+        if (isset($validated['anthropic_api_key'])) {
+            $key = trim($validated['anthropic_api_key']);
+            if (empty($key) || preg_match('/^[\x{2022}•]+$/u', $key)) {
+                unset($validated['anthropic_api_key']);
+            } else {
+                $validated['anthropic_api_key'] = $key;
+            }
+        }
+
+        $settings->update($validated);
+
+        $data                      = $settings->fresh()->toArray();
+        $data['has_anthropic_key'] = !empty($settings->fresh()->anthropic_api_key);
+        $data['anthropic_api_key'] = $settings->fresh()->anthropic_api_key ? '••••••••' : '';
+
+        return response()->json(['data' => $data, 'message' => 'AI settings saved.']);
     }
 
     // ─── PUT /admin/suresign-settings/branding ────────────────────────────────
@@ -380,6 +414,18 @@ class SuresignSettingController extends Controller
             Log::error('Brevo test email exception', ['error' => $e->getMessage()]);
             return response()->json(['message' => 'Failed to send email: ' . $e->getMessage()], 500);
         }
+    }
+
+    // ─── PUT /admin/suresign-settings/notifications ───────────────────────────
+
+    public function updateNotifications(Request $request)
+    {
+        $validated = $request->validate([
+            'notification_settings'   => 'nullable|array',
+            'notification_settings.*' => 'string',
+        ]);
+        SuresignSetting::instance()->update($validated);
+        return response()->json(['message' => 'Notification settings saved.']);
     }
 
     // ─── Private helpers ──────────────────────────────────────────────────────

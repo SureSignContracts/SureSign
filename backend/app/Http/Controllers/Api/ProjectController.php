@@ -7,9 +7,12 @@ use App\Models\FileUpload;
 use App\Models\Organization;
 use App\Models\Project;
 use App\Models\ProjectFolder;
+use App\Services\OperationalIntelligenceService;
 use App\Services\ProjectActivityService;
+use App\Services\ProjectHealthService;
 use App\Services\ProjectStatsService;
 use App\Services\ProjectStorageService;
+use App\Services\UpcomingActionsService;
 use Illuminate\Http\Request;
 
 class ProjectController extends Controller
@@ -235,5 +238,200 @@ class ProjectController extends Controller
     {
         $this->authorizeProject($request, $project);
         return response()->json(ProjectStatsService::getStats($project));
+    }
+
+    public function dashboardIntelligence(Request $request, Project $project)
+    {
+        $this->authorizeProject($request, $project);
+
+        // Lead with the most recent confirmed/completed AI analysis on this project.
+        // This ensures the dashboard shows the contract that was actually analysed,
+        // rather than the newest contract which may have no analysis yet.
+        $aiAnalysis = \App\Models\ContractAiAnalysis::where('project_id', $project->id)
+            ->whereIn('status', ['confirmed', 'completed'])
+            ->with('creator:id,name')
+            ->latest()
+            ->first();
+
+        // Use the analysed contract if one exists, otherwise fall back to any main contract.
+        if ($aiAnalysis) {
+            $mainContract = \App\Models\Contract::with([
+                'fileUploads' => fn($q) => $q->select(['id','attachable_type','attachable_id','original_name','mime_type'])->latest(),
+            ])->find($aiAnalysis->contract_id);
+        } else {
+            $mainContract = \App\Models\Contract::where('project_id', $project->id)
+                ->where('type', 'main_contract')
+                ->with(['fileUploads' => fn($q) => $q->select(['id','attachable_type','attachable_id','original_name','mime_type'])->latest()])
+                ->orderByRaw("FIELD(status, 'active', 'draft', 'complete', 'expired', 'terminated')")
+                ->latest()
+                ->first();
+        }
+
+        // Commercial summary
+        $pid = $project->id;
+
+        $commercial = [
+            'total_applications' => \App\Models\PaymentApplication::where('project_id', $pid)->count(),
+            'total_submitted'    => \App\Models\PaymentApplication::where('project_id', $pid)
+                ->whereIn('status', ['submitted', 'certified', 'paid'])->count(),
+            'total_certified'    => (float) \App\Models\PaymentApplication::where('project_id', $pid)
+                ->whereNotNull('certified_amount')->sum('certified_amount'),
+            'total_paid'         => (float) \App\Models\PaymentApplication::where('project_id', $pid)
+                ->whereNotNull('paid_amount')->sum('paid_amount'),
+            // Variation intelligence — sourced directly from the Variation table (single source of truth)
+            'approved_variations_count'      => \App\Models\Variation::where('project_id', $pid)
+                ->where('status', \App\Models\Variation::STATUS_APPROVED)->count(),
+            'approved_variations_value'      => (float) \App\Models\Variation::where('project_id', $pid)
+                ->where('status', \App\Models\Variation::STATUS_APPROVED)->sum('agreed_amount'),
+            'pending_variations_count'       => \App\Models\Variation::where('project_id', $pid)
+                ->whereIn('status', \App\Models\Variation::IN_PROGRESS_STATUSES)->count(),
+            'pending_variations_value'       => (float) \App\Models\Variation::where('project_id', $pid)
+                ->whereIn('status', \App\Models\Variation::IN_PROGRESS_STATUSES)->sum('quoted_amount'),
+            'rejected_variations_count'      => \App\Models\Variation::where('project_id', $pid)
+                ->where('status', \App\Models\Variation::STATUS_REJECTED)->count(),
+            // Approved but not yet included in any Payment Application — outstanding commercial exposure
+            'approved_not_included_count'    => \App\Models\Variation::where('project_id', $pid)
+                ->where('status', \App\Models\Variation::STATUS_APPROVED)
+                ->whereDoesntHave('paymentApplicationVariations')
+                ->count(),
+            'approved_not_included_value'    => (float) \App\Models\Variation::where('project_id', $pid)
+                ->where('status', \App\Models\Variation::STATUS_APPROVED)
+                ->whereDoesntHave('paymentApplicationVariations')
+                ->sum('agreed_amount'),
+        ];
+
+        // Document count
+        $documentsCount = \App\Models\FileUpload::where('project_id', $project->id)->count();
+
+        // Upcoming payment deadlines — next 30 days, non-cancelled apps only
+        $horizon = now()->addDays(30)->toDateString();
+        $today   = now()->toDateString();
+
+        $deadlineApps = \App\Models\PaymentApplication::where('project_id', $project->id)
+            ->whereNotIn('status', ['cancelled', 'paid'])
+            ->where(function ($q) use ($today, $horizon) {
+                $q->whereBetween('pay_less_notice_deadline',  [$today, $horizon])
+                  ->orWhereBetween('payment_notice_deadline', [$today, $horizon])
+                  ->orWhereBetween('final_date_for_payment',  [$today, $horizon])
+                  ->orWhere('pay_less_notice_deadline',  '<', $today)
+                  ->orWhere('payment_notice_deadline',   '<', $today)
+                  ->orWhere('final_date_for_payment',    '<', $today);
+            })
+            ->select([
+                'id', 'application_number', 'status',
+                'application_date', 'due_date', 'final_date_for_payment',
+                'payment_notice_deadline', 'pay_less_notice_deadline',
+            ])
+            ->orderBy('pay_less_notice_deadline')
+            ->get();
+
+        $upcomingDeadlines = [];
+        foreach ($deadlineApps as $app) {
+            $deadlineFields = [
+                'pay_less_notice_deadline'  => 'Pay Less Notice',
+                'payment_notice_deadline'   => 'Payment Notice',
+                'final_date_for_payment'    => 'Final Date for Payment',
+                'due_date'                  => 'Due Date',
+            ];
+            foreach ($deadlineFields as $field => $label) {
+                if (!empty($app->$field)) {
+                    $date = \Carbon\Carbon::parse($app->$field);
+                    $daysUntil = (int) now()->startOfDay()->diffInDays($date->startOfDay(), false);
+                    $upcomingDeadlines[] = [
+                        'application_id'     => $app->id,
+                        'application_number' => $app->application_number,
+                        'application_status' => $app->status,
+                        'type'               => $field,
+                        'label'              => $label,
+                        'date'               => $app->$field,
+                        'days_until'         => $daysUntil,
+                        'is_overdue'         => $daysUntil < 0,
+                        'is_urgent'          => $daysUntil >= 0 && $daysUntil <= 3,
+                    ];
+                }
+            }
+        }
+
+        // Sort: overdue first, then by date ascending
+        usort($upcomingDeadlines, fn($a, $b) => $a['days_until'] <=> $b['days_until']);
+
+        // ── Operational intelligence ─────────────────────────────────────────
+        $contractId = $mainContract?->id;
+
+        $intelligence     = app(OperationalIntelligenceService::class);
+        $upcomingActions  = app(UpcomingActionsService::class);
+        $healthService    = app(ProjectHealthService::class);
+
+        $operationalSummary = $intelligence->getSummary($project->id, $contractId);
+        $actionsSummary     = $upcomingActions->getDashboardSummary($project->id, $contractId);
+        $projectHealth      = $healthService->getHealth($project->id, $contractId);
+
+        // ── Risk summary ─────────────────────────────────────────────────────
+        $contractIds = $contractId
+            ? collect([$contractId])
+            : \App\Models\Contract::where('project_id', $project->id)->pluck('id');
+
+        $risks = \App\Models\ContractRisk::whereIn('contract_id', $contractIds)
+            ->where('status', '!=', 'resolved')
+            ->orderByRaw("FIELD(severity, 'critical', 'high', 'medium', 'low')")
+            ->get(['id', 'title', 'severity', 'urgency', 'is_non_standard_amendment', 'category', 'clause_reference', 'commercial_impact', 'recommended_action']);
+
+        $riskSummary = [
+            'critical'              => $risks->where('severity', 'critical')->count(),
+            'high'                  => $risks->where('severity', 'high')->count(),
+            'medium'                => $risks->where('severity', 'medium')->count(),
+            'non_standard_amendments' => $risks->where('is_non_standard_amendment', true)->count(),
+            'top_risks'             => $risks->take(5)->values(),
+        ];
+
+        // ── Final Accounts ────────────────────────────────────────────────────
+        // Deliberately project-wide (not scoped to $contractId like the blocks
+        // above) — a project can have a Final Account per main contract AND per
+        // trade package, mirroring the Commercial tab's "one card per contract/
+        // trade package" presentation rather than only the single main contract.
+        $finalAccountService = app(\App\Services\FinalAccountService::class);
+
+        $finalAccounts = \App\Models\FinalAccount::where('project_id', $project->id)
+            ->with(['contract:id,title', 'tradePackage:id,name'])
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(function (\App\Models\FinalAccount $fa) use ($finalAccountService) {
+                $totals = $fa->isSnapshotted()
+                    ? ['final_balance_due' => (float) $fa->final_balance_due, 'retention_outstanding' => (float) $fa->retention_outstanding]
+                    : $finalAccountService->calculateCurrentTotals($fa);
+
+                $disputeRemaining = $fa->dispute_window_expires_at
+                    ? (int) now()->startOfDay()->diffInDays(\Carbon\Carbon::parse($fa->dispute_window_expires_at)->startOfDay(), false)
+                    : null;
+
+                return [
+                    'id'                       => $fa->id,
+                    'reference'                => $fa->reference,
+                    'status'                   => $fa->status,
+                    'source_name'              => $fa->contract->title ?? $fa->tradePackage->name ?? null,
+                    'is_trade_package'         => $fa->is_trade_package,
+                    'final_balance_due'        => $totals['final_balance_due'] ?? null,
+                    'retention_outstanding'    => $totals['retention_outstanding'] ?? null,
+                    'is_snapshotted'           => $fa->isSnapshotted(),
+                    'final_certificate_status' => $fa->isFinalCertificateIssued() ? 'issued' : 'not_issued',
+                    'dispute_window_expires_at'    => $fa->dispute_window_expires_at,
+                    'dispute_window_remaining_days' => $disputeRemaining,
+                    'close_out_progress'      => $finalAccountService->getCloseOutProgress($fa),
+                    'action_url'              => "/app/projects/{$fa->project_id}/commercial?tab=final-account&fa={$fa->id}",
+                ];
+            });
+
+        return response()->json([
+            'main_contract'       => $mainContract,
+            'ai_analysis'         => $aiAnalysis,
+            'commercial'          => $commercial,
+            'documents_count'     => $documentsCount,
+            'upcoming_deadlines'  => $upcomingDeadlines,
+            'operational_summary' => $operationalSummary,
+            'upcoming_actions'    => $actionsSummary,
+            'project_health'      => $projectHealth,
+            'risk_summary'        => $riskSummary,
+            'final_accounts'      => $finalAccounts,
+        ]);
     }
 }

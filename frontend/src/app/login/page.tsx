@@ -26,13 +26,34 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPw,   setShowPw]   = useState(false);
   const [error,    setError]    = useState('');
+  // Start hidden — we reveal only once we've confirmed the user is NOT authenticated.
+  // This avoids SSR/client hydration mismatch (window is undefined on server so we
+  // cannot check localStorage until after mount).
+  const [ready, setReady] = useState(false);
 
-  // Login page is always light — reset any user theme or branding applied by a previous session
   useEffect(() => {
+    // Check both localStorage keys in case they diverged
+    const hasToken = (() => {
+      if (localStorage.getItem('suresign_token')) return true;
+      try {
+        const p = localStorage.getItem('suresign-auth');
+        return !!(p && JSON.parse(p)?.state?.token);
+      } catch { return false; }
+    })();
+
+    if (hasToken) {
+      router.replace('/app/projects');
+      return; // stay hidden (ready stays false) while redirect happens
+    }
+
+    // Not authenticated — safe to show login form
     document.documentElement.setAttribute('data-theme', 'light');
     document.documentElement.style.removeProperty('--gold');
     document.documentElement.style.removeProperty('--accent-fg');
-  }, []);
+    setReady(true);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!ready) return null;
 
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();

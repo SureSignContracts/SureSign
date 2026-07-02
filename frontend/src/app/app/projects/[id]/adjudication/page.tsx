@@ -510,7 +510,7 @@ export default function ProjectAdjudicationPage() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={e => { e.stopPropagation(); router.push(`/app/projects/${id}/adjudication/${c.id}`); }}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors hover:bg-[var(--bg-elevated)]"
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors hover:bg-[var(--bg-hover)]"
                       style={{ color: 'var(--gold)' }}
                     >
                       View <ChevronRight size={12} />
@@ -521,7 +521,7 @@ export default function ProjectAdjudicationPage() {
                           e.stopPropagation();
                           if (confirm(`Archive case ${c.case_number}?`)) deleteMutation.mutate(c.id);
                         }}
-                        className="px-3 py-1.5 rounded-lg text-xs hover:bg-[var(--bg-elevated)] transition-colors"
+                        className="px-3 py-1.5 rounded-lg text-xs hover:bg-[var(--bg-hover)] transition-colors"
                         style={{ color: '#f87171' }}
                       >
                         Archive

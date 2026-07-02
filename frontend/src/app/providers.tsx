@@ -5,7 +5,17 @@ import { Toaster } from 'react-hot-toast';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
-    defaultOptions: { queries: { staleTime: 1000 * 60 * 2, retry: 1 } },
+    // staleTime: 0 — show cached data instantly, then refetch in the background on every
+    // page mount so navigating to a page always reflects the latest data without a manual
+    // reload. refetchOnWindowFocus is off to avoid refetching on every browser tab switch.
+    defaultOptions: {
+      queries: {
+        staleTime: 0,
+        retry: 1,
+        refetchOnMount: true,
+        refetchOnWindowFocus: false,
+      },
+    },
   }));
   return (
     <QueryClientProvider client={queryClient}>

@@ -75,8 +75,8 @@ export default function AppTeamPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
-        <table className="w-full text-sm">
+      <div className="rounded-2xl overflow-x-auto" style={{ border: '1px solid var(--border)' }}>
+        <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
               {['Member', 'Role', 'Joined', ''].map(h => (
@@ -138,7 +138,7 @@ export default function AppTeamPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <button className="p-1 rounded-lg hover:bg-[var(--bg-elevated)] transition-colors">
+                    <button className="p-1 rounded-lg hover:bg-[var(--bg-hover)] transition-colors">
                       <MoreVertical size={14} style={{ color: 'var(--text-muted)' }} />
                     </button>
                   </td>

@@ -152,7 +152,7 @@ export default function ProjectSiteReportsPage() {
           return (
             <div
               key={d.id}
-              className="flex items-center justify-between p-4 rounded-xl cursor-pointer hover:bg-[var(--bg-elevated)] transition-colors"
+              className="flex items-center justify-between p-4 rounded-xl cursor-pointer hover:bg-[var(--bg-hover)] transition-colors"
               style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
             >
               <div className="flex items-center gap-4">

@@ -27,7 +27,7 @@ COPY . .
 RUN mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions storage/framework/views storage/logs \
     && chmod -R 775 bootstrap/cache storage
 
-RUN composer install --no-dev --optimize-autoloader --no-interaction \
+RUN composer install --optimize-autoloader --no-interaction \
     && php artisan package:discover --ansi
 
 EXPOSE 8000

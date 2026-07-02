@@ -187,7 +187,7 @@ export default function DocumentRegisterPage() {
                 ) : entries.map(entry => {
                   const badge = TYPE_COLORS[entry.document_type] ?? { bg: 'var(--bg-elevated)', text: 'var(--text-muted)' };
                   return (
-                    <tr key={entry.id} className="hover:bg-[var(--bg-elevated)] transition-colors"
+                    <tr key={entry.id} className="hover:bg-[var(--bg-hover)] transition-colors"
                       style={{ borderBottom: '1px solid var(--border)' }}>
                       <td className="px-5 py-3 font-mono text-xs font-semibold" style={{ color: 'var(--gold)' }}>
                         {entry.document_number ?? '—'}

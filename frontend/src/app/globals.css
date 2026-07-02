@@ -5,14 +5,14 @@
   --gold-light: #333333;
   --gold-dark: #000000;
   --accent-fg: #ffffff;   /* Text colour on top of accent backgrounds */
-  /* Light mode — black & white */
-  --bg-base: #ffffff;
-  --bg-surface: #fafafa;
-  --bg-elevated: #f4f4f4;
-  --bg-panel: #eeeeee;
-  --bg-hover: #e5e5e5;
-  --border: #e0e0e0;
-  --border-light: #cccccc;
+  /* Light mode — soft gray canvas, white cards */
+  --bg-base: #F1F1F1;       /* App canvas + sidebars */
+  --bg-surface: #ffffff;    /* Cards / panels + sidebar hover pills (white on gray) */
+  --bg-elevated: #f4f4f4;   /* Faint inset fills inside white cards (chips, skeletons) */
+  --bg-panel: #ececec;      /* Slightly deeper insets / active fills */
+  --bg-hover: #eaeaea;      /* Hover state on white surfaces (rows inside cards) */
+  --border: #e4e4e4;
+  --border-light: #d4d4d4;
   --text-primary: #0a0a0a;
   --text-secondary: #525252;
   --text-muted: #8a8a8a;
@@ -20,6 +20,7 @@
 }
 
 [data-theme="dark"] {
+  --logo-filter: invert(1);
   --gold: #f0f0f0;        /* Accent = near-white in dark mode */
   --gold-light: #ffffff;
   --gold-dark: #d0d0d0;
@@ -75,3 +76,22 @@ a, button {
 ::-webkit-scrollbar-thumb:hover { background: var(--gold-dark); }
 
 ::selection { background: rgba(185, 149, 102, 0.3); color: var(--text-primary); }
+
+/* ── Entrance animations ─────────────────────────────────────────────────── */
+@keyframes ss-fade-in-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Fade + lift on mount. Add inline `animationDelay` for stagger. */
+.ss-animate-in {
+  opacity: 0;
+  animation: ss-fade-in-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ss-animate-in {
+    opacity: 1;
+    animation: none;
+  }
+}

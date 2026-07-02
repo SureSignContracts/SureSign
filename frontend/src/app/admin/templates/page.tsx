@@ -46,13 +46,17 @@ const SUBCONTRACT_TEMPLATE_TYPES: Record<string, string> = {
 
 const ALL_TEMPLATE_TYPES: Record<string, string> = {
   ...SUBCONTRACT_TEMPLATE_TYPES,
-  variation:       'Variation',
-  payment_notice:  'Payment Notice',
-  pay_less_notice: 'Pay Less Notice',
-  eot:             'EOT',
-  rfi:             'RFI',
-  meeting_minutes: 'Meeting Minutes',
-  site_report:     'Site Report',
+  variation:            'Variation',
+  payment_application:  'Payment Application',
+  payment_certificate:  'Payment Certificate',
+  payment_notice:       'Payment Notice',
+  pay_less_notice:      'Pay Less Notice',
+  variation_schedule:   'Variation Schedule',
+  commercial_schedule:  'Commercial Schedule',
+  eot:                  'EOT',
+  rfi:                  'RFI',
+  meeting_minutes:      'Meeting Minutes',
+  site_report:          'Site Report',
 };
 
 const FILTER_TABS = ['All', ...Object.values(CATEGORY_LABELS)];
@@ -276,6 +280,11 @@ function TemplateModal({
                   </button>
                 ))}
               </div>
+              <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+                {scope === 'global'
+                  ? 'Global templates are shared across all companies. Company branding (logo, letterhead, colours) is applied automatically when documents are generated.'
+                  : 'This template is only available to the selected company. Branding is still applied dynamically from that company\'s settings.'}
+              </p>
             </div>
 
             {/* Company picker */}
@@ -417,12 +426,12 @@ function TemplateRow({
         <div className="flex items-center gap-1 justify-end">
           {t.has_file && (
             <button onClick={() => onPreview(t)}
-              className="p-1.5 rounded-lg transition-colors hover:bg-[var(--bg-elevated)]" title="Preview">
+              className="p-1.5 rounded-lg transition-colors hover:bg-[var(--bg-hover)]" title="Preview">
               <Eye size={13} style={{ color: 'var(--text-muted)' }} />
             </button>
           )}
           <button onClick={() => onEdit(t)}
-            className="p-1.5 rounded-lg transition-colors hover:bg-[var(--bg-elevated)]" title="Edit">
+            className="p-1.5 rounded-lg transition-colors hover:bg-[var(--bg-hover)]" title="Edit">
             <Pencil size={13} style={{ color: 'var(--text-muted)' }} />
           </button>
           <button onClick={() => onDelete(t)}
@@ -519,7 +528,8 @@ function CompanyGroup({
           transition: 'height 200ms cubic-bezier(0.4,0,0.2,1)',
         }}
       >
-        <table className="w-full">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[760px]">
           <thead>
             <tr style={{ backgroundColor: 'var(--bg-surface)', borderBottom: '1px solid var(--border)', borderTop: '1px solid var(--border)' }}>
               {['Template', 'Category', 'Type', 'File', 'Status', ''].map((h, i) => (
@@ -534,6 +544,7 @@ function CompanyGroup({
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

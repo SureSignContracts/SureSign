@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\AiConversation;
 use App\Models\AiMessage;
 use App\Models\Document;
 use App\Models\FileUpload;
 use App\Models\Organization;
 use App\Models\Project;
+use App\Models\ProjectActivity;
+use App\Models\SuresignNotification;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -36,15 +39,85 @@ class AdminController extends Controller
         $recentCompanies = Organization::select('id', 'name', 'email', 'created_at')
             ->withCount(['users', 'projects'])
             ->latest()
-            ->limit(10)
+            ->limit(8)
             ->get();
 
-        // Recent project activity across all companies
         $recentProjects = Project::select('id', 'name', 'code', 'status', 'organization_id', 'created_at')
             ->with('organization:id,name')
             ->latest()
-            ->limit(5)
+            ->limit(8)
             ->get();
+
+        $recentDocuments = FileUpload::select('id', 'original_name', 'project_id', 'organization_id', 'file_size', 'mime_type', 'created_at')
+            ->with([
+                'project:id,name,code',
+                'uploader:id,first_name,last_name,name',
+            ])
+            ->latest()
+            ->limit(8)
+            ->get()
+            ->map(function ($doc) {
+                return [
+                    'id'            => $doc->id,
+                    'name'          => $doc->original_name,
+                    'project_name'  => $doc->project?->name,
+                    'project_code'  => $doc->project?->code,
+                    'uploaded_by'   => $doc->uploader
+                        ? trim(($doc->uploader->first_name ?? '') . ' ' . ($doc->uploader->last_name ?? '')) ?: $doc->uploader->name
+                        : null,
+                    'file_size'     => $doc->file_size,
+                    'mime_type'     => $doc->mime_type,
+                    'created_at'    => $doc->created_at,
+                ];
+            });
+
+        $recentActivity = ProjectActivity::with([
+                'user:id,first_name,last_name,name',
+                'project:id,name,code',
+                'organization:id,name',
+            ])
+            ->latest()
+            ->limit(15)
+            ->get()
+            ->map(function ($a) {
+                $userName = null;
+                if ($a->user) {
+                    $userName = trim(($a->user->first_name ?? '') . ' ' . ($a->user->last_name ?? '')) ?: $a->user->name;
+                }
+                return [
+                    'id'           => $a->id,
+                    'type'         => $a->activity_type,
+                    'title'        => $a->title,
+                    'description'  => $a->description,
+                    'user_name'    => $userName,
+                    'project_name' => $a->project?->name,
+                    'org_name'     => $a->organization?->name,
+                    'created_at'   => $a->created_at,
+                ];
+            });
+
+        $recentNotifications = SuresignNotification::select('id', 'user_id', 'type', 'title', 'message', 'is_read', 'created_at')
+            ->with('user:id,first_name,last_name,name')
+            ->latest()
+            ->limit(8)
+            ->get()
+            ->map(function ($n) {
+                $userName = null;
+                if ($n->user) {
+                    $userName = trim(($n->user->first_name ?? '') . ' ' . ($n->user->last_name ?? '')) ?: $n->user->name;
+                }
+                return [
+                    'id'         => $n->id,
+                    'type'       => $n->type,
+                    'title'      => $n->title,
+                    'message'    => $n->message,
+                    'is_read'    => $n->is_read,
+                    'user_name'  => $userName,
+                    'created_at' => $n->created_at,
+                ];
+            });
+
+        $unreadNotifications = SuresignNotification::where('is_read', false)->count();
 
         return response()->json([
             'stats' => [
@@ -57,13 +130,17 @@ class AdminController extends Controller
                 'storage_used_gb'  => $storageUsedGB,
                 'storage_used'     => $storageUsedGB > 0 ? $storageUsedGB . ' GB' : '0 GB',
             ],
-            'recent_companies' => $recentCompanies,
-            'recent_projects'  => $recentProjects,
+            'recent_companies'    => $recentCompanies,
+            'recent_projects'     => $recentProjects,
+            'recent_documents'    => $recentDocuments,
+            'recent_activity'     => $recentActivity,
+            'recent_notifications' => $recentNotifications,
             'activity' => [
-                'docs_today'      => FileUpload::whereDate('created_at', today())->count(),
-                'ai_requests'     => $monthlyAiUsage,
-                'active_sessions' => 0, // extend with session tracking as needed
-                'support_tickets' => 0,
+                'docs_today'           => FileUpload::whereDate('created_at', today())->count(),
+                'ai_requests'          => $monthlyAiUsage,
+                'active_sessions'      => 0,
+                'support_tickets'      => 0,
+                'unread_notifications' => $unreadNotifications,
             ],
         ]);
     }
@@ -249,6 +326,7 @@ class AdminController extends Controller
     {
         $companies = Organization::select('id', 'name')
             ->withCount('projects')
+            ->with('branding:organization_id,logo_path')
             ->get()
             ->map(function ($org) {
                 return [
@@ -257,6 +335,9 @@ class AdminController extends Controller
                     'projects_count' => $org->projects_count,
                     'files_count'    => FileUpload::where('organization_id', $org->id)->count(),
                     'storage_size'   => (int) FileUpload::where('organization_id', $org->id)->sum('file_size'),
+                    'logo_url'       => $org->branding?->logo_path
+                        ? url('storage/' . $org->branding->logo_path)
+                        : null,
                 ];
             });
 
@@ -508,5 +589,26 @@ class AdminController extends Controller
         }
 
         return response()->json($query->latest()->paginate(50));
+    }
+
+    public function auditLog(Request $request)
+    {
+        $query = ActivityLog::with('user:id,name,email')
+            ->latest();
+
+        if ($request->filled('action')) {
+            $query->where('action', $request->action);
+        }
+        if ($request->filled('project_id')) {
+            $query->where('project_id', $request->project_id);
+        }
+        if ($request->filled('user_id')) {
+            $query->where('user_id', $request->user_id);
+        }
+        if ($request->filled('search')) {
+            $query->where('description', 'like', '%' . $request->search . '%');
+        }
+
+        return response()->json($query->paginate(50));
     }
 }

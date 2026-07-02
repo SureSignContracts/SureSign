@@ -376,7 +376,7 @@ export default function ProjectMeetingsPage() {
           return (
             <div
               key={m.id}
-              className="flex items-center justify-between p-4 rounded-xl cursor-pointer hover:bg-[var(--bg-elevated)] transition-colors"
+              className="flex items-center justify-between p-4 rounded-xl cursor-pointer hover:bg-[var(--bg-hover)] transition-colors"
               style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
               onClick={() => setDetailMeeting(m)}
             >

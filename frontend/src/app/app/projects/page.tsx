@@ -61,7 +61,7 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
           <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>New Project</h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[var(--bg-elevated)] transition-colors">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[var(--bg-hover)] transition-colors">
             <X size={16} style={{ color: 'var(--text-muted)' }} />
           </button>
         </div>
@@ -145,7 +145,7 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
         <div className="flex items-center justify-end gap-3 px-6 py-4" style={{ borderTop: '1px solid var(--border)' }}>
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg text-sm transition-colors hover:bg-[var(--bg-elevated)]"
+            className="px-4 py-2 rounded-lg text-sm transition-colors hover:bg-[var(--bg-hover)]"
             style={{ color: 'var(--text-secondary)' }}
           >
             Cancel

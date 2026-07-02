@@ -14,7 +14,9 @@
  */
 
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { BookOpen } from 'lucide-react';
+import api from '@/lib/api';
 import PromptContextModal from './PromptContextModal';
 
 export interface PromptActionButtonProps {
@@ -46,6 +48,16 @@ export default function PromptActionButton({
 }: PromptActionButtonProps) {
   const [open, setOpen] = useState(false);
 
+  const { data: settingsData } = useQuery({
+    queryKey: ['suresign-settings-public'],
+    queryFn: () => api.get('/admin/suresign-settings').then(r => r.data?.data ?? {}),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  if ((settingsData as any)?.prompts_enabled === false) {
+    return null;
+  }
+
   const buttonContent = variant === 'icon-only' ? (
     <BookOpen size={13} />
   ) : (
@@ -60,7 +72,7 @@ export default function PromptActionButton({
       <button
         onClick={e => { e.stopPropagation(); setOpen(true); }}
         title={label}
-        className={`flex items-center gap-1 transition-colors hover:bg-[var(--bg-elevated)] rounded-lg ${
+        className={`flex items-center gap-1 transition-colors hover:bg-[var(--bg-hover)] rounded-lg ${
           variant === 'icon-only' ? 'p-1.5' : 'text-xs px-2 py-1'
         } ${className}`}
         style={{ color: 'var(--gold)' }}

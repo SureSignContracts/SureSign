@@ -272,7 +272,7 @@ export default function ProjectNoticesPage() {
           const badge = STATUS_COLORS[item.status] ?? { bg: 'var(--bg-elevated)', text: 'var(--text-muted)' };
           return (
             <div key={item.id}
-              className="flex items-center justify-between p-4 rounded-xl cursor-pointer hover:bg-[var(--bg-elevated)] transition-colors"
+              className="flex items-center justify-between p-4 rounded-xl cursor-pointer hover:bg-[var(--bg-hover)] transition-colors"
               style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
               <div className="flex items-center gap-4">
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(249,115,22,0.1)' }}>
