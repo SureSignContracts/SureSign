@@ -11,8 +11,11 @@ export function formatCurrency(amount: number | string, currency = 'GBP'): strin
   return new Intl.NumberFormat('en-GB', { style: 'currency', currency }).format(num);
 }
 
-export function formatDate(date: string | Date): string {
-  return new Intl.DateTimeFormat('en-AU', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(date));
+export function formatDate(date: string | Date | null | undefined): string {
+  if (!date) return '—';
+  const parsed = new Date(date);
+  if (isNaN(parsed.getTime())) return '—';
+  return new Intl.DateTimeFormat('en-AU', { day: '2-digit', month: 'short', year: 'numeric' }).format(parsed);
 }
 
 export function getInitials(name: string): string {

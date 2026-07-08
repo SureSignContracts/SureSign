@@ -28,6 +28,7 @@ class TradePackage extends Model
         // Commercial terms
         'contract_value',
         'retention_percentage',
+        'liquidated_damages',
         'payment_terms_days',
         'payment_frequency',
         // Subcontract dates
@@ -145,6 +146,28 @@ class TradePackage extends Model
     public function finalAccount()
     {
         return $this->hasOne(FinalAccount::class, 'trade_package_id');
+    }
+
+    public function aiAnalyses()
+    {
+        return $this->hasMany(TradePackageAiAnalysis::class);
+    }
+
+    /**
+     * The authoritative completion date once EOTs are factored in: the most
+     * recently granted EOT's revised_completion_date, falling back to the
+     * original completion_date if none have been granted. This does not
+     * mutate completion_date itself — see EotRequestController::decide().
+     */
+    public function currentCompletionDate(): ?\Carbon\Carbon
+    {
+        $latestGranted = EotRequest::where('trade_package_id', $this->id)
+            ->where('status', 'granted')
+            ->whereNotNull('revised_completion_date')
+            ->orderByDesc('decided_at')
+            ->first();
+
+        return $latestGranted?->revised_completion_date ?? $this->completion_date;
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────

@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckSquare, Download, FileText, Square, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
+import Button from '@/components/ui/Button';
 
 type TemplateItem = {
   id: number;
@@ -335,11 +336,9 @@ export default function GeneratePackageModal({
                 Generate Another
               </button>
               {result.file_upload && (
-                <button type="button" onClick={() => handleDownload()}
-                  className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium"
-                  style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+                <Button type="button" onClick={() => handleDownload()}>
                   <Download size={14} /> Download
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -369,7 +368,7 @@ export default function GeneratePackageModal({
                     onClick={() => setGenerationType(opt.value)}
                     className="rounded-xl p-4 text-left transition-colors"
                     style={{
-                      backgroundColor: generationType === opt.value ? 'rgba(185,149,102,0.1)' : 'var(--bg-elevated)',
+                      backgroundColor: generationType === opt.value ? 'var(--gold-15)' : 'var(--bg-elevated)',
                       border: `1px solid ${generationType === opt.value ? 'var(--gold)' : 'var(--border)'}`,
                     }}
                   >
@@ -479,19 +478,17 @@ export default function GeneratePackageModal({
                 style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
                 Cancel
               </button>
-              <button
+              <Button
                 type="submit"
                 disabled={
                   generateMutation.isPending ||
                   (generationType === 'complete_package' && !activeMasterTemplateId) ||
                   (generationType === 'separate_documents' && selectedDocTypes.size === 0)
                 }
-                className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium"
-                style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: generateMutation.isPending ? 0.7 : 1 }}
               >
                 <FileText size={14} />
                 {generateMutation.isPending ? 'Generating…' : 'Generate Package'}
-              </button>
+              </Button>
             </div>
           </form>
         )}

@@ -284,7 +284,7 @@ function ProjectPromptsModal({ projectId, onClose }: { projectId: string; onClos
           <div className="flex items-center gap-2">
             <BookOpen size={16} style={{ color: 'var(--gold)' }} />
             <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>Project Prompts</span>
-            <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(185,149,102,0.12)', color: 'var(--gold)' }}>
+            <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}>
               Context auto-filled
             </span>
           </div>
@@ -461,7 +461,7 @@ export default function ProjectDetailPage() {
             <button
               onClick={() => setShowPrompts(true)}
               className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium transition-opacity hover:opacity-90"
-              style={{ backgroundColor: 'rgba(185,149,102,0.15)', color: 'var(--gold)', border: '1px solid rgba(185,149,102,0.3)' }}
+              style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)', border: '1px solid var(--gold-30)' }}
             >
               <BookOpen size={13} />
               Project Prompts

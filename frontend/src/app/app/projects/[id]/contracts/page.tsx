@@ -7,13 +7,18 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
-import { FileText, Plus, Search, X, Sparkles, Loader2, CheckCircle, AlertTriangle, ChevronDown, ChevronUp, Minus, Upload, ArrowRight, Eye, Download, Paperclip, MoreHorizontal, Trash2, Archive, RotateCcw, LayoutDashboard, Pencil, FileSignature } from 'lucide-react';
+import { FileText, Plus, Search, X, Sparkles, Loader2, CheckCircle, AlertTriangle, Minus, Upload, ArrowRight, Eye, Download, Paperclip, MoreHorizontal, Trash2, Archive, RotateCcw, LayoutDashboard, Pencil, FileSignature } from 'lucide-react';
 import DocumentPreviewModal, { PreviewTarget } from '@/components/documents/DocumentPreviewModal';
 import GeneratePackageModal from '@/components/documents/GeneratePackageModal';
+import GenerateTradePackageFolderModal from '@/components/documents/GenerateTradePackageFolderModal';
+import SubcontractAiOnboardingModal from '@/components/subcontracts/SubcontractAiOnboardingModal';
 import toast from 'react-hot-toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PromptActionButton from '@/components/prompts/PromptActionButton';
 import { useAiAnalysisStore } from '@/store/aiAnalysisStore';
+import SharedSection from '@/components/ai/Section';
+import SharedAnalysisLoadingDisplay from '@/components/ai/AnalysisLoadingDisplay';
+import PageTourButton from '@/components/tours/PageTourButton';
 
 const ANALYSIS_MESSAGES = [
   { at: 0,   text: 'Reading contract document…' },
@@ -21,54 +26,17 @@ const ANALYSIS_MESSAGES = [
   { at: 18,  text: 'Identifying payment conditions…' },
   { at: 30,  text: 'Analysing obligations and risks…' },
   { at: 45,  text: 'Cross-referencing contract clauses…' },
-  { at: 60,  text: 'Almost there — finalising results…' },
+  { at: 60,  text: 'Almost there, finalising results…' },
   { at: 80,  text: 'Nearly done, just a few more seconds…' },
   { at: 100, text: 'Wrapping up the analysis…' },
 ];
 
 function AnalysisLoadingDisplay() {
-  const [elapsed, setElapsed] = useState(0);
-  // Simulate progress: fast early, slow later, never quite reaches 100
-  const progress = Math.min(97, Math.round(100 * (1 - Math.exp(-elapsed / 90))));
-  const message = [...ANALYSIS_MESSAGES].reverse().find(m => elapsed >= m.at)?.text ?? ANALYSIS_MESSAGES[0].text;
+  return <SharedAnalysisLoadingDisplay messages={ANALYSIS_MESSAGES} caption="AI is reading your contract. You can minimise this and come back." />;
+}
 
-  useEffect(() => {
-    const t = setInterval(() => setElapsed(s => s + 1), 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  return (
-    <div className="flex flex-col items-center justify-center py-16 gap-5 select-none">
-      {/* Pulsing ring + icon */}
-      <div className="relative flex items-center justify-center">
-        <div className="absolute w-20 h-20 rounded-full animate-ping opacity-20" style={{ backgroundColor: 'var(--gold)' }} />
-        <div className="relative w-16 h-16 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(185,149,102,0.12)', border: '2px solid var(--gold)' }}>
-          <Sparkles size={26} style={{ color: 'var(--gold)' }} />
-        </div>
-      </div>
-
-      {/* Message */}
-      <div className="text-center space-y-1">
-        <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{message}</p>
-        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          AI is reading your contract — you can minimise this and come back.
-        </p>
-      </div>
-
-      {/* Progress bar */}
-      <div className="w-64 space-y-1.5">
-        <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-elevated)' }}>
-          <div
-            className="h-full rounded-full transition-all duration-1000 ease-out"
-            style={{ width: `${progress}%`, backgroundColor: 'var(--gold)' }}
-          />
-        </div>
-        <div className="flex justify-center text-xs" style={{ color: 'var(--text-muted)' }}>
-          <span>{progress}%</span>
-        </div>
-      </div>
-    </div>
-  );
+function Section(props: { title: string; open: boolean; onToggle: () => void; children: React.ReactNode }) {
+  return <SharedSection {...props} />;
 }
 
 type FormChangeEvent = React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>;
@@ -334,9 +302,9 @@ function AiAnalysisModal({ contract, projectId, onClose, initialAnalysis, forceN
   if (store.isMinimized) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
       <div
-        className="w-full max-w-3xl rounded-2xl shadow-xl flex flex-col"
+        className="w-full max-w-3xl rounded-2xl ss-animate-in shadow-[var(--shadow-pop)] flex flex-col"
         style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', maxHeight: '92vh' }}
         onClick={e => e.stopPropagation()}
       >
@@ -345,14 +313,14 @@ function AiAnalysisModal({ contract, projectId, onClose, initialAnalysis, forceN
           <div className="flex items-center gap-2">
             <Sparkles size={16} style={{ color: 'var(--gold)' }} />
             <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>AI Contract Review</h2>
-            <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: 'rgba(185,149,102,0.12)', color: 'var(--gold)' }}>
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}>
               {contract.title}
             </span>
           </div>
           <div className="flex items-center gap-1">
             <button
               onClick={() => store.minimize()}
-              title="Minimise — analysis continues in the background"
+              title="Minimise (analysis continues in the background)"
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs transition-colors hover:bg-[var(--bg-hover)]"
               style={{ color: 'var(--text-muted)' }}
             >
@@ -433,7 +401,7 @@ function AiAnalysisModal({ contract, projectId, onClose, initialAnalysis, forceN
                           <span className="text-xs" style={{ color: 'var(--text-muted)' }}>by {a.creator.name}</span>
                         )}
                         {a.model && (
-                          <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+                          <span className="text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>
                             {a.model.replace('claude-', '')}
                           </span>
                         )}
@@ -446,7 +414,7 @@ function AiAnalysisModal({ contract, projectId, onClose, initialAnalysis, forceN
                     </div>
                     <button
                       onClick={() => { setAnalysis(a); setAnalysisId(a.id); setPriorAnalyses([]); }}
-                      className="flex-shrink-0 text-xs px-3 py-1.5 rounded-lg font-medium"
+                      className="flex-shrink-0 text-xs px-3 py-1.5 rounded-lg font-medium active:scale-[0.98]"
                       style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
                     >
                       View This Analysis
@@ -481,7 +449,7 @@ function AiAnalysisModal({ contract, projectId, onClose, initialAnalysis, forceN
               </p>
               <button
                 onClick={() => startMutation.mutate(undefined)}
-                className="mt-1 px-3 py-1.5 rounded-lg text-xs font-medium"
+                className="mt-1 px-3 py-1.5 rounded-lg text-xs font-medium active:scale-[0.98]"
                 style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
               >
                 Retry
@@ -662,7 +630,7 @@ function AiAnalysisModal({ contract, projectId, onClose, initialAnalysis, forceN
                             <div className="flex flex-wrap gap-x-4 gap-y-0.5">
                               {d.time_period_text && <span className="text-xs" style={{ color: 'var(--gold)' }}>{d.time_period_text}</span>}
                               {d.responsible_party && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{d.responsible_party}</span>}
-                              {d.clause_reference && <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>{d.clause_reference}</span>}
+                              {d.clause_reference && <span className="text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>{d.clause_reference}</span>}
                             </div>
                           </div>
                         ))}
@@ -710,7 +678,7 @@ function AiAnalysisModal({ contract, projectId, onClose, initialAnalysis, forceN
                               </div>
                               {r.description && <p className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>{r.description}</p>}
                               <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
-                                {r.clause_reference && <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>{r.clause_reference}</span>}
+                                {r.clause_reference && <span className="text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>{r.clause_reference}</span>}
                                 {r.commercial_impact && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Commercial: {r.commercial_impact}</span>}
                                 {r.urgency && r.urgency !== 'monitor' && <span className="text-xs" style={{ color: '#eab308' }}>Urgency: {r.urgency}</span>}
                               </div>
@@ -755,7 +723,7 @@ function AiAnalysisModal({ contract, projectId, onClose, initialAnalysis, forceN
                                   <span className="text-xs mt-0.5 flex-shrink-0" style={{ color: 'var(--text-muted)' }}>•</span>
                                   <div>
                                     <p className="text-sm" style={{ color: 'var(--text-primary)' }}>{o.title}</p>
-                                    {o.clause_reference && <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>{o.clause_reference}</span>}
+                                    {o.clause_reference && <span className="text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>{o.clause_reference}</span>}
                                   </div>
                                 </div>
                               ))}
@@ -929,7 +897,7 @@ function AiAnalysisModal({ contract, projectId, onClose, initialAnalysis, forceN
                   type="button"
                   onClick={handleConfirmClick}
                   disabled={confirmMutation.isPending}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]"
                   style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: confirmMutation.isPending ? 0.7 : 1 }}
                 >
                   <CheckCircle size={14} />
@@ -940,27 +908,6 @@ function AiAnalysisModal({ contract, projectId, onClose, initialAnalysis, forceN
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-function Section({ title, open, onToggle, children }: { title: string; open: boolean; onToggle: () => void; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
-      <button
-        type="button"
-        onClick={onToggle}
-        className="w-full flex items-center justify-between px-4 py-3 text-left"
-        style={{ backgroundColor: 'var(--bg-elevated)' }}
-      >
-        <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{title}</span>
-        {open ? <ChevronUp size={14} style={{ color: 'var(--text-muted)' }} /> : <ChevronDown size={14} style={{ color: 'var(--text-muted)' }} />}
-      </button>
-      {open && (
-        <div className="p-4" style={{ backgroundColor: 'var(--bg-surface)' }}>
-          {children}
-        </div>
-      )}
     </div>
   );
 }
@@ -1015,8 +962,8 @@ function EditContractModal({ contract, projectId, onClose }: { contract: Project
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-2xl rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+      <div className="w-full max-w-2xl rounded-2xl ss-animate-in shadow-[var(--shadow-pop)] max-h-[90vh] overflow-y-auto" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
         <div className="flex items-center justify-between p-5" style={{ borderBottom: '1px solid var(--border)' }}>
           <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Edit Contract</h2>
           <button onClick={onClose}><X size={18} style={{ color: 'var(--text-muted)' }} /></button>
@@ -1079,7 +1026,7 @@ function EditContractModal({ contract, projectId, onClose }: { contract: Project
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
-            <button type="submit" disabled={isPending} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: isPending ? 0.7 : 1 }}>
+            <button type="submit" disabled={isPending} className="px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: isPending ? 0.7 : 1 }}>
               {isPending ? 'Saving…' : 'Save Changes'}
             </button>
           </div>
@@ -1438,9 +1385,9 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
   })();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
       <div
-        className="w-full max-w-2xl rounded-2xl shadow-xl flex flex-col"
+        className="w-full max-w-2xl rounded-2xl ss-animate-in shadow-[var(--shadow-pop)] flex flex-col"
         style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', maxHeight: '92vh' }}
         onClick={e => e.stopPropagation()}
       >
@@ -1476,7 +1423,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
               // Offer Minimise instead — the only non-destructive action here (Cancel is in the footer).
               <button
                 onClick={() => store.minimize()}
-                title="Minimise — analysis continues in the background"
+                title="Minimise (analysis continues in the background)"
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs transition-colors hover:bg-[var(--bg-hover)]"
                 style={{ color: 'var(--text-muted)' }}
               >
@@ -1509,13 +1456,13 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
                 style={{ backgroundColor: 'var(--bg-elevated)', border: '1.5px solid var(--border)' }}
               >
                 <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center mt-0.5" style={{ backgroundColor: 'rgba(185,149,102,0.12)' }}>
+                  <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center mt-0.5" style={{ backgroundColor: 'var(--gold-15)' }}>
                     <Upload size={16} style={{ color: 'var(--gold)' }} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold mb-0.5" style={{ color: 'var(--text-primary)' }}>Upload &amp; Analyse New Contract</p>
                     <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                      Upload a contract file. SureSign will read it and suggest contract details before you create the record.
+                      Upload a contract file. SureSign Contracts will read it and suggest contract details before you create the record.
                     </p>
                     <p className="text-xs mt-2 font-medium" style={{ color: '#ca8a04' }}>
                       ⚠ Running a new analysis may consume AI credits.
@@ -1577,7 +1524,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
                   <button
                     type="button"
                     onClick={() => { setPath('new'); setStep('upload'); }}
-                    className="mt-1 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
+                    className="mt-1 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]"
                     style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
                   >
                     <Upload size={14} />
@@ -1605,7 +1552,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
                               <span className="text-xs" style={{ color: 'var(--text-muted)' }}>by {a.creator.name}</span>
                             )}
                             {a.model && (
-                              <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+                              <span className="text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>
                                 {a.model.replace('claude-', '')}
                               </span>
                             )}
@@ -1633,7 +1580,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
                           <button
                             type="button"
                             onClick={() => handleSelectSaved(a)}
-                            className="text-xs px-2.5 py-1.5 rounded-lg font-medium"
+                            className="text-xs px-2.5 py-1.5 rounded-lg font-medium active:scale-[0.98]"
                             style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
                           >
                             Use This Analysis
@@ -1651,7 +1598,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
           {step === 'upload' && (
             <div className="space-y-5">
               <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                Upload the contract file. SureSign will analyse the document and suggest contract details for review before creating the record.
+                Upload the contract file. SureSign Contracts will analyse the document and suggest contract details for review before creating the record.
               </p>
               <input
                 ref={fileInputRef}
@@ -1663,7 +1610,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
               {contractFile ? (
                 <div
                   className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl"
-                  style={{ backgroundColor: 'rgba(185,149,102,0.08)', border: '1px solid rgba(185,149,102,0.3)' }}
+                  style={{ backgroundColor: 'var(--gold-8)', border: '1px solid var(--gold-30)' }}
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <FileText size={16} style={{ color: 'var(--gold)', flexShrink: 0 }} />
@@ -1688,7 +1635,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
                   className="w-full flex flex-col items-center justify-center gap-3 py-10 rounded-xl border-dashed transition-colors"
                   style={{
                     border: `2px dashed ${dragOver ? 'var(--gold)' : 'var(--border)'}`,
-                    backgroundColor: dragOver ? 'rgba(185,149,102,0.05)' : 'var(--bg-base)',
+                    backgroundColor: dragOver ? 'var(--gold-8)' : 'var(--bg-base)',
                     color: 'var(--text-muted)',
                   }}
                 >
@@ -1747,7 +1694,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
                                 : new Date(a.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                             </span>
                             {a.creator?.name && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>by {a.creator.name}</span>}
-                            {a.model && <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>{a.model.replace('claude-', '')}</span>}
+                            {a.model && <span className="text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>{a.model.replace('claude-', '')}</span>}
                             {a.estimated_cost != null && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>${Number(a.estimated_cost).toFixed(4)}</span>}
                           </div>
                         </div>
@@ -1810,7 +1757,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
                   style={{ backgroundColor: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.2)', color: '#4ade80' }}
                 >
                   <CheckCircle size={12} />
-                  Viewing a saved analysis — no AI credits are being used.
+                  Viewing a saved analysis. No AI credits are being used.
                 </div>
               )}
 
@@ -1972,7 +1919,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
             <form id="wizard-form" onSubmit={e => { e.preventDefault(); saveMutation.mutate(form); }} className="space-y-4">
               <div
                 className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs"
-                style={{ backgroundColor: 'rgba(185,149,102,0.08)', border: '1px solid rgba(185,149,102,0.2)', color: 'var(--gold)' }}
+                style={{ backgroundColor: 'var(--gold-8)', border: '1px solid var(--gold-15)', color: 'var(--gold)' }}
               >
                 <Sparkles size={12} />
                 Fields pre-filled from AI analysis. Review and edit before saving.
@@ -2008,7 +1955,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
                 <div>
                   <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
                     Contract File
-                    <span className="ml-1" style={{ color: 'rgba(185,149,102,0.8)' }}>(Optional)</span>
+                    <span className="ml-1" style={{ color: 'var(--gold-80)' }}>(Optional)</span>
                   </label>
                   <input
                     ref={formFileInputRef}
@@ -2020,7 +1967,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
                   {formFile ? (
                     <div
                       className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg"
-                      style={{ backgroundColor: 'rgba(185,149,102,0.08)', border: '1px solid rgba(185,149,102,0.3)' }}
+                      style={{ backgroundColor: 'var(--gold-8)', border: '1px solid var(--gold-30)' }}
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <FileText size={14} style={{ color: 'var(--gold)', flexShrink: 0 }} />
@@ -2123,13 +2070,13 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
             <div className="flex items-center gap-2">
               {path === 'new' && (
                 <button type="button" onClick={handleContinueManually} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
-                  Skip — Enter Manually
+                  Skip: Enter Manually
                 </button>
               )}
               <button
                 type="button"
                 onClick={handleConfirmAnalysis}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]"
                 style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
               >
                 <CheckCircle size={14} />
@@ -2144,7 +2091,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
               type="submit"
               form="wizard-form"
               disabled={saveMutation.isPending}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: saveMutation.isPending ? 0.7 : 1 }}
             >
               {saveMutation.isPending ? 'Creating…' : 'Create Contract'}
@@ -2179,8 +2126,8 @@ function AttachFileModal({ contract, projectId, onClose }: { contract: ProjectCo
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-md rounded-2xl shadow-xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+      <div className="w-full max-w-md rounded-2xl ss-animate-in shadow-[var(--shadow-pop)]" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
         <div className="flex items-center justify-between p-5" style={{ borderBottom: '1px solid var(--border)' }}>
           <div>
             <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Attach Contract File</h2>
@@ -2197,7 +2144,7 @@ function AttachFileModal({ contract, projectId, onClose }: { contract: ProjectCo
             onChange={e => setFile(e.target.files?.[0] ?? null)}
           />
           {file ? (
-            <div className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg" style={{ backgroundColor: 'rgba(185,149,102,0.08)', border: '1px solid rgba(185,149,102,0.3)' }}>
+            <div className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg" style={{ backgroundColor: 'var(--gold-8)', border: '1px solid var(--gold-30)' }}>
               <span className="text-xs truncate" style={{ color: 'var(--text-primary)' }}>{file.name}</span>
               <button type="button" onClick={() => { setFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }} className="text-xs flex-shrink-0" style={{ color: 'var(--text-muted)' }}>Remove</button>
             </div>
@@ -2212,14 +2159,14 @@ function AttachFileModal({ contract, projectId, onClose }: { contract: ProjectCo
               Click to select contract file
             </button>
           )}
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Accepted: PDF, DOC, DOCX, TXT — max 50 MB</p>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Accepted: PDF, DOC, DOCX, TXT. Max 50 MB.</p>
           <div className="flex justify-end gap-3 pt-1">
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
             <button
               type="button"
               disabled={!file || isPending}
               onClick={() => mutate()}
-              className="px-4 py-2 rounded-lg text-sm font-medium"
+              className="px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: (!file || isPending) ? 0.5 : 1 }}
             >
               {isPending ? 'Attaching…' : 'Attach File'}
@@ -2243,8 +2190,8 @@ function SubcontractFilesModal({ projectId, packageId, packageName, onClose }: {
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-        <div className="w-full max-w-2xl rounded-2xl shadow-xl max-h-[80vh] flex flex-col" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+        <div className="w-full max-w-2xl rounded-2xl ss-animate-in shadow-[var(--shadow-pop)] max-h-[80vh] flex flex-col" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
           <div className="flex items-center justify-between p-5 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
             <div>
               <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Package Files</h2>
@@ -2344,8 +2291,8 @@ function NewContractModal({ projectId, onClose }: { projectId: string; onClose: 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-2xl rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+      <div className="w-full max-w-2xl rounded-2xl ss-animate-in shadow-[var(--shadow-pop)] max-h-[90vh] overflow-y-auto" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
         <div className="flex items-center justify-between p-5" style={{ borderBottom: '1px solid var(--border)' }}>
           <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>New Contract</h2>
           <button onClick={onClose}><X size={18} style={{ color: 'var(--text-muted)' }} /></button>
@@ -2392,7 +2339,7 @@ function NewContractModal({ projectId, onClose }: { projectId: string; onClose: 
             {contractFile ? (
               <div
                 className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg"
-                style={{ backgroundColor: 'rgba(185,149,102,0.08)', border: '1px solid rgba(185,149,102,0.3)' }}
+                style={{ backgroundColor: 'var(--gold-8)', border: '1px solid var(--gold-30)' }}
               >
                 <span className="text-xs truncate" style={{ color: 'var(--text-primary)' }}>{contractFile.name}</span>
                 <button
@@ -2416,13 +2363,13 @@ function NewContractModal({ projectId, onClose }: { projectId: string; onClose: 
               </button>
             )}
             <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>
-              PDF, DOC, DOCX or TXT — max 50 MB. Required.
+              PDF, DOC, DOCX or TXT. Max 50 MB. Required.
             </p>
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
-            <button type="submit" disabled={isPending || !contractFile} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: (isPending || !contractFile) ? 0.5 : 1 }}>
+            <button type="submit" disabled={isPending || !contractFile} className="px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: (isPending || !contractFile) ? 0.5 : 1 }}>
               {isPending ? 'Creating…' : 'Create Contract'}
             </button>
           </div>
@@ -2451,8 +2398,8 @@ function DeleteContractModal({ contract, onClose }: { contract: ProjectContract;
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-md rounded-2xl shadow-xl p-6 space-y-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+      <div className="w-full max-w-md rounded-2xl ss-animate-in shadow-[var(--shadow-pop)] p-6 space-y-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'rgba(239,68,68,0.1)' }}>
@@ -2520,8 +2467,8 @@ function ArchiveContractModal({ contract, onClose }: { contract: ProjectContract
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-md rounded-2xl shadow-xl p-6 space-y-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+      <div className="w-full max-w-md rounded-2xl ss-animate-in shadow-[var(--shadow-pop)] p-6 space-y-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'rgba(234,179,8,0.1)' }}>
@@ -2547,7 +2494,7 @@ function ArchiveContractModal({ contract, onClose }: { contract: ProjectContract
           <button
             onClick={() => doArchive()}
             disabled={isPending}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-40"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-40 active:scale-[0.98]"
             style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
           >
             {isPending ? <Loader2 size={13} className="animate-spin" /> : <Archive size={13} />}
@@ -2602,12 +2549,22 @@ export default function ProjectContractsPage() {
   const [contractFilter, setContractFilter] = useState<'active' | 'archived'>('active');
   const [deleteContract, setDeleteContract] = useState<ProjectContract | null>(null);
   const [archiveContract, setArchiveContract] = useState<ProjectContract | null>(null);
+  const [showCreatePackageModal, setShowCreatePackageModal] = useState(false);
+  const [postCreatePackages, setPostCreatePackages] = useState<Array<{ id: number; name: string; is_custom?: boolean }> | null>(null);
+  const [onboardingTarget, setOnboardingTarget] = useState<{ id: number; name: string; is_custom?: boolean } | null>(null);
   const aiStore = useAiAnalysisStore();
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery<ApiCollection<ProjectContract>>({
     queryKey: ['project-contracts', id, contractFilter],
     queryFn: () => api.get(`/projects/${id}/contracts`, { params: { filter: contractFilter } }).then(r => r.data),
+  });
+
+  const { data: projectData } = useQuery({
+    queryKey: ['project', id],
+    queryFn: () => api.get(`/projects/${id}`).then(r => r.data?.data ?? r.data),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!id,
   });
 
   const { mutate: doRestore } = useMutation({
@@ -2641,12 +2598,12 @@ export default function ProjectContractsPage() {
 
   const aiEnabled = !!(aiStatus?.ai_enabled);
 
-  const { data: subcontractsData } = useQuery({
+  const { data: subcontractsData, refetch: refetchSubcontracts } = useQuery({
     queryKey: ['project-subcontracts', id],
     queryFn: () => api.get(`/projects/${id}/documents/module/subcontracts`).then(r => r.data),
     enabled: !!id,
   });
-  const tradePackages: Array<{ id: number; name: string; package_code?: string | null; package_reference?: string | null; contractor_name?: string | null; status?: string | null; files_count?: number; key: string }> =
+  const tradePackages: Array<{ id: number; name: string; package_code?: string | null; package_reference?: string | null; contractor_name?: string | null; status?: string | null; files_count?: number; key: string; is_custom?: boolean }> =
     subcontractsData?.trade_packages ?? [];
 
   const { data: analysesData, refetch: refetchAnalyses } = useQuery({
@@ -2676,13 +2633,17 @@ export default function ProjectContractsPage() {
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Contracts</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-[1.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>Contracts</h1>
+            <PageTourButton tourKey="page-contracts" label="Take a tour of this page" />
+          </div>
           <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Contract documents and sub-contract agreements</p>
         </div>
         {canWrite && (
         <button
+          data-tour="contracts-new"
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.98]"
           style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
         >
           <Plus size={15} />
@@ -2691,7 +2652,7 @@ export default function ProjectContractsPage() {
         )}
       </div>
 
-      <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex items-center gap-3 flex-wrap" data-tour="contracts-filters">
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
           <input
@@ -2699,18 +2660,18 @@ export default function ProjectContractsPage() {
             onChange={e => setSearch(e.target.value)}
             placeholder="Search contracts…"
             className="pl-9 pr-4 py-2 rounded-lg text-sm outline-none"
-            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)', width: 240 }}
+            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)', width: 240, boxShadow: 'var(--shadow-card)' }}
           />
         </div>
-        <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+        <div className="flex gap-1 p-1 rounded-full" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
           {(['active', 'archived'] as const).map(f => (
             <button
               key={f}
               onClick={() => setContractFilter(f)}
-              className="px-3 py-1.5 text-xs font-medium capitalize transition-colors"
+              className="px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-all active:scale-[0.97]"
               style={{
-                backgroundColor: contractFilter === f ? 'var(--gold)' : 'var(--bg-surface)',
-                color: contractFilter === f ? 'var(--accent-fg)' : 'var(--text-muted)',
+                backgroundColor: contractFilter === f ? 'var(--gold)' : 'transparent',
+                color: contractFilter === f ? 'var(--accent-fg)' : 'var(--text-secondary)',
               }}
             >
               {f === 'active' ? 'Active' : 'Archived'}
@@ -2726,15 +2687,15 @@ export default function ProjectContractsPage() {
           ))}
         </div>
       ) : contracts.length === 0 ? (
-        <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+        <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
           <FileText size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No contracts added yet</p>
-          <button onClick={() => setShowModal(true)} className="mt-4 px-4 py-2 rounded-lg text-sm font-medium" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
-            Add First Contract
+          <button onClick={() => setShowModal(true)} className="mt-4 px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+            Add first contract
           </button>
         </div>
       ) : (
-        <div className="rounded-2xl overflow-visible" style={{ border: '1px solid var(--border)' }}>
+        <div className="rounded-2xl overflow-visible" data-tour="contracts-table" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
           <table className="w-full text-sm">
             <thead>
               <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
@@ -2744,13 +2705,13 @@ export default function ProjectContractsPage() {
               </tr>
             </thead>
             <tbody style={{ backgroundColor: 'var(--bg-surface)' }}>
-              {contracts.map(c => {
+              {contracts.map((c, index) => {
                 const badge = STATUS_COLORS[c.status as string] ?? { bg: 'var(--bg-elevated)', text: 'var(--text-muted)' };
                 const primaryFile = c.file_uploads?.[0] ?? null;
                 const hasFile = !!primaryFile;
                 return (
-                  <tr key={c.id} className="hover:bg-[var(--bg-hover)] transition-colors" style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td className="px-5 py-3 font-mono text-xs font-semibold" style={{ color: 'var(--gold)' }}>{c.reference_number ?? `#${c.id}`}</td>
+                  <tr key={c.id} className="ss-animate-in hover:bg-[var(--bg-hover)] transition-colors" style={{ borderBottom: '1px solid var(--border)', animationDelay: `${Math.min(index * 45, 360)}ms` }}>
+                    <td className="px-5 py-3 font-mono text-[11px] font-semibold" style={{ color: 'var(--gold)' }}>{c.reference_number ?? `#${c.id}`}</td>
                     <td className="px-5 py-3 font-medium" style={{ color: 'var(--text-primary)' }}>
                       <div>{c.title}</div>
                       <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
@@ -2758,9 +2719,9 @@ export default function ProjectContractsPage() {
                       </div>
                     </td>
                     <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-secondary)' }}>{c.party_name ?? '—'}</td>
-                    <td className="px-5 py-3 text-xs font-medium" style={{ color: 'var(--text-primary)' }}>{formatCurrency(c.contract_sum ?? 0)}</td>
-                    <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{c.commencement_date ? formatDate(c.commencement_date) : '—'}</td>
-                    <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{c.completion_date ? formatDate(c.completion_date) : '—'}</td>
+                    <td className="px-5 py-3 text-xs font-medium tabular-nums" style={{ color: 'var(--text-primary)' }}>{formatCurrency(c.contract_sum ?? 0)}</td>
+                    <td className="px-5 py-3 text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>{c.commencement_date ? formatDate(c.commencement_date) : '—'}</td>
+                    <td className="px-5 py-3 text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>{c.completion_date ? formatDate(c.completion_date) : '—'}</td>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2">
                         <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: badge.bg, color: badge.text }}>
@@ -2904,13 +2865,36 @@ export default function ProjectContractsPage() {
       )}
 
       {/* ── Subcontracts (Trade Packages) ── */}
-      {tradePackages.length > 0 && (
-        <div className="space-y-3">
+      <div className="space-y-3" data-tour="contracts-subcontracts">
+        <div className="flex items-center justify-between">
           <div>
             <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Subcontracts</h2>
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Trade package subcontract agreements</p>
           </div>
-          <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+          {canWrite && (
+            <button
+              onClick={() => setShowCreatePackageModal(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.98]"
+              style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
+            >
+              <Plus size={15} />
+              New trade package
+            </button>
+          )}
+        </div>
+
+        {tradePackages.length === 0 ? (
+          <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+            <FileSignature size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No trade packages created yet</p>
+            {canWrite && (
+              <button onClick={() => setShowCreatePackageModal(true)} className="mt-4 px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+                Create first trade package
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
@@ -2920,12 +2904,12 @@ export default function ProjectContractsPage() {
                 </tr>
               </thead>
               <tbody style={{ backgroundColor: 'var(--bg-surface)' }}>
-                {tradePackages.map(pkg => (
-                  <tr key={pkg.id} className="hover:bg-[var(--bg-hover)] transition-colors" style={{ borderBottom: '1px solid var(--border)' }}>
+                {tradePackages.map((pkg, index) => (
+                  <tr key={pkg.id} className="ss-animate-in hover:bg-[var(--bg-hover)] transition-colors" style={{ borderBottom: '1px solid var(--border)', animationDelay: `${Math.min(index * 45, 360)}ms` }}>
                     <td className="px-5 py-3 font-medium" style={{ color: 'var(--text-primary)' }}>
                       <Link href={`/app/projects/${id}/subcontracts/${pkg.id}`} className="hover:underline">{pkg.name}</Link>
                     </td>
-                    <td className="px-5 py-3 font-mono text-xs font-semibold" style={{ color: 'var(--gold)' }}>
+                    <td className="px-5 py-3 font-mono text-[11px] font-semibold" style={{ color: 'var(--gold)' }}>
                       {pkg.package_reference ?? pkg.package_code ?? '—'}
                     </td>
                     <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
@@ -2987,27 +2971,27 @@ export default function ProjectContractsPage() {
               </tbody>
             </table>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* ── AI Analysis History ── */}
       {aiEnabled && aiAnalyses.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-3" data-tour="contracts-ai-history">
           <div>
-            <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>AI Analysis History</h2>
+            <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>AI analysis history</h2>
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Previous AI contract analysis runs</p>
           </div>
-          <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+          <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
-                  {['Date', 'Contract', 'Status', 'Created By', 'Model', 'Cost', ''].map(h => (
+                  {['Date', 'Contract', 'Status', 'Created by', 'Model', 'Cost', ''].map(h => (
                     <th key={h} className="text-left px-5 py-3 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody style={{ backgroundColor: 'var(--bg-surface)' }}>
-                {aiAnalyses.map((a: any) => {
+                {aiAnalyses.map((a: any, index: number) => {
                   const statusColors: Record<string, { bg: string; text: string }> = {
                     completed:  { bg: 'rgba(34,197,94,0.12)',  text: '#4ade80' },
                     confirmed:  { bg: 'rgba(59,130,246,0.12)', text: '#60a5fa' },
@@ -3020,8 +3004,8 @@ export default function ProjectContractsPage() {
                   const canView = a.status === 'completed' || a.status === 'confirmed';
                   const contractForRow = data?.data?.find((c: ProjectContract) => c.id === a.contract_id);
                   return (
-                    <tr key={a.id} className="hover:bg-[var(--bg-hover)] transition-colors" style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+                    <tr key={a.id} className="ss-animate-in hover:bg-[var(--bg-hover)] transition-colors" style={{ borderBottom: '1px solid var(--border)', animationDelay: `${Math.min(index * 45, 360)}ms` }}>
+                      <td className="px-5 py-3 text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
                         {a.created_at ? new Date(a.created_at).toLocaleDateString() : '—'}
                       </td>
                       <td className="px-5 py-3 text-xs font-medium" style={{ color: 'var(--text-primary)' }}>
@@ -3035,10 +3019,10 @@ export default function ProjectContractsPage() {
                       <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
                         {a.creator?.name ?? '—'}
                       </td>
-                      <td className="px-5 py-3 text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+                      <td className="px-5 py-3 text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>
                         {a.model ? a.model.replace('claude-', '') : '—'}
                       </td>
-                      <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+                      <td className="px-5 py-3 text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
                         {a.estimated_cost != null ? `$${Number(a.estimated_cost).toFixed(4)}` : '—'}
                       </td>
                       <td className="px-5 py-3">
@@ -3111,6 +3095,98 @@ export default function ProjectContractsPage() {
             queryClient.invalidateQueries({ queryKey: ['project-subcontracts', id] });
           }}
         />
+      )}
+      {canWrite && showCreatePackageModal && (
+        <GenerateTradePackageFolderModal
+          isOpen={showCreatePackageModal}
+          onClose={() => setShowCreatePackageModal(false)}
+          projectId={Number(id)}
+          projectReference={projectData?.code ?? ''}
+          existingPackageNames={tradePackages.map(p => p.name)}
+          apiPath={`/projects/${id}/subcontracts/generate-trade-packages`}
+          title="Create Trade Package"
+          description="Select the trade packages you want to create for this contract."
+          onSuccess={async (result) => {
+            setShowCreatePackageModal(false);
+            const refreshed = await refetchSubcontracts();
+            const refreshedPackages: Array<{ id: number; name: string; is_custom?: boolean }> = refreshed.data?.trade_packages ?? [];
+            const created = refreshedPackages.filter(p => result.created.includes(p.name));
+            if (created.length > 0) setPostCreatePackages(created);
+          }}
+        />
+      )}
+      {onboardingTarget && (
+        <SubcontractAiOnboardingModal
+          isOpen={!!onboardingTarget}
+          onClose={() => setOnboardingTarget(null)}
+          tradePackage={onboardingTarget}
+          projectId={id!}
+          onConfirmed={() => {
+            queryClient.invalidateQueries({ queryKey: ['project-subcontracts', id] });
+          }}
+        />
+      )}
+      {postCreatePackages && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+          <div className="ss-animate-in w-full max-w-md rounded-2xl p-6 space-y-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  {postCreatePackages.length === 1 ? `"${postCreatePackages[0].name}" created` : `${postCreatePackages.length} trade packages created`}
+                </h2>
+                <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>What would you like to do next?</p>
+              </div>
+              <button onClick={() => setPostCreatePackages(null)} aria-label="Close">
+                <X size={18} style={{ color: 'var(--text-muted)' }} />
+              </button>
+            </div>
+            <div className="space-y-2">
+              {(() => {
+                const canOnboard = aiEnabled && postCreatePackages.length === 1;
+                return (
+                  <button
+                    disabled={!canOnboard}
+                    title={!aiEnabled ? 'AI features are disabled for this organisation' : !canOnboard ? 'Upload one package at a time to use AI onboarding' : undefined}
+                    onClick={() => {
+                      if (!canOnboard) return;
+                      const target = postCreatePackages[0];
+                      setPostCreatePackages(null);
+                      setOnboardingTarget(target);
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-left transition-colors ${canOnboard ? 'hover:bg-[var(--bg-hover)]' : 'opacity-50 cursor-not-allowed'}`}
+                    style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+                  >
+                    <Upload size={16} />
+                    <span>
+                      Upload Subcontract
+                      <span className="block text-xs font-normal" style={{ color: 'var(--text-muted)' }}>AI reads the executed subcontract and pre-fills this package for you to review</span>
+                    </span>
+                  </button>
+                );
+              })()}
+              {postCreatePackages.length === 1 ? (
+                <Link
+                  href={`/app/projects/${id}/subcontracts/${postCreatePackages[0].id}`}
+                  onClick={() => setPostCreatePackages(null)}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
+                >
+                  <ArrowRight size={16} />
+                  Continue Manually
+                </Link>
+              ) : (
+                <button
+                  onClick={() => setPostCreatePackages(null)}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-left transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
+                >
+                  <ArrowRight size={16} />
+                  Continue Manually
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       )}
       {viewPackageId != null && (() => {
         const pkg = tradePackages.find(p => p.id === viewPackageId);

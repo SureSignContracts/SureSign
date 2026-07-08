@@ -367,14 +367,28 @@ class ProjectController extends Controller
         $projectHealth      = $healthService->getHealth($project->id, $contractId);
 
         // ── Risk summary ─────────────────────────────────────────────────────
+        // Widened in Sprint 6F to also include Trade Package risks (which have
+        // a null contract_id) — same ContractRisk table, no parallel query/
+        // calculation, just a broader scope for the existing risk_summary shape.
         $contractIds = $contractId
             ? collect([$contractId])
             : \App\Models\Contract::where('project_id', $project->id)->pluck('id');
 
-        $risks = \App\Models\ContractRisk::whereIn('contract_id', $contractIds)
+        $tradePackageIds = \App\Models\TradePackage::where('project_id', $project->id)->pluck('id');
+
+        $risks = \App\Models\ContractRisk::where(function ($q) use ($contractIds, $tradePackageIds) {
+                $q->whereIn('contract_id', $contractIds)
+                  ->orWhereIn('trade_package_id', $tradePackageIds);
+            })
             ->where('status', '!=', 'resolved')
             ->orderByRaw("FIELD(severity, 'critical', 'high', 'medium', 'low')")
-            ->get(['id', 'title', 'severity', 'urgency', 'is_non_standard_amendment', 'category', 'clause_reference', 'commercial_impact', 'recommended_action']);
+            ->get(['id', 'title', 'severity', 'urgency', 'is_non_standard_amendment', 'category', 'clause_reference', 'commercial_impact', 'recommended_action', 'trade_package_id', 'is_ai_generated'])
+            ->map(function ($risk) use ($project) {
+                $risk->action_url = \App\Services\TradePackages\WorkspaceNavigationResolver::actionUrl(
+                    $project->id, \App\Models\CalendarEvent::SOURCE_CONTRACT_RISK, $risk->id, $risk->trade_package_id
+                );
+                return $risk;
+            });
 
         $riskSummary = [
             'critical'              => $risks->where('severity', 'critical')->count(),
@@ -417,7 +431,9 @@ class ProjectController extends Controller
                     'dispute_window_expires_at'    => $fa->dispute_window_expires_at,
                     'dispute_window_remaining_days' => $disputeRemaining,
                     'close_out_progress'      => $finalAccountService->getCloseOutProgress($fa),
-                    'action_url'              => "/app/projects/{$fa->project_id}/commercial?tab=final-account&fa={$fa->id}",
+                    'action_url'              => \App\Services\TradePackages\WorkspaceNavigationResolver::actionUrl(
+                        $fa->project_id, \App\Models\CalendarEvent::SOURCE_FINAL_ACCOUNT, $fa->id, $fa->trade_package_id
+                    ),
                 ];
             });
 

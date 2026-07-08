@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { CheckCircle2, Circle, Lock, Plus, X, Loader2 } from 'lucide-react';
+import PageTourButton from '@/components/tours/PageTourButton';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -12,7 +13,7 @@ const ITEM_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   pending:     { bg: 'rgba(90,86,82,0.2)',    text: '#9a9490' },
   in_progress: { bg: 'rgba(59,130,246,0.12)', text: '#60a5fa' },
   completed:   { bg: 'rgba(34,197,94,0.12)',  text: '#4ade80' },
-  approved:    { bg: 'rgba(185,149,102,0.15)', text: 'var(--gold)' },
+  approved:    { bg: 'var(--gold-15)', text: 'var(--gold)' },
 };
 
 const ITEM_STATUSES = ['pending', 'in_progress', 'completed', 'approved'];
@@ -34,8 +35,8 @@ function AddItemModal({ projectId, onClose }: { projectId: string; onClose: () =
   const inputStyle = { backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-md rounded-2xl overflow-hidden shadow-2xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+      <div className="w-full max-w-md rounded-2xl overflow-hidden ss-animate-in" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
           <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Add Closeout Item</h2>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-[var(--bg-hover)]">
@@ -63,7 +64,7 @@ function AddItemModal({ projectId, onClose }: { projectId: string; onClose: () =
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm"
               style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
             <button type="submit" disabled={mutation.isPending}
-              className="px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-60"
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-60 active:scale-[0.98]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
               {mutation.isPending ? 'Adding…' : 'Add Item'}
             </button>
@@ -133,14 +134,15 @@ export default function ProjectCloseoutPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Closeout</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Closeout</h1>
+            <PageTourButton tourKey="page-closeout" label="Take a tour of this page" />
+          </div>
           <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Project closeout checklist and handover</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="text-right">
-            <p className="text-2xl font-bold" style={{ color: 'var(--gold)' }}>{progress}%</p>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{completedItems}/{totalItems} complete</p>
-          </div>
+        <div className="text-right">
+          <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--gold)' }}>{progress}%</p>
+          <p className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>{completedItems}/{totalItems} complete</p>
         </div>
       </div>
 
@@ -157,13 +159,13 @@ export default function ProjectCloseoutPage() {
         <div className="flex items-center gap-2">
           <span className="text-xs px-3 py-1 rounded-full font-medium capitalize"
             style={{
-              backgroundColor: closeout?.status === 'completed' ? 'rgba(34,197,94,0.12)' : 'rgba(185,149,102,0.12)',
+              backgroundColor: closeout?.status === 'completed' ? 'rgba(34,197,94,0.12)' : 'var(--gold-15)',
               color: closeout?.status === 'completed' ? '#4ade80' : 'var(--gold)',
             }}>
             {closeout?.status?.replace(/_/g, ' ') ?? 'pending'}
           </span>
         </div>
-        <button onClick={() => setShowAddModal(true)}
+        <button data-tour="closeout-add-item" onClick={() => setShowAddModal(true)}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
           style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
           <Plus size={13} />
@@ -172,14 +174,14 @@ export default function ProjectCloseoutPage() {
       </div>
 
       {/* Checklist sections */}
-      <div className="space-y-5">
-        {Object.entries(categories).map(([category, catItems]) => {
+      <div className="space-y-5" data-tour="closeout-checklist">
+        {Object.entries(categories).map(([category, catItems], i) => {
           const catCompleted = catItems.filter((i: any) => i.status === 'completed' || i.status === 'approved').length;
           return (
-            <div key={category} className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+            <div key={category} className="rounded-2xl overflow-hidden ss-animate-in" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: `${Math.min(i * 45, 360)}ms` }}>
               <div className="px-5 py-3 flex items-center justify-between" style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
                 <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{category}</h2>
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{catCompleted}/{catItems.length}</span>
+                <span className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>{catCompleted}/{catItems.length}</span>
               </div>
               <div style={{ backgroundColor: 'var(--bg-surface)' }}>
                 {(catItems as any[]).map((item: any, idx: number) => {
@@ -235,7 +237,7 @@ export default function ProjectCloseoutPage() {
       </div>
 
       {/* Mark Complete button */}
-      <div className="flex justify-end pt-2">
+      <div className="flex justify-end pt-2" data-tour="closeout-complete">
         <button
           onClick={() => markCompleteMutation.mutate()}
           disabled={!allComplete || closeout?.status === 'completed' || markCompleteMutation.isPending}

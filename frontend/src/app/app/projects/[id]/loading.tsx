@@ -21,7 +21,7 @@ export default function ProjectLoading() {
           <div
             key={i}
             className="rounded-2xl p-5 space-y-3"
-            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}
           >
             <div className="h-4 w-28 rounded-lg animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
             {[...Array(5)].map((_, j) => (

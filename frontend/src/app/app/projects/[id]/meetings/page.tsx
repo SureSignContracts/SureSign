@@ -8,6 +8,7 @@ import { formatDate } from '@/lib/utils';
 import { Users2, Plus, Search, Calendar, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
+import PageTourButton from '@/components/tours/PageTourButton';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   draft:    { bg: 'rgba(90,86,82,0.2)',    text: '#9a9490' },
@@ -46,10 +47,10 @@ function NewMeetingModal({ projectId, onClose }: { projectId: string; onClose: (
   const inputStyle = { backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' };
   const labelStyle = { color: 'var(--text-muted)' };
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-md rounded-2xl shadow-xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+      <div className="w-full max-w-md rounded-2xl ss-animate-in shadow-[var(--shadow-pop)]" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
         <div className="flex items-center justify-between p-5" style={{ borderBottom: '1px solid var(--border)' }}>
-          <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>New Meeting</h2>
+          <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>New meeting</h2>
           <button onClick={onClose}><X size={18} style={{ color: 'var(--text-muted)' }} /></button>
         </div>
         <form onSubmit={e => { e.preventDefault(); mutate(form); }} className="p-5 space-y-4">
@@ -83,8 +84,8 @@ function NewMeetingModal({ projectId, onClose }: { projectId: string; onClose: (
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
-            <button type="submit" disabled={isPending} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: isPending ? 0.7 : 1 }}>
-              {isPending ? 'Creating…' : 'Create Meeting'}
+            <button type="submit" disabled={isPending} className="px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: isPending ? 0.7 : 1 }}>
+              {isPending ? 'Creating…' : 'Create meeting'}
             </button>
           </div>
         </form>
@@ -119,7 +120,7 @@ function MeetingDetailModal({
 
   const { mutate, isPending } = useMutation({
     mutationFn: (data: typeof form) =>
-      api.put(`/meetings/${meeting.id}`, {
+      api.put(`/projects/${projectId}/meetings/${meeting.id}`, {
         ...data,
         attendees:    data.attendees.split(',').map((s: string) => s.trim()).filter(Boolean),
         action_items: data.action_items.split('\n').map((s: string) => s.trim()).filter(Boolean),
@@ -137,13 +138,13 @@ function MeetingDetailModal({
   const set = (f: keyof typeof form, v: string) => setForm(p => ({ ...p, [f]: v }));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-2xl rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto"
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+      <div className="w-full max-w-2xl rounded-2xl ss-animate-in shadow-[var(--shadow-pop)] max-h-[90vh] overflow-y-auto"
         style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
         <div className="flex items-center justify-between p-5" style={{ borderBottom: '1px solid var(--border)' }}>
           <div>
             <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Meeting #{meeting.meeting_number} — {meeting.title}
+              <span className="font-mono text-xs">#{meeting.meeting_number}</span> — {meeting.title}
             </h2>
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
               {TYPE_LABELS[meeting.type] ?? meeting.type} · {formatDate(meeting.meeting_date)}
@@ -221,7 +222,7 @@ function MeetingDetailModal({
             <div className="flex justify-end gap-3 pt-2">
               <button type="button" onClick={() => setEditMode(false)} className="px-4 py-2 rounded-lg text-sm"
                 style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
-              <button type="submit" disabled={isPending} className="px-4 py-2 rounded-lg text-sm font-medium"
+              <button type="submit" disabled={isPending} className="px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]"
                 style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: isPending ? 0.7 : 1 }}>
                 {isPending ? 'Saving…' : 'Save Changes'}
               </button>
@@ -267,7 +268,7 @@ function MeetingDetailModal({
             )}
             {meeting.action_items?.length > 0 && (
               <div>
-                <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>Action Items</p>
+                <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>Action items</p>
                 <ul className="space-y-1">
                   {(Array.isArray(meeting.action_items) ? meeting.action_items : [meeting.action_items]).map((item: string, i: number) => (
                     <li key={i} className="flex items-start gap-2 text-sm" style={{ color: 'var(--text-primary)' }}>
@@ -278,10 +279,6 @@ function MeetingDetailModal({
                 </ul>
               </div>
             )}
-            <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
-              <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>AI Summary</p>
-              <p className="text-sm italic" style={{ color: 'var(--text-muted)' }}>AI summary — coming soon</p>
-            </div>
           </div>
         )}
       </div>
@@ -312,13 +309,17 @@ export default function ProjectMeetingsPage() {
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Meetings</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-[1.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>Meetings</h1>
+            <PageTourButton tourKey="page-meetings" label="Take a tour of this page" />
+          </div>
           <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Meeting minutes and action items</p>
         </div>
         {canWrite && (
         <button
+          data-tour="meetings-new"
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.98]"
           style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
         >
           <Plus size={15} />
@@ -327,7 +328,7 @@ export default function ProjectMeetingsPage() {
         )}
       </div>
 
-      <div className="flex gap-3 flex-wrap">
+      <div className="flex gap-3 flex-wrap" data-tour="meetings-filters">
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
           <input
@@ -336,15 +337,15 @@ export default function ProjectMeetingsPage() {
             onChange={e => setSearch(e.target.value)}
             placeholder="Search meetings…"
             className="pl-9 pr-4 py-2 rounded-lg text-sm outline-none"
-            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)', minWidth: '220px' }}
+            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)', minWidth: '220px', boxShadow: 'var(--shadow-card)' }}
           />
         </div>
-        <div className="flex gap-1 p-1 rounded-lg" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+        <div className="flex gap-1 p-1 rounded-full" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
           {['all', 'progress', 'design', 'commercial', 'safety'].map(t => (
             <button
               key={t}
               onClick={() => setTypeFilter(t)}
-              className="px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-all"
+              className="px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-all active:scale-[0.97]"
               style={typeFilter === t
                 ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
                 : { color: 'var(--text-secondary)' }
@@ -356,28 +357,28 @@ export default function ProjectMeetingsPage() {
         </div>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-3" data-tour="meetings-table">
         {isLoading ? (
           [...Array(4)].map((_, i) => (
             <div key={i} className="h-20 rounded-2xl animate-pulse" style={{ backgroundColor: 'var(--bg-surface)' }} />
           ))
         ) : meetings.length === 0 ? (
-          <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
             <Users2 size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No meetings recorded yet</p>
             {canWrite && (
-            <button onClick={() => setShowModal(true)} className="mt-3 px-3 py-1.5 rounded-lg text-xs font-medium" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+            <button onClick={() => setShowModal(true)} className="mt-3 px-3 py-1.5 rounded-lg text-xs font-medium active:scale-[0.98]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
               Create First Meeting
             </button>
             )}
           </div>
-        ) : meetings.map((m: any) => {
+        ) : meetings.map((m: any, i: number) => {
           const badge = STATUS_COLORS[m.status] ?? { bg: 'var(--bg-elevated)', text: 'var(--text-muted)' };
           return (
             <div
               key={m.id}
-              className="flex items-center justify-between p-4 rounded-xl cursor-pointer hover:bg-[var(--bg-hover)] transition-colors"
-              style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+              className="ss-animate-in flex items-center justify-between p-4 rounded-xl cursor-pointer transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-pop)] hover:-translate-y-0.5"
+              style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', animationDelay: `${Math.min(i * 45, 360)}ms` }}
               onClick={() => setDetailMeeting(m)}
             >
               <div className="flex items-center gap-4">
@@ -389,9 +390,9 @@ export default function ProjectMeetingsPage() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                    Meeting #{m.meeting_number} — {m.title}
+                    <span className="font-mono text-[11px]" style={{ color: 'var(--text-muted)' }}>#{m.meeting_number}</span> — {m.title}
                   </p>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                  <p className="text-xs mt-0.5 tabular-nums" style={{ color: 'var(--text-muted)' }}>
                     {TYPE_LABELS[m.type] ?? m.type} · {formatDate(m.meeting_date)} {m.location ? `· ${m.location}` : ''}
                   </p>
                 </div>

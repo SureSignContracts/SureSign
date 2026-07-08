@@ -10,6 +10,7 @@ import {
   Check, Upload, X, AlertCircle,
 } from 'lucide-react';
 import PasswordStrengthChecker, { checkPassword, isPasswordValid } from '@/components/ui/PasswordStrengthChecker';
+import { Card } from '@/components/ui/Card';
 
 // ─── Form state types ────────────────────────────────────────────────────────
 
@@ -334,7 +335,7 @@ export default function OnboardingPage() {
         <div className="text-center mb-8">
           <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4 text-lg font-bold"
                style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>S</div>
-          <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Welcome to SureSign</h1>
+          <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Welcome to SureSign Contracts</h1>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
             Let's set up your account before you get started
           </p>
@@ -371,7 +372,7 @@ export default function OnboardingPage() {
         </div>
 
         {/* Card */}
-        <div className="rounded-2xl p-8" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+        <Card className="p-8">
 
           {/* Step 1: Your Profile */}
           {step === 1 && (
@@ -379,7 +380,7 @@ export default function OnboardingPage() {
               <div className="mb-2">
                 <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Your Profile</h2>
                 <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-                  Personal details for your account — stored on your user record
+                  Personal details for your account, stored on your user record
                 </p>
               </div>
 
@@ -506,7 +507,7 @@ export default function OnboardingPage() {
               <div className="mb-2">
                 <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Company Branding</h2>
                 <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-                  Saved to the database and tied to your company — each client only sees their own branding.
+                  Saved to the database and tied to your company. Each client only sees their own branding.
                 </p>
               </div>
 
@@ -527,7 +528,7 @@ export default function OnboardingPage() {
                   />
                   <div className="flex-1 h-10 rounded-lg flex items-center justify-center text-xs font-semibold"
                        style={{ backgroundColor: branding.primaryColor, color: isLight(branding.primaryColor) ? '#0a0a0a' : '#ffffff' }}>
-                    {branding.primaryColor.toUpperCase()} — Preview
+                    {branding.primaryColor.toUpperCase()} Preview
                   </div>
                 </div>
               </div>
@@ -590,27 +591,27 @@ export default function OnboardingPage() {
 
             {step === 1 && (
               <button onClick={handleStep1} disabled={saving}
-                className="flex items-center gap-1.5 px-6 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-50"
+                className="flex items-center gap-1.5 px-6 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-50 active:scale-[0.98]"
                 style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
                 {saving ? 'Saving…' : <> Continue <ArrowRight size={14} /></>}
               </button>
             )}
             {step === 2 && (
               <button onClick={handleStep2} disabled={saving}
-                className="flex items-center gap-1.5 px-6 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-50"
+                className="flex items-center gap-1.5 px-6 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-50 active:scale-[0.98]"
                 style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
                 {saving ? 'Saving…' : <> Continue <ArrowRight size={14} /></>}
               </button>
             )}
             {step === 3 && (
               <button onClick={handleFinalize} disabled={saving}
-                className="flex items-center gap-1.5 px-6 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-60"
+                className="flex items-center gap-1.5 px-6 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-60 active:scale-[0.98]"
                 style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
                 {saving ? 'Setting up…' : <> Get Started <ArrowRight size={14} /></>}
               </button>
             )}
           </div>
-        </div>
+        </Card>
 
         <p className="text-center text-xs mt-4" style={{ color: 'var(--text-muted)' }}>
           You can update all of this later in Settings

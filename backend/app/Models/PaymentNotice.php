@@ -12,12 +12,13 @@ class PaymentNotice extends Model
     protected $fillable = [
         'project_id', 'organization_id', 'payment_application_id', 'created_by',
         'reference', 'notice_date', 'notified_sum', 'basis_of_assessment',
-        'issued_by', 'status',
+        'issued_by', 'status', 'is_late',
     ];
 
     protected $casts = [
         'notice_date'   => 'date',
         'notified_sum'  => 'decimal:2',
+        'is_late'       => 'boolean',
     ];
 
     public function creator()            { return $this->belongsTo(User::class, 'created_by'); }

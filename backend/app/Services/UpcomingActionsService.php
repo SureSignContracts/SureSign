@@ -98,6 +98,8 @@ class UpcomingActionsService
             'source_id'     => $item['source_id'],
             'source_field'  => $item['source_field'],
             'contract_id'   => $item['contract_id'],
+            'trade_package_id' => $item['trade_package_id'] ?? null,
+            'action_url'    => $item['action_url'] ?? null,
             'project_id'    => $item['project_id'],
             'status'        => $item['status'],
             'meta'          => $item['meta'] ?? [],

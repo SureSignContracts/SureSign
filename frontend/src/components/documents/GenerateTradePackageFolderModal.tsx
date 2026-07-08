@@ -1,10 +1,11 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { X, Box } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
+import Button from '@/components/ui/Button';
 
 // ── constants ──────────────────────────────────────────────────────────────
 
@@ -15,24 +16,6 @@ const KNOWN_ACRONYMS: Record<string, string> = {
   mep: 'MEP',
   grp: 'GRP',
 };
-
-const STANDARD_PACKAGES: { name: string; code: string }[] = [
-  { name: 'Concrete Frame', code: 'CF' },
-  { name: 'Brickwork', code: 'BW' },
-  { name: 'Windows & Doors', code: 'WD' },
-  { name: 'Roofing', code: 'RF' },
-  { name: 'M&E', code: 'ME' },
-  { name: 'Groundworks', code: 'GW' },
-  { name: 'Drylining & Plastering', code: 'DP' },
-  { name: 'Steelwork', code: 'ST' },
-  { name: 'Landscaping', code: 'LS' },
-  { name: 'Demolition', code: 'DM' },
-  { name: 'Fire Stopping', code: 'FS' },
-  { name: 'External Works', code: 'EW' },
-  { name: 'Access Control', code: 'AC' },
-  { name: 'CCTV', code: 'CC' },
-  { name: 'Solar PV', code: 'SP' },
-];
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -99,6 +82,8 @@ interface Props {
   existingPackageNames: string[];
   onSuccess: (result: GenerateResult) => void;
   apiPath?: string;
+  title?: string;
+  description?: string;
 }
 
 // ── component ──────────────────────────────────────────────────────────────
@@ -111,28 +96,37 @@ export default function GenerateTradePackageFolderModal({
   existingPackageNames,
   onSuccess,
   apiPath,
+  title = 'Generate Trade Package Folder',
+  description = 'Select the trade packages you want to create for this project.',
 }: Props) {
   const [checkedStandard, setCheckedStandard] = useState<Set<string>>(new Set());
   const [includeOther, setIncludeOther] = useState(false);
   const [customName, setCustomName] = useState('');
   const [result, setResult] = useState<GenerateResult | null>(null);
 
+  const { data: catalogueData, isLoading: catalogueLoading } = useQuery({
+    queryKey: ['trade-package-catalogue'],
+    queryFn: () => api.get('/trade-packages/catalogue').then((r) => r.data),
+    staleTime: 30 * 60 * 1000,
+  });
+  const standardPackages: { name: string; code: string }[] = catalogueData?.packages ?? [];
+
   if (!isOpen) return null;
 
   // All codes already in use (standard checked + existing from project)
   const existingCodes = useMemo(() => {
     const set = new Set<string>();
-    STANDARD_PACKAGES.forEach((pkg) => {
+    standardPackages.forEach((pkg) => {
       if (existingPackageNames.some((n) => n.toLowerCase() === pkg.name.toLowerCase())) {
         set.add(pkg.code);
       }
     });
     checkedStandard.forEach((name) => {
-      const pkg = STANDARD_PACKAGES.find((p) => p.name === name);
+      const pkg = standardPackages.find((p) => p.name === name);
       if (pkg) set.add(pkg.code);
     });
     return set;
-  }, [checkedStandard, existingPackageNames]);
+  }, [checkedStandard, existingPackageNames, standardPackages]);
 
   const customCode = useMemo(() => {
     if (!customName.trim()) return '';
@@ -140,7 +134,7 @@ export default function GenerateTradePackageFolderModal({
   }, [customName, existingCodes]);
 
   const selectedPackages = useMemo<SelectedPackage[]>(() => {
-    const standard = STANDARD_PACKAGES.filter((pkg) => checkedStandard.has(pkg.name)).map((pkg) => ({
+    const standard = standardPackages.filter((pkg) => checkedStandard.has(pkg.name)).map((pkg) => ({
       name: pkg.name,
       code: pkg.code,
       isCustom: false,
@@ -149,17 +143,17 @@ export default function GenerateTradePackageFolderModal({
       standard.push({ name: toTitleCase(customName.trim()), code: customCode, isCustom: true });
     }
     return standard;
-  }, [checkedStandard, includeOther, customName, customCode]);
+  }, [checkedStandard, includeOther, customName, customCode, standardPackages]);
 
   const allChecked =
-    checkedStandard.size === STANDARD_PACKAGES.length && includeOther;
+    standardPackages.length > 0 && checkedStandard.size === standardPackages.length && includeOther;
 
   const toggleAll = () => {
     if (allChecked) {
       setCheckedStandard(new Set());
       setIncludeOther(false);
     } else {
-      setCheckedStandard(new Set(STANDARD_PACKAGES.map((p) => p.name)));
+      setCheckedStandard(new Set(standardPackages.map((p) => p.name)));
       setIncludeOther(true);
     }
   };
@@ -208,12 +202,12 @@ export default function GenerateTradePackageFolderModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
       style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
     >
       <div
-        className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl shadow-xl"
-        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+        className="ss-animate-in max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl"
+        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}
       >
         {/* Header */}
         <div
@@ -222,10 +216,10 @@ export default function GenerateTradePackageFolderModal({
         >
           <div>
             <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Generate Trade Package Folder
+              {title}
             </h2>
             <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-              Select the trade packages you want to create for this project.
+              {description}
             </p>
           </div>
           <button onClick={handleClose} aria-label="Close">
@@ -268,14 +262,9 @@ export default function GenerateTradePackageFolderModal({
               )}
             </div>
             <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={handleClose}
-                className="rounded-lg px-4 py-2 text-sm font-medium"
-                style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
-              >
+              <Button type="button" onClick={handleClose}>
                 Done
-              </button>
+              </Button>
             </div>
           </div>
         ) : (
@@ -289,7 +278,7 @@ export default function GenerateTradePackageFolderModal({
             {/* Section 1 — Standard packages */}
             <section className="space-y-3">
               <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                Standard Packages
+                Standard packages
               </h3>
 
               {/* Select All */}
@@ -307,9 +296,14 @@ export default function GenerateTradePackageFolderModal({
 
               <div
                 className="rounded-xl divide-y overflow-hidden"
-                style={{ border: '1px solid var(--border)', borderColor: 'var(--border)' }}
+                style={{ border: '1px solid var(--border)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-card)' }}
               >
-                {STANDARD_PACKAGES.map((pkg) => {
+                {catalogueLoading && (
+                  <div className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)', backgroundColor: 'var(--bg-surface)' }}>
+                    Loading packages…
+                  </div>
+                )}
+                {standardPackages.map((pkg) => {
                   const alreadyExists = existingPackageNames.some(
                     (n) => n.toLowerCase() === pkg.name.toLowerCase()
                   );
@@ -331,7 +325,7 @@ export default function GenerateTradePackageFolderModal({
                       </span>
                       <span
                         className="rounded px-1.5 py-0.5 text-xs font-mono font-medium"
-                        style={{ backgroundColor: 'rgba(185,149,102,0.12)', color: 'var(--gold)' }}
+                        style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}
                       >
                         {pkg.code}
                       </span>
@@ -360,7 +354,7 @@ export default function GenerateTradePackageFolderModal({
                   </span>
                   <span
                     className="rounded px-1.5 py-0.5 text-xs font-medium"
-                    style={{ backgroundColor: 'rgba(185,149,102,0.12)', color: 'var(--gold)' }}
+                    style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}
                   >
                     Custom
                   </span>
@@ -372,11 +366,11 @@ export default function GenerateTradePackageFolderModal({
             {includeOther && (
               <section className="space-y-3">
                 <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                  Custom Package
+                  Custom package
                 </h3>
                 <div>
                   <label className="mb-1 block text-xs" style={{ color: 'var(--text-muted)' }}>
-                    Trade Package Name
+                    Trade package name
                   </label>
                   <input
                     type="text"
@@ -405,7 +399,7 @@ export default function GenerateTradePackageFolderModal({
             {/* Section 3 — Project reference */}
             <section className="space-y-1">
               <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                Project Reference
+                Project reference
               </h3>
               <p
                 className="rounded-lg px-3 py-2 text-sm font-mono"
@@ -423,11 +417,11 @@ export default function GenerateTradePackageFolderModal({
             {selectedPackages.length > 0 && (
               <section className="space-y-2">
                 <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                  Package Reference Preview
+                  Package reference preview
                 </h3>
                 <div
                   className="overflow-hidden rounded-xl"
-                  style={{ border: '1px solid var(--border)' }}
+                  style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}
                 >
                   <table className="w-full text-sm">
                     <thead>
@@ -466,7 +460,7 @@ export default function GenerateTradePackageFolderModal({
                                 <span
                                   className="rounded px-1.5 py-0.5 text-xs font-medium"
                                   style={{
-                                    backgroundColor: 'rgba(185,149,102,0.12)',
+                                    backgroundColor: 'var(--gold-15)',
                                     color: 'var(--gold)',
                                   }}
                                 >
@@ -496,19 +490,13 @@ export default function GenerateTradePackageFolderModal({
               >
                 Cancel
               </button>
-              <button
+              <Button
                 type="submit"
                 disabled={generateMutation.isPending || selectedPackages.length === 0}
-                className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium"
-                style={{
-                  backgroundColor: 'var(--gold)',
-                  color: 'var(--accent-fg)',
-                  opacity: generateMutation.isPending || selectedPackages.length === 0 ? 0.7 : 1,
-                }}
               >
                 <Box size={14} />
                 {generateMutation.isPending ? 'Generating…' : `Generate Package${selectedPackages.length !== 1 ? 's' : ''}`}
-              </button>
+              </Button>
             </div>
           </form>
         )}

@@ -202,8 +202,8 @@ function AddDocumentModal({
       setForm(f => ({ ...f, [k]: e.target.value }));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-md rounded-2xl overflow-hidden shadow-2xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+      <div className="w-full max-w-md rounded-2xl overflow-hidden ss-animate-in" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
           <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Add Document</h2>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-[var(--bg-hover)]">
@@ -282,7 +282,7 @@ function AddDocumentModal({
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm"
               style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
             <button type="submit" disabled={mutation.isPending}
-              className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60"
+              className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60 active:scale-[0.98]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
               {mutation.isPending ? 'Saving…' : mode === 'upload' ? 'Upload File' : 'Add Document'}
             </button>
@@ -329,8 +329,8 @@ function AddDeadlineModal({ caseId, projectId, caseCreatedAt, onClose }: { caseI
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-md rounded-2xl overflow-hidden shadow-2xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+      <div className="w-full max-w-md rounded-2xl overflow-hidden ss-animate-in" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
           <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Add Deadline</h2>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-[var(--bg-hover)]">
@@ -373,7 +373,7 @@ function AddDeadlineModal({ caseId, projectId, caseCreatedAt, onClose }: { caseI
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm"
               style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
             <button type="submit" disabled={mutation.isPending}
-              className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60"
+              className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60 active:scale-[0.98]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
               {mutation.isPending ? 'Saving…' : 'Add Deadline'}
             </button>
@@ -409,8 +409,8 @@ function AdvanceStepModal({ adjudicationCase, projectId, onClose }: { adjudicati
   if (!nextStep) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-md rounded-2xl overflow-hidden shadow-2xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+      <div className="w-full max-w-md rounded-2xl overflow-hidden ss-animate-in" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
           <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Advance to Next Step</h2>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-[var(--bg-hover)]">
@@ -424,7 +424,7 @@ function AdvanceStepModal({ adjudicationCase, projectId, onClose }: { adjudicati
               {STEP_DEFINITIONS[currentIndex]?.title}
             </p>
           </div>
-          <div className="p-3 rounded-lg" style={{ backgroundColor: 'rgba(185,149,102,0.08)', border: '1px solid rgba(185,149,102,0.2)' }}>
+          <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--gold-8)', border: '1px solid var(--gold-15)' }}>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Next step:</p>
             <p className="text-sm font-semibold mt-1" style={{ color: 'var(--gold)' }}>
               {nextStep.title}
@@ -446,7 +446,7 @@ function AdvanceStepModal({ adjudicationCase, projectId, onClose }: { adjudicati
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm"
               style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
             <button onClick={() => mutation.mutate()} disabled={mutation.isPending}
-              className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60"
+              className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60 active:scale-[0.98]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
               {mutation.isPending ? 'Advancing…' : 'Advance Step'}
             </button>
@@ -484,8 +484,8 @@ function StepTracker({
             key={def.key}
             className="rounded-xl transition-colors"
             style={{
-              backgroundColor: isCurrent ? 'rgba(185,149,102,0.06)' : 'transparent',
-              border: isCurrent ? '1px solid rgba(185,149,102,0.2)' : '1px solid transparent',
+              backgroundColor: isCurrent ? 'var(--gold-8)' : 'transparent',
+              border: isCurrent ? '1px solid var(--gold-15)' : '1px solid transparent',
               padding: '10px 12px',
             }}
           >
@@ -494,7 +494,7 @@ function StepTracker({
               <div className="flex-shrink-0 flex flex-col items-center">
                 <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
                   style={{
-                    backgroundColor: isCompleted ? 'rgba(34,197,94,0.15)' : isCurrent ? 'rgba(185,149,102,0.2)' : 'var(--bg-elevated)',
+                    backgroundColor: isCompleted ? 'rgba(34,197,94,0.15)' : isCurrent ? 'var(--gold-15)' : 'var(--bg-elevated)',
                     color: isCompleted ? '#4ade80' : isCurrent ? 'var(--gold)' : 'var(--text-muted)',
                   }}>
                   {isCompleted ? <CheckCircle2 size={14} /> : isCurrent ? <Activity size={12} /> : <span>{idx + 1}</span>}
@@ -545,11 +545,11 @@ function StepTracker({
                           title={action.ai ? 'AI feature — coming soon' : action.placeholder ? 'Coming soon' : undefined}
                           className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs transition-all"
                           style={{
-                            backgroundColor: isActive ? 'rgba(185,149,102,0.12)' : 'var(--bg-elevated)',
+                            backgroundColor: isActive ? 'var(--gold-15)' : 'var(--bg-elevated)',
                             color: isActive ? 'var(--gold)' : 'var(--text-muted)',
                             opacity: isInProgress ? 1 : 0.45,
                             cursor: isActive ? 'pointer' : 'default',
-                            border: `1px solid ${isActive ? 'rgba(185,149,102,0.2)' : 'var(--border)'}`,
+                            border: `1px solid ${isActive ? 'var(--gold-15)' : 'var(--border)'}`,
                           }}
                         >
                           {action.ai && <Zap size={10} />}
@@ -593,7 +593,7 @@ function ActivityTimeline({ projectId, caseId }: { projectId: string; caseId: st
   };
 
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
       <div className="flex items-center gap-2 px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
         <History size={14} style={{ color: 'var(--text-muted)' }} />
         <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Case Activity</h2>
@@ -608,7 +608,7 @@ function ActivityTimeline({ projectId, caseId }: { projectId: string; caseId: st
           {activities.map((act: any, i: number) => (
             <div key={act.id ?? i} className="flex items-start gap-3 px-5 py-3">
               <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                style={{ backgroundColor: 'rgba(185,149,102,0.1)', color: 'var(--gold)' }}>
+                style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}>
                 {ACTIVITY_ICONS[act.activity_type] ?? <Activity size={12} />}
               </div>
               <div className="flex-1 min-w-0">
@@ -622,7 +622,7 @@ function ActivityTimeline({ projectId, caseId }: { projectId: string; caseId: st
                       <User size={9} /> {act.user.name}
                     </span>
                   )}
-                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  <span className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
                     {formatDate(act.created_at)}
                   </span>
                 </div>
@@ -668,7 +668,7 @@ function LinkedRecordsPanel({ adjCase, projectId }: { adjCase: any; projectId: s
   if (records.length === 0) return null;
 
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
       <div className="flex items-center gap-2 px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
         <Link2 size={14} style={{ color: 'var(--text-muted)' }} />
         <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Linked Records</h2>
@@ -685,7 +685,7 @@ function LinkedRecordsPanel({ adjCase, projectId }: { adjCase: any; projectId: s
               <p className="text-xs font-medium mt-0.5 truncate max-w-[200px]" style={{ color: 'var(--text-primary)' }}>{r.label}</p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>{r.ref}</span>
+              <span className="text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>{r.ref}</span>
               <ExternalLink size={11} style={{ color: 'var(--text-muted)' }} />
             </div>
           </a>
@@ -837,12 +837,12 @@ export default function AdjudicationCaseDetailPage() {
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <div className="flex items-center gap-3 flex-wrap">
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'rgba(185,149,102,0.12)' }}>
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--gold-15)' }}>
                 <Scale size={16} style={{ color: 'var(--gold)' }} />
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>{adjCase.case_number}</span>
+                  <span className="text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>{adjCase.case_number}</span>
                   <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{adjCase.title}</h1>
                 </div>
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -861,7 +861,7 @@ export default function AdjudicationCaseDetailPage() {
                     </span>
                   )}
                   {adjCase.claim_amount && (
-                    <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                    <span className="text-xs font-medium tabular-nums" style={{ color: 'var(--text-secondary)' }}>
                       {adjCase.currency} {Number(adjCase.claim_amount).toLocaleString()}
                     </span>
                   )}
@@ -886,7 +886,7 @@ export default function AdjudicationCaseDetailPage() {
             {canAdvance && (
               <button
                 onClick={() => setShowAdvance(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.98]"
                 style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
               >
                 <ChevronRight size={14} /> Advance Step
@@ -925,8 +925,8 @@ export default function AdjudicationCaseDetailPage() {
           adjCase.payment_application ? { label: 'Payment Application', value: `App #${adjCase.payment_application.application_number}` } : null,
           adjCase.variation ? { label: 'Variation', value: `Var #${adjCase.variation.variation_number} – ${adjCase.variation.title}` } : null,
           adjCase.creator ? { label: 'Created By', value: adjCase.creator.name } : null,
-        ].filter(Boolean).map((item: any) => (
-          <div key={item.label} className="p-3 rounded-xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+        ].filter(Boolean).map((item: any, i: number) => (
+          <div key={item.label} className="p-3 rounded-xl ss-animate-in" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: `${Math.min(i * 45, 360)}ms` }}>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{item.label}</p>
             <p className="text-sm font-medium mt-1 truncate" style={{ color: 'var(--text-primary)' }}>{item.value ?? '—'}</p>
           </div>
@@ -934,7 +934,7 @@ export default function AdjudicationCaseDetailPage() {
       </div>
 
       {adjCase.summary && (
-        <div className="p-4 rounded-xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+        <div className="p-4 rounded-xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
           <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Summary</p>
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{adjCase.summary}</p>
         </div>
@@ -944,7 +944,7 @@ export default function AdjudicationCaseDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Step tracker — left 2/3 */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
             <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
               <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>8-Step Workflow</h2>
               <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Track adjudication progress through each stage</p>
@@ -962,7 +962,7 @@ export default function AdjudicationCaseDetailPage() {
           </div>
 
           {/* Documents */}
-          <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
             <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
               <div>
                 <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Documents</h2>
@@ -972,7 +972,7 @@ export default function AdjudicationCaseDetailPage() {
                 <button
                   onClick={() => setShowAddDoc({ open: true })}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-                  style={{ backgroundColor: 'rgba(185,149,102,0.12)', color: 'var(--gold)' }}
+                  style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}
                 >
                   <Plus size={12} /> Add Document
                 </button>
@@ -985,7 +985,7 @@ export default function AdjudicationCaseDetailPage() {
                   <p className="text-xs" style={{ color: 'var(--text-muted)' }}>No documents yet</p>
                   {canWrite && (
                     <button onClick={() => setShowAddDoc({ open: true })}
-                      className="mt-3 px-3 py-1.5 rounded-lg text-xs"
+                      className="mt-3 px-3 py-1.5 rounded-lg text-xs active:scale-[0.98]"
                       style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
                       Add First Document
                     </button>
@@ -1012,7 +1012,7 @@ export default function AdjudicationCaseDetailPage() {
                           )}
                           {doc.category && (
                             <span className="text-xs px-1.5 py-0.5 rounded"
-                              style={{ backgroundColor: 'rgba(185,149,102,0.1)', color: 'var(--gold)' }}>
+                              style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}>
                               {DOC_CATEGORY_LABELS[doc.category] ?? doc.category}
                             </span>
                           )}
@@ -1052,7 +1052,7 @@ export default function AdjudicationCaseDetailPage() {
         {/* Right panel: deadlines + key dates */}
         <div className="space-y-4">
           {/* Deadlines */}
-          <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
             <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
               <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Deadlines</h2>
               {canWrite && (
@@ -1079,7 +1079,7 @@ export default function AdjudicationCaseDetailPage() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium truncate" style={{ color: 'var(--text-primary)' }}>{dl.title}</p>
-                        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                        <p className="text-xs mt-0.5 tabular-nums" style={{ color: 'var(--text-muted)' }}>
                           {dl.due_date ? formatDate(dl.due_date) : '—'}
                         </p>
                         {(() => {
@@ -1130,7 +1130,7 @@ export default function AdjudicationCaseDetailPage() {
           </div>
 
           {/* Key case dates */}
-          <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
             <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
               <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Key Dates</h2>
             </div>
@@ -1146,7 +1146,7 @@ export default function AdjudicationCaseDetailPage() {
               ].filter(d => d.value).map(d => (
                 <div key={d.label} className="flex justify-between items-center py-1">
                   <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{d.label}</span>
-                  <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  <span className="text-xs font-medium tabular-nums" style={{ color: 'var(--text-secondary)' }}>
                     {formatDate(d.value)}
                   </span>
                 </div>
@@ -1158,7 +1158,7 @@ export default function AdjudicationCaseDetailPage() {
           </div>
 
           {/* AI hooks panel */}
-          <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
             <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
               <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>AI Assistant</h2>
               <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Coming soon</p>

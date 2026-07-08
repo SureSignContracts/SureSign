@@ -1,6 +1,7 @@
 'use client';
 
 import { Brain, Zap, Settings, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Card } from '@/components/ui/Card';
 
 const AI_MODELS = [
   { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI', use: 'Document drafting, summarisation', status: 'active' },
@@ -30,11 +31,11 @@ export default function AdminAiConfigPage() {
       <section>
         <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>AI Models</h2>
         <div className="space-y-3">
-          {AI_MODELS.map(model => (
+          {AI_MODELS.map((model, i) => (
             <div
               key={model.id}
-              className="flex items-center justify-between p-4 rounded-xl"
-              style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+              className="flex items-center justify-between p-4 rounded-xl ss-animate-in"
+              style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: `${Math.min(i * 45, 360)}ms` }}
             >
               <div className="flex items-center gap-4">
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(139,92,246,0.1)' }}>
@@ -67,10 +68,7 @@ export default function AdminAiConfigPage() {
       {/* Features */}
       <section>
         <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>AI Features</h2>
-        <div
-          className="rounded-2xl overflow-hidden"
-          style={{ border: '1px solid var(--border)' }}
-        >
+        <Card className="overflow-hidden">
           {AI_FEATURES.map((feature, i) => (
             <div
               key={feature.id}
@@ -90,7 +88,7 @@ export default function AdminAiConfigPage() {
               <ToggleRight size={22} style={{ color: '#4ade80', cursor: 'pointer' }} />
             </div>
           ))}
-        </div>
+        </Card>
       </section>
     </div>
   );

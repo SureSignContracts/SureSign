@@ -16,6 +16,7 @@ import {
 import { FinalAccountTab } from './FinalAccountTab';
 import toast from 'react-hot-toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
+import PageTourButton from '@/components/tours/PageTourButton';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -61,6 +62,7 @@ type PaymentNoticeRecord = {
   basis_of_assessment?: string | null;
   issued_by?: string | null;
   status?: string | null;
+  is_late?: boolean;
   payment_application_id?: number | null;
   payment_application?: {
     id: number;
@@ -132,6 +134,7 @@ type PayLessNoticeRecord = {
   basis_of_difference?: string | null;
   issued_by?: string | null;
   status?: string | null;
+  is_late?: boolean;
   payment_application_id?: number | null;
   payment_notice_id?: number | null;
   payment_application?: {
@@ -301,9 +304,9 @@ function TextareaField({ label, name, required = false, value, onChange, rows = 
 
 function SumCard({ label, value, color, sub, index = 0 }: { label: string; value: string; color: string; sub?: string; index?: number }) {
   return (
-    <div className="ss-animate-in rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', animationDelay: `${index * 60}ms` }}>
+    <div className="ss-animate-in rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: `${index * 60}ms` }}>
       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}</p>
-      <p className="text-lg font-bold mt-1 leading-tight" style={{ color }}>{value}</p>
+      <p className="text-lg font-bold mt-1 leading-tight tabular-nums" style={{ color }}>{value}</p>
       {sub && <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{sub}</p>}
     </div>
   );
@@ -311,9 +314,9 @@ function SumCard({ label, value, color, sub, index = 0 }: { label: string; value
 
 function ModalWrap({ children, wide }: { children: React.ReactNode; wide?: boolean }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className={`w-full ${wide ? 'max-w-2xl' : 'max-w-lg'} rounded-2xl shadow-xl max-h-[92vh] overflow-y-auto`}
-        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+      <div className={`w-full ${wide ? 'max-w-2xl' : 'max-w-lg'} rounded-2xl max-h-[92vh] overflow-y-auto ss-animate-in`}
+        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
         {children}
       </div>
     </div>
@@ -336,7 +339,7 @@ function FinancialRow({ label, value, highlight, negative }: { label: string; va
   return (
     <div className="flex justify-between items-center py-2" style={{ borderBottom: '1px solid var(--border)' }}>
       <span className="text-xs" style={{ color: highlight ? 'var(--text-primary)' : 'var(--text-muted)' }}>{label}</span>
-      <span className="text-sm font-semibold" style={{ color: negative ? '#f87171' : highlight ? 'var(--gold)' : 'var(--text-secondary)' }}>
+      <span className="text-sm font-semibold tabular-nums" style={{ color: negative ? '#f87171' : highlight ? 'var(--gold)' : 'var(--text-secondary)' }}>
         {negative && value !== '£0.00' ? `(${value})` : value}
       </span>
     </div>
@@ -540,7 +543,7 @@ function NewPaymentAppModal({ projectId, onClose, initialTradePackageId, initial
 
   return (
     <ModalWrap wide>
-      <ModalHeader title="New Payment Application" sub={step === 1 ? 'Step 1 — Choose source' : `Step 2 — ${sourceType === 'contract' ? 'Main Contract' : 'Trade Package'}`} onClose={onClose} />
+      <ModalHeader title="New Payment Application" sub={step === 1 ? 'Step 1: Choose source' : `Step 2: ${sourceType === 'contract' ? 'Main Contract' : 'Trade Package'}`} onClose={onClose} />
       <div className="p-5 space-y-4">
         {step === 1 && (
           <>
@@ -569,7 +572,7 @@ function NewPaymentAppModal({ projectId, onClose, initialTradePackageId, initial
                   {contracts.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
                 </select>
                 {selectedContract?.retention_percentage && (
-                  <p className="text-xs mt-1" style={{ color: '#facc15' }}>Retention {selectedContract.retention_percentage}% — auto-calculated</p>
+                  <p className="text-xs mt-1" style={{ color: '#facc15' }}>Retention {selectedContract.retention_percentage}% (auto-calculated)</p>
                 )}
               </div>
             ) : (
@@ -579,19 +582,19 @@ function NewPaymentAppModal({ projectId, onClose, initialTradePackageId, initial
                   className="w-full px-3 py-2 rounded-lg text-sm outline-none"
                   style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
                   <option value="">Select package…</option>
-                  {tradePackages.map(tp => <option key={tp.id} value={tp.id}>{tp.name}{tp.contractor_name ? ` — ${tp.contractor_name}` : ''}</option>)}
+                  {tradePackages.map(tp => <option key={tp.id} value={tp.id}>{tp.name}{tp.contractor_name ? ` (${tp.contractor_name})` : ''}</option>)}
                 </select>
               </div>
             )}
 
             {/* Application number — auto-detected (first vs subsequent) */}
             {defaults?.application_number != null && (
-              <div className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs" style={{ backgroundColor: 'rgba(185,149,102,0.1)', border: '1px solid rgba(185,149,102,0.25)', color: 'var(--gold)' }}>
+              <div className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs" style={{ backgroundColor: 'var(--gold-15)', border: '1px solid var(--gold-30)', color: 'var(--gold)' }}>
                 <span className="font-semibold">Application #{defaults.application_number}</span>
                 <span style={{ color: 'var(--text-muted)' }}>
                   {defaults.is_first_application
-                    ? '— first application for this source'
-                    : '— subsequent application; previous certified value is carried forward automatically'}
+                    ? '(first application for this source)'
+                    : '(subsequent application; previous certified value is carried forward automatically)'}
                 </span>
               </div>
             )}
@@ -624,7 +627,7 @@ function NewPaymentAppModal({ projectId, onClose, initialTradePackageId, initial
             </div>
             {sourceType === 'contract' && defaults?.dates && Object.values(defaults.dates).some(Boolean) && (
               <p className="text-xs" style={{ color: '#facc15' }}>
-                Dates below auto-calculated from the contract/AI analysis — adjust if needed.
+                Dates below auto-calculated from the contract/AI analysis, adjust if needed.
               </p>
             )}
             <div className="grid grid-cols-2 gap-3">
@@ -658,7 +661,7 @@ function NewPaymentAppModal({ projectId, onClose, initialTradePackageId, initial
               <button type="button" onClick={() => setStep(1)} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>← Back</button>
               <div className="flex gap-3">
                 <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
-                <button type="submit" disabled={isPending || !canSubmit} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: (!canSubmit || isPending) ? 0.6 : 1 }}>
+                <button type="submit" disabled={isPending || !canSubmit} className="px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: (!canSubmit || isPending) ? 0.6 : 1 }}>
                   {isPending ? 'Creating…' : 'Create Application'}
                 </button>
               </div>
@@ -695,13 +698,13 @@ function CertifyModal({ pa, projectId, onClose }: { pa: PaymentApplication; proj
       queryClient.invalidateQueries({ queryKey: ['project-payment-apps', projectId] });
       queryClient.invalidateQueries({ queryKey: ['project-activities', projectId] });
       queryClient.invalidateQueries({ queryKey: ['project-stats', projectId] });
-      toast.success('Application certified — certificate PDF saved to documents');
+      toast.success('Application certified, certificate PDF saved to documents');
       onClose();
     },
     onError: (error: unknown) => toast.error(getErrorMessage(error, 'Certification failed')),
   });
 
-  const source = pa.trade_package ? `Trade Package — ${pa.trade_package.name}` : pa.contract ? `Main Contract — ${pa.contract.title}` : '—';
+  const source = pa.trade_package ? `Trade Package: ${pa.trade_package.name}` : pa.contract ? `Main Contract: ${pa.contract.title}` : 'Unknown';
 
   return (
     <ModalWrap wide>
@@ -838,9 +841,9 @@ function PaymentNoticeModal({ pa, projectId, onClose }: { pa: PaymentApplication
       queryClient.invalidateQueries({ queryKey: ['project-activities', projectId] });
       if (data.document?.id) {
         blobDownload(data.document as { id: number; file_name?: string });
-        toast.success('Payment Notice issued — downloading PDF');
+        toast.success('Payment Notice issued, downloading PDF');
       } else {
-        toast.success('Payment Notice issued — PDF saved to documents');
+        toast.success('Payment Notice issued, PDF saved to documents');
       }
       onClose();
     },
@@ -848,11 +851,11 @@ function PaymentNoticeModal({ pa, projectId, onClose }: { pa: PaymentApplication
   });
 
   const diff = fmt(pa.amount_due) - fmt(form.notified_sum);
-  const source = pa.trade_package ? `Trade Package — ${pa.trade_package.name}` : pa.contract ? `Main Contract — ${pa.contract.title}` : '—';
+  const source = pa.trade_package ? `Trade Package: ${pa.trade_package.name}` : pa.contract ? `Main Contract: ${pa.contract.title}` : 'Unknown';
 
   return (
     <ModalWrap wide>
-      <ModalHeader title={`Payment Notice — Application #${pa.application_number}`} sub="Issue a formal Payment Notice" onClose={onClose} />
+      <ModalHeader title={`Payment Notice: Application #${pa.application_number}`} sub="Issue a formal Payment Notice" onClose={onClose} />
       <div className="p-5 space-y-5">
         <div className="rounded-xl p-4 space-y-1" style={{ backgroundColor: 'var(--bg-elevated)' }}>
           <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>APPLICATION DETAILS</p>
@@ -862,7 +865,14 @@ function PaymentNoticeModal({ pa, projectId, onClose }: { pa: PaymentApplication
           {fmt(pa.certified_amount) > 0 && <FinancialRow label="Certified Amount" value={formatCurrency(fmt(pa.certified_amount))} />}
           {pa.due_date && <FinancialRow label="Payment Due Date" value={formatDate(pa.due_date)} />}
           {pa.final_date_for_payment && <FinancialRow label="Final Date for Payment" value={formatDate(pa.final_date_for_payment)} />}
+          {pa.payment_notice_deadline && <FinancialRow label="Payment Notice Deadline" value={formatDate(pa.payment_notice_deadline)} />}
         </div>
+
+        {pa.payment_notice_deadline && new Date(form.notice_date) > new Date(pa.payment_notice_deadline) && (
+          <div className="rounded-xl p-3 text-xs font-medium" style={{ backgroundColor: 'rgba(251,146,60,0.1)', border: '1px solid rgba(251,146,60,0.3)', color: '#fb923c' }}>
+            This notice date is after the Payment Notice Deadline ({formatDate(pa.payment_notice_deadline)}). The notice will still be issued, but will be recorded as late.
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <InputField label="Notice Date *" name="notice_date" type="date" value={form.notice_date} onChange={handleChange} required />
@@ -874,7 +884,7 @@ function PaymentNoticeModal({ pa, projectId, onClose }: { pa: PaymentApplication
             onChange={handleChange}
             className="w-full px-3 py-2 rounded-lg text-sm outline-none font-bold"
             style={{ backgroundColor: 'var(--bg-base)', border: '2px solid var(--gold)', color: 'var(--text-primary)' }} />
-          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Pre-filled from certified amount (or amount applied for) — override if needed</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Pre-filled from certified amount (or amount applied for). Override if needed.</p>
         </div>
         <TextareaField label="Basis of Assessment / Notes" name="basis_of_assessment" value={form.basis_of_assessment} onChange={handleChange} rows={3} />
         <InputField label="Issued By" name="issued_by" value={form.issued_by} onChange={handleChange} hint="Name of the person / organisation issuing this notice" />
@@ -897,7 +907,7 @@ function PaymentNoticeModal({ pa, projectId, onClose }: { pa: PaymentApplication
         <div className="flex justify-end gap-3 pt-2">
           <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
           <button onClick={() => mutate()} disabled={isPending || !form.notified_sum}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]"
             style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: (isPending || !form.notified_sum) ? 0.6 : 1 }}>
             <FileCheck size={14} />
             {isPending ? 'Issuing…' : 'Issue Payment Notice'}
@@ -940,18 +950,18 @@ function PayLessNoticeModal({ pa, projectId, onClose }: { pa: PaymentApplication
       queryClient.invalidateQueries({ queryKey: ['project-payment-apps', projectId] });
       queryClient.invalidateQueries({ queryKey: ['project-pay-less-notices', projectId] });
       queryClient.invalidateQueries({ queryKey: ['project-activities', projectId] });
-      toast.success('Pay Less Notice issued — PDF saved to documents');
+      toast.success('Pay Less Notice issued, PDF saved to documents');
       if (data.document) blobDownload(data.document);
       onClose();
     },
     onError: (error: unknown) => toast.error(getErrorMessage(error, 'Failed to create')),
   });
 
-  const source = pa.trade_package ? `Trade Package — ${pa.trade_package.name}` : pa.contract ? `Main Contract — ${pa.contract.title}` : '—';
+  const source = pa.trade_package ? `Trade Package: ${pa.trade_package.name}` : pa.contract ? `Main Contract: ${pa.contract.title}` : 'Unknown';
 
   return (
     <ModalWrap wide>
-      <ModalHeader title={`Pay Less Notice — Application #${pa.application_number}`} sub="Issue a formal Pay Less Notice" onClose={onClose} />
+      <ModalHeader title={`Pay Less Notice: Application #${pa.application_number}`} sub="Issue a formal Pay Less Notice" onClose={onClose} />
       <div className="p-5 space-y-5">
         <div className="rounded-xl p-4 space-y-1" style={{ backgroundColor: 'var(--bg-elevated)' }}>
           <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>APPLICATION DETAILS</p>
@@ -973,11 +983,17 @@ function PayLessNoticeModal({ pa, projectId, onClose }: { pa: PaymentApplication
             </div>
           </div>
         )}
+        {pa.pay_less_notice_deadline && new Date(form.notice_date) > new Date(pa.pay_less_notice_deadline) && (
+          <div className="rounded-xl p-3 text-xs font-medium" style={{ backgroundColor: 'rgba(251,146,60,0.1)', border: '1px solid rgba(251,146,60,0.3)', color: '#fb923c' }}>
+            This notice date is after the Pay Less Notice Deadline ({formatDate(pa.pay_less_notice_deadline)}). The notice will still be issued, but will be recorded as late.
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-4">
           <InputField label="Notice Date *" name="notice_date" type="date" value={form.notice_date} onChange={handleChange} required />
           <InputField label="Reference (optional)" name="reference" value={form.reference} onChange={handleChange} />
         </div>
-        <InputField label="Notified Sum *" name="original_amount_due" type="number" step="0.01" value={form.original_amount_due} onChange={handleChange} required hint={latestPN ? 'Pre-filled from the latest Payment Notice. Override only if required.' : 'No Payment Notice issued — using application amount as fallback.'} />
+        <InputField label="Notified Sum *" name="original_amount_due" type="number" step="0.01" value={form.original_amount_due} onChange={handleChange} required hint={latestPN ? 'Pre-filled from the latest Payment Notice. Override only if required.' : 'No Payment Notice issued. Using application amount as fallback.'} />
         <InputField label="Total Deductions *" name="total_deductions" type="number" step="0.01" value={form.total_deductions} onChange={handleChange} required />
         <TextareaField label="Basis of Calculation *" name="deduction_reason" value={form.deduction_reason} onChange={handleChange} required rows={3} />
         <TextareaField label="Detailed Deduction Notes (optional)" name="detailed_deduction_notes" value={form.detailed_deduction_notes} onChange={handleChange} />
@@ -1200,7 +1216,7 @@ function PaymentDetailsModal({ pa, onClose }: { pa: PaymentApplication; onClose:
   const badge = PA_STATUS[pa.status ?? ''] ?? PA_STATUS.draft;
   return (
     <ModalWrap>
-      <ModalHeader title={`Payment Details — Application #${pa.application_number}`} onClose={onClose} />
+      <ModalHeader title={`Payment Details: Application #${pa.application_number}`} onClose={onClose} />
       <div className="p-5 space-y-1">
         <FinancialRow label="Status" value={badge.label} />
         {fmt(pa.paid_amount) > 0 && <FinancialRow label="Paid Amount" value={formatCurrency(fmt(pa.paid_amount))} highlight />}
@@ -1288,7 +1304,7 @@ function ApplicationsTable({
 
   if (paymentApps.length === 0) {
     return (
-      <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+      <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
         <DollarSign size={28} className="mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No payment applications yet</p>
       </div>
@@ -1423,11 +1439,11 @@ function ApplicationsTable({
                 )}
                 <td className="px-4 py-3">
                   <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{p.reference ?? '—'}</p>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{p.application_date ? formatDate(p.application_date) : '—'}</p>
+                  <p className="text-xs mt-0.5 tabular-nums" style={{ color: 'var(--text-muted)' }}>{p.application_date ? formatDate(p.application_date) : '—'}</p>
                 </td>
-                <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-secondary)' }}>{formatCurrency(fmt(p.gross_valuation))}</td>
-                <td className="px-4 py-3 text-xs font-medium" style={{ color: 'var(--text-primary)' }}>{formatCurrency(fmt(p.amount_due))}</td>
-                <td className="px-4 py-3 text-xs" style={{ color: fmt(p.certified_amount) > 0 ? '#4ade80' : 'var(--text-muted)' }}>
+                <td className="px-4 py-3 text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>{formatCurrency(fmt(p.gross_valuation))}</td>
+                <td className="px-4 py-3 text-xs font-medium tabular-nums" style={{ color: 'var(--text-primary)' }}>{formatCurrency(fmt(p.amount_due))}</td>
+                <td className="px-4 py-3 text-xs tabular-nums" style={{ color: fmt(p.certified_amount) > 0 ? '#4ade80' : 'var(--text-muted)' }}>
                   {fmt(p.certified_amount) > 0 ? formatCurrency(fmt(p.certified_amount)) : '—'}
                 </td>
                 <td className="px-4 py-3">
@@ -1505,12 +1521,12 @@ function OverviewTab({ paymentApps, contracts, tradePackages, formatCurrency, ca
   const paymentOverdue  = active.filter(p => p.final_date_for_payment && p.final_date_for_payment < today && p.status !== 'paid');
 
   const intelCards = [
-    { label: 'Awaiting Payment Notice', count: awaitingPN.length,    color: '#fb923c', hint: 'Submitted — no PN issued yet' },
+    { label: 'Awaiting Payment Notice', count: awaitingPN.length,    color: '#fb923c', hint: 'Submitted, no PN issued yet' },
     { label: 'PN Deadline Overdue',     count: pnOverdue.length,     color: '#f87171', hint: 'PN deadline passed with no notice' },
-    { label: 'Awaiting Pay Less Notice',count: awaitingPLN.length,   color: '#fb923c', hint: 'PN issued — PLN window still open' },
-    { label: 'PLN Deadline Passed',     count: plnPassed.length,     color: '#f87171', hint: 'PLN deadline passed — full notified sum may be payable' },
+    { label: 'Awaiting Pay Less Notice',count: awaitingPLN.length,   color: '#fb923c', hint: 'PN issued, PLN window still open' },
+    { label: 'PLN Deadline Passed',     count: plnPassed.length,     color: '#f87171', hint: 'PLN deadline passed, full notified sum may be payable' },
     { label: 'Final Date This Week',    count: finalThisWeek.length,  color: '#facc15', hint: 'Payment due within 7 days' },
-    { label: 'Payment Overdue',         count: paymentOverdue.length, color: '#f87171', hint: 'Final date passed — not yet marked paid' },
+    { label: 'Payment Overdue',         count: paymentOverdue.length, color: '#f87171', hint: 'Final date passed, not yet marked paid' },
   ];
 
   const mainCertified = paymentApps.filter(p => p.contract_id && !p.trade_package_id).reduce((s, p) => s + fmt(p.certified_amount), 0);
@@ -1521,14 +1537,14 @@ function OverviewTab({ paymentApps, contracts, tradePackages, formatCurrency, ca
 
       {/* ── Statutory Intelligence ────────────────────────────────────────── */}
       {active.length > 0 && (
-        <div>
+        <div data-tour="commercial-statutory-intel">
           <p className="text-xs font-semibold mb-3 uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Statutory Intelligence</p>
-          <div className="grid grid-cols-3 gap-3">
-            {intelCards.map(card => (
-              <div key={card.label} className="rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: `1px solid ${card.count > 0 ? card.color + '40' : 'var(--border)'}` }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            {intelCards.map((card, i) => (
+              <div key={card.label} className="rounded-xl p-4 ss-animate-in" style={{ backgroundColor: 'var(--bg-surface)', border: `1px solid ${card.count > 0 ? card.color + '40' : 'var(--border)'}`, boxShadow: 'var(--shadow-card)', animationDelay: `${Math.min(i * 45, 360)}ms` }}>
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-xs font-medium leading-tight" style={{ color: card.count > 0 ? card.color : 'var(--text-muted)' }}>{card.label}</p>
-                  <span className="text-lg font-bold leading-none flex-shrink-0" style={{ color: card.count > 0 ? card.color : 'var(--text-muted)' }}>{card.count}</span>
+                  <span className="text-lg font-bold leading-none flex-shrink-0 tabular-nums" style={{ color: card.count > 0 ? card.color : 'var(--text-muted)' }}>{card.count}</span>
                 </div>
                 <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>{card.hint}</p>
               </div>
@@ -1542,8 +1558,8 @@ function OverviewTab({ paymentApps, contracts, tradePackages, formatCurrency, ca
           <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Main Contracts</h3>
         </div>
         {contracts.length === 0 ? (
-          <div className="rounded-xl p-6 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No contracts found — add a contract first</p>
+          <div className="rounded-xl p-6 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No contracts found. Add a contract first.</p>
           </div>
         ) : (
           <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
@@ -1558,15 +1574,15 @@ function OverviewTab({ paymentApps, contracts, tradePackages, formatCurrency, ca
                   return (
                     <tr key={c.id} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td className="px-4 py-3"><p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{c.title}</p>{c.party_name && <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{c.party_name}</p>}</td>
-                      <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-secondary)' }}>{c.contract_sum ? formatCurrency(c.contract_sum) : '—'}</td>
+                      <td className="px-4 py-3 text-sm tabular-nums" style={{ color: 'var(--text-secondary)' }}>{c.contract_sum ? formatCurrency(c.contract_sum) : '—'}</td>
                       <td className="px-4 py-3 font-mono text-sm" style={{ color: 'var(--gold)' }}>{apps.length}</td>
-                      <td className="px-4 py-3 text-sm" style={{ color: '#4ade80' }}>{formatCurrency(certified)}</td>
-                      <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-secondary)' }}>{c.retention_percentage ? `${c.retention_percentage}%` : '—'}</td>
+                      <td className="px-4 py-3 text-sm tabular-nums" style={{ color: '#4ade80' }}>{formatCurrency(certified)}</td>
+                      <td className="px-4 py-3 text-sm tabular-nums" style={{ color: 'var(--text-secondary)' }}>{c.retention_percentage ? `${c.retention_percentage}%` : '—'}</td>
                       <td className="px-4 py-3"><span className="text-xs px-2 py-0.5 rounded-full capitalize" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>{c.status ?? 'draft'}</span></td>
                       <td className="px-4 py-3">
                         {canWrite && (
-                          <button onClick={() => onNewApp({ contractId: c.id })} className="inline-flex items-center gap-2 rounded-full px-2 py-1 text-xs font-semibold" style={{ backgroundColor: 'rgba(185,149,102,0.12)', color: 'var(--gold)' }}>
-                            <span className="flex h-4 w-4 items-center justify-center rounded-full text-[11px]" style={{ backgroundColor: 'rgba(185,149,102,0.2)', color: 'var(--gold)' }}>+</span>
+                          <button onClick={() => onNewApp({ contractId: c.id })} className="inline-flex items-center gap-2 rounded-full px-2 py-1 text-xs font-semibold" style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}>
+                            <span className="flex h-4 w-4 items-center justify-center rounded-full text-[11px]" style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}>+</span>
                             <span>App</span>
                           </button>
                         )}
@@ -1578,7 +1594,7 @@ function OverviewTab({ paymentApps, contracts, tradePackages, formatCurrency, ca
             </table>
           </div>
         )}
-        <p className="mt-2 text-xs text-right" style={{ color: 'var(--text-muted)' }}>Main contracts certified: <span style={{ color: '#4ade80' }}>{formatCurrency(mainCertified)}</span></p>
+        <p className="mt-2 text-xs text-right" style={{ color: 'var(--text-muted)' }}>Main contracts certified: <span className="tabular-nums" style={{ color: '#4ade80' }}>{formatCurrency(mainCertified)}</span></p>
       </div>
 
       <div>
@@ -1586,7 +1602,7 @@ function OverviewTab({ paymentApps, contracts, tradePackages, formatCurrency, ca
           <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Trade Packages</h3>
         </div>
         {tradePackages.length === 0 ? (
-          <div className="rounded-xl p-6 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          <div className="rounded-xl p-6 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No trade packages yet</p>
           </div>
         ) : (
@@ -1601,10 +1617,10 @@ function OverviewTab({ paymentApps, contracts, tradePackages, formatCurrency, ca
                   const certified = apps.reduce((s, a) => s + fmt(a.certified_amount), 0);
                   return (
                     <tr key={tp.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td className="px-4 py-3"><p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{tp.name}</p>{tp.package_reference && <p className="text-xs mt-0.5 font-mono" style={{ color: 'var(--text-muted)' }}>{tp.package_reference}</p>}</td>
+                      <td className="px-4 py-3"><p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{tp.name}</p>{tp.package_reference && <p className="text-[11px] mt-0.5 font-mono" style={{ color: 'var(--text-muted)' }}>{tp.package_reference}</p>}</td>
                       <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-secondary)' }}>{tp.contractor_name ?? '—'}</td>
                       <td className="px-4 py-3 font-mono text-sm" style={{ color: '#a78bfa' }}>{apps.length}</td>
-                      <td className="px-4 py-3 text-sm" style={{ color: apps.length > 0 ? '#4ade80' : 'var(--text-muted)' }}>{apps.length > 0 ? formatCurrency(certified) : '—'}</td>
+                      <td className="px-4 py-3 text-sm tabular-nums" style={{ color: apps.length > 0 ? '#4ade80' : 'var(--text-muted)' }}>{apps.length > 0 ? formatCurrency(certified) : '—'}</td>
                       <td className="px-4 py-3"><span className="text-xs px-2 py-0.5 rounded-full capitalize" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>{tp.status ?? 'active'}</span></td>
                       <td className="px-4 py-3">
                         {canWrite && (
@@ -1621,7 +1637,7 @@ function OverviewTab({ paymentApps, contracts, tradePackages, formatCurrency, ca
             </table>
           </div>
         )}
-        <p className="mt-2 text-xs text-right" style={{ color: 'var(--text-muted)' }}>Trade packages certified: <span style={{ color: '#4ade80' }}>{formatCurrency(tradeCertified)}</span></p>
+        <p className="mt-2 text-xs text-right" style={{ color: 'var(--text-muted)' }}>Trade packages certified: <span className="tabular-nums" style={{ color: '#4ade80' }}>{formatCurrency(tradeCertified)}</span></p>
       </div>
     </div>
   );
@@ -1638,7 +1654,7 @@ function TradePackagesTab({ tradePackages, paymentApps, formatCurrency, canWrite
 }) {
   if (tradePackages.length === 0) {
     return (
-      <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+      <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
         <Package size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
         <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>No trade packages yet</p>
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Generate trade package folders from the Subcontracts module</p>
@@ -1647,24 +1663,24 @@ function TradePackagesTab({ tradePackages, paymentApps, formatCurrency, canWrite
   }
   return (
     <div className="space-y-4">
-      {tradePackages.map(tp => {
+      {tradePackages.map((tp, i) => {
         const apps = paymentApps.filter(p => p.trade_package_id === tp.id);
         const certified = apps.reduce((s, a) => s + fmt(a.certified_amount), 0);
         const pending = apps.filter(a => a.status === 'submitted').reduce((s, a) => s + fmt(a.amount_due), 0);
         return (
-          <div key={tp.id} className="rounded-2xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          <div key={tp.id} className="rounded-2xl ss-animate-in" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: `${Math.min(i * 45, 360)}ms` }}>
             <div className="flex items-start justify-between p-4" style={{ borderBottom: apps.length > 0 ? '1px solid var(--border)' : undefined }}>
               <div>
                 <div className="flex items-center gap-2">
                   <Package size={15} style={{ color: '#a78bfa' }} />
                   <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{tp.name}</span>
-                  {tp.package_reference && <span className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>{tp.package_reference}</span>}
+                  {tp.package_reference && <span className="text-[11px] font-mono px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>{tp.package_reference}</span>}
                 </div>
                 {tp.contractor_name && <p className="text-xs mt-1 ml-5" style={{ color: 'var(--text-muted)' }}>{tp.contractor_name}</p>}
               </div>
               <div className="flex items-center gap-4">
-                <div className="text-right"><p className="text-xs" style={{ color: 'var(--text-muted)' }}>Certified</p><p className="text-sm font-semibold" style={{ color: apps.length > 0 ? '#4ade80' : 'var(--text-muted)' }}>{apps.length > 0 ? formatCurrency(certified) : '—'}</p></div>
-                <div className="text-right"><p className="text-xs" style={{ color: 'var(--text-muted)' }}>Pending</p><p className="text-sm font-semibold" style={{ color: pending > 0 ? '#facc15' : 'var(--text-muted)' }}>{pending > 0 ? formatCurrency(pending) : '—'}</p></div>
+                <div className="text-right"><p className="text-xs" style={{ color: 'var(--text-muted)' }}>Certified</p><p className="text-sm font-semibold tabular-nums" style={{ color: apps.length > 0 ? '#4ade80' : 'var(--text-muted)' }}>{apps.length > 0 ? formatCurrency(certified) : '—'}</p></div>
+                <div className="text-right"><p className="text-xs" style={{ color: 'var(--text-muted)' }}>Pending</p><p className="text-sm font-semibold tabular-nums" style={{ color: pending > 0 ? '#facc15' : 'var(--text-muted)' }}>{pending > 0 ? formatCurrency(pending) : '—'}</p></div>
                 <div className="text-right"><p className="text-xs" style={{ color: 'var(--text-muted)' }}>Apps</p><p className="text-sm font-semibold font-mono" style={{ color: '#a78bfa' }}>{apps.length}</p></div>
                 {canWrite && <button onClick={() => onNewApp(tp.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium" style={{ backgroundColor: 'rgba(167,139,250,0.15)', color: '#a78bfa' }}><Plus size={12} /> Application</button>}
               </div>
@@ -1678,13 +1694,13 @@ function TradePackagesTab({ tradePackages, paymentApps, formatCurrency, canWrite
                     return (
                       <div key={a.id} className="flex items-center justify-between text-xs py-1.5 px-2 rounded-lg" style={{ backgroundColor: 'var(--bg-elevated)' }}>
                         <span style={{ color: 'var(--gold)' }}>#{a.application_number}</span>
-                        <span style={{ color: 'var(--text-muted)' }}>{a.application_date ? formatDate(a.application_date) : '—'}</span>
-                        <span style={{ color: 'var(--text-secondary)' }}>{formatCurrency(fmt(a.amount_due))}</span>
+                        <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>{a.application_date ? formatDate(a.application_date) : '—'}</span>
+                        <span className="tabular-nums" style={{ color: 'var(--text-secondary)' }}>{formatCurrency(fmt(a.amount_due))}</span>
                         <span className="px-1.5 py-0.5 rounded-full capitalize" style={{ backgroundColor: badge.bg, color: badge.text }}>{badge.label}</span>
                       </div>
                     );
                   })}
-                  {apps.length > 3 && <p className="text-xs text-center pt-1" style={{ color: 'var(--text-muted)' }}>+{apps.length - 3} more — see All Applications tab</p>}
+                  {apps.length > 3 && <p className="text-xs text-center pt-1" style={{ color: 'var(--text-muted)' }}>+{apps.length - 3} more, see All Applications tab</p>}
                 </div>
               </div>
             )}
@@ -1705,7 +1721,7 @@ function NoticesTab({ paymentNotices, payLessNotices, isLoading, formatCurrency 
 }) {
   if (isLoading) {
     return (
-      <div className="rounded-xl p-8 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+      <div className="rounded-xl p-8 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Loading…</p>
       </div>
     );
@@ -1714,7 +1730,7 @@ function NoticesTab({ paymentNotices, payLessNotices, isLoading, formatCurrency 
   const hasAny = paymentNotices.length > 0 || payLessNotices.length > 0;
   if (!hasAny) {
     return (
-      <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+      <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
         <Bell size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
         <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>No notices issued</p>
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Payment Notices and Pay Less Notices appear here once issued from a submitted or certified application.</p>
@@ -1739,7 +1755,7 @@ function NoticesTab({ paymentNotices, payLessNotices, isLoading, formatCurrency 
         </div>
 
         {paymentNotices.length === 0 ? (
-          <div className="rounded-xl p-6 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          <div className="rounded-xl p-6 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>No Payment Notices issued yet.</p>
           </div>
         ) : (
@@ -1760,19 +1776,19 @@ function NoticesTab({ paymentNotices, payLessNotices, isLoading, formatCurrency 
                     ?? '—';
                   return (
                     <tr key={n.id} className="hover:bg-[var(--bg-hover)] transition-colors" style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td className="px-4 py-3 text-xs font-mono" style={{ color: 'var(--gold)' }}>
+                      <td className="px-4 py-3 text-[11px] font-mono" style={{ color: 'var(--gold)' }}>
                         {n.reference ?? `PN-${n.payment_application?.application_number ?? n.id}`}
                       </td>
-                      <td className="px-4 py-3 text-xs font-semibold font-mono" style={{ color: 'var(--text-secondary)' }}>
+                      <td className="px-4 py-3 text-[11px] font-semibold font-mono" style={{ color: 'var(--text-secondary)' }}>
                         {n.payment_application ? `#${n.payment_application.application_number}` : '—'}
                       </td>
                       <td className="px-4 py-3 text-xs max-w-[180px]" style={{ color: 'var(--text-muted)' }}>
                         <span className="line-clamp-1">{source}</span>
                       </td>
-                      <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+                      <td className="px-4 py-3 text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
                         {n.notice_date ? formatDate(n.notice_date) : '—'}
                       </td>
-                      <td className="px-4 py-3 text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                      <td className="px-4 py-3 text-sm font-bold tabular-nums" style={{ color: 'var(--text-primary)' }}>
                         {formatCurrency(fmt(n.notified_sum))}
                       </td>
                       <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
@@ -1813,7 +1829,7 @@ function NoticesTab({ paymentNotices, payLessNotices, isLoading, formatCurrency 
         </div>
 
         {payLessNotices.length === 0 ? (
-          <div className="rounded-xl p-6 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          <div className="rounded-xl p-6 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>No Pay Less Notices issued yet.</p>
           </div>
         ) : (
@@ -1831,23 +1847,23 @@ function NoticesTab({ paymentNotices, payLessNotices, isLoading, formatCurrency 
                   const plnDoc = n.documents?.[0];
                   return (
                   <tr key={n.id} className="hover:bg-[var(--bg-hover)] transition-colors" style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td className="px-4 py-3 text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+                    <td className="px-4 py-3 text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>
                       {n.reference ?? `PLN-${n.id}`}
                     </td>
-                    <td className="px-4 py-3 font-mono font-semibold text-xs" style={{ color: 'var(--gold)' }}>
+                    <td className="px-4 py-3 font-mono font-semibold text-[11px]" style={{ color: 'var(--gold)' }}>
                       {n.payment_application ? `#${n.payment_application.application_number}` : '—'}
                     </td>
                     <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
                       {n.payment_notice?.reference ?? '—'}
                     </td>
-                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{n.notice_date ? formatDate(n.notice_date) : '—'}</td>
-                    <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    <td className="px-4 py-3 text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>{n.notice_date ? formatDate(n.notice_date) : '—'}</td>
+                    <td className="px-4 py-3 text-sm tabular-nums" style={{ color: 'var(--text-secondary)' }}>
                       {formatCurrency(fmt(n.original_amount_due ?? n.notified_sum))}
                     </td>
-                    <td className="px-4 py-3 text-sm font-medium" style={{ color: '#f87171' }}>
+                    <td className="px-4 py-3 text-sm font-medium tabular-nums" style={{ color: '#f87171' }}>
                       {formatCurrency(fmt(n.total_deductions ?? n.amount))}
                     </td>
-                    <td className="px-4 py-3 text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                    <td className="px-4 py-3 text-sm font-bold tabular-nums" style={{ color: 'var(--text-primary)' }}>
                       {formatCurrency(fmt(n.revised_amount_payable ?? n.notified_sum))}
                     </td>
                     <td className="px-4 py-3">
@@ -1921,15 +1937,15 @@ function MoietyCard({ label, sub, target, released, canWrite, onRelease }: {
       <div className="space-y-1">
         <div className="flex justify-between text-xs">
           <span style={{ color: 'var(--text-muted)' }}>Target</span>
-          <span style={{ color: 'var(--text-secondary)' }}>{target > 0 ? formatCurrency(target) : '—'}</span>
+          <span className="tabular-nums" style={{ color: 'var(--text-secondary)' }}>{target > 0 ? formatCurrency(target) : '—'}</span>
         </div>
         <div className="flex justify-between text-xs">
           <span style={{ color: 'var(--text-muted)' }}>Released</span>
-          <span style={{ color: released > 0 ? '#4ade80' : 'var(--text-muted)' }}>{formatCurrency(released)}</span>
+          <span className="tabular-nums" style={{ color: released > 0 ? '#4ade80' : 'var(--text-muted)' }}>{formatCurrency(released)}</span>
         </div>
         <div className="flex justify-between text-xs font-medium">
           <span style={{ color: 'var(--text-muted)' }}>Outstanding</span>
-          <span style={{ color: outstanding > 0 ? '#fb923c' : '#4ade80' }}>{formatCurrency(outstanding)}</span>
+          <span className="tabular-nums" style={{ color: outstanding > 0 ? '#fb923c' : '#4ade80' }}>{formatCurrency(outstanding)}</span>
         </div>
       </div>
       {canWrite && outstanding > 0 && (
@@ -1977,7 +1993,7 @@ function RetentionTab({ contracts, paymentApps, retentionReleases, formatCurrenc
 
   if (retentionRows.length === 0) {
     return (
-      <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+      <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
         <Percent size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
         <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>No retention has been held yet</p>
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Retention will be calculated from certified payment applications.</p>
@@ -1997,8 +2013,8 @@ function RetentionTab({ contracts, paymentApps, retentionReleases, formatCurrenc
 
   return (
     <div className="space-y-4">
-      {retentionRows.map(row => (
-        <div key={row.contract.id} className="rounded-2xl p-5 space-y-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+      {retentionRows.map((row, i) => (
+        <div key={row.contract.id} className="rounded-2xl p-5 space-y-4 ss-animate-in" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: `${Math.min(i * 45, 360)}ms` }}>
 
           {/* Header */}
           <div className="flex items-start justify-between">
@@ -2008,8 +2024,8 @@ function RetentionTab({ contracts, paymentApps, retentionReleases, formatCurrenc
             </div>
             <div className="flex items-center gap-3">
               <div className="flex gap-3 text-right">
-                <div><p className="text-xs" style={{ color: 'var(--text-muted)' }}>Rate</p><p className="text-base font-bold" style={{ color: '#facc15' }}>{row.retPct}%</p></div>
-                {row.contract.retention_cap_percentage && <div><p className="text-xs" style={{ color: 'var(--text-muted)' }}>Cap</p><p className="text-base font-bold" style={{ color: 'var(--text-secondary)' }}>{row.capPct}%</p></div>}
+                <div><p className="text-xs" style={{ color: 'var(--text-muted)' }}>Rate</p><p className="text-base font-bold tabular-nums" style={{ color: '#facc15' }}>{row.retPct}%</p></div>
+                {row.contract.retention_cap_percentage && <div><p className="text-xs" style={{ color: 'var(--text-muted)' }}>Cap</p><p className="text-base font-bold tabular-nums" style={{ color: 'var(--text-secondary)' }}>{row.capPct}%</p></div>}
               </div>
               {canWrite && row.balance > 0 && (
                 <button onClick={() => openRelease(row)}
@@ -2031,7 +2047,7 @@ function RetentionTab({ contracts, paymentApps, retentionReleases, formatCurrenc
             ].map(card => (
               <div key={card.label} className="rounded-xl p-3" style={{ backgroundColor: 'var(--bg-elevated)' }}>
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{card.label}</p>
-                <p className="text-base font-bold mt-1" style={{ color: card.color }}>{card.value}</p>
+                <p className="text-base font-bold mt-1 tabular-nums" style={{ color: card.color }}>{card.value}</p>
               </div>
             ))}
           </div>
@@ -2040,7 +2056,7 @@ function RetentionTab({ contracts, paymentApps, retentionReleases, formatCurrenc
           {row.totalRetentionHeld > 0 && (
             <div>
               <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>MOIETY SPLIT</p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <MoietyCard
                   label="Half 1" sub="Practical Completion"
                   target={row.half1Target} released={row.half1Released}
@@ -2061,7 +2077,7 @@ function RetentionTab({ contracts, paymentApps, retentionReleases, formatCurrenc
           {row.maxRetention > 0 && (
             <div>
               <div className="flex justify-between text-xs mb-1.5" style={{ color: 'var(--text-muted)' }}>
-                <span>Retention utilisation</span><span>{row.pctUsed.toFixed(1)}%</span>
+                <span>Retention utilisation</span><span className="tabular-nums">{row.pctUsed.toFixed(1)}%</span>
               </div>
               <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-elevated)' }}>
                 <div className="h-full rounded-full transition-all" style={{ width: `${row.pctUsed}%`, backgroundColor: row.pctUsed > 80 ? '#f87171' : '#facc15' }} />
@@ -2085,9 +2101,9 @@ function RetentionTab({ contracts, paymentApps, retentionReleases, formatCurrenc
                         {r.moiety === 'half_1' ? 'H1' : 'H2'}
                       </span>
                     )}
-                    <span style={{ color: '#4ade80' }} className="shrink-0">{formatCurrency(fmt(r.release_amount))}</span>
+                    <span style={{ color: '#4ade80' }} className="shrink-0 tabular-nums">{formatCurrency(fmt(r.release_amount))}</span>
                     <span style={{ color: 'var(--text-secondary)', flex: 1 }}>{r.release_reason}</span>
-                    <span style={{ color: 'var(--text-muted)' }} className="shrink-0">{r.release_date ? formatDate(r.release_date) : '—'}</span>
+                    <span style={{ color: 'var(--text-muted)' }} className="shrink-0 tabular-nums">{r.release_date ? formatDate(r.release_date) : '—'}</span>
                   </div>
                 ))}
               </div>
@@ -2220,18 +2236,21 @@ export default function ProjectCommercialPage() {
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Commercial</h1>
+        <div className="flex items-center gap-1.5">
+          <h1 className="text-[1.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>Commercial</h1>
+          <PageTourButton tourKey="page-commercial" label="Take a tour of this page" />
+        </div>
         <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Payment applications, trade packages, notices and retention</p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3" data-tour="commercial-summary">
         {CARDS.map((c, i) => <SumCard key={c.label} label={c.label} value={c.value} color={c.color} sub={c.sub} index={i} />)}
       </div>
 
-      <div className="flex gap-1 p-1 rounded-lg w-fit overflow-x-auto" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+      <div className="flex gap-1 p-1 rounded-full w-fit overflow-x-auto" data-tour="commercial-tabs" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap"
+            className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all active:scale-[0.97] whitespace-nowrap"
             style={tab === t.id ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' } : { color: 'var(--text-secondary)' }}>
             <t.icon size={14} />{t.label}
           </button>

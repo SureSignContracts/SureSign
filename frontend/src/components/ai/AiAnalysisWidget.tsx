@@ -50,11 +50,10 @@ export default function AiAnalysisWidget() {
 
   return (
     <div
-      className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl shadow-xl px-4 py-3 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+      className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl px-4 py-3 cursor-pointer hover:-translate-y-0.5 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-pop)] transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
       style={{
         backgroundColor: 'var(--bg-surface)',
-        border: `1.5px solid ${isComplete ? 'rgba(74,222,128,0.4)' : isFailed ? 'rgba(248,113,113,0.4)' : 'rgba(185,149,102,0.35)'}`,
-        boxShadow: '0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)',
+        border: `1.5px solid ${isComplete ? 'rgba(74,222,128,0.4)' : isFailed ? 'rgba(248,113,113,0.4)' : 'var(--gold-30)'}`,
         minWidth: 220,
       }}
       onClick={handleClick}

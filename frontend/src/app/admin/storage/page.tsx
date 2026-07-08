@@ -11,7 +11,7 @@ function StorageBar({ used, total, color }: { used: number; total: number; color
       <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-elevated)' }}>
         <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
       </div>
-      <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{pct.toFixed(1)}% used</p>
+      <p className="text-xs mt-1 tabular-nums" style={{ color: 'var(--text-muted)' }}>{pct.toFixed(1)}% used</p>
     </div>
   );
 }
@@ -36,14 +36,14 @@ export default function AdminStoragePage() {
       {/* Overall usage */}
       <div
         className="rounded-2xl p-6 space-y-4"
-        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <HardDrive size={20} style={{ color: 'var(--gold)' }} />
             <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>Total Platform Storage</span>
           </div>
-          <span className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
+          <span className="text-lg font-bold tabular-nums" style={{ color: 'var(--text-primary)' }}>
             {isLoading ? '–' : (stats?.total_used ?? '0 GB')} / {stats?.total_allocated ?? '100 GB'}
           </span>
         </div>
@@ -53,17 +53,17 @@ export default function AdminStoragePage() {
       {/* By type */}
       <div>
         <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>Storage by Type</h2>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {[
             { label: 'Documents (PDF/Word)', icon: FileText, used: stats?.docs_bytes ?? 0, total: stats?.total_bytes ?? 1, color: '#3b82f6' },
             { label: 'Images',               icon: Image,    used: stats?.images_bytes ?? 0, total: stats?.total_bytes ?? 1, color: '#8b5cf6' },
             { label: 'Database',             icon: Database, used: stats?.db_bytes ?? 0,     total: stats?.total_bytes ?? 1, color: '#10b981' },
             { label: 'Other',                icon: HardDrive,used: stats?.other_bytes ?? 0,  total: stats?.total_bytes ?? 1, color: '#f59e0b' },
-          ].map(item => (
+          ].map((item, i) => (
             <div
               key={item.label}
-              className="rounded-xl p-4 space-y-3"
-              style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+              className="rounded-xl p-4 space-y-3 ss-animate-in"
+              style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: `${Math.min(i * 45, 360)}ms` }}
             >
               <div className="flex items-center gap-2">
                 <item.icon size={15} style={{ color: item.color }} />
@@ -80,7 +80,7 @@ export default function AdminStoragePage() {
         <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>Storage by Company</h2>
         <div
           className="rounded-2xl overflow-hidden"
-          style={{ border: '1px solid var(--border)' }}
+          style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}
         >
           {isLoading ? (
             [...Array(4)].map((_, i) => (
@@ -97,7 +97,7 @@ export default function AdminStoragePage() {
               style={{ backgroundColor: 'var(--bg-surface)', borderBottom: '1px solid var(--border)' }}
             >
               <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{c.name}</span>
-              <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{c.storage_used ?? '0 MB'}</span>
+              <span className="text-sm tabular-nums" style={{ color: 'var(--text-muted)' }}>{c.storage_used ?? '0 MB'}</span>
             </div>
           ))}
         </div>

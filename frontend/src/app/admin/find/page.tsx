@@ -108,7 +108,7 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
   return (
     <div className="flex justify-between gap-4 py-2.5" style={{ borderBottom: '1px solid var(--border)' }}>
       <span className="text-xs flex-shrink-0 w-40" style={{ color: 'var(--text-muted)' }}>{label}</span>
-      <span className="text-xs text-right" style={{ color: 'var(--text-primary)' }}>{value || '—'}</span>
+      <span className="text-xs text-right tabular-nums" style={{ color: 'var(--text-primary)' }}>{value || '—'}</span>
     </div>
   );
 }
@@ -137,11 +137,11 @@ function CompanyPanel({ companyNumber, onClose }: { companyNumber: string; onClo
   const resignedOfficers = officers.filter(o => o.resigned_on);
 
   return (
-    <div className="fixed inset-0 z-50 flex" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={onClose}>
       {/* Slide-over panel */}
       <div
-        className="ml-auto h-full w-full max-w-lg flex flex-col overflow-hidden shadow-2xl"
-        style={{ backgroundColor: 'var(--bg-surface)' }}
+        className="ml-auto h-full w-full max-w-lg flex flex-col overflow-hidden shadow-2xl ss-animate-in"
+        style={{ backgroundColor: 'var(--bg-surface)', boxShadow: 'var(--shadow-pop)' }}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
@@ -155,7 +155,7 @@ function CompanyPanel({ companyNumber, onClose }: { companyNumber: string; onClo
                   {detail?.company_name || companyNumber}
                 </p>
                 <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-                  <span className="flex items-center gap-1 text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+                  <span className="flex items-center gap-1 text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>
                     <Hash size={10} /> {companyNumber}
                   </span>
                   {detail && <StatusBadge status={detail.company_status} />}
@@ -357,7 +357,7 @@ function OfficerCard({ officer, resigned = false }: { officer: Officer; resigned
     >
       <div
         className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-        style={{ backgroundColor: resigned ? 'rgba(90,86,82,0.2)' : 'rgba(185,149,102,0.15)' }}
+        style={{ backgroundColor: resigned ? 'rgba(90,86,82,0.2)' : 'var(--gold-15)' }}
       >
         <User size={14} style={{ color: resigned ? 'var(--text-muted)' : 'var(--gold)' }} />
       </div>
@@ -483,7 +483,7 @@ export default function FindCompanyPage() {
           <button
             type="submit"
             disabled={query.trim().length < 2 || searchMutation.isPending}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50 active:scale-[0.98]"
             style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
           >
             {searchMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
@@ -518,14 +518,14 @@ export default function FindCompanyPage() {
 
           {results.length === 0 ? (
             <div className="rounded-2xl p-12 text-center"
-              style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+              style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
               <Building2 size={28} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
               <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>No companies found</p>
               <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>Try a different name or company number</p>
             </div>
           ) : (
             <>
-              <div className="overflow-hidden rounded-2xl" style={{ border: '1px solid var(--border)' }}>
+              <div className="overflow-hidden rounded-2xl" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
                 {results.map((company, index) => {
                   const s = statusStyle(company.company_status);
                   return (
@@ -539,7 +539,7 @@ export default function FindCompanyPage() {
                     >
                       <div className="flex items-start gap-4 min-w-0">
                         <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
-                          style={{ backgroundColor: 'rgba(185,149,102,0.1)' }}>
+                          style={{ backgroundColor: 'var(--gold-15)' }}>
                           <Building2 size={17} style={{ color: 'var(--gold)' }} />
                         </div>
                         <div className="min-w-0">
@@ -547,7 +547,7 @@ export default function FindCompanyPage() {
                             {company.title}
                           </p>
                           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-                            <span className="flex items-center gap-1 text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+                            <span className="flex items-center gap-1 text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>
                               <Hash size={11} />{company.company_number}
                             </span>
                             <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium capitalize"
@@ -560,7 +560,7 @@ export default function FindCompanyPage() {
                               </span>
                             )}
                             {company.date_of_creation && (
-                              <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                              <span className="flex items-center gap-1 text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
                                 <CalendarDays size={11} />Inc. {fmtDate(company.date_of_creation)}
                               </span>
                             )}
@@ -579,7 +579,7 @@ export default function FindCompanyPage() {
                         <button
                           onClick={() => setViewingCompany(company.company_number)}
                           className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors hover:opacity-80"
-                          style={{ backgroundColor: 'rgba(185,149,102,0.15)', color: 'var(--gold)' }}
+                          style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}
                         >
                           View
                         </button>
@@ -660,9 +660,9 @@ export default function FindCompanyPage() {
       {/* Empty state */}
       {results === null && !searchMutation.isPending && !apiKeyMissing && (
         <div className="rounded-2xl p-14 text-center"
-          style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
-            style={{ backgroundColor: 'rgba(185,149,102,0.1)' }}>
+            style={{ backgroundColor: 'var(--gold-15)' }}>
             <Search size={22} style={{ color: 'var(--gold)' }} />
           </div>
           <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Search the UK Companies Register</p>

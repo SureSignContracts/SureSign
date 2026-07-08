@@ -56,6 +56,7 @@ const CATEGORY_OPTIONS: { label: string; value: string }[] = [
   { label: 'Retention',      value: 'retention' },
   { label: 'Deliverable',    value: 'deliverable' },
   { label: 'Notice',         value: 'notice' },
+  { label: 'Communication',  value: 'communication' },
   { label: 'General',        value: 'general' },
 ];
 
@@ -125,10 +126,10 @@ function ConfirmModal({
   onConfirm: () => void; onClose: () => void; loading: boolean;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center"
+    <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm"
       style={{ backgroundColor: 'rgba(0,0,0,0.6)' }} onClick={onClose}>
-      <div className="w-full max-w-sm rounded-2xl p-6 shadow-2xl"
-        style={{ backgroundColor: 'var(--bg-panel)', border: '1px solid var(--border)' }}
+      <div className="w-full max-w-sm rounded-2xl p-6 shadow-2xl ss-animate-in"
+        style={{ backgroundColor: 'var(--bg-panel)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}
         onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-3 mb-3">
           <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
@@ -283,7 +284,7 @@ export default function NotificationsPage() {
             </button>
           )}
           <button onClick={() => markAllReadMutation.mutate()} disabled={unreadCount === 0 || markAllReadMutation.isPending}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 active:scale-[0.98]"
             style={{ backgroundColor: 'var(--gold)', color: '#000' }}>
             <CheckCheck size={16} />
             {markAllReadMutation.isPending ? 'Marking…' : 'Mark All Read'}
@@ -294,14 +295,13 @@ export default function NotificationsPage() {
       {/* Filters row */}
       <div className="flex items-center gap-3 mb-4 flex-wrap">
         {/* Status tabs */}
-        <div className="flex gap-1 p-1 rounded-lg" style={{ backgroundColor: 'var(--bg-surface)' }}>
+        <div className="flex gap-1 p-1 rounded-full" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
           {STATUS_TABS.map(tab => (
             <button key={tab.value} onClick={() => handleFilterChange(tab.value)}
-              className="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
+              className="px-3 py-1.5 rounded-full text-sm font-medium transition-all active:scale-[0.97]"
               style={{
-                backgroundColor: activeFilter === tab.value && !priorityFilter && !categoryFilter ? 'var(--bg-base)' : 'transparent',
-                color: activeFilter === tab.value && !priorityFilter && !categoryFilter ? 'var(--text-primary)' : 'var(--text-muted)',
-                boxShadow: activeFilter === tab.value && !priorityFilter && !categoryFilter ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                backgroundColor: activeFilter === tab.value && !priorityFilter && !categoryFilter ? 'var(--gold)' : 'transparent',
+                color: activeFilter === tab.value && !priorityFilter && !categoryFilter ? 'var(--accent-fg)' : 'var(--text-muted)',
               }}>
               {tab.label}
             </button>
@@ -333,7 +333,7 @@ export default function NotificationsPage() {
 
       {/* Table */}
       <div className="rounded-xl overflow-x-auto"
-        style={{ border: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)' }}>
+        style={{ border: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)', boxShadow: 'var(--shadow-card)' }}>
         {isLoading ? (
           <div className="p-12 text-center" style={{ color: 'var(--text-muted)' }}>Loading notifications…</div>
         ) : rows.length === 0 ? (
@@ -366,7 +366,7 @@ export default function NotificationsPage() {
                     style={{
                       borderColor: 'var(--border)',
                       backgroundColor: isChecked
-                        ? 'rgba(185,149,102,0.06)'
+                        ? 'var(--gold-8)'
                         : isUnread
                           ? 'color-mix(in srgb, var(--gold) 3%, var(--bg-surface))'
                           : index % 2 === 0 ? 'var(--bg-surface)' : 'var(--bg-base)',
@@ -395,7 +395,7 @@ export default function NotificationsPage() {
                       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{truncate(n.message, 80)}</p>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{formatDate(n.created_at)}</span>
+                      <span className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>{formatDate(n.created_at)}</span>
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={n.status} />

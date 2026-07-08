@@ -6,7 +6,7 @@ import { ArrowLeft } from 'lucide-react';
 const sections = [
   {
     title: 'Information We Collect',
-    content: `When you use SureSign, we collect the following types of information:
+    content: `When you use SureSign Contracts, we collect the following types of information:
 
 Account Information: Your name, email address, and password when you register for an account.
 
@@ -22,7 +22,7 @@ User Activity Logs: Records of actions performed within the platform, including 
     title: 'How We Use Your Information',
     content: `We use the information we collect to:
 
-• Provide and operate the SureSign platform and its features.
+• Provide and operate the SureSign Contracts platform and its features.
 • Enable project and contract administration workflows.
 • Maintain audit trails and activity logs as required for construction contract administration.
 • Send platform notifications and system communications relevant to your account.
@@ -40,7 +40,7 @@ We do not sell your personal information to third parties.`,
 • Role-based access controls to restrict data access within your organisation.
 • Regular security monitoring and updates.
 
-Access to your organisation's data is limited to authorised users within your account and to SureSign system administrators where required for platform support.`,
+Access to your organisation's data is limited to authorised users within your account and to SureSign Contracts system administrators where required for platform support.`,
   },
   {
     title: 'Data Retention',
@@ -68,11 +68,11 @@ To exercise any of these rights, please contact us using the details provided in
 • With service providers who support the operation of the platform (such as cloud hosting providers), under appropriate data processing agreements.
 • With your explicit consent.
 
-We do not use your project or document data for any purpose other than providing the SureSign platform to you.`,
+We do not use your project or document data for any purpose other than providing the SureSign Contracts platform to you.`,
   },
   {
     title: 'Cookies and Tracking',
-    content: `SureSign uses essential cookies and local browser storage to maintain your session, remember your preferences (such as theme settings), and ensure the platform functions correctly.
+    content: `SureSign Contracts uses essential cookies and local browser storage to maintain your session, remember your preferences (such as theme settings), and ensure the platform functions correctly.
 
 We do not use tracking cookies, advertising cookies, or third-party analytics that profile your behaviour across other websites.`,
   },
@@ -109,10 +109,10 @@ export default function PrivacyPage() {
 
       <div
         className="rounded-xl overflow-hidden mb-6 px-6 py-4"
-        style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}
+        style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}
       >
         <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-          SureSign is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard information when you use the SureSign platform. By using SureSign, you agree to the practices described in this policy.
+          SureSign Contracts is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard information when you use the SureSign Contracts platform. By using SureSign Contracts, you agree to the practices described in this policy.
         </p>
       </div>
 
@@ -120,8 +120,8 @@ export default function PrivacyPage() {
         {sections.map((section, i) => (
           <div
             key={i}
-            className="rounded-xl overflow-hidden"
-            style={{ border: '1px solid var(--border)' }}
+            className="rounded-xl overflow-hidden ss-animate-in"
+            style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: `${Math.min(i * 45, 360)}ms` }}
           >
             <div
               className="px-6 py-3"

@@ -6,13 +6,13 @@ import { ArrowLeft } from 'lucide-react';
 const sections = [
   {
     title: 'Acceptance of Terms',
-    content: `By accessing or using the SureSign platform, you agree to be bound by these Terms of Use. If you do not agree to these terms, you must not use the platform.
+    content: `By accessing or using the SureSign Contracts platform, you agree to be bound by these Terms of Use. If you do not agree to these terms, you must not use the platform.
 
-These terms apply to all users of SureSign, including organisation administrators, project managers, and any other individuals accessing the platform under a licensed account.`,
+These terms apply to all users of SureSign Contracts, including organisation administrators, project managers, and any other individuals accessing the platform under a licensed account.`,
   },
   {
     title: 'Platform Usage',
-    content: `SureSign is a contract administration platform designed for use in the construction industry. You are granted a limited, non-exclusive, non-transferable licence to access and use the platform for your internal business purposes during your subscription period.
+    content: `SureSign Contracts is a contract administration platform designed for use in the construction industry. You are granted a limited, non-exclusive, non-transferable licence to access and use the platform for your internal business purposes during your subscription period.
 
 You may not resell, sublicense, or otherwise make the platform available to third parties outside of your organisation without prior written agreement from SureSign Contracts.`,
   },
@@ -25,7 +25,7 @@ You may not resell, sublicense, or otherwise make the platform available to thir
 • Complying with all applicable laws and regulations in connection with your use of the platform.
 • Ensuring that your use of the platform does not violate any contractual obligations you hold with third parties.
 
-You must not use SureSign for any unlawful purpose or in any way that could damage, disable, or impair the platform or its availability to other users.`,
+You must not use SureSign Contracts for any unlawful purpose or in any way that could damage, disable, or impair the platform or its availability to other users.`,
   },
   {
     title: 'Account Security',
@@ -35,7 +35,7 @@ SureSign Contracts is not liable for any loss or damage arising from unauthorise
   },
   {
     title: 'Intellectual Property',
-    content: `All intellectual property rights in the SureSign platform, including its software, design, and documentation, are owned by or licensed to SureSign Contracts.
+    content: `All intellectual property rights in the SureSign Contracts platform, including its software, design, and documentation, are owned by or licensed to SureSign Contracts.
 
 You retain ownership of the data and documents you upload to the platform. By uploading content, you grant SureSign Contracts a limited licence to store and process that content solely for the purpose of providing the platform to you.
 
@@ -59,7 +59,7 @@ Nothing in these terms excludes or limits our liability for death or personal in
   },
   {
     title: 'Acceptable Use',
-    content: `You must not use SureSign to:
+    content: `You must not use SureSign Contracts to:
 
 • Upload or distribute malicious software, viruses, or harmful content.
 • Attempt to gain unauthorised access to any part of the platform or its infrastructure.
@@ -112,10 +112,10 @@ export default function TermsPage() {
 
       <div
         className="rounded-xl overflow-hidden mb-6 px-6 py-4"
-        style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}
+        style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}
       >
         <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-          These Terms of Use govern your access to and use of the SureSign platform. Please read them carefully before using the service.
+          These Terms of Use govern your access to and use of the SureSign Contracts platform. Please read them carefully before using the service.
         </p>
       </div>
 
@@ -123,8 +123,8 @@ export default function TermsPage() {
         {sections.map((section, i) => (
           <div
             key={i}
-            className="rounded-xl overflow-hidden"
-            style={{ border: '1px solid var(--border)' }}
+            className="rounded-xl overflow-hidden ss-animate-in"
+            style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: `${Math.min(i * 45, 360)}ms` }}
           >
             <div
               className="px-6 py-3"

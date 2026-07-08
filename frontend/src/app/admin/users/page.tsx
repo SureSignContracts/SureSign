@@ -1,19 +1,25 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Users, UserPlus, Shield, Mail, Search, Copy, Check,
-  MoreVertical, UserX, UserCheck, Trash2, Pencil, X,
+  Settings2, Trash2, X,
+  KeyRound, RotateCcw, LogOut, Compass,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
 import PaginationBar from '@/components/ui/PaginationBar';
+import Toggle from '@/components/ui/Toggle';
 
-const ALL_ROLES = ['Super Admin', 'Admin', 'Manager', 'Client', 'Viewer'] as const;
+// Matches the roles actually seeded in DatabaseSeeder — 'Manager'/'Viewer'
+// were previously listed here but no such role exists in the backend.
+const ALL_ROLES = ['Super Admin', 'Admin', 'Client'] as const;
 
-const INVITE_ROLES = ['Admin', 'Manager', 'Client', 'Viewer'] as const;
+const INVITE_ROLES = ['Admin', 'Client'] as const;
 type InviteRole = typeof INVITE_ROLES[number];
 
 const STATUS_FILTERS = [
@@ -26,10 +32,23 @@ type StatusFilter = typeof STATUS_FILTERS[number]['key'];
 const roleBadge: Record<string, { bg: string; text: string }> = {
   'Super Admin': { bg: 'rgba(239,68,68,0.12)',   text: '#f87171' },
   'Admin':       { bg: 'rgba(249,115,22,0.12)',  text: '#fb923c' },
-  'Manager':     { bg: 'rgba(234,179,8,0.12)',   text: '#facc15' },
   'Client':      { bg: 'rgba(59,130,246,0.12)',  text: '#60a5fa' },
-  'Viewer':      { bg: 'rgba(90,86,82,0.15)',    text: '#9a9490' },
 };
+
+// Guarantees at least one of each character class the backend's
+// Password::mixedCase()->numbers()->symbols() rule requires, rather than
+// leaving it to chance (a purely random base-36 string could land on an
+// all-digit or all-letter run and fail server-side validation).
+function genPassword(): string {
+  const upper  = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const lower  = 'abcdefghijkmnopqrstuvwxyz';
+  const digits = '23456789';
+  const symbols = '!@#$%';
+  const pick = (chars: string) => chars[Math.floor(Math.random() * chars.length)];
+  const required = [pick(upper), pick(upper), pick(lower), pick(lower), pick(digits), pick(digits), pick(symbols)];
+  const filler = Array.from({ length: 3 }, () => pick(upper + lower + digits));
+  return [...required, ...filler].sort(() => Math.random() - 0.5).join('');
+}
 
 interface AdminUser {
   id: number;
@@ -37,142 +56,418 @@ interface AdminUser {
   email: string;
   roles: string[];
   is_active: boolean;
+  email_verified_at: string | null;
+  banned_at: string | null;
+  banned_reason: string | null;
+  must_change_password: boolean;
+  tours_reset_at: string | null;
   last_login_at: string | null;
   created_at: string;
 }
 
-// ── Row action dropdown ───────────────────────────────────────────────────────
-function ActionMenu({
-  user,
-  onEditRole,
-  onToggleActive,
-  onRemove,
-}: {
-  user: AdminUser;
-  onEditRole: (u: AdminUser) => void;
-  onToggleActive: (u: AdminUser) => void;
-  onRemove: (u: AdminUser) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handle(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    if (open) document.addEventListener('mousedown', handle);
-    return () => document.removeEventListener('mousedown', handle);
-  }, [open]);
-
+// ── Status badges ───────────────────────────────────────────────────────────
+function StatusBadges({ u }: { u: AdminUser }) {
   return (
-    <div className="relative" ref={ref}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="p-1.5 rounded-lg transition-colors hover:bg-[var(--bg-hover)]"
-      >
-        <MoreVertical size={14} style={{ color: 'var(--text-muted)' }} />
-      </button>
-
-      {open && (
-        <div
-          className="absolute right-0 mt-1 w-44 rounded-xl overflow-hidden z-20"
-          style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}
+    <div className="flex flex-wrap items-center gap-1.5">
+      {u.banned_at ? (
+        <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: 'rgba(239,68,68,0.12)', color: '#f87171' }}>
+          Banned
+        </span>
+      ) : (
+        <span
+          className="text-xs px-2 py-0.5 rounded-full font-medium"
+          style={{
+            backgroundColor: u.is_active ? 'rgba(34,197,94,0.12)' : 'rgba(90,86,82,0.15)',
+            color: u.is_active ? '#4ade80' : 'var(--text-muted)',
+          }}
         >
-          <button
-            onClick={() => { setOpen(false); onEditRole(user); }}
-            className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-left transition-colors hover:bg-[var(--bg-hover)]"
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            <Pencil size={13} />
-            Edit Role
-          </button>
-          <button
-            onClick={() => { setOpen(false); onToggleActive(user); }}
-            className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-left transition-colors hover:bg-[var(--bg-hover)]"
-            style={{ color: user.is_active ? '#f97316' : '#22c55e' }}
-          >
-            {user.is_active ? <UserX size={13} /> : <UserCheck size={13} />}
-            {user.is_active ? 'Disable User' : 'Activate User'}
-          </button>
-          <div style={{ borderTop: '1px solid var(--border)' }} />
-          <button
-            onClick={() => { setOpen(false); onRemove(user); }}
-            className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-left transition-colors hover:bg-[var(--bg-hover)]"
-            style={{ color: '#ef4444' }}
-          >
-            <Trash2 size={13} />
-            Remove User
-          </button>
-        </div>
+          {u.is_active ? 'Active' : 'Disabled'}
+        </span>
       )}
+      <span
+        className="text-xs px-2 py-0.5 rounded-full font-medium"
+        style={{
+          backgroundColor: u.email_verified_at ? 'rgba(59,130,246,0.12)' : 'rgba(90,86,82,0.15)',
+          color: u.email_verified_at ? '#60a5fa' : 'var(--text-muted)',
+        }}
+      >
+        {u.email_verified_at ? 'Verified' : 'Unverified'}
+      </span>
     </div>
   );
 }
 
-// ── Edit role modal ───────────────────────────────────────────────────────────
-function EditRoleModal({
+// ── Status row: label + description + toggle pill ─────────────────────────────
+function StatusRow({
+  label,
+  description,
+  checked,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
+  onChange: (value: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-2.5">
+      <div className="min-w-0">
+        <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{label}</p>
+        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{description}</p>
+      </div>
+      <Toggle checked={checked} onChange={onChange} disabled={disabled} />
+    </div>
+  );
+}
+
+// ── One-shot action with an inline "are you sure?" instead of a nested modal ──
+function ConfirmButton({
+  label,
+  icon,
+  onConfirm,
+  loading,
+  danger,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  onConfirm: () => void;
+  loading?: boolean;
+  danger?: boolean;
+}) {
+  const [confirming, setConfirming] = useState(false);
+
+  if (confirming) {
+    return (
+      <div className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl" style={{ border: '1px solid var(--border)' }}>
+        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Are you sure?</span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { onConfirm(); setConfirming(false); }}
+            disabled={loading}
+            className="text-xs px-2.5 py-1 rounded-lg font-medium disabled:opacity-60"
+            style={{ backgroundColor: danger ? '#ef4444' : 'var(--gold)', color: danger ? '#fff' : 'var(--accent-fg)' }}
+          >
+            Yes
+          </button>
+          <button
+            onClick={() => setConfirming(false)}
+            className="text-xs px-2.5 py-1 rounded-lg font-medium"
+            style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}
+          >
+            No
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => setConfirming(true)}
+      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-left transition-colors hover:bg-[var(--bg-hover)]"
+      style={{ color: danger ? '#ef4444' : 'var(--text-secondary)', border: '1px solid var(--border)' }}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+// ── Manage user modal — consolidates rename, role, status pills and actions ───
+function ManageUserModal({
   user,
   onClose,
   onSave,
   saving,
+  onToggleActive,
+  onToggleVerify,
+  onBan,
+  onUnban,
+  actionLoading,
+  onForcePasswordReset,
+  onSetPassword,
+  onRevokeTokens,
+  onResetTours,
+  onRemove,
 }: {
   user: AdminUser;
   onClose: () => void;
-  onSave: (role: string) => void;
+  onSave: (payload: { name?: string; role?: string }) => void;
   saving: boolean;
+  onToggleActive: (active: boolean) => void;
+  onToggleVerify: (verified: boolean) => void;
+  onBan: (reason: string) => void;
+  onUnban: () => void;
+  actionLoading: boolean;
+  onForcePasswordReset: () => void;
+  onSetPassword: () => void;
+  onRevokeTokens: () => void;
+  onResetTours: () => void;
+  onRemove: () => void;
 }) {
-  const current = user.roles[0] ?? 'Viewer';
-  const [role, setRole] = useState(current);
+  const [name, setName] = useState(user.name);
+  const [role, setRole] = useState(user.roles[0] ?? 'Client');
+  const [banReasonOpen, setBanReasonOpen] = useState(false);
+  const [banReason, setBanReason] = useState('');
+
+  const nameDirty = name.trim() !== user.name && name.trim().length > 0;
+  const roleDirty = role !== (user.roles[0] ?? 'Client');
+  const initials = user.name?.split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase() || '?';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }} onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm p-4" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }} onClick={onClose}>
       <div
-        className="w-full max-w-sm rounded-2xl p-6"
-        style={{ backgroundColor: 'var(--bg-panel)', border: '1px solid var(--border)' }}
+        className="w-full max-w-md rounded-2xl p-6 ss-animate-in max-h-[90vh] overflow-y-auto"
+        style={{ backgroundColor: 'var(--bg-panel)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Edit Role</h2>
+        {/* Header */}
+        <div className="flex items-start justify-between mb-5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+                 style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}>
+              {initials}
+            </div>
+            <div>
+              <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Manage User</h2>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{user.email}</p>
+            </div>
+          </div>
           <button onClick={onClose}><X size={16} style={{ color: 'var(--text-muted)' }} /></button>
         </div>
-        <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
-          {user.name} · {user.email}
-        </p>
-        <div className="space-y-2 mb-5">
-          {ALL_ROLES.map(r => (
-            <button
-              key={r}
-              onClick={() => setRole(r)}
-              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all"
-              style={{
-                backgroundColor: role === r ? 'rgba(185,149,102,0.1)' : 'var(--bg-elevated)',
-                border: `1px solid ${role === r ? 'rgba(185,149,102,0.4)' : 'var(--border)'}`,
-                color: role === r ? 'var(--text-primary)' : 'var(--text-secondary)',
-              }}
-            >
-              <span className="flex items-center gap-2">
-                <Shield size={12} style={{ color: role === r ? 'var(--gold)' : 'var(--text-muted)' }} />
-                {r}
-              </span>
-              {role === r && <Check size={13} style={{ color: 'var(--gold)' }} />}
-            </button>
-          ))}
+
+        {/* Rename */}
+        <div className="mb-4">
+          <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Name</label>
+          <input
+            value={name}
+            onChange={e => setName(e.target.value)}
+            className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none"
+            style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+          />
         </div>
-        <div className="flex gap-3">
+
+        {/* Role pills */}
+        <div className="mb-4">
+          <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Role</label>
+          <div className="flex gap-2 flex-wrap">
+            {ALL_ROLES.map(r => (
+              <button
+                key={r}
+                onClick={() => setRole(r)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+                style={{
+                  backgroundColor: role === r ? 'var(--gold-15)' : 'var(--bg-elevated)',
+                  border: `1px solid ${role === r ? 'var(--gold-50)' : 'var(--border)'}`,
+                  color: role === r ? 'var(--text-primary)' : 'var(--text-secondary)',
+                }}
+              >
+                <Shield size={11} style={{ color: role === r ? 'var(--gold)' : 'var(--text-muted)' }} />
+                {r}
+                {role === r && <Check size={12} style={{ color: 'var(--gold)' }} />}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {(nameDirty || roleDirty) && (
           <button
-            onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl text-sm font-medium"
-            style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}
+            onClick={() => onSave({ ...(nameDirty ? { name: name.trim() } : {}), ...(roleDirty ? { role } : {}) })}
+            disabled={saving}
+            className="w-full mb-5 py-2.5 rounded-xl text-sm font-medium disabled:opacity-60 transition-opacity hover:opacity-90 active:scale-[0.98]"
+            style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
           >
+            {saving ? 'Saving…' : 'Save Changes'}
+          </button>
+        )}
+
+        <div style={{ borderTop: '1px solid var(--border)' }} />
+
+        {/* Status pills */}
+        <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
+          <StatusRow
+            label="Active"
+            description="Deactivated users cannot log in."
+            checked={user.is_active}
+            onChange={onToggleActive}
+            disabled={actionLoading}
+          />
+          <StatusRow
+            label="Email Verified"
+            description="Marks this user's email address as confirmed."
+            checked={!!user.email_verified_at}
+            onChange={onToggleVerify}
+            disabled={actionLoading}
+          />
+          <div className="py-2.5">
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Banned</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                  {user.banned_at ? `Reason: ${user.banned_reason}` : 'Banned users are signed out everywhere and cannot log in.'}
+                </p>
+              </div>
+              <Toggle
+                checked={!!user.banned_at}
+                disabled={actionLoading}
+                onChange={(checked) => {
+                  if (checked) {
+                    setBanReasonOpen(true);
+                  } else {
+                    onUnban();
+                  }
+                }}
+              />
+            </div>
+            {banReasonOpen && (
+              <div className="mt-2.5 space-y-2">
+                <textarea
+                  value={banReason}
+                  onChange={e => setBanReason(e.target.value)}
+                  placeholder="Reason for ban…"
+                  rows={2}
+                  className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none resize-none"
+                  style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setBanReasonOpen(false); setBanReason(''); }}
+                    className="flex-1 py-2 rounded-lg text-xs font-medium"
+                    style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => { onBan(banReason.trim()); setBanReasonOpen(false); setBanReason(''); }}
+                    disabled={!banReason.trim() || actionLoading}
+                    className="flex-1 py-2 rounded-lg text-xs font-medium disabled:opacity-60"
+                    style={{ backgroundColor: '#ef4444', color: '#fff' }}
+                  >
+                    Confirm Ban
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0 16px' }} />
+
+        {/* Security actions */}
+        <div className="space-y-2 mb-5">
+          <ConfirmButton label="Force Password Reset" icon={<RotateCcw size={13} />} onConfirm={onForcePasswordReset} loading={actionLoading} />
+          <button
+            onClick={onSetPassword}
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-left transition-colors hover:bg-[var(--bg-hover)]"
+            style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+          >
+            <KeyRound size={13} />
+            Set Temporary Password
+          </button>
+          <ConfirmButton label="Revoke Active Sessions" icon={<LogOut size={13} />} onConfirm={onRevokeTokens} loading={actionLoading} />
+          <button
+            onClick={onResetTours}
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-left transition-colors hover:bg-[var(--bg-hover)]"
+            style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+          >
+            <Compass size={13} />
+            Reset Onboarding Tours
+          </button>
+        </div>
+
+        <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0 16px' }} />
+
+        {/* Danger zone */}
+        <ConfirmButton label="Remove User" icon={<Trash2 size={13} />} onConfirm={onRemove} loading={actionLoading} danger />
+      </div>
+    </div>
+  );
+}
+
+// ── Set temporary password modal ─────────────────────────────────────────────
+function SetPasswordModal({
+  user,
+  onClose,
+  onSave,
+  saving,
+  result,
+}: {
+  user: AdminUser;
+  onClose: () => void;
+  onSave: (password: string, requireChange: boolean) => void;
+  saving: boolean;
+  result: string | null;
+}) {
+  const [password, setPassword] = useState(() => genPassword());
+  const [requireChange, setRequireChange] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  if (result) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
+        <div className="w-full max-w-sm rounded-2xl p-6 ss-animate-in" style={{ backgroundColor: 'var(--bg-panel)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
+          <h2 className="text-base font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Password Set</h2>
+          <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>Share this with {user.email} — it will not be shown again.</p>
+          <div className="rounded-lg p-3 mb-5" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Temporary Password</p>
+              <button
+                onClick={() => { navigator.clipboard.writeText(result); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+                className="flex items-center gap-1 text-xs px-2 py-0.5 rounded"
+                style={{ color: copied ? '#4ade80' : 'var(--gold)', backgroundColor: copied ? 'rgba(34,197,94,0.1)' : 'var(--gold-15)' }}
+              >
+                {copied ? <Check size={11} /> : <Copy size={11} />}
+                {copied ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
+            <p className="text-base font-mono font-semibold tracking-widest" style={{ color: 'var(--text-primary)' }}>{result}</p>
+          </div>
+          <button onClick={onClose} className="w-full py-2.5 rounded-lg text-sm font-medium transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+            Done
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }} onClick={onClose}>
+      <div className="w-full max-w-sm rounded-2xl p-6 ss-animate-in" style={{ backgroundColor: 'var(--bg-panel)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }} onClick={e => e.stopPropagation()}>
+        <h2 className="text-base font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Set Temporary Password</h2>
+        <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>{user.name} · {user.email}</p>
+        <div className="relative mb-3">
+          <input
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            className="w-full px-3.5 py-2.5 pr-20 rounded-xl text-sm font-mono outline-none"
+            style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+          />
+          <button
+            onClick={() => setPassword(genPassword())}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-xs px-2 py-1 rounded-lg"
+            style={{ color: 'var(--gold)', backgroundColor: 'var(--gold-15)' }}
+          >
+            Regenerate
+          </button>
+        </div>
+        <label className="flex items-center gap-2 mb-5 text-xs" style={{ color: 'var(--text-secondary)' }}>
+          <input type="checkbox" checked={requireChange} onChange={e => setRequireChange(e.target.checked)} />
+          Require password change on next login
+        </label>
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-medium" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
             Cancel
           </button>
           <button
-            onClick={() => onSave(role)}
-            disabled={saving || role === current}
-            className="flex-1 py-2.5 rounded-xl text-sm font-medium disabled:opacity-60 transition-opacity hover:opacity-90"
+            onClick={() => onSave(password, requireChange)}
+            disabled={saving || password.length < 8}
+            className="flex-1 py-2.5 rounded-xl text-sm font-medium disabled:opacity-60"
             style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
           >
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? 'Saving…' : 'Set Password'}
           </button>
         </div>
       </div>
@@ -182,6 +477,10 @@ function EditRoleModal({
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function AdminUsersPage() {
+  const router = useRouter();
+  const currentUser = useAuthStore(s => s.user);
+  const isSuperAdmin = currentUser?.roles?.includes('Super Admin') ?? false;
+
   const [search, setSearch]             = useState('');
   const [debouncedSearch, setDebounced] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -192,9 +491,19 @@ export default function AdminUsersPage() {
   const [inviteRole, setInviteRole]     = useState<InviteRole>('Client');
   const [credentials, setCredentials]   = useState<{ email: string; password: string } | null>(null);
   const [copied, setCopied]             = useState(false);
-  const [editUser, setEditUser]         = useState<AdminUser | null>(null);
-  const [confirmRemove, setConfirmRemove] = useState<AdminUser | null>(null);
+  const [manageUser, setManageUser]     = useState<AdminUser | null>(null);
+  const [passwordUser, setPasswordUser]   = useState<AdminUser | null>(null);
+  const [passwordResult, setPasswordResult] = useState<string | null>(null);
   const qc = useQueryClient();
+
+  // Defense-in-depth: nav hiding already keeps non-Super-Admins from seeing
+  // the link, but a direct URL visit should not render this page either.
+  // The API itself is the real boundary (role:Super Admin middleware).
+  useEffect(() => {
+    if (currentUser && !isSuperAdmin) {
+      router.replace('/admin');
+    }
+  }, [currentUser, isSuperAdmin, router]);
 
   // Debounce search to avoid request-per-keystroke
   useEffect(() => {
@@ -211,6 +520,7 @@ export default function AdminUsersPage() {
       return api.get('/users', { params }).then(r => r.data);
     },
     placeholderData: (prev: any) => prev,
+    enabled: isSuperAdmin,
   });
 
   const inviteMutation = useMutation({
@@ -232,7 +542,6 @@ export default function AdminUsersPage() {
       api.put(`/users/${id}`, payload).then(r => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-users'] });
-      setEditUser(null);
       toast.success('User updated.');
     },
     onError: (e: any) => {
@@ -244,7 +553,7 @@ export default function AdminUsersPage() {
     mutationFn: (id: number) => api.delete(`/users/${id}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-users'] });
-      setConfirmRemove(null);
+      setManageUser(null);
       toast.success('User removed.');
     },
     onError: (e: any) => {
@@ -252,10 +561,50 @@ export default function AdminUsersPage() {
     },
   });
 
+  // Generic action mutation for the simple POST /users/{id}/{action} endpoints.
+  const actionMutation = useMutation({
+    mutationFn: ({ id, action, payload }: { id: number; action: string; payload?: Record<string, unknown> }) =>
+      api.post(`/users/${id}/${action}`, payload).then(r => r.data),
+    onSuccess: (_res, vars) => {
+      qc.invalidateQueries({ queryKey: ['admin-users'] });
+      toast.success(actionSuccessMessage(vars.action));
+    },
+    onError: (e: any) => {
+      toast.error(e?.response?.data?.message ?? 'Action failed.');
+    },
+  });
+
+  const setPasswordMutation = useMutation({
+    mutationFn: ({ id, password, requireChange }: { id: number; password: string; requireChange: boolean }) =>
+      api.post(`/users/${id}/set-password`, { password, require_change: requireChange }).then(() => password),
+    onSuccess: (password) => {
+      qc.invalidateQueries({ queryKey: ['admin-users'] });
+      setPasswordResult(password);
+    },
+    onError: (e: any) => {
+      toast.error(e?.response?.data?.message ?? e?.response?.data?.errors?.password?.[0] ?? 'Failed to set password.');
+    },
+  });
+
+  function actionSuccessMessage(action: string): string {
+    switch (action) {
+      case 'verify-email':          return 'Email marked as verified.';
+      case 'unverify-email':        return 'Email marked as unverified.';
+      case 'unban':                 return 'User unbanned.';
+      case 'ban':                   return 'User banned.';
+      case 'force-password-reset':  return 'User must change their password on next login.';
+      case 'revoke-tokens':         return 'Active sessions revoked.';
+      case 'reset-tours':           return 'Onboarding tours reset for this user.';
+      default:                      return 'Done.';
+    }
+  }
+
   const users: AdminUser[]   = data?.data          ?? [];
   const totalUsers: number   = data?.total          ?? 0;
   const lastPage: number     = data?.last_page       ?? 1;
   const currentPage: number  = data?.current_page    ?? 1;
+
+  if (currentUser && !isSuperAdmin) return null;
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -270,7 +619,7 @@ export default function AdminUsersPage() {
         </div>
         <button
           onClick={() => setInviteOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.98]"
           style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
         >
           <UserPlus size={15} />
@@ -280,12 +629,12 @@ export default function AdminUsersPage() {
 
       {/* Filters row */}
       <div className="flex gap-3 mb-5">
-        <div className="flex gap-1 p-1 rounded-lg flex-shrink-0" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+        <div className="flex gap-1 p-1 rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
           {STATUS_FILTERS.map(f => (
             <button
               key={f.key}
               onClick={() => { setStatusFilter(f.key); setPage(1); }}
-              className="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+              className="px-3 py-1.5 rounded-full text-xs font-medium transition-all active:scale-[0.97]"
               style={{
                 backgroundColor: statusFilter === f.key ? 'var(--bg-elevated)' : 'transparent',
                 color: statusFilter === f.key ? 'var(--text-primary)' : 'var(--text-muted)',
@@ -309,8 +658,8 @@ export default function AdminUsersPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl overflow-x-auto" style={{ border: '1px solid var(--border)' }}>
-        <table className="w-full min-w-[720px]">
+      <div className="rounded-2xl overflow-x-auto" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+        <table className="w-full min-w-[820px]">
           <thead>
             <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
               {['User', 'Role', 'Status', 'Joined', 'Last Active', ''].map((h, i) => (
@@ -348,13 +697,13 @@ export default function AdminUsersPage() {
                   style={{
                     borderBottom: idx < users.length - 1 ? '1px solid var(--border)' : undefined,
                     backgroundColor: 'var(--bg-surface)',
-                    opacity: u.is_active ? 1 : 0.6,
+                    opacity: u.is_active && !u.banned_at ? 1 : 0.6,
                   }}
                 >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                           style={{ backgroundColor: 'rgba(185,149,102,0.15)', color: 'var(--gold)' }}>
+                           style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}>
                         {initials}
                       </div>
                       <div>
@@ -370,32 +719,25 @@ export default function AdminUsersPage() {
                       {role}
                     </span>
                   </td>
+                  <td className="px-4 py-3"><StatusBadges u={u} /></td>
                   <td className="px-4 py-3">
-                    <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                          style={{
-                            backgroundColor: u.is_active ? 'rgba(34,197,94,0.12)' : 'rgba(90,86,82,0.15)',
-                            color: u.is_active ? '#4ade80' : 'var(--text-muted)',
-                          }}>
-                      {u.is_active ? 'Active' : 'Disabled'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    <span className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
                       {u.created_at ? formatDate(u.created_at) : '—'}
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    <span className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
                       {u.last_login_at ? formatDate(u.last_login_at) : 'Never'}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <ActionMenu
-                      user={u}
-                      onEditRole={setEditUser}
-                      onToggleActive={u => updateMutation.mutate({ id: u.id, payload: { is_active: !u.is_active } })}
-                      onRemove={setConfirmRemove}
-                    />
+                    <button
+                      onClick={() => setManageUser(u)}
+                      title="Manage user"
+                      className="p-1.5 rounded-lg transition-colors hover:bg-[var(--bg-hover)]"
+                    >
+                      <Settings2 size={14} style={{ color: 'var(--text-muted)' }} />
+                    </button>
                   </td>
                 </tr>
               );
@@ -413,44 +755,41 @@ export default function AdminUsersPage() {
         onPerPage={n => { setPerPage(n); setPage(1); }}
       />
 
-      {/* Edit role modal */}
-      {editUser && (
-        <EditRoleModal
-          user={editUser}
-          onClose={() => setEditUser(null)}
+      {/* Manage user modal — consolidates rename, role, status pills and actions */}
+      {manageUser && (
+        <ManageUserModal
+          user={users.find(x => x.id === manageUser.id) ?? manageUser}
+          onClose={() => setManageUser(null)}
           saving={updateMutation.isPending}
-          onSave={role => updateMutation.mutate({ id: editUser.id, payload: { role } })}
+          actionLoading={actionMutation.isPending || removeMutation.isPending}
+          onSave={payload => updateMutation.mutate({ id: manageUser.id, payload })}
+          onToggleActive={active => updateMutation.mutate({ id: manageUser.id, payload: { is_active: active } })}
+          onToggleVerify={verified => actionMutation.mutate({ id: manageUser.id, action: verified ? 'verify-email' : 'unverify-email' })}
+          onBan={reason => actionMutation.mutate({ id: manageUser.id, action: 'ban', payload: { reason } })}
+          onUnban={() => actionMutation.mutate({ id: manageUser.id, action: 'unban' })}
+          onForcePasswordReset={() => actionMutation.mutate({ id: manageUser.id, action: 'force-password-reset' })}
+          onSetPassword={() => setPasswordUser(manageUser)}
+          onRevokeTokens={() => actionMutation.mutate({ id: manageUser.id, action: 'revoke-tokens' })}
+          onResetTours={() => actionMutation.mutate({ id: manageUser.id, action: 'reset-tours' })}
+          onRemove={() => removeMutation.mutate(manageUser.id)}
         />
       )}
 
-      {/* Confirm remove modal */}
-      {confirmRemove && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }} onClick={() => setConfirmRemove(null)}>
-          <div className="w-full max-w-sm rounded-2xl p-6" style={{ backgroundColor: 'var(--bg-panel)', border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
-            <h2 className="text-base font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Remove User</h2>
-            <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>
-              Remove <strong style={{ color: 'var(--text-primary)' }}>{confirmRemove.name}</strong> ({confirmRemove.email})?
-              This cannot be undone.
-            </p>
-            <div className="flex gap-3">
-              <button onClick={() => setConfirmRemove(null)} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
-                      style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
-                Cancel
-              </button>
-              <button onClick={() => removeMutation.mutate(confirmRemove.id)} disabled={removeMutation.isPending}
-                      className="flex-1 py-2.5 rounded-xl text-sm font-medium disabled:opacity-60"
-                      style={{ backgroundColor: '#ef4444', color: '#fff' }}>
-                {removeMutation.isPending ? 'Removing…' : 'Remove'}
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Set temporary password modal — nested above ManageUserModal */}
+      {passwordUser && (
+        <SetPasswordModal
+          user={passwordUser}
+          saving={setPasswordMutation.isPending}
+          result={passwordResult}
+          onClose={() => { setPasswordUser(null); setPasswordResult(null); }}
+          onSave={(password, requireChange) => setPasswordMutation.mutate({ id: passwordUser.id, password, requireChange })}
+        />
       )}
 
-      {/* Credentials modal */}
+      {/* Credentials modal (invite) */}
       {credentials && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
-          <div className="w-full max-w-md rounded-2xl p-6" style={{ backgroundColor: 'var(--bg-panel)', border: '1px solid var(--border)' }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
+          <div className="w-full max-w-md rounded-2xl p-6 ss-animate-in" style={{ backgroundColor: 'var(--bg-panel)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(34,197,94,0.15)' }}>
                 <Check size={20} style={{ color: '#4ade80' }} />
@@ -471,7 +810,7 @@ export default function AdminUsersPage() {
                   <button
                     onClick={() => { navigator.clipboard.writeText(credentials.password); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
                     className="flex items-center gap-1 text-xs px-2 py-0.5 rounded"
-                    style={{ color: copied ? '#4ade80' : 'var(--gold)', backgroundColor: copied ? 'rgba(34,197,94,0.1)' : 'rgba(185,149,102,0.1)' }}
+                    style={{ color: copied ? '#4ade80' : 'var(--gold)', backgroundColor: copied ? 'rgba(34,197,94,0.1)' : 'var(--gold-15)' }}
                   >
                     {copied ? <Check size={11} /> : <Copy size={11} />}
                     {copied ? 'Copied!' : 'Copy'}
@@ -484,7 +823,7 @@ export default function AdminUsersPage() {
               The user should log in with these credentials and change their password immediately.
             </p>
             <button onClick={() => { setCredentials(null); setCopied(false); }}
-                    className="w-full py-2.5 rounded-lg text-sm font-medium transition-opacity hover:opacity-90"
+                    className="w-full py-2.5 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.98]"
                     style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
               Done
             </button>
@@ -494,8 +833,8 @@ export default function AdminUsersPage() {
 
       {/* Invite modal */}
       {inviteOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }} onClick={() => setInviteOpen(false)}>
-          <div className="w-full max-w-md rounded-2xl p-6" style={{ backgroundColor: 'var(--bg-panel)', border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }} onClick={() => setInviteOpen(false)}>
+          <div className="w-full max-w-md rounded-2xl p-6 ss-animate-in" style={{ backgroundColor: 'var(--bg-panel)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }} onClick={e => e.stopPropagation()}>
             <h2 className="text-lg font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Invite User</h2>
             <p className="text-xs mb-5" style={{ color: 'var(--text-muted)' }}>Create a new user account and share their credentials</p>
             <div className="space-y-4">
@@ -527,7 +866,7 @@ export default function AdminUsersPage() {
               </button>
               <button onClick={() => inviteMutation.mutate({ email: inviteEmail, role: inviteRole })}
                       disabled={!inviteEmail || inviteMutation.isPending}
-                      className="flex-1 py-2.5 rounded-lg text-sm font-medium transition-opacity disabled:opacity-60"
+                      className="flex-1 py-2.5 rounded-lg text-sm font-medium transition-opacity disabled:opacity-60 active:scale-[0.98]"
                       style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
                 {inviteMutation.isPending ? 'Creating…' : 'Create User'}
               </button>

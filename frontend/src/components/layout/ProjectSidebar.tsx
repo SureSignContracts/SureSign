@@ -9,7 +9,7 @@ import {
   LayoutDashboard, FileText, DollarSign, MessageSquare, GitBranch,
   ClipboardList, Users2, Bell, CheckSquare, FolderOpen, Package, Archive,
   ArrowLeft, FolderKanban, Scale, CalendarDays, ShieldAlert, BarChart2,
-  ChevronRight, Briefcase, HardHat,
+  ChevronRight, Briefcase, HardHat, Clock, FileStack,
 } from 'lucide-react';
 
 interface ProjectSidebarProps {
@@ -51,6 +51,7 @@ const groups = (id: string): NavGroup[] => [
       { href: `/app/projects/${id}/variations`, label: 'Variations',    icon: GitBranch },
       { href: `/app/projects/${id}/notices`,    label: 'Notices',       icon: Bell },
       { href: `/app/projects/${id}/programme`,  label: 'Programme',     icon: BarChart2 },
+      { href: `/app/projects/${id}/delay-eot`,  label: 'Delay & EOT',   icon: Clock },
       { href: `/app/projects/${id}/risks`,      label: 'Risk Register', icon: ShieldAlert },
     ],
   },
@@ -66,10 +67,11 @@ const groups = (id: string): NavGroup[] => [
     label: 'Delivery',
     icon: HardHat,
     items: [
-      { href: `/app/projects/${id}/qa`,           label: 'QA Reports',  icon: CheckSquare },
-      { href: `/app/projects/${id}/snagging`,     label: 'Snagging',    icon: Package },
-      { href: `/app/projects/${id}/site-reports`, label: 'Site Reports',icon: ClipboardList },
-      { href: `/app/projects/${id}/closeout`,     label: 'Closeout',    icon: Archive },
+      { href: `/app/projects/${id}/qa`,                    label: 'QA Reports',         icon: CheckSquare },
+      { href: `/app/projects/${id}/snagging`,              label: 'Snagging',           icon: Package },
+      { href: `/app/projects/${id}/site-reports`,          label: 'Site Reports',       icon: ClipboardList },
+      { href: `/app/projects/${id}/delivery-documents`,    label: 'Delivery Documents', icon: FileStack },
+      { href: `/app/projects/${id}/closeout`,              label: 'Closeout',           icon: Archive },
     ],
   },
   {
@@ -369,7 +371,7 @@ export default function ProjectSidebar({
           >
             <div
               className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
-              style={{ backgroundColor: 'rgba(185,149,102,0.15)' }}
+              style={{ backgroundColor: 'var(--gold-15)' }}
             >
               <FolderKanban size={14} style={{ color: 'var(--gold)' }} />
             </div>

@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { CheckSquare, Plus, Search, X } from 'lucide-react';
+import PageTourButton from '@/components/tours/PageTourButton';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -40,7 +41,7 @@ function QaModal({ projectId, report, onClose }: { projectId: string; report?: a
   const mutation = useMutation({
     mutationFn: (data: any) =>
       isEdit
-        ? api.put(`/qa-reports/${report.id}`, data).then(r => r.data)
+        ? api.put(`/projects/${projectId}/qa-reports/${report.id}`, data).then(r => r.data)
         : api.post(`/projects/${projectId}/qa-reports`, data).then(r => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['project-qa', projectId] });
@@ -60,8 +61,8 @@ function QaModal({ projectId, report, onClose }: { projectId: string; report?: a
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+      <div className="ss-animate-in w-full max-w-lg rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
           <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
             {isEdit ? 'Edit QA Report' : 'New QA Report'}
@@ -78,19 +79,19 @@ function QaModal({ projectId, report, onClose }: { projectId: string; report?: a
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Inspection Type</label>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Inspection type</label>
               <input value={form.inspection_type} onChange={set('inspection_type')} placeholder="e.g. Structural, M&E"
                 className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Area / Location</label>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Area / location</label>
               <input value={form.area} onChange={set('area')} placeholder="e.g. Level 2"
                 className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Inspection Date</label>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Inspection date</label>
               <input type="date" value={form.inspection_date} onChange={set('inspection_date')}
                 className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
             </div>
@@ -112,12 +113,12 @@ function QaModal({ projectId, report, onClose }: { projectId: string; report?: a
               className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none" style={inputStyle} />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Corrective Action</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Corrective action</label>
             <textarea value={form.corrective_action} onChange={set('corrective_action')} rows={2} placeholder="Required corrective actions…"
               className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none" style={inputStyle} />
           </div>
           <div className="flex items-center gap-3">
-            <label className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Follow-up Required</label>
+            <label className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Follow-up required</label>
             <select value={form.follow_up_required} onChange={set('follow_up_required')}
               className="px-3 py-1.5 rounded-lg text-sm outline-none" style={inputStyle}>
               <option value="0">No</option>
@@ -129,7 +130,7 @@ function QaModal({ projectId, report, onClose }: { projectId: string; report?: a
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm"
               style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
             <button type="submit" disabled={mutation.isPending}
-              className="px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-60"
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
               {mutation.isPending ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Report'}
             </button>
@@ -148,6 +149,7 @@ export default function ProjectQaPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [modal, setModal] = useState<{ open: boolean; report?: any }>({ open: false });
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['project-qa', id],
@@ -155,10 +157,11 @@ export default function ProjectQaPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (reportId: number) => api.delete(`/qa-reports/${reportId}`),
+    mutationFn: (reportId: number) => api.delete(`/projects/${id}/qa-reports/${reportId}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['project-qa', id] });
       qc.invalidateQueries({ queryKey: ['project-activities', id] });
+      setDeleteTarget(null);
     },
   });
 
@@ -179,14 +182,30 @@ export default function ProjectQaPage() {
         <QaModal projectId={id} report={modal.report} onClose={() => setModal({ open: false })} />
       )}
 
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="w-full max-w-sm rounded-xl p-5" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+            <p className="text-sm mb-4" style={{ color: 'var(--text-primary)' }}>Delete QA Report #{deleteTarget.report_number ?? deleteTarget.id}? This cannot be undone.</p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setDeleteTarget(null)} className="px-3 py-1.5 rounded-lg text-sm" style={{ color: 'var(--text-secondary)' }}>Cancel</button>
+              <button onClick={() => deleteMutation.mutate(deleteTarget.id)} className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white" style={{ backgroundColor: '#a11a1a' }}>Confirm</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>QA Reports</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-[1.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>QA reports</h1>
+            <PageTourButton tourKey="page-qa" label="Take a tour of this page" />
+          </div>
           <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Quality assurance inspections and records</p>
         </div>
         <button
+          data-tour="qa-new"
           onClick={() => setModal({ open: true })}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 active:scale-[0.98]"
           style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
         >
           <Plus size={15} />
@@ -195,26 +214,28 @@ export default function ProjectQaPage() {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-5 gap-3">
-        {STATUSES.map(s => {
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3" data-tour="qa-summary">
+        {STATUSES.map((s, i) => {
           const count = allReports.filter((r: any) => r.status === s).length;
           const badge = STATUS_COLORS[s];
           return (
-            <div key={s} className="rounded-xl p-3 cursor-pointer transition-all"
+            <div key={s} className="ss-animate-in rounded-xl p-3 cursor-pointer transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5"
               onClick={() => setStatusFilter(statusFilter === s ? 'all' : s)}
               style={{
                 backgroundColor: statusFilter === s ? badge.bg : 'var(--bg-surface)',
                 border: `1px solid ${statusFilter === s ? badge.text + '40' : 'var(--border)'}`,
+                boxShadow: 'var(--shadow-card)',
+                animationDelay: `${i * 50}ms`,
               }}>
               <p className="text-xs capitalize" style={{ color: 'var(--text-muted)' }}>{s}</p>
-              <p className="text-lg font-bold mt-0.5" style={{ color: badge.text }}>{count}</p>
+              <p className="text-lg font-bold mt-0.5 tabular-nums" style={{ color: badge.text }}>{count}</p>
             </div>
           );
         })}
       </div>
 
       {/* Search + Filter */}
-      <div className="flex gap-3 flex-wrap">
+      <div className="flex gap-3 flex-wrap" data-tour="qa-filters">
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
           <input
@@ -222,13 +243,13 @@ export default function ProjectQaPage() {
             onChange={e => setSearch(e.target.value)}
             placeholder="Search QA reports…"
             className="pl-9 pr-4 py-2 rounded-lg text-sm outline-none"
-            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)', minWidth: '220px' }}
+            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)', minWidth: '220px', boxShadow: 'var(--shadow-card)' }}
           />
         </div>
-        <div className="flex gap-1 p-1 rounded-lg" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+        <div className="flex gap-1 p-1 rounded-full" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
           {['all', ...STATUSES].map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
-              className="px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-all"
+              className="px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-all active:scale-[0.97]"
               style={statusFilter === s
                 ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
                 : { color: 'var(--text-secondary)' }
@@ -246,17 +267,17 @@ export default function ProjectQaPage() {
           ))}
         </div>
       ) : reports.length === 0 ? (
-        <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+        <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
           <CheckSquare size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No QA reports yet</p>
           <button onClick={() => setModal({ open: true })}
-            className="mt-4 px-4 py-2 rounded-lg text-xs font-medium"
+            className="mt-4 px-4 py-2 rounded-lg text-xs font-medium transition-all active:scale-[0.98]"
             style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
             Create First Report
           </button>
         </div>
       ) : (
-        <div className="rounded-2xl overflow-x-auto" style={{ border: '1px solid var(--border)' }}>
+        <div className="rounded-2xl overflow-x-auto" data-tour="qa-table" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
           <table className="w-full min-w-[640px] text-sm">
             <thead>
               <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
@@ -270,11 +291,11 @@ export default function ProjectQaPage() {
                 const badge = STATUS_COLORS[r.status] ?? { bg: 'var(--bg-elevated)', text: 'var(--text-muted)' };
                 return (
                   <tr key={r.id} className="hover:bg-[var(--bg-hover)] transition-colors" style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td className="px-5 py-3 font-mono text-xs" style={{ color: 'var(--text-muted)' }}>#{r.report_number ?? r.id}</td>
+                    <td className="px-5 py-3 font-mono text-[11px]" style={{ color: 'var(--text-muted)' }}>#{r.report_number ?? r.id}</td>
                     <td className="px-5 py-3 font-medium" style={{ color: 'var(--text-primary)' }}>{r.title}</td>
                     <td className="px-5 py-3 text-xs capitalize" style={{ color: 'var(--text-secondary)' }}>{r.inspection_type || '—'}</td>
                     <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-secondary)' }}>{r.area || '—'}</td>
-                    <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{r.inspection_date ? formatDate(r.inspection_date) : '—'}</td>
+                    <td className="px-5 py-3 text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>{r.inspection_date ? formatDate(r.inspection_date) : '—'}</td>
                     <td className="px-5 py-3">
                       <span className="text-xs px-2 py-0.5 rounded-full capitalize"
                         style={{ backgroundColor: badge.bg, color: badge.text }}>
@@ -285,7 +306,7 @@ export default function ProjectQaPage() {
                       <div className="flex gap-2">
                         <button onClick={() => setModal({ open: true, report: r })}
                           className="text-xs hover:underline" style={{ color: 'var(--text-muted)' }}>Edit</button>
-                        <button onClick={() => { if (confirm('Delete this QA report?')) deleteMutation.mutate(r.id); }}
+                        <button onClick={() => setDeleteTarget(r)}
                           className="text-xs hover:underline" style={{ color: '#f87171' }}>Delete</button>
                       </div>
                     </td>

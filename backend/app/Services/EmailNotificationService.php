@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Organization;
 use App\Models\SuresignSetting;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -11,12 +12,18 @@ class EmailNotificationService
     /**
      * Send a notification email if the event is enabled in notification_settings.
      *
-     * @param string $event    e.g. 'payment_application.submitted'
-     * @param string $subject  Email subject line
-     * @param string $bodyText Plain-text body (converted to HTML)
-     * @param array  $meta     Optional extra context (reserved)
+     * Recipients are resolved from the event's organization (its own contact
+     * email plus every user with the 'Client' role) and the platform's admin
+     * oversight address — never from email_sender_email/email_reply_to, which
+     * configure the outgoing "From"/"Reply-To" headers, not who receives it.
+     *
+     * @param string            $event        e.g. 'payment_application.submitted'
+     * @param string            $subject      Email subject line
+     * @param string            $bodyText     Plain-text body (converted to HTML)
+     * @param array             $meta         Optional extra context (reserved)
+     * @param Organization|null $organization The organization this event belongs to
      */
-    public static function send(string $event, string $subject, string $bodyText, array $meta = []): void
+    public static function send(string $event, string $subject, string $bodyText, array $meta = [], ?Organization $organization = null): void
     {
         try {
             $settings = SuresignSetting::instance();
@@ -32,17 +39,34 @@ class EmailNotificationService
                 return;
             }
 
-            // Build recipient list: sender email + reply-to (deduplicated)
             $recipients = [];
-            if (!empty($settings->email_sender_email)) {
-                $recipients[] = $settings->email_sender_email;
-            }
-            if (!empty($settings->email_reply_to) && $settings->email_reply_to !== ($settings->email_sender_email ?? '')) {
-                $recipients[] = $settings->email_reply_to;
+
+            // Platform admin oversight address — sees every notification.
+            if (!empty($settings->admin_email)) {
+                $recipients[] = $settings->admin_email;
             }
 
+            if ($organization) {
+                // The organization's own contact email.
+                if (!empty($organization->email)) {
+                    $recipients[] = $organization->email;
+                }
+
+                // Every user on that organization with the 'Client' role (the client owner(s)).
+                $clientEmails = $organization->users()
+                    ->whereHas('roles', fn ($q) => $q->where('name', 'Client'))
+                    ->pluck('email')
+                    ->filter()
+                    ->all();
+                array_push($recipients, ...$clientEmails);
+            }
+
+            // Stray whitespace from a pasted address is enough for a mail server to
+            // silently reject the message even though Brevo's API accepts the call.
+            $recipients = array_values(array_unique(array_filter(array_map('trim', $recipients))));
+
             if (empty($recipients)) {
-                Log::warning("EmailNotificationService: no recipient email configured — skipping event '{$event}'");
+                Log::warning("EmailNotificationService: no recipient email resolved — skipping event '{$event}'");
                 return;
             }
 
@@ -57,7 +81,7 @@ class EmailNotificationService
                 'Accept'       => 'application/json',
             ])->post('https://api.brevo.com/v3/smtp/email', [
                 'sender'      => [
-                    'name'  => $settings->email_sender_name ?: 'SureSign',
+                    'name'  => $settings->email_sender_name ?: 'SureSign Contracts',
                     'email' => $settings->email_sender_email ?: ($settings->email_reply_to ?: 'noreply@suresign.io'),
                 ],
                 'to'          => $toList,
@@ -78,7 +102,7 @@ class EmailNotificationService
 
     private static function buildHtml(SuresignSetting $settings, string $subject, string $bodyHtml): string
     {
-        $senderName = e($settings->email_sender_name ?: 'SureSign');
+        $senderName = e($settings->email_sender_name ?: 'SureSign Contracts');
 
         $headerSection = $settings->email_header_url
             ? '<img src="' . e($settings->email_header_url) . '" style="width:100%;max-width:600px;display:block;" alt="' . $senderName . '" />'

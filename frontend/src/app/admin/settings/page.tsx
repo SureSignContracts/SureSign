@@ -5,6 +5,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { Save, CheckCircle, XCircle, Copy, RefreshCw, Sparkles, Eye, EyeOff } from 'lucide-react';
 import Toggle from '@/components/ui/Toggle';
+import Button from '@/components/ui/Button';
+import { Card, CardBody } from '@/components/ui/Card';
 
 export default function AdminSettingsPage() {
   const qc = useQueryClient();
@@ -132,9 +134,10 @@ export default function AdminSettingsPage() {
       {/* General */}
       <section className="space-y-4">
         <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>General</h2>
-        <div className="rounded-2xl p-5 space-y-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+        <Card>
+        <CardBody className="space-y-5">
           {[
-            { label: 'Platform Name', key: 'platform_name', placeholder: 'SureSign' },
+            { label: 'Platform Name', key: 'platform_name', placeholder: 'SureSign Contracts' },
             { label: 'Support Email', key: 'support_email', placeholder: 'support@suresign.io' },
             { label: 'Max File Upload Size (MB)', key: 'max_upload_mb', placeholder: '50', type: 'number' },
           ].map(field => (
@@ -151,13 +154,14 @@ export default function AdminSettingsPage() {
               />
             </div>
           ))}
-        </div>
+        </CardBody>
+        </Card>
       </section>
 
       {/* Feature flags */}
       <section className="space-y-4">
         <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Feature Flags</h2>
-        <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+        <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
           {([
             { label: 'Document Generation', key: 'doc_gen_enabled', description: 'PDF and Word document generation' },
             { label: 'White-label Branding', key: 'white_label_enabled', description: 'Company custom branding' },
@@ -182,15 +186,10 @@ export default function AdminSettingsPage() {
       </section>
 
       <div className="flex justify-end">
-        <button
-          onClick={() => saveMutation.mutate({})}
-          disabled={saveMutation.isPending}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-opacity disabled:opacity-60"
-          style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
-        >
+        <Button onClick={() => saveMutation.mutate({})} disabled={saveMutation.isPending} size="lg">
           <Save size={15} />
           {saved ? 'Saved!' : saveMutation.isPending ? 'Saving…' : 'Save Settings'}
-        </button>
+        </Button>
       </div>
 
       {/* ── AI Assistant ── */}
@@ -205,7 +204,8 @@ export default function AdminSettingsPage() {
           </p>
         </div>
 
-        <div className="rounded-2xl p-5 space-y-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+        <Card>
+        <CardBody className="space-y-5">
 
           {/* Enable AI toggle */}
           <div className="flex items-center justify-between">
@@ -291,7 +291,7 @@ export default function AdminSettingsPage() {
           </div>
 
           <div className="flex justify-end pt-1">
-            <button
+            <Button
               type="button"
               onClick={() =>
                 aiMutation.mutate({
@@ -302,14 +302,14 @@ export default function AdminSettingsPage() {
                 })
               }
               disabled={aiMutation.isPending}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-opacity disabled:opacity-50"
-              style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
+              size="sm"
             >
               <Save size={12} />
               {aiSaved ? 'Saved!' : aiMutation.isPending ? 'Saving…' : 'Save AI Settings'}
-            </button>
+            </Button>
           </div>
-        </div>
+        </CardBody>
+        </Card>
       </section>
 
       {/* ── Notifications ── */}
@@ -318,11 +318,12 @@ export default function AdminSettingsPage() {
           <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Notifications</h2>
           <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
             Choose which events trigger an email notification.
-            Emails are sent to the address configured in SureSign Settings → Email.
+            Emails are sent to the address configured in SureSign Contracts settings → Email.
           </p>
         </div>
 
-        <div className="rounded-2xl p-5 space-y-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+        <Card>
+        <CardBody className="space-y-4">
           {NOTIFICATION_EVENTS.map(ev => {
             const isChecked = (notificationEvents ?? []).includes(ev.key);
             return (
@@ -341,14 +342,15 @@ export default function AdminSettingsPage() {
               type="button"
               onClick={() => notifMutation.mutate({ notification_settings: notificationEvents })}
               disabled={notifMutation.isPending}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-opacity disabled:opacity-50"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-opacity disabled:opacity-50 active:scale-[0.98]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
             >
               <Save size={12} />
               {notifSaved ? 'Saved!' : notifMutation.isPending ? 'Saving…' : 'Save Notification Settings'}
             </button>
           </div>
-        </div>
+        </CardBody>
+        </Card>
       </section>
 
       {/* ── Local Document Mirror ── */}
@@ -361,7 +363,7 @@ export default function AdminSettingsPage() {
           </p>
         </div>
 
-        <div className="rounded-2xl p-5 space-y-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+        <div className="rounded-2xl p-5 space-y-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
 
           {/* Enable toggle */}
           <div className="flex items-center justify-between">
@@ -443,7 +445,7 @@ export default function AdminSettingsPage() {
                 local_export_path: currentMirrorPath,
               })}
               disabled={mirrorMutation.isPending}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-opacity disabled:opacity-50"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-opacity disabled:opacity-50 active:scale-[0.98]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
             >
               <Save size={12} />

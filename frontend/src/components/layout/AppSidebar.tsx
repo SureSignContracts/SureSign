@@ -13,7 +13,7 @@ import api from '@/lib/api';
 import {
   LayoutDashboard, FolderKanban, DollarSign, HardHat,
   FileText, BarChart2, Brain, Users, Settings, LogOut,
-  Sun, Moon, ShieldCheck, ChevronRight,
+  Sun, Moon, ShieldCheck, ChevronRight, HelpCircle,
   PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
 import { APP_VERSION_LABEL } from '@/config/app-version';
@@ -24,24 +24,25 @@ const NAV_GROUPS = [
   {
     label: null,
     items: [
-      { href: '/app', label: 'Dashboard', icon: LayoutDashboard, exact: true },
+      { href: '/app', label: 'Dashboard', icon: LayoutDashboard, exact: true, tour: 'sidebar-dashboard' },
     ],
   },
   {
     label: 'Workspace',
     items: [
-      { href: '/app/projects',   label: 'Projects',     icon: FolderKanban },
-      { href: '/app/commercial', label: 'Commercial',   icon: DollarSign    },
+      { href: '/app/projects',   label: 'Projects',     icon: FolderKanban, tour: 'sidebar-projects'   },
+      { href: '/app/commercial', label: 'Commercial',   icon: DollarSign,   tour: 'sidebar-commercial' },
       { href: '/app/site',       label: 'Site Admin',   icon: HardHat       },
-      { href: '/app/documents',  label: 'Documents',    icon: FileText      },
+      { href: '/app/documents',  label: 'Documents',    icon: FileText,     tour: 'sidebar-documents'  },
     ],
   },
   {
     label: 'Tools',
     items: [
-      { href: '/app/reports', label: 'Reports',      icon: BarChart2 },
-      { href: '/app/ai',      label: 'AI Assistant', icon: Brain     },
-      { href: '/app/team',    label: 'Team',         icon: Users     },
+      { href: '/app/reports', label: 'Reports',      icon: BarChart2   },
+      { href: '/app/ai',      label: 'AI Assistant', icon: Brain       },
+      { href: '/app/team',    label: 'Team',         icon: Users       },
+      { href: '/app/help',    label: 'Help',         icon: HelpCircle, tour: 'sidebar-help' },
     ],
   },
 ];
@@ -156,6 +157,7 @@ function NavItem({
   active,
   collapsed,
   exact,
+  tour,
 }: {
   href: string;
   label: string;
@@ -163,6 +165,7 @@ function NavItem({
   active: boolean;
   collapsed: boolean;
   exact?: boolean;
+  tour?: string;
 }) {
   const linkRef = useRef<HTMLAnchorElement>(null);
   const [hovered, setHovered] = useState(false);
@@ -173,6 +176,7 @@ function NavItem({
         <Link
           ref={linkRef}
           href={href}
+          data-tour={tour}
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
           className={cn(
@@ -204,6 +208,7 @@ function NavItem({
   return (
     <Link
       href={href}
+      data-tour={tour}
       className={cn(
         'group relative flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm',
         'transition-all duration-150 ease-out',
@@ -326,7 +331,7 @@ function ProfilePopover({
 
       <button
         onClick={onLogout}
-        className="group w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs transition-colors hover:bg-red-50"
+        className="group w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs transition-colors hover:bg-red-500/10"
         style={{ color: '#ef4444', borderTop: '1px solid var(--border)' }}
       >
         <LogOut size={13} className="transition-transform duration-150 group-hover:translate-x-0.5" />
@@ -456,7 +461,10 @@ export default function AppSidebar({
   const displayName   = user?.name ?? '';
   const initials      = displayName.charAt(0).toUpperCase() || '?';
   const role          = user?.roles?.[0] ?? '';
-  const orgName       = branding?.company_name || user?.organization?.name || 'Company Portal';
+  const fullOrgName   = branding?.company_name || user?.organization?.name || 'Company Portal';
+  // Cut at a word boundary rather than mid-word ("Star Affinity" vs "Star Affinity L...").
+  const orgWords      = fullOrgName.trim().split(/\s+/);
+  const orgName       = orgWords.length > 2 ? orgWords.slice(0, 2).join(' ') : fullOrgName;
   const logoUrl       = branding?.logo_url ?? null;
 
   return (
@@ -477,9 +485,9 @@ export default function AppSidebar({
         mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0',
       )}
       style={{
-        width:    showCollapsed ? '64px' : '224px',
-        minWidth: showCollapsed ? '64px' : '224px',
-        maxWidth: showCollapsed ? '64px' : '224px',
+        width:    showCollapsed ? '64px' : '248px',
+        minWidth: showCollapsed ? '64px' : '248px',
+        maxWidth: showCollapsed ? '64px' : '248px',
         transition: 'transform 300ms cubic-bezier(0.4,0,0.2,1), width 260ms cubic-bezier(0.4,0,0.2,1), min-width 260ms cubic-bezier(0.4,0,0.2,1), max-width 260ms cubic-bezier(0.4,0,0.2,1)',
         backgroundColor: 'var(--bg-base)',
       }}
@@ -503,7 +511,7 @@ export default function AppSidebar({
             )}
           </div>
         ) : (
-          <div className="w-full flex items-center gap-2.5 px-3">
+          <div className="w-full flex items-center gap-2.5 pl-[21px] pr-3">
             {logoUrl ? (
               <img src={logoUrl} alt={orgName} style={{ width: '22px', height: '22px', objectFit: 'contain', borderRadius: '4px', flexShrink: 0 }} />
             ) : (
@@ -514,7 +522,7 @@ export default function AppSidebar({
                 {orgName.charAt(0).toUpperCase()}
               </div>
             )}
-            <span className="flex-1 text-sm font-bold tracking-tight truncate" style={{ color: 'var(--text-primary)' }}>
+            <span className="flex-1 text-sm font-bold tracking-tight truncate" style={{ color: 'var(--text-primary)' }} title={fullOrgName}>
               {orgName}
             </span>
             <button
@@ -562,6 +570,7 @@ export default function AppSidebar({
                   icon={item.icon}
                   active={isActive(item.href, (item as any).exact)}
                   collapsed={showCollapsed}
+                  tour={(item as any).tour}
                 />
               ))}
             </div>

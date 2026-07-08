@@ -46,8 +46,8 @@ export default function AdminProjectsPage() {
           </p>
         </div>
         <div
-          className="text-xs px-3 py-1.5 rounded-full font-medium"
-          style={{ backgroundColor: 'rgba(185,149,102,0.12)', color: 'var(--gold)', border: '1px solid rgba(185,149,102,0.3)' }}
+          className="text-xs px-3 py-1.5 rounded-full font-medium tabular-nums"
+          style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)', border: '1px solid var(--gold-30)' }}
         >
           {data?.total ?? 0} total
         </div>
@@ -70,12 +70,12 @@ export default function AdminProjectsPage() {
             }}
           />
         </div>
-        <div className="flex gap-1 p-1 rounded-lg" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+        <div className="flex gap-1 p-1 rounded-full" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
           {['all', 'active', 'on_hold', 'completed', 'cancelled'].map(s => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
-              className="px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-all"
+              className="px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-all active:scale-[0.97]"
               style={
                 statusFilter === s
                   ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
@@ -89,7 +89,7 @@ export default function AdminProjectsPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+      <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
         {/* Table header */}
         <div
           className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr_40px] gap-4 px-5 py-3 text-xs font-medium uppercase tracking-wider"
@@ -130,7 +130,7 @@ export default function AdminProjectsPage() {
                       {p.name}
                     </p>
                     {p.code && (
-                      <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{p.code}</p>
+                      <p className="text-[11px] font-mono truncate" style={{ color: 'var(--text-muted)' }}>{p.code}</p>
                     )}
                   </div>
 
@@ -138,7 +138,7 @@ export default function AdminProjectsPage() {
                   <div className="flex items-center gap-2 min-w-0">
                     <div
                       className="w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0"
-                      style={{ backgroundColor: 'rgba(185,149,102,0.15)', color: 'var(--gold)' }}
+                      style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}
                     >
                       {p.organization?.name?.charAt(0)?.toUpperCase() ?? '?'}
                     </div>
@@ -153,7 +153,7 @@ export default function AdminProjectsPage() {
                   </span>
 
                   {/* Value */}
-                  <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                  <span className="text-sm font-medium tabular-nums" style={{ color: 'var(--text-primary)' }}>
                     {p.contract_value ? formatCurrency(p.contract_value) : '—'}
                   </span>
 

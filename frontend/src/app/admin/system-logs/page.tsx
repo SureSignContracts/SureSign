@@ -5,12 +5,14 @@ import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { ScrollText, Search, Filter } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
+import { Badge } from '@/components/ui/Badge';
+import EmptyState from '@/components/ui/EmptyState';
 
-const LEVEL_COLORS: Record<string, { bg: string; text: string }> = {
-  info:    { bg: 'rgba(59,130,246,0.1)',  text: '#60a5fa' },
-  warning: { bg: 'rgba(234,179,8,0.1)',   text: '#facc15' },
-  error:   { bg: 'rgba(239,68,68,0.1)',   text: '#f87171' },
-  debug:   { bg: 'rgba(90,86,82,0.15)',   text: '#9a9490' },
+const LEVEL_TONE: Record<string, 'info' | 'warning' | 'danger' | 'neutral'> = {
+  info: 'info',
+  warning: 'warning',
+  error: 'danger',
+  debug: 'neutral',
 };
 
 export default function AdminSystemLogsPage() {
@@ -49,12 +51,12 @@ export default function AdminSystemLogsPage() {
             style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)', minWidth: '240px' }}
           />
         </div>
-        <div className="flex gap-1 p-1 rounded-lg" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+        <div className="flex gap-1 p-1 rounded-full" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
           {['all', 'info', 'warning', 'error', 'debug'].map(l => (
             <button
               key={l}
               onClick={() => setLevel(l)}
-              className="px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-all"
+              className="px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-all active:scale-[0.97]"
               style={level === l
                 ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
                 : { color: 'var(--text-secondary)' }
@@ -69,7 +71,7 @@ export default function AdminSystemLogsPage() {
       {/* Log table */}
       <div
         className="rounded-2xl overflow-hidden font-mono text-xs"
-        style={{ border: '1px solid var(--border)' }}
+        style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}
       >
         <div
           className="grid px-5 py-3 text-xs font-medium uppercase tracking-wider"
@@ -94,12 +96,9 @@ export default function AdminSystemLogsPage() {
               </div>
             ))
           ) : logs.length === 0 ? (
-            <div className="px-5 py-12 text-center">
-              <ScrollText size={28} className="mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
-              <p style={{ color: 'var(--text-muted)' }}>No logs found</p>
-            </div>
+            <EmptyState icon={ScrollText} title="No logs found" />
           ) : logs.map((log: any, i: number) => {
-            const badge = LEVEL_COLORS[log.level] || LEVEL_COLORS.debug;
+            const tone = LEVEL_TONE[log.level] ?? 'neutral';
             return (
               <div
                 key={i}
@@ -110,11 +109,9 @@ export default function AdminSystemLogsPage() {
                   gap: '16px',
                 }}
               >
-                <span style={{ color: 'var(--text-muted)' }}>{log.datetime ?? log.created_at ?? '–'}</span>
+                <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>{log.datetime ?? log.created_at ?? '–'}</span>
                 <span>
-                  <span className="px-1.5 py-0.5 rounded text-xs capitalize" style={{ backgroundColor: badge.bg, color: badge.text }}>
-                    {log.level}
-                  </span>
+                  <Badge tone={tone}>{log.level}</Badge>
                 </span>
                 <span style={{ color: 'var(--text-secondary)' }}>{log.channel ?? 'app'}</span>
                 <span className="truncate" style={{ color: 'var(--text-primary)' }}>{log.message}</span>

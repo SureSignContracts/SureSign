@@ -8,6 +8,7 @@ import { formatDate } from '@/lib/utils';
 import { Bell, Plus, Search, Clock, AlertTriangle, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
+import PageTourButton from '@/components/tours/PageTourButton';
 
 type NoticeType = 'eot' | 'delay' | 'pay-less' | 'site-instruction';
 
@@ -65,15 +66,15 @@ function NewEotModal({ projectId, onClose }: { projectId: string; onClose: () =>
   });
   const set = (f: keyof typeof form, v: string) => setForm(p => ({ ...p, [f]: v }));
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-md rounded-2xl p-5 space-y-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+      <div className="w-full max-w-md rounded-2xl p-5 space-y-4 ss-animate-in" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
         <div className="flex items-center justify-between"><h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>New EOT Request</h2><button onClick={onClose}><X size={16} style={{ color: 'var(--text-muted)' }} /></button></div>
         <form onSubmit={e => { e.preventDefault(); mutate(form); }} className="space-y-3">
           <div><label className="block text-xs mb-1" style={labelStyle}>Title *</label><input value={form.title} onChange={e => set('title', e.target.value)} required className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} /></div>
           <div><label className="block text-xs mb-1" style={labelStyle}>Notice Date</label><input type="date" value={form.notice_date} onChange={e => set('notice_date', e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} /></div>
           <div><label className="block text-xs mb-1" style={labelStyle}>Days Claimed</label><input type="number" value={form.days_claimed} onChange={e => set('days_claimed', e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} /></div>
           <div><label className="block text-xs mb-1" style={labelStyle}>Grounds</label><textarea value={form.grounds} onChange={e => set('grounds', e.target.value)} rows={3} className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none" style={inputStyle} /></div>
-          <div className="flex justify-end gap-3"><button type="button" onClick={onClose} className="px-3 py-1.5 rounded-lg text-xs" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button><button type="submit" disabled={isPending} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: isPending ? 0.7 : 1 }}>{isPending ? 'Submitting…' : 'Submit EOT'}</button></div>
+          <div className="flex justify-end gap-3"><button type="button" onClick={onClose} className="px-3 py-1.5 rounded-lg text-xs" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button><button type="submit" disabled={isPending} className="px-3 py-1.5 rounded-lg text-xs font-medium active:scale-[0.98]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: isPending ? 0.7 : 1 }}>{isPending ? 'Submitting…' : 'Submit EOT'}</button></div>
         </form>
       </div>
     </div>
@@ -112,8 +113,8 @@ function NewPayLessModal({ projectId, onClose }: { projectId: string; onClose: (
   });
   const set = (f: keyof typeof form, v: string) => setForm(p => ({ ...p, [f]: v }));
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-md rounded-2xl p-5 space-y-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+      <div className="w-full max-w-md rounded-2xl p-5 space-y-4 ss-animate-in" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
         <div className="flex items-center justify-between"><h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>New Pay Less Notice</h2><button onClick={onClose}><X size={16} style={{ color: 'var(--text-muted)' }} /></button></div>
         <form onSubmit={e => { e.preventDefault(); mutate(form); }} className="space-y-3">
           <div>
@@ -123,7 +124,7 @@ function NewPayLessModal({ projectId, onClose }: { projectId: string; onClose: (
               <option value="">Not linked to a payment application</option>
               {paymentApps.map((pa: any) => (
                 <option key={pa.id} value={pa.id}>
-                  Application #{pa.application_number}{pa.period_ending ? ` — ${pa.period_ending}` : ''}
+                  Application #{pa.application_number}{pa.period_ending ? ` (${pa.period_ending})` : ''}
                 </option>
               ))}
             </select>
@@ -135,7 +136,7 @@ function NewPayLessModal({ projectId, onClose }: { projectId: string; onClose: (
           <div><label className="block text-xs mb-1" style={labelStyle}>Notified Sum (£) *</label><input type="number" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)} required className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} /></div>
           <div><label className="block text-xs mb-1" style={labelStyle}>Reference</label><input value={form.reference} onChange={e => set('reference', e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} /></div>
           <div><label className="block text-xs mb-1" style={labelStyle}>Basis / Reason *</label><textarea value={form.reason} onChange={e => set('reason', e.target.value)} required rows={3} className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none" style={inputStyle} /></div>
-          <div className="flex justify-end gap-3"><button type="button" onClick={onClose} className="px-3 py-1.5 rounded-lg text-xs" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button><button type="submit" disabled={isPending} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: isPending ? 0.7 : 1 }}>{isPending ? 'Issuing…' : 'Issue Notice'}</button></div>
+          <div className="flex justify-end gap-3"><button type="button" onClick={onClose} className="px-3 py-1.5 rounded-lg text-xs" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button><button type="submit" disabled={isPending} className="px-3 py-1.5 rounded-lg text-xs font-medium active:scale-[0.98]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: isPending ? 0.7 : 1 }}>{isPending ? 'Issuing…' : 'Issue Notice'}</button></div>
         </form>
       </div>
     </div>
@@ -163,8 +164,8 @@ function NewSiteInstructionModal({ projectId, onClose }: { projectId: string; on
   });
   const set = (f: keyof typeof form, v: string) => setForm(p => ({ ...p, [f]: v }));
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-md rounded-2xl p-5 space-y-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+      <div className="w-full max-w-md rounded-2xl p-5 space-y-4 ss-animate-in" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
         <div className="flex items-center justify-between"><h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>New Site Instruction</h2><button onClick={onClose}><X size={16} style={{ color: 'var(--text-muted)' }} /></button></div>
         <form onSubmit={e => { e.preventDefault(); mutate(form); }} className="space-y-3">
           <div><label className="block text-xs mb-1" style={labelStyle}>Title *</label><input value={form.title} onChange={e => set('title', e.target.value)} required className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} /></div>
@@ -182,7 +183,7 @@ function NewSiteInstructionModal({ projectId, onClose }: { projectId: string; on
             <div><label className="block text-xs mb-1" style={labelStyle}>Issued To</label><input value={form.issued_to} onChange={e => set('issued_to', e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} /></div>
           </div>
           <div><label className="block text-xs mb-1" style={labelStyle}>Description</label><textarea value={form.description} onChange={e => set('description', e.target.value)} rows={3} className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none" style={inputStyle} /></div>
-          <div className="flex justify-end gap-3"><button type="button" onClick={onClose} className="px-3 py-1.5 rounded-lg text-xs" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button><button type="submit" disabled={isPending} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: isPending ? 0.7 : 1 }}>{isPending ? 'Issuing…' : 'Issue Instruction'}</button></div>
+          <div className="flex justify-end gap-3"><button type="button" onClick={onClose} className="px-3 py-1.5 rounded-lg text-xs" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button><button type="submit" disabled={isPending} className="px-3 py-1.5 rounded-lg text-xs font-medium active:scale-[0.98]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: isPending ? 0.7 : 1 }}>{isPending ? 'Issuing…' : 'Issue Instruction'}</button></div>
         </form>
       </div>
     </div>
@@ -218,13 +219,17 @@ export default function ProjectNoticesPage() {
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Notices</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Notices</h1>
+            <PageTourButton tourKey="page-notices" label="Take a tour of this page" />
+          </div>
           <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>EOT requests, delay notices, pay less notices and site instructions</p>
         </div>
         {canWrite && (
         <button
+          data-tour="notices-new"
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.98]"
           style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
         >
           <Plus size={15} />
@@ -234,10 +239,10 @@ export default function ProjectNoticesPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 rounded-lg w-fit" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+      <div className="flex gap-1 p-1 rounded-full w-fit" data-tour="notices-tabs" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
         {NOTICE_TABS.map(t => (
           <button key={t.id} onClick={() => { setTab(t.id); setShowModal(false); }}
-            className="px-4 py-2 rounded-md text-sm font-medium transition-all"
+            className="px-4 py-2 rounded-full text-sm font-medium transition-all active:scale-[0.97]"
             style={tab === t.id ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' } : { color: 'var(--text-secondary)' }}>
             {t.label}
           </button>
@@ -245,7 +250,7 @@ export default function ProjectNoticesPage() {
       </div>
 
       {/* Search */}
-      <div className="relative max-w-sm">
+      <div className="relative max-w-sm" data-tour="notices-search">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search notices…"
           className="w-full pl-9 pr-4 py-2 rounded-lg text-sm outline-none"
@@ -253,27 +258,27 @@ export default function ProjectNoticesPage() {
       </div>
 
       {/* Items */}
-      <div className="space-y-3">
+      <div className="space-y-3" data-tour="notices-list">
         {isLoading ? (
           [...Array(3)].map((_, i) => (
             <div key={i} className="h-18 rounded-2xl animate-pulse" style={{ backgroundColor: 'var(--bg-surface)' }} />
           ))
         ) : items.length === 0 ? (
-          <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
             <Bell size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No {NOTICE_TABS.find(t => t.id === tab)?.label.toLowerCase()} yet</p>
             {canWrite && (
-            <button onClick={() => setShowModal(true)} className="mt-3 px-3 py-1.5 rounded-lg text-xs font-medium" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+            <button onClick={() => setShowModal(true)} className="mt-3 px-3 py-1.5 rounded-lg text-xs font-medium active:scale-[0.98]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
               Create New
             </button>
             )}
           </div>
-        ) : items.map((item: any) => {
+        ) : items.map((item: any, i: number) => {
           const badge = STATUS_COLORS[item.status] ?? { bg: 'var(--bg-elevated)', text: 'var(--text-muted)' };
           return (
             <div key={item.id}
-              className="flex items-center justify-between p-4 rounded-xl cursor-pointer hover:bg-[var(--bg-hover)] transition-colors"
-              style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+              className="flex items-center justify-between p-4 rounded-xl cursor-pointer hover:bg-[var(--bg-hover)] transition-colors ss-animate-in"
+              style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: `${Math.min(i * 45, 360)}ms` }}>
               <div className="flex items-center gap-4">
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(249,115,22,0.1)' }}>
                   <AlertTriangle size={15} style={{ color: '#fb923c' }} />

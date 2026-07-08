@@ -12,7 +12,7 @@ class PayLessNotice extends Model
         'notice_date', 'amount', 'notified_sum', 'reason',
         'basis_of_difference', 'reference', 'status',
         'original_amount_due', 'total_deductions', 'revised_amount_payable',
-        'deduction_reason', 'detailed_deduction_notes', 'issued_by',
+        'deduction_reason', 'detailed_deduction_notes', 'issued_by', 'is_late',
     ];
 
     protected $casts = [
@@ -22,6 +22,7 @@ class PayLessNotice extends Model
         'original_amount_due'    => 'decimal:2',
         'total_deductions'       => 'decimal:2',
         'revised_amount_payable' => 'decimal:2',
+        'is_late'                => 'boolean',
     ];
 
     public function creator()            { return $this->belongsTo(User::class, 'created_by'); }

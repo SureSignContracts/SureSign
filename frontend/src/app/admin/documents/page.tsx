@@ -15,6 +15,8 @@ import {
 import GeneratePackageModal from '@/components/documents/GeneratePackageModal';
 import GenerateTradePackageFolderModal from '@/components/documents/GenerateTradePackageFolderModal';
 import DocumentPreviewModal, { type PreviewTarget } from '@/components/documents/DocumentPreviewModal';
+import Button from '@/components/ui/Button';
+import EmptyState from '@/components/ui/EmptyState';
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -102,19 +104,19 @@ function initModuleKeyPath(module: string | null, packageId: string | null, fold
 
 // ── Folder card ────────────────────────────────────────────────────────────
 
-function FolderCard({ icon, title, subtitle, meta, description, fileCount, onClick }: {
+function FolderCard({ icon, title, subtitle, meta, description, fileCount, onClick, index = 0 }: {
   icon?: React.ReactNode; title: string; subtitle?: string;
-  meta?: string; description?: string; fileCount?: number; onClick: () => void;
+  meta?: string; description?: string; fileCount?: number; onClick: () => void; index?: number;
 }) {
   return (
     <button
       onClick={onClick}
-      className="w-full text-left rounded-xl group transition-all duration-150"
-      style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+      className="w-full text-left rounded-xl group transition-all duration-150 ss-animate-in"
+      style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: '0 1px 2px rgba(0,0,0,0.04)', animationDelay: `${Math.min(index * 45, 360)}ms` }}
       onMouseEnter={e => {
         const el = e.currentTarget as HTMLElement;
-        el.style.borderColor = 'rgba(185,149,102,0.5)';
-        el.style.boxShadow = '0 4px 12px rgba(185,149,102,0.1)';
+        el.style.borderColor = 'var(--gold-50)';
+        el.style.boxShadow = '0 4px 12px var(--gold-15)';
         el.style.transform = 'translateY(-1px)';
       }}
       onMouseLeave={e => {
@@ -129,7 +131,7 @@ function FolderCard({ icon, title, subtitle, meta, description, fileCount, onCli
       <div className="p-4">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: 'rgba(185,149,102,0.1)', border: '1px solid rgba(185,149,102,0.2)' }}>
+            style={{ backgroundColor: 'var(--gold-15)', border: '1px solid var(--gold-15)' }}>
             {icon ?? <Folder size={20} style={{ color: 'var(--gold)' }} />}
           </div>
           <div className="flex-1 min-w-0">
@@ -144,13 +146,13 @@ function FolderCard({ icon, title, subtitle, meta, description, fileCount, onCli
         {(meta || fileCount !== undefined) && (
           <div className="mt-3 pt-3 flex items-center gap-3" style={{ borderTop: '1px solid var(--border)' }}>
             {fileCount !== undefined && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                style={{ backgroundColor: fileCount > 0 ? 'rgba(185,149,102,0.1)' : 'var(--bg-elevated)', color: fileCount > 0 ? 'var(--gold)' : 'var(--text-muted)' }}>
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full tabular-nums"
+                style={{ backgroundColor: fileCount > 0 ? 'var(--gold-15)' : 'var(--bg-elevated)', color: fileCount > 0 ? 'var(--gold)' : 'var(--text-muted)' }}>
                 <FileText size={9} />
                 {fileCount} file{fileCount !== 1 ? 's' : ''}
               </span>
             )}
-            {meta && <span className="text-[10px] ml-auto truncate" style={{ color: 'var(--text-muted)' }}>{meta}</span>}
+            {meta && <span className="text-[10px] ml-auto truncate tabular-nums" style={{ color: 'var(--text-muted)' }}>{meta}</span>}
           </div>
         )}
       </div>
@@ -188,21 +190,6 @@ function Breadcrumbs({ crumbs, onNavigate }: { crumbs: Crumb[]; onNavigate: (cru
   );
 }
 
-// ── Empty state ────────────────────────────────────────────────────────────
-
-function EmptyState({ icon, title, body }: { icon?: React.ReactNode; title: string; body?: string }) {
-  return (
-    <div className="py-20 text-center">
-      <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
-        style={{ backgroundColor: 'var(--bg-elevated)' }}>
-        {icon ?? <FolderOpen size={24} style={{ color: 'var(--text-muted)' }} />}
-      </div>
-      <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>{title}</p>
-      {body && <p className="text-xs max-w-sm mx-auto" style={{ color: 'var(--text-muted)' }}>{body}</p>}
-    </div>
-  );
-}
-
 // ── Skeleton cards ──────────────────────────────────────────────────────────
 
 function SkeletonCards({ count = 6, cols = 3 }: { count?: number; cols?: number }) {
@@ -222,9 +209,9 @@ function DeleteConfirmModal({ fileName, onClose, onConfirm, deleting }: {
   fileName: string; onClose: () => void; onConfirm: () => void; deleting: boolean;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-sm rounded-2xl shadow-xl p-6 space-y-4"
-        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+      <div className="w-full max-w-sm rounded-2xl shadow-xl p-6 space-y-4 ss-animate-in"
+        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
         <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Delete Document</h2>
         <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Are you sure you want to delete this document?</p>
         <div className="rounded-lg px-3 py-2 text-sm font-medium truncate"
@@ -308,14 +295,13 @@ function MoreMenu({ onSync, syncing, viewMode, onViewMode, totalLabel }: {
               </span>
             </div>
             {/* View toggle — pill style */}
-            <div className="flex gap-1 p-0.5 rounded-lg" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+            <div className="flex gap-1 p-0.5 rounded-full" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
               {(['folder', 'list'] as const).map(mode => (
                 <button key={mode} onClick={() => { onViewMode(mode); setOpen(false); }}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-medium transition-all"
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-full text-xs font-medium transition-all active:scale-[0.97]"
                   style={{
-                    backgroundColor: viewMode === mode ? 'var(--bg-surface)' : 'transparent',
-                    color: viewMode === mode ? 'var(--text-primary)' : 'var(--text-muted)',
-                    boxShadow: viewMode === mode ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                    backgroundColor: viewMode === mode ? 'var(--gold)' : 'transparent',
+                    color: viewMode === mode ? 'var(--accent-fg)' : 'var(--text-muted)',
                   }}>
                   {mode === 'folder' ? <LayoutGrid size={12} /> : <LayoutList size={12} />}
                   {mode === 'folder' ? 'Folders' : 'List'}
@@ -552,7 +538,7 @@ export default function AdminDocumentsPage() {
         <div className="flex items-center gap-2 flex-wrap">
           {isAtSubcontractsLevel && (
             <button onClick={() => setShowGenerateFolderModal(true)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90 active:scale-[0.98]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
               <Box size={13} />
               <span className="hidden sm:inline">Generate Trade Package Folder</span>
@@ -579,7 +565,7 @@ export default function AdminDocumentsPage() {
               className="w-full pl-9 pr-4 py-2 rounded-lg text-sm outline-none"
               style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
           </div>
-          <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
             <div className="grid grid-cols-[2.5fr_1.5fr_1.5fr_1fr_1fr_auto] gap-4 px-5 py-3 text-xs font-medium uppercase tracking-wider"
               style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>
               <span>File Name</span><span>Company</span><span>Project</span><span>Size</span><span>Uploaded</span><span />
@@ -591,9 +577,9 @@ export default function AdminDocumentsPage() {
                 ))}
               </div>
             ) : listDocuments.length === 0 ? (
-              <EmptyState icon={<FileText size={24} style={{ color: 'var(--text-muted)' }} />}
+              <EmptyState icon={FileText}
                 title="No documents found"
-                body="No documents uploaded yet. Documents uploaded from project modules will appear here automatically." />
+                description="No documents uploaded yet. Documents uploaded from project modules will appear here automatically." />
             ) : (
               <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
                 {listDocuments.map(doc => (
@@ -612,8 +598,8 @@ export default function AdminDocumentsPage() {
                         {doc.project ? `${doc.project.name}${doc.project.code ? ` (${doc.project.code})` : ''}` : '—'}
                       </span>
                     </div>
-                    <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{formatBytes(doc.file_size)}</span>
-                    <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{formatDate(doc.created_at)}</span>
+                    <span className="text-sm tabular-nums" style={{ color: 'var(--text-muted)' }}>{formatBytes(doc.file_size)}</span>
+                    <span className="text-sm tabular-nums" style={{ color: 'var(--text-muted)' }}>{formatDate(doc.created_at)}</span>
                     <button
                       onClick={() => setPreviewTarget({ id: doc.id, name: doc.original_name || 'document', mimeType: doc.mime_type, previewEndpoint: `/file-uploads/${doc.id}/preview`, downloadEndpoint: `/file-uploads/${doc.id}/download` })}
                       className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-[var(--bg-hover)]"
@@ -644,11 +630,11 @@ export default function AdminDocumentsPage() {
           {level === 'companies' && (
             companiesLoading ? <SkeletonCards /> :
             companies.length === 0 ? (
-              <EmptyState title="No documents uploaded yet" body="Documents uploaded from project modules will appear here automatically." />
+              <EmptyState title="No documents uploaded yet" description="Documents uploaded from project modules will appear here automatically." />
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {companies.map(org => (
-                  <FolderCard key={org.id}
+                {companies.map((org, i) => (
+                  <FolderCard key={org.id} index={i}
                     icon={
                       org.logo_url
                         ? <img src={org.logo_url} alt={org.name} className="w-full h-full object-contain p-1" />
@@ -668,11 +654,11 @@ export default function AdminDocumentsPage() {
           {level === 'projects' && (
             projectsLoading ? <SkeletonCards /> :
             projects.length === 0 ? (
-              <EmptyState title="No project documents" body="No project documents found for this company." />
+              <EmptyState title="No project documents" description="No project documents found for this company." />
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {projects.map(proj => (
-                  <FolderCard key={proj.id}
+                {projects.map((proj, i) => (
+                  <FolderCard key={proj.id} index={i}
                     title={proj.name}
                     subtitle={proj.code ?? undefined}
                     fileCount={proj.files_count}
@@ -687,8 +673,8 @@ export default function AdminDocumentsPage() {
           {level === 'modules' && (
             modulesLoading ? <SkeletonCards cols={4} count={13} /> : (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                {modules.map(mod => (
-                  <FolderCard key={mod.key}
+                {modules.map((mod, i) => (
+                  <FolderCard key={mod.key} index={i}
                     title={mod.name}
                     fileCount={mod.files_count}
                     meta={mod.last_updated ? formatDate(mod.last_updated) : undefined}
@@ -706,18 +692,18 @@ export default function AdminDocumentsPage() {
               </div>
             ) : isShowingFolders ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                {subfolders.map(folder => (
-                  <FolderCard key={folder.key} title={folder.name} fileCount={folder.files_count}
+                {subfolders.map((folder, i) => (
+                  <FolderCard key={folder.key} index={i} title={folder.name} fileCount={folder.files_count}
                     onClick={() => setModuleKeyPath(folder.key)} />
                 ))}
               </div>
             ) : isShowingTradePackages ? (
               tradePackages.length === 0 ? (
-                <EmptyState title="No trade packages yet" body="Trade package folders will appear here once they are created." />
+                <EmptyState title="No trade packages yet" description="Trade package folders will appear here once they are created." />
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {tradePackages.map(pkg => (
-                    <FolderCard key={pkg.key}
+                  {tradePackages.map((pkg, i) => (
+                    <FolderCard key={pkg.key} index={i}
                       title={pkg.name}
                       fileCount={pkg.files_count}
                       subtitle={pkg.package_reference ?? pkg.package_code ?? undefined}
@@ -730,9 +716,9 @@ export default function AdminDocumentsPage() {
               <div className="space-y-4">
                 {currentTradePackage && <TradePackageHeader pkg={currentTradePackage} onGenerate={() => setShowGenerateModal(true)} />}
                 <EmptyState
-                  icon={<FileText size={24} style={{ color: 'var(--text-muted)' }} />}
+                  icon={FileText}
                   title={currentTradePackage ? `No files in ${currentTradePackage.name}` : selectedModule?.key === 'contracts' ? 'No contract uploaded yet' : `No files in ${selectedModule?.name ?? 'this folder'}`}
-                  body={currentTradePackage
+                  description={currentTradePackage
                     ? 'Generate a package from a template or upload files directly into this trade package.'
                     : selectedModule?.key === 'contracts'
                       ? 'The main contract should be uploaded before payment, variation, notice, and adjudication workflows.'
@@ -741,7 +727,7 @@ export default function AdminDocumentsPage() {
             ) : (
               <div className="space-y-4">
                 {currentTradePackage && <TradePackageHeader pkg={currentTradePackage} onGenerate={() => setShowGenerateModal(true)} />}
-                <div className="rounded-2xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+                <div className="rounded-2xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
                   <div className="grid grid-cols-[2.5fr_1.5fr_0.8fr_1fr_auto] gap-4 px-5 py-3 text-xs font-semibold uppercase tracking-wider rounded-t-2xl"
                     style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>
                     <span>File Name</span><span>Uploaded by</span><span>Size</span><span>Date</span><span />
@@ -759,8 +745,8 @@ export default function AdminDocumentsPage() {
                           <span className="text-sm truncate font-medium" style={{ color: 'var(--text-primary)' }}>{file.original_name}</span>
                         </div>
                         <span className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>{file.uploader?.name ?? '—'}</span>
-                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{formatBytes(file.file_size)}</span>
-                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{formatDate(file.created_at)}</span>
+                        <span className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>{formatBytes(file.file_size)}</span>
+                        <span className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>{formatDate(file.created_at)}</span>
                         <div className="relative">
                           <button
                             onClick={() => setActiveMenu(activeMenu === file.id ? null : file.id)}
@@ -848,7 +834,7 @@ export default function AdminDocumentsPage() {
 function TradePackageHeader({ pkg, onGenerate }: { pkg: TradePackageItem; onGenerate: () => void }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl p-4"
-      style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+      style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
       <div>
         <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{pkg.name}</p>
         <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
@@ -856,7 +842,7 @@ function TradePackageHeader({ pkg, onGenerate }: { pkg: TradePackageItem; onGene
         </p>
       </div>
       <button onClick={onGenerate}
-        className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-opacity hover:opacity-90"
+        className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.98]"
         style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
         <Wand2 size={14} />
         Generate Package

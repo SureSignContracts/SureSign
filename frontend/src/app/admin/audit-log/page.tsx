@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { ClipboardList, Search, ChevronDown, ChevronRight } from 'lucide-react';
+import EmptyState from '@/components/ui/EmptyState';
 
 const ACTION_LABELS: Record<string, { label: string; color: string }> = {
   'contract.created':               { label: 'Contract Created',       color: '#60a5fa' },
@@ -54,7 +55,7 @@ function LogRow({ entry }: { entry: any }) {
         style={{ borderBottom: '1px solid var(--border)' }}
         onClick={() => hasMetadata && setExpanded(e => !e)}
       >
-        <td className="px-4 py-3 text-xs font-mono whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>
+        <td className="px-4 py-3 text-xs font-mono tabular-nums whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>
           {formatTimestamp(entry.created_at)}
         </td>
         <td className="px-4 py-3">
@@ -66,7 +67,7 @@ function LogRow({ entry }: { entry: any }) {
         <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
           {entry.user?.name ?? <span style={{ color: 'var(--text-muted)' }}>—</span>}
         </td>
-        <td className="px-4 py-3 text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+        <td className="px-4 py-3 text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>
           {entry.ip_address ?? '—'}
         </td>
         <td className="px-4 py-3">
@@ -155,7 +156,7 @@ export default function AuditLogPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl overflow-x-auto" style={{ border: '1px solid var(--border)' }}>
+      <div className="rounded-2xl overflow-x-auto" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
         <table className="w-full min-w-[800px] text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
@@ -177,9 +178,8 @@ export default function AuditLogPage() {
               ))
             ) : entries.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-14 text-center">
-                  <ClipboardList size={28} className="mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
-                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No audit log entries yet.</p>
+                <td colSpan={6}>
+                  <EmptyState icon={ClipboardList} title="No audit log entries yet." />
                 </td>
               </tr>
             ) : (

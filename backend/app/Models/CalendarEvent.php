@@ -22,6 +22,12 @@ class CalendarEvent extends Model
     public const SOURCE_VARIATION           = 'variation';
     public const SOURCE_CONTRACT            = 'contract';
     public const SOURCE_FINAL_ACCOUNT       = 'final_account';
+    public const SOURCE_DELAY_EVENT         = 'delay_event';
+    public const SOURCE_EOT_REQUEST         = 'eot_request';
+    public const SOURCE_LOSS_AND_EXPENSE    = 'loss_and_expense_claim';
+    public const SOURCE_CONTRACT_RISK       = 'contract_risk';
+    public const SOURCE_DELIVERY_DOCUMENT   = 'delivery_document';
+    public const SOURCE_RFI                 = 'rfi';
 
     // Categories
     public const CATEGORY_COMMERCIAL   = 'commercial';
@@ -33,6 +39,7 @@ class CalendarEvent extends Model
     public const CATEGORY_RISK         = 'risk';
     public const CATEGORY_DELIVERABLES = 'deliverables';
     public const CATEGORY_NOTICES      = 'notices';
+    public const CATEGORY_COMMUNICATION = 'communication';
 
     // Statuses
     public const STATUS_PENDING   = 'pending';

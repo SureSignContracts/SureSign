@@ -5,12 +5,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { Users, UserPlus, Shield, Mail, MoreVertical, Search } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
+import Button from '@/components/ui/Button';
 
 const ROLES = ['Company Admin', 'Project Manager', 'Quantity Surveyor', 'Site Manager', 'Commercial Manager', 'Read-only User'];
 
 const roleBadge: Record<string, { bg: string; text: string }> = {
   'Company Admin':       { bg: 'rgba(249,115,22,0.15)', text: '#fb923c' },
-  'Project Manager':     { bg: 'rgba(185,149,102,0.15)', text: '#B99566' },
+  'Project Manager':     { bg: 'var(--gold-15)', text: '#B99566' },
   'Quantity Surveyor':   { bg: 'rgba(59,130,246,0.15)', text: '#60a5fa' },
   'Site Manager':        { bg: 'rgba(34,197,94,0.15)',  text: '#4ade80' },
   'Commercial Manager':  { bg: 'rgba(139,92,246,0.15)', text: '#a78bfa' },
@@ -52,14 +53,10 @@ export default function AppTeamPage() {
             Manage your company team members and their roles
           </p>
         </div>
-        <button
-          onClick={() => setInviteOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90"
-          style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
-        >
+        <Button onClick={() => setInviteOpen(true)} className="gap-2">
           <UserPlus size={15} />
           Invite Member
-        </button>
+        </Button>
       </div>
 
       {/* Search */}
@@ -75,7 +72,7 @@ export default function AppTeamPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl overflow-x-auto" style={{ border: '1px solid var(--border)' }}>
+      <div className="rounded-2xl overflow-x-auto" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
         <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
@@ -115,7 +112,7 @@ export default function AppTeamPage() {
                     <div className="flex items-center gap-3">
                       <div
                         className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
-                        style={{ backgroundColor: 'rgba(185,149,102,0.15)', color: 'var(--text-gold)' }}
+                        style={{ backgroundColor: 'var(--gold-15)', color: 'var(--text-gold)' }}
                       >
                         {initials}
                       </div>
@@ -133,7 +130,7 @@ export default function AppTeamPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    <span className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
                       {u.created_at ? formatDate(u.created_at) : '—'}
                     </span>
                   </td>
@@ -152,13 +149,13 @@ export default function AppTeamPage() {
       {/* Invite Modal */}
       {inviteOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
+          className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm"
           style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
           onClick={() => setInviteOpen(false)}
         >
           <div
-            className="w-full max-w-md rounded-2xl p-6"
-            style={{ backgroundColor: 'var(--bg-panel)', border: '1px solid var(--border)' }}
+            className="w-full max-w-md rounded-2xl p-6 ss-animate-in"
+            style={{ backgroundColor: 'var(--bg-panel)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}
             onClick={e => e.stopPropagation()}
           >
             <h2 className="text-lg font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Invite Team Member</h2>
@@ -203,7 +200,7 @@ export default function AppTeamPage() {
               <button
                 onClick={() => inviteMutation.mutate({ email: inviteEmail, role: inviteRole })}
                 disabled={!inviteEmail || inviteMutation.isPending}
-                className="flex-1 py-2.5 rounded-lg text-sm font-medium disabled:opacity-60"
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium disabled:opacity-60 active:scale-[0.98]"
                 style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
               >
                 {inviteMutation.isPending ? 'Sending…' : 'Send Invite'}

@@ -10,8 +10,17 @@ use Illuminate\Http\Request;
 
 class SnagController extends Controller
 {
+    private function authorize(Request $request, Project|Snag $subject): void
+    {
+        $user = $request->user();
+        if ($user->hasRole('Super Admin') || $user->hasRole('Admin')) return;
+        if ($user->organization_id !== $subject->organization_id) abort(403, 'Access denied.');
+    }
+
     public function index(Request $request, Project $project)
     {
+        $this->authorize($request, $project);
+
         $query = Snag::where('project_id', $project->id)
             ->with(['creator:id,name', 'assignee:id,name']);
 
@@ -37,6 +46,8 @@ class SnagController extends Controller
 
     public function store(Request $request, Project $project)
     {
+        $this->authorize($request, $project);
+
         $validated = $request->validate([
             'title'       => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -53,7 +64,7 @@ class SnagController extends Controller
 
         $snag = Snag::create(array_merge($validated, [
             'project_id'      => $project->id,
-            'organization_id' => $request->user()->organization_id,
+            'organization_id' => $project->organization_id,
             'created_by'      => $request->user()->id,
             'snag_number'     => $snagNumber,
             'status'          => $validated['status'] ?? 'open',
@@ -72,13 +83,24 @@ class SnagController extends Controller
         return response()->json($snag->load(['creator:id,name', 'assignee:id,name']), 201);
     }
 
-    public function show(Snag $snag)
+    // Route parameter is {snagging} (from Route::apiResource('snagging', ...)),
+    // not {snag} — Laravel's implicit binding matches by name, so a $snag
+    // parameter here silently receives null instead of the bound model.
+    // Also not shallow (api/projects/{project}/snagging/{snagging}), so
+    // Project $project must be declared too even though unused, matching
+    // the same fix already applied to the other Delivery controllers.
+    public function show(Request $request, Project $project, Snag $snagging)
     {
-        return response()->json($snag->load(['creator:id,name', 'assignee:id,name']));
+        $this->authorize($request, $snagging);
+
+        return response()->json($snagging->load(['creator:id,name', 'assignee:id,name']));
     }
 
-    public function update(Request $request, Snag $snag)
+    public function update(Request $request, Project $project, Snag $snagging)
     {
+        $this->authorize($request, $snagging);
+
+        $snag = $snagging;
         $oldStatus = $snag->status;
 
         $validated = $request->validate([
@@ -86,8 +108,13 @@ class SnagController extends Controller
             'description' => 'nullable|string',
             'location'    => 'nullable|string|max:255',
             'category'    => 'nullable|string|max:100',
-            'priority'    => 'nullable|in:low,medium,high,critical',
-            'status'      => 'nullable|in:open,in_progress,ready_for_review,closed',
+            // priority/status are NOT NULL columns whose DB defaults only
+            // apply when the column is omitted from an UPDATE, not when
+            // explicit NULL is sent — 'sometimes' leaves them untouched if
+            // absent from the request instead of nulling them out (same fix
+            // already applied to Rfi/SiteDiary/Meeting/QaReport).
+            'priority'    => 'sometimes|in:low,medium,high,critical',
+            'status'      => 'sometimes|in:open,in_progress,ready_for_review,closed',
             'assigned_to' => 'nullable|integer|exists:users,id',
             'due_date'    => 'nullable|date',
             'notes'       => 'nullable|string',
@@ -117,9 +144,11 @@ class SnagController extends Controller
         return response()->json($snag->fresh()->load(['creator:id,name', 'assignee:id,name']));
     }
 
-    public function destroy(Snag $snag)
+    public function destroy(Request $request, Project $project, Snag $snagging)
     {
-        $snag->delete();
+        $this->authorize($request, $snagging);
+
+        $snagging->delete();
         return response()->json(null, 204);
     }
 }

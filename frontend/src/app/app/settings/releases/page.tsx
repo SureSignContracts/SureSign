@@ -94,16 +94,16 @@ export default function ReleasesPage() {
           Release Notes
         </h1>
         <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-          What&apos;s new in SureSign
+          What&apos;s new in SureSign Contracts
         </p>
       </div>
 
       <div className="space-y-8">
-        {releases.map((release) => (
+        {releases.map((release, i) => (
           <div
             key={release.version}
-            className="rounded-xl overflow-hidden"
-            style={{ border: '1px solid var(--border)' }}
+            className="rounded-xl overflow-hidden ss-animate-in"
+            style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: `${Math.min(i * 45, 360)}ms` }}
           >
             {/* Release header */}
             <div
@@ -119,23 +119,23 @@ export default function ReleasesPage() {
                 </div>
                 <div>
                   <div className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
-                    SureSign {release.version}
+                    SureSign Contracts {release.version}
                   </div>
-                  <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  <div className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
                     {release.date}
                   </div>
                 </div>
               </div>
               <span
                 className="text-xs px-2.5 py-1 rounded-full font-medium"
-                style={{ backgroundColor: 'rgba(185,149,102,0.15)', color: 'var(--gold)' }}
+                style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}
               >
                 {release.status}
               </span>
             </div>
 
             {/* Sections */}
-            <div className="divide-y" style={{ divideColor: 'var(--border)' }}>
+            <div className="divide-y divide-[var(--border)]">
               {release.sections.map((section) => (
                 <div key={section.title} className="px-6 py-4">
                   <h3

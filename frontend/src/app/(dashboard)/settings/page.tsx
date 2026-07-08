@@ -263,10 +263,10 @@ export default function SettingsPage() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 p-1 rounded-lg mb-6 w-fit" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+      <div className="flex gap-1 p-1 rounded-full mb-6 w-fit" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
         {tabs.map(t => (
           <button key={t.id} onClick={() => { setTab(t.id); setSaved(false); }}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-all"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all active:scale-[0.97]"
             style={tab === t.id
               ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
               : { color: 'var(--text-secondary)' }
@@ -510,7 +510,7 @@ export default function SettingsPage() {
         </h2>
         <div className="grid grid-cols-3 gap-3">
           {[
-            { href: '/app/settings/releases', icon: ScrollText, label: 'Release Notes', desc: 'What\'s new in SureSign' },
+            { href: '/app/settings/releases', icon: ScrollText, label: 'Release Notes', desc: 'What\'s new in SureSign Contracts' },
             { href: '/app/settings/privacy',  icon: Lock,        label: 'Privacy Policy', desc: 'How we handle your data' },
             { href: '/app/settings/terms',    icon: BookOpen,    label: 'Terms of Use',   desc: 'Platform usage terms' },
           ].map(({ href, icon: Icon, label, desc }) => (
@@ -521,7 +521,7 @@ export default function SettingsPage() {
               style={{ border: '1px solid var(--border)' }}
             >
               <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
-                style={{ backgroundColor: 'rgba(185,149,102,0.12)', color: 'var(--gold)' }}>
+                style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}>
                 <Icon size={14} />
               </div>
               <div>

@@ -529,7 +529,9 @@ class PaymentApplicationController extends Controller
         EmailNotificationService::send(
             'payment_application.submitted',
             'New Payment Application Submitted',
-            "Payment Application #{$paymentApplication->application_number} has been submitted for project: {$project->name}."
+            "Payment Application #{$paymentApplication->application_number} has been submitted for project: {$project->name}.",
+            [],
+            $project->organization
         );
 
         return response()->json($paymentApplication->fresh());
@@ -569,7 +571,7 @@ class PaymentApplicationController extends Controller
                 'pdfs.payment-certificate',
                 ['paymentApplication' => $paymentApplication, 'certifiedBy' => $certifiedByUser],
                 "Payment Certificate — Application #{$paymentApplication->application_number}",
-                'payment_certificate', '02_Commercial', $certRef, $paymentApplication
+                'payment_certificate', '02_Commercial', $certRef, $paymentApplication, false, $paymentApplication->tradePackage
             );
         } catch (\Throwable $e) {
             \Log::warning("Certificate PDF generation failed: " . $e->getMessage());
@@ -588,7 +590,9 @@ class PaymentApplicationController extends Controller
         EmailNotificationService::send(
             'payment_application.certified',
             'Payment Application Certified',
-            "Payment Application #{$paymentApplication->application_number} has been certified. Certified amount: {$paymentApplication->certified_amount}."
+            "Payment Application #{$paymentApplication->application_number} has been certified. Certified amount: {$paymentApplication->certified_amount}.",
+            [],
+            $project->organization
         );
 
         return response()->json($paymentApplication->fresh());
@@ -728,7 +732,7 @@ class PaymentApplicationController extends Controller
             'pdfs.payment-application',
             ['paymentApplication' => $paymentApplication],
             "Payment Application #{$paymentApplication->application_number}",
-            'payment_app', '02_Commercial', $paymentApplication->reference, $paymentApplication
+            'payment_app', '02_Commercial', $paymentApplication->reference, $paymentApplication, false, $paymentApplication->tradePackage
         );
 
         ProjectActivityService::record(
@@ -762,7 +766,7 @@ class PaymentApplicationController extends Controller
                 'certifiedBy'        => \App\Models\User::find($paymentApplication->certified_by),
             ],
             "Payment Certificate — Application #{$paymentApplication->application_number}",
-            'payment_certificate', '02_Commercial', $certRef, $paymentApplication
+            'payment_certificate', '02_Commercial', $certRef, $paymentApplication, false, $paymentApplication->tradePackage
         );
 
         return response()->json($document, 201);
@@ -786,12 +790,16 @@ class PaymentApplicationController extends Controller
             'issued_by'           => 'nullable|string|max:200',
         ]);
 
+        $isLate = $paymentApplication->payment_notice_deadline
+            && \Carbon\Carbon::parse($validated['notice_date'])->gt($paymentApplication->payment_notice_deadline);
+
         $notice = PaymentNotice::create(array_merge($validated, [
             'project_id'             => $project->id,
             'organization_id'        => $project->organization_id,
             'created_by'             => $request->user()->id,
             'payment_application_id' => $paymentApplication->id,
             'status'                 => 'issued',
+            'is_late'                => $isLate,
         ]));
 
         $notice->load([
@@ -813,7 +821,7 @@ class PaymentApplicationController extends Controller
                     'issuedBy'      => $request->user(),
                 ],
                 "Payment Notice — Application #{$paymentApplication->application_number}",
-                'payment_notice', '02_Commercial', $ref, $notice, true
+                'payment_notice', '02_Commercial', $ref, $notice, true, $notice->paymentApplication->tradePackage
             );
         } catch (\Throwable $e) {
             \Log::warning("Payment Notice PDF generation failed: " . $e->getMessage());
@@ -865,6 +873,9 @@ class PaymentApplicationController extends Controller
         $totalDeductions      = (float) $validated['total_deductions'];
         $revisedAmountPayable = max(0, $originalAmountDue - $totalDeductions);
 
+        $isLate = $paymentApplication->pay_less_notice_deadline
+            && \Carbon\Carbon::parse($validated['notice_date'])->gt($paymentApplication->pay_less_notice_deadline);
+
         $notice = PayLessNotice::create(array_merge($validated, [
             'project_id'             => $project->id,
             'organization_id'        => $project->organization_id,
@@ -875,6 +886,7 @@ class PaymentApplicationController extends Controller
             'amount'                 => $totalDeductions,
             'reason'                 => $validated['deduction_reason'],
             'status'                 => 'issued',
+            'is_late'                => $isLate,
         ]));
 
         $notice->load(['paymentApplication.contract', 'paymentApplication.tradePackage', 'paymentNotice']);
@@ -887,7 +899,7 @@ class PaymentApplicationController extends Controller
                 'pdfs.pay-less-notice',
                 ['payLessNotice' => $notice, 'issuedBy' => $request->user()],
                 "Pay Less Notice — Application #{$paymentApplication->application_number}",
-                'pay_less_notice', '02_Commercial', $ref, $notice
+                'pay_less_notice', '02_Commercial', $ref, $notice, false, $notice->paymentApplication->tradePackage
             );
         } catch (\Throwable $e) {
             \Log::warning("Pay Less Notice PDF generation failed: " . $e->getMessage());
@@ -906,7 +918,9 @@ class PaymentApplicationController extends Controller
         EmailNotificationService::send(
             'pay_less_notice.issued',
             'Pay Less Notice Issued',
-            "A Pay Less Notice has been issued for Payment Application #{$paymentApplication->application_number}."
+            "A Pay Less Notice has been issued for Payment Application #{$paymentApplication->application_number}.",
+            [],
+            $project->organization
         );
 
         return response()->json([

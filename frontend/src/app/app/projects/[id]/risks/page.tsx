@@ -1,240 +1,338 @@
 'use client';
 
-import { useParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { ShieldAlert, ShieldCheck, AlertTriangle, Info, ChevronDown, ChevronUp, Lightbulb } from 'lucide-react';
+import { formatDate } from '@/lib/utils';
+import { Plus, X, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { getErrorMessage, INPUT_STYLE, CATEGORY_LABELS, SeverityBadge, StatusBadge, Field } from '@/components/risks/riskShared';
+import PageTourButton from '@/components/tours/PageTourButton';
 
 type Risk = {
+  id: number;
   title: string;
-  description?: string;
-  severity: 'high' | 'medium' | 'low';
-  source?: string;
-  recommended_action?: string;
+  description: string | null;
+  category: string;
+  severity: string;
+  probability: string | null;
+  risk_owner: string | null;
+  recommended_action: string | null;
+  mitigation: string | null;
+  status: string;
+  review_date: string | null;
+  is_ai_generated: boolean;
+  contract_id: number | null;
+  trade_package_id: number | null;
+  source_name: string | null;
+  action_url: string | null;
 };
 
-const SEV: Record<string, { color: string; bg: string; border: string; label: string; icon: typeof AlertTriangle }> = {
-  high:   { color: '#f87171', bg: 'rgba(239,68,68,0.08)',   border: 'rgba(239,68,68,0.25)',   label: 'High',   icon: AlertTriangle },
-  medium: { color: '#facc15', bg: 'rgba(234,179,8,0.08)',   border: 'rgba(234,179,8,0.25)',   label: 'Medium', icon: AlertTriangle },
-  low:    { color: '#60a5fa', bg: 'rgba(59,130,246,0.08)',  border: 'rgba(59,130,246,0.25)',  label: 'Low',    icon: Info },
-};
+type FilterSev = 'all' | 'critical' | 'high' | 'medium' | 'low';
 
-function RiskCard({ risk }: { risk: Risk }) {
-  const [expanded, setExpanded] = useState(false);
-  const cfg = SEV[risk.severity] ?? SEV.low;
-  const Icon = cfg.icon;
+export default function RiskRegisterPage() {
+  const { id: projectId } = useParams<{ id: string }>();
+  const router = useRouter();
+  const qc = useQueryClient();
+  const [filter, setFilter] = useState<FilterSev>('all');
+  const [showCreate, setShowCreate] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState<Risk | null>(null);
+
+  const listQueryKey = ['project-risks', projectId];
+
+  const { data, isLoading } = useQuery<Risk[]>({
+    queryKey: listQueryKey,
+    queryFn: () => api.get(`/projects/${projectId}/risks`).then(r => r.data),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (risk: Risk) => api.delete(`/projects/${projectId}/risks/${risk.id}`),
+    onSuccess: () => {
+      toast.success('Risk deleted');
+      qc.invalidateQueries({ queryKey: listQueryKey });
+      setConfirmTarget(null);
+    },
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed to delete risk')),
+  });
+
+  const risks = data ?? [];
+  const filtered = filter === 'all' ? risks : risks.filter(r => r.severity === filter);
+
+  const counts = {
+    critical: risks.filter(r => r.severity === 'critical').length,
+    high: risks.filter(r => r.severity === 'high').length,
+    medium: risks.filter(r => r.severity === 'medium').length,
+    low: risks.filter(r => r.severity === 'low').length,
+  };
 
   return (
-    <div
-      className="rounded-xl overflow-hidden transition-all"
-      style={{ border: `1px solid ${cfg.border}`, backgroundColor: cfg.bg }}
-    >
-      {/* Header row — always visible */}
-      <button
-        className="w-full flex items-start gap-3 px-4 py-3.5 text-left"
-        onClick={() => setExpanded(e => !e)}
-      >
-        <div className="mt-0.5 flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center" style={{ backgroundColor: cfg.color + '22' }}>
-          <Icon size={13} style={{ color: cfg.color }} />
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-sm font-semibold leading-tight" style={{ color: 'var(--text-primary)' }}>{risk.title}</p>
-            <span
-              className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0"
-              style={{ backgroundColor: cfg.color + '22', color: cfg.color }}
-            >
-              {cfg.label}
-            </span>
+    <div className="p-6 max-w-6xl mx-auto space-y-6 pb-12">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-[1.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>
+              Risk register
+            </h1>
+            <PageTourButton tourKey="page-risks" label="Take a tour of this page" />
           </div>
-          {risk.source && (
-            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{risk.source}</p>
-          )}
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
+            Risks across the main contract and every trade package, AI-derived and manually raised.
+          </p>
         </div>
+        <button
+          data-tour="risks-new"
+          onClick={() => setShowCreate(true)}
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all active:scale-[0.98] hover:opacity-90"
+          style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
+        >
+          <Plus size={14} /> Add risk
+        </button>
+      </div>
 
-        <div className="flex-shrink-0 mt-0.5" style={{ color: 'var(--text-muted)' }}>
-          {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-        </div>
-      </button>
+      <div className="flex gap-1 p-1 rounded-full w-fit flex-wrap" data-tour="risks-filters" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+        {(['all', 'critical', 'high', 'medium', 'low'] as const).map(s => (
+          <button
+            key={s}
+            onClick={() => setFilter(s)}
+            className="px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-all active:scale-[0.97]"
+            style={filter === s
+              ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
+              : { color: 'var(--text-secondary)' }}
+          >
+            {s === 'all' ? `All (${risks.length})` : `${s[0].toUpperCase()}${s.slice(1)} (${counts[s]})`}
+          </button>
+        ))}
+      </div>
 
-      {/* Expanded detail */}
-      {expanded && (
-        <div className="px-4 pb-4 space-y-3 border-t" style={{ borderColor: cfg.border }}>
-          {risk.description && (
-            <p className="text-sm pt-3 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-              {risk.description}
+      <div className="rounded-xl overflow-hidden" data-tour="risks-table" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+        <table className="w-full text-sm">
+          <thead>
+            <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
+              {['Title', 'Source', 'Category', 'Severity', 'Owner', 'Review Date', 'Status', 'Origin', ''].map(h => (
+                <th key={h} className="text-left px-3 py-2.5 text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading && (
+              <tr><td colSpan={9} className="text-center py-8 text-sm" style={{ color: 'var(--text-muted)' }}>Loading…</td></tr>
+            )}
+            {!isLoading && filtered.length === 0 && (
+              <tr><td colSpan={9} className="text-center py-8 text-sm" style={{ color: 'var(--text-muted)' }}>
+                No risks{filter !== 'all' ? ` with severity "${filter}"` : ' recorded for this project yet'}.
+              </td></tr>
+            )}
+            {filtered.map((risk, index) => (
+              <tr key={risk.id} className="ss-animate-in hover:bg-[var(--bg-hover)] transition-colors" style={{ borderBottom: '1px solid var(--border)', animationDelay: `${Math.min(index * 45, 360)}ms` }}>
+                <td className="px-3 py-2.5">
+                  <button
+                    onClick={() => risk.action_url && router.push(risk.action_url)}
+                    className="text-left hover:underline"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    {risk.title}
+                  </button>
+                </td>
+                <td className="px-3 py-2.5 text-xs" style={{ color: 'var(--text-secondary)' }}>{risk.source_name ?? '—'}</td>
+                <td className="px-3 py-2.5 text-xs" style={{ color: 'var(--text-secondary)' }}>{CATEGORY_LABELS[risk.category] ?? risk.category}</td>
+                <td className="px-3 py-2.5"><SeverityBadge severity={risk.severity} /></td>
+                <td className="px-3 py-2.5 text-xs" style={{ color: 'var(--text-secondary)' }}>{risk.risk_owner ?? '—'}</td>
+                <td className="px-3 py-2.5 text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>{risk.review_date ? formatDate(risk.review_date) : '—'}</td>
+                <td className="px-3 py-2.5"><StatusBadge status={risk.status} /></td>
+                <td className="px-3 py-2.5 text-xs" style={{ color: 'var(--text-muted)' }}>{risk.is_ai_generated ? 'AI' : 'Manual'}</td>
+                <td className="px-3 py-2.5 text-right">
+                  {!risk.is_ai_generated && (
+                    <button onClick={() => setConfirmTarget(risk)} title="Delete" className="p-1 rounded-lg transition-colors hover:bg-[var(--bg-hover)]">
+                      <Trash2 size={14} style={{ color: 'var(--text-muted)' }} />
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {showCreate && (
+        <CreateRiskModal projectId={projectId} invalidateKey={listQueryKey} onClose={() => setShowCreate(false)} />
+      )}
+
+      {confirmTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="ss-animate-in w-full max-w-sm rounded-xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
+            <p className="text-sm mb-4" style={{ color: 'var(--text-primary)' }}>
+              Delete risk &ldquo;{confirmTarget.title}&rdquo;? This cannot be undone.
             </p>
-          )}
-          {risk.recommended_action && (
-            <div className="flex gap-2.5 rounded-lg px-3 py-2.5" style={{ backgroundColor: 'rgba(185,149,102,0.08)', border: '1px solid rgba(185,149,102,0.2)' }}>
-              <Lightbulb size={14} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--text-gold)' }} />
-              <div>
-                <p className="text-xs font-semibold mb-0.5" style={{ color: 'var(--text-gold)' }}>Recommended Action</p>
-                <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{risk.recommended_action}</p>
-              </div>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setConfirmTarget(null)} className="px-3 py-1.5 rounded-lg text-sm transition-all active:scale-[0.98]" style={{ color: 'var(--text-secondary)' }}>Cancel</button>
+              <button
+                onClick={() => deleteMutation.mutate(confirmTarget)}
+                className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white transition-all active:scale-[0.98]"
+                style={{ backgroundColor: '#a11a1a' }}
+              >
+                Delete
+              </button>
             </div>
-          )}
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-type FilterSev = 'all' | 'high' | 'medium' | 'low';
+function CreateRiskModal({ projectId, invalidateKey, onClose }: {
+  projectId: string; invalidateKey: (string | number)[]; onClose: () => void;
+}) {
+  const qc = useQueryClient();
 
-export default function RiskRegisterPage() {
-  const { id: projectId } = useParams<{ id: string }>();
-  const [filter, setFilter] = useState<FilterSev>('all');
-
-  const { data: contractData, isLoading } = useQuery({
+  const { data: contractsData } = useQuery({
     queryKey: ['project-contracts', projectId],
     queryFn: () => api.get(`/projects/${projectId}/contracts`).then(r => r.data?.data ?? r.data ?? []),
   });
-
-  // Guard against non-array responses (error payloads, unexpected shapes) so the page
-  // never crashes on .flatMap — it just renders empty until valid data arrives.
-  const contracts: any[] = Array.isArray(contractData) ? contractData : [];
-
-  // Gather all risks across all contracts, tagging which contract each belongs to
-  const allRisks: Array<Risk & { contractTitle: string; contractRef: string }> = contracts.flatMap((c: any) => {
-    const risks: Risk[] = c.risks ?? [];
-    return risks.map(r => ({
-      ...r,
-      contractTitle: c.title ?? 'Untitled Contract',
-      contractRef:   c.reference_number ?? '',
-    }));
+  const { data: subcontractsData } = useQuery({
+    queryKey: ['project-subcontracts', projectId],
+    queryFn: () => api.get(`/projects/${projectId}/documents/module/subcontracts`).then(r => r.data),
   });
 
-  const sorted = [...allRisks].sort((a, b) => {
-    const order = { high: 0, medium: 1, low: 2 };
-    return (order[a.severity] ?? 3) - (order[b.severity] ?? 3);
+  const contracts: Array<{ id: number; title: string }> = Array.isArray(contractsData) ? contractsData : [];
+  const tradePackages: Array<{ id: number; name: string }> = subcontractsData?.trade_packages ?? [];
+
+  // Deliberately always defaults to 'contract' rather than `contracts.length
+  // ? 'contract' : 'trade_package'` — contractsData is still undefined on
+  // first render (the query hasn't resolved yet), so contracts.length is
+  // always 0 at mount regardless of the real count, silently defaulting
+  // every risk to trade_package scope. The user can switch manually if a
+  // project genuinely has no contracts.
+  const [parentType, setParentType] = useState<'contract' | 'trade_package'>('contract');
+  const [parentId, setParentId] = useState<number | ''>('');
+  const [form, setForm] = useState({
+    title: '', description: '', category: 'other', severity: 'medium', probability: '',
+    risk_owner: '', recommended_action: '', mitigation: '', status: 'open', review_date: '',
   });
 
-  const filtered = filter === 'all' ? sorted : sorted.filter(r => r.severity === filter);
+  const mutation = useMutation({
+    mutationFn: () => {
+      const payload = {
+        ...form,
+        probability: form.probability || null,
+        review_date: form.review_date || null,
+        contract_id: parentType === 'contract' ? parentId || null : null,
+        trade_package_id: parentType === 'trade_package' ? parentId || null : null,
+      };
+      return api.post(`/projects/${projectId}/risks`, payload);
+    },
+    onSuccess: () => {
+      toast.success('Risk added');
+      qc.invalidateQueries({ queryKey: invalidateKey });
+      onClose();
+    },
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed to save risk')),
+  });
 
-  const high   = allRisks.filter(r => r.severity === 'high').length;
-  const medium = allRisks.filter(r => r.severity === 'medium').length;
-  const low    = allRisks.filter(r => r.severity === 'low').length;
-
-  const chips: Array<{ key: FilterSev; label: string; count: number; color: string }> = [
-    { key: 'all',    label: 'All',    count: allRisks.length, color: 'var(--text-muted)' },
-    { key: 'high',   label: 'High',   count: high,            color: '#f87171' },
-    { key: 'medium', label: 'Medium', count: medium,          color: '#facc15' },
-    { key: 'low',    label: 'Low',    count: low,             color: '#60a5fa' },
-  ];
+  const parentOptions = parentType === 'contract' ? contracts : tradePackages;
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6 pb-12">
-
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Risk Register</h1>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-            Contract risks identified by AI analysis
-          </p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+      <div className="ss-animate-in w-full max-w-lg rounded-xl p-6 max-h-[90vh] overflow-y-auto" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Add risk</h2>
+          <button onClick={onClose}><X size={18} style={{ color: 'var(--text-muted)' }} /></button>
         </div>
-
-        {/* Summary chips */}
-        {!isLoading && allRisks.length > 0 && (
-          <div className="flex items-center gap-2 flex-wrap">
-            {high > 0 && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium" style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.2)' }}>
-                <AlertTriangle size={12} /> {high} High
-              </div>
-            )}
-            {medium > 0 && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium" style={{ backgroundColor: 'rgba(234,179,8,0.1)', color: '#facc15', border: '1px solid rgba(234,179,8,0.2)' }}>
-                <AlertTriangle size={12} /> {medium} Medium
-              </div>
-            )}
-            {low > 0 && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium" style={{ backgroundColor: 'rgba(59,130,246,0.1)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.2)' }}>
-                <Info size={12} /> {low} Low
-              </div>
-            )}
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Applies to" required>
+              <select className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE}
+                value={parentType} onChange={e => { setParentType(e.target.value as 'contract' | 'trade_package'); setParentId(''); }}>
+                <option value="contract">Contract</option>
+                <option value="trade_package">Trade Package</option>
+              </select>
+            </Field>
+            <Field label={parentType === 'contract' ? 'Contract' : 'Trade package'} required>
+              <select className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE}
+                value={parentId} onChange={e => setParentId(e.target.value ? Number(e.target.value) : '')}>
+                <option value="">Select…</option>
+                {parentOptions.map((o: { id: number; title?: string; name?: string }) => (
+                  <option key={o.id} value={o.id}>{o.title ?? o.name}</option>
+                ))}
+              </select>
+            </Field>
           </div>
-        )}
+          <Field label="Title" required>
+            <input className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE}
+              value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+          </Field>
+          <Field label="Description">
+            <textarea className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE} rows={2}
+              value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Category">
+              <select className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE}
+                value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+                {Object.entries(CATEGORY_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+              </select>
+            </Field>
+            <Field label="Status">
+              <select className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE}
+                value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
+                <option value="open">Open</option>
+                <option value="in_progress">In Progress</option>
+                <option value="resolved">Resolved</option>
+              </select>
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Severity">
+              <select className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE}
+                value={form.severity} onChange={e => setForm(f => ({ ...f, severity: e.target.value }))}>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="critical">Critical</option>
+              </select>
+            </Field>
+            <Field label="Probability">
+              <select className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE}
+                value={form.probability} onChange={e => setForm(f => ({ ...f, probability: e.target.value }))}>
+                <option value="">—</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Owner">
+              <input className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE}
+                value={form.risk_owner} onChange={e => setForm(f => ({ ...f, risk_owner: e.target.value }))} />
+            </Field>
+            <Field label="Review date">
+              <input type="date" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE}
+                value={form.review_date} onChange={e => setForm(f => ({ ...f, review_date: e.target.value }))} />
+            </Field>
+          </div>
+          <Field label="Mitigation">
+            <textarea className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE} rows={2}
+              value={form.mitigation} onChange={e => setForm(f => ({ ...f, mitigation: e.target.value }))} />
+          </Field>
+          <Field label="Recommended action">
+            <textarea className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE} rows={2}
+              value={form.recommended_action} onChange={e => setForm(f => ({ ...f, recommended_action: e.target.value }))} />
+          </Field>
+        </div>
+        <div className="flex justify-end gap-2 mt-5">
+          <button onClick={onClose} className="px-3 py-1.5 rounded-lg text-sm transition-all active:scale-[0.98]" style={{ color: 'var(--text-secondary)' }}>Cancel</button>
+          <button
+            onClick={() => mutation.mutate()}
+            disabled={!form.title || !parentId || mutation.isPending}
+            className="px-3 py-1.5 rounded-lg text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50"
+            style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
+          >
+            {mutation.isPending ? 'Saving…' : 'Add risk'}
+          </button>
+        </div>
       </div>
-
-      {/* Filter pills */}
-      {!isLoading && allRisks.length > 0 && (
-        <div className="flex gap-1.5 p-1 rounded-xl w-fit" style={{ backgroundColor: 'var(--bg-elevated)' }}>
-          {chips.map(c => (
-            <button
-              key={c.key}
-              onClick={() => setFilter(c.key)}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5"
-              style={
-                filter === c.key
-                  ? { backgroundColor: 'var(--bg-surface)', color: c.color, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }
-                  : { color: 'var(--text-muted)' }
-              }
-            >
-              {c.label}
-              <span
-                className="px-1.5 py-0.5 rounded-full text-xs font-bold"
-                style={{
-                  backgroundColor: filter === c.key ? c.color + '22' : 'transparent',
-                  color: filter === c.key ? c.color : 'var(--text-muted)',
-                }}
-              >
-                {c.count}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Content */}
-      {isLoading ? (
-        <div className="space-y-3">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="rounded-xl h-16 animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
-          ))}
-        </div>
-      ) : allRisks.length === 0 ? (
-        <div className="rounded-2xl py-16 text-center" style={{ border: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)' }}>
-          <ShieldCheck size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
-          <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>No risks on record</p>
-          <p className="text-xs max-w-xs mx-auto" style={{ color: 'var(--text-muted)' }}>
-            Run AI analysis on a contract and confirm it — risks will appear here automatically.
-          </p>
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="rounded-2xl py-12 text-center" style={{ border: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)' }}>
-          <ShieldAlert size={28} className="mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No {filter} risks found.</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {/* Group by contract if multiple */}
-          {contracts.filter((c: any) => (c.risks ?? []).length > 0).length > 1 ? (
-            contracts
-              .filter((c: any) => (c.risks ?? []).length > 0)
-              .map((c: any) => {
-                const cRisks = (c.risks as Risk[])
-                  .filter(r => filter === 'all' || r.severity === filter)
-                  .sort((a, b) => ({ high: 0, medium: 1, low: 2 }[a.severity] ?? 3) - ({ high: 0, medium: 1, low: 2 }[b.severity] ?? 3));
-                if (!cRisks.length) return null;
-                return (
-                  <div key={c.id}>
-                    <p className="text-xs font-semibold uppercase tracking-wider mb-2 px-1" style={{ color: 'var(--text-muted)' }}>
-                      {c.title}{c.reference_number ? ` · ${c.reference_number}` : ''}
-                    </p>
-                    <div className="space-y-2">
-                      {cRisks.map((r, i) => <RiskCard key={i} risk={r} />)}
-                    </div>
-                  </div>
-                );
-              })
-          ) : (
-            filtered.map((r, i) => <RiskCard key={i} risk={r} />)
-          )}
-        </div>
-      )}
     </div>
   );
 }

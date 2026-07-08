@@ -305,14 +305,14 @@ function MeasuredWorksTable({ rows, onChange, readOnly }: {
           <div className="grid items-center px-0 py-2" style={{ gridTemplateColumns: readOnly ? widths.join(' ') : [...widths, '36px'].join(' '), backgroundColor: 'var(--bg-elevated)', borderTop: '2px solid var(--border)' }}>
             <div />
             <div className="col-span-6 px-2 text-xs font-bold" style={{ color: 'var(--text-primary)' }}>TOTAL MEASURED WORKS</div>
-            <div className="px-2 text-sm font-bold" style={{ color: 'var(--gold)' }}>{formatCurrency(total)}</div>
+            <div className="px-2 text-sm font-bold tabular-nums" style={{ color: 'var(--gold)' }}>{formatCurrency(total)}</div>
             <div />
             {!readOnly && <div />}
           </div>
         </div>
       </div>
       {!readOnly && (
-        <button onClick={addRow} className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium" style={{ backgroundColor: 'rgba(185,149,102,0.12)', color: 'var(--gold)' }}>
+        <button onClick={addRow} className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium" style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}>
           <Plus size={13} /> Add Row
         </button>
       )}
@@ -387,7 +387,7 @@ function VariationsTable({ rows, onChange, readOnly }: {
           <div className="grid items-center px-0 py-2" style={{ gridTemplateColumns: readOnly ? widths.join(' ') : [...widths, '36px'].join(' '), backgroundColor: 'var(--bg-elevated)', borderTop: '2px solid var(--border)' }}>
             <div /><div /><div /><div />
             <div className="col-span-2 px-2 text-xs font-bold" style={{ color: 'var(--text-primary)' }}>TOTAL VARIATIONS</div>
-            <div className="px-2 text-sm font-bold" style={{ color: 'var(--gold)' }}>{formatCurrency(total)}</div>
+            <div className="px-2 text-sm font-bold tabular-nums" style={{ color: 'var(--gold)' }}>{formatCurrency(total)}</div>
             <div /><div />
             {!readOnly && <div />}
           </div>
@@ -473,7 +473,7 @@ function MaterialsTable({ rows, onChange, readOnly }: {
           <div className="grid items-center px-0 py-2" style={{ gridTemplateColumns: readOnly ? widths.join(' ') : [...widths, '36px'].join(' '), backgroundColor: 'var(--bg-elevated)', borderTop: '2px solid var(--border)' }}>
             <div /><div /><div /><div />
             <div className="col-span-2 px-2 text-xs font-bold" style={{ color: 'var(--text-primary)' }}>TOTAL MATERIALS ON SITE</div>
-            <div className="px-2 text-sm font-bold" style={{ color: 'var(--gold)' }}>{formatCurrency(total)}</div>
+            <div className="px-2 text-sm font-bold tabular-nums" style={{ color: 'var(--gold)' }}>{formatCurrency(total)}</div>
             <div /><div />
             {!readOnly && <div />}
           </div>
@@ -583,7 +583,7 @@ function LinkedVariationsPanel({ appId, projectId, canEdit, onSaved }: {
                 display: 'grid', gridTemplateColumns: cols,
                 alignItems: 'center', padding: '8px 12px',
                 backgroundColor: isSelected
-                  ? 'rgba(185,149,102,0.08)'
+                  ? 'var(--gold-8)'
                   : i % 2 === 1 ? 'var(--bg-elevated)' : 'var(--bg-surface)',
                 borderBottom: '1px solid var(--border)',
               }}>
@@ -596,11 +596,11 @@ function LinkedVariationsPanel({ appId, projectId, canEdit, onSaved }: {
                   {isSelected && <span style={{ color: 'var(--accent-fg)', fontSize: 9, fontWeight: 700, lineHeight: 1 }}>✓</span>}
                 </div>
               </div>
-              <div className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
+              <div className="text-[11px] font-mono" style={{ color: 'var(--text-secondary)' }}>
                 VAR-{String(v.variation_number).padStart(3, '0')}
               </div>
               <div className="text-xs truncate" style={{ color: 'var(--text-primary)' }}>{v.title}</div>
-              <div className="text-xs font-semibold" style={{ color: isSelected ? 'var(--gold)' : 'var(--text-secondary)' }}>
+              <div className="text-xs font-semibold tabular-nums" style={{ color: isSelected ? 'var(--gold)' : 'var(--text-secondary)' }}>
                 {formatCurrency(fmt(v.agreed_amount))}
               </div>
               <div className="text-xs capitalize" style={{ color: 'var(--text-muted)' }}>{v.status}</div>
@@ -612,7 +612,7 @@ function LinkedVariationsPanel({ appId, projectId, canEdit, onSaved }: {
           style={{ gridTemplateColumns: cols, backgroundColor: 'var(--bg-elevated)', borderTop: '2px solid var(--border)' }}>
           <div /><div />
           <div className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>LINKED VARIATIONS TOTAL</div>
-          <div className="text-sm font-bold" style={{ color: 'var(--gold)' }}>{formatCurrency(linkedTotal)}</div>
+          <div className="text-sm font-bold tabular-nums" style={{ color: 'var(--gold)' }}>{formatCurrency(linkedTotal)}</div>
           <div />
         </div>
       </div>
@@ -623,7 +623,7 @@ function LinkedVariationsPanel({ appId, projectId, canEdit, onSaved }: {
             {selected.size} variation{selected.size !== 1 ? 's' : ''} selected — {formatCurrency(linkedTotal)}
           </p>
           <button onClick={() => syncMutation.mutate()} disabled={syncMutation.isPending}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]"
             style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: syncMutation.isPending ? 0.6 : 1 }}>
             {syncMutation.isPending ? <Loader2 size={13} className="animate-spin" /> : <Link2 size={13} />}
             {syncMutation.isPending ? 'Saving…' : 'Save Linked Variations'}
@@ -645,7 +645,7 @@ function FinRow({ label, value, sub, highlight, negative, large }: {
         <p className={large ? 'text-sm font-semibold' : 'text-xs'} style={{ color: highlight ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{label}</p>
         {sub && <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{sub}</p>}
       </div>
-      <span className={large ? 'text-base font-bold' : 'text-sm font-semibold'} style={{ color: negative ? '#f87171' : highlight ? 'var(--gold)' : 'var(--text-secondary)' }}>
+      <span className={`tabular-nums ${large ? 'text-base font-bold' : 'text-sm font-semibold'}`} style={{ color: negative ? '#f87171' : highlight ? 'var(--gold)' : 'var(--text-secondary)' }}>
         {negative && value !== '£0.00' ? `(${value})` : value}
       </span>
     </div>
@@ -736,7 +736,7 @@ function PaymentCycleTimeline({ pa, formatCurrency }: { pa: PA; formatCurrency: 
   ];
 
   return (
-    <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
       <p className="text-xs font-semibold mb-4" style={{ color: 'var(--text-muted)' }}>PAYMENT CYCLE</p>
       <div>
         {stages.map((stage, i) => (
@@ -1030,7 +1030,7 @@ export default function PaymentApplicationDetailPage() {
 
       {/* ─── Breakdown toggle (draft only) ──────────────────────────────────── */}
       {canEdit && (
-        <div className="flex items-center gap-3 p-4 rounded-xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+        <div className="flex items-center gap-3 p-4 rounded-xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
           <button onClick={() => setUseBreakdown(v => !v)} className="flex items-center gap-2">
             {useBreakdown
               ? <ToggleRight size={24} style={{ color: 'var(--gold)' }} />
@@ -1084,7 +1084,7 @@ export default function PaymentApplicationDetailPage() {
         <PaymentCycleTimeline pa={pa} formatCurrency={formatCurrency} />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* Application Details */}
-          <div className="rounded-2xl p-5 space-y-0" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          <div className="rounded-2xl p-5 space-y-0" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
             <p className="text-xs font-semibold mb-3" style={{ color: 'var(--text-muted)' }}>APPLICATION DETAILS</p>
             {[
               ['Commercial Source',    source],
@@ -1106,7 +1106,7 @@ export default function PaymentApplicationDetailPage() {
           {/* Contract / Financial details */}
           <div className="space-y-5">
             {pa.contract && (
-              <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+              <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
                 <p className="text-xs font-semibold mb-3" style={{ color: 'var(--text-muted)' }}>CONTRACT</p>
                 {[
                   ['Contract', pa.contract.title],
@@ -1120,7 +1120,7 @@ export default function PaymentApplicationDetailPage() {
             )}
 
             {/* Financial summary (live-calculated) */}
-            <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+            <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
               <p className="text-xs font-semibold mb-3" style={{ color: 'var(--text-muted)' }}>VALUATION SUMMARY</p>
               {useBreakdown && (
                 <>
@@ -1151,7 +1151,7 @@ export default function PaymentApplicationDetailPage() {
 
             {/* Status / certified / paid summary */}
             {['certified', 'paid'].includes(pa.status ?? '') && (
-              <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+              <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
                 <p className="text-xs font-semibold mb-3" style={{ color: 'var(--text-muted)' }}>CERTIFICATION / PAYMENT</p>
                 {fmt(pa.certified_amount) > 0 && <FinRow label="Certified Amount" value={formatCurrency(fmt(pa.certified_amount))} highlight />}
                 {fmt(pa.paid_amount) > 0 && <FinRow label="Paid Amount" value={formatCurrency(fmt(pa.paid_amount))} highlight />}
@@ -1172,7 +1172,7 @@ export default function PaymentApplicationDetailPage() {
                 Contract scope valuation. Valuation = Contract Value × % Complete.
               </p>
             </div>
-            <div className="px-4 py-2 rounded-xl font-bold text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--gold)' }}>
+            <div className="px-4 py-2 rounded-xl font-bold text-sm tabular-nums" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--gold)' }}>
               Total: {formatCurrency(mwTotal)}
             </div>
           </div>
@@ -1193,7 +1193,7 @@ export default function PaymentApplicationDetailPage() {
                   Pull approved variations from the Variations register. Values are snapshotted at inclusion — historically accurate even if a variation is later amended.
                 </p>
               </div>
-              <div className="px-4 py-2 rounded-xl font-bold text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--gold)' }}>
+              <div className="px-4 py-2 rounded-xl font-bold text-sm tabular-nums" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--gold)' }}>
                 Total: {formatCurrency(linkedVarTotal)}
               </div>
             </div>
@@ -1218,7 +1218,7 @@ export default function PaymentApplicationDetailPage() {
                   Free-text variation line items not yet in the register, or partial-completion valuations. Valuation = Variation Value × % Complete.
                 </p>
               </div>
-              <div className="px-4 py-2 rounded-xl font-bold text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: '#a78bfa' }}>
+              <div className="px-4 py-2 rounded-xl font-bold text-sm tabular-nums" style={{ backgroundColor: 'var(--bg-elevated)', color: '#a78bfa' }}>
                 Total: {formatCurrency(varTotal)}
               </div>
             </div>
@@ -1237,7 +1237,7 @@ export default function PaymentApplicationDetailPage() {
                 Materials purchased or delivered but not yet installed. Valuation = Material Value × % Claimed.
               </p>
             </div>
-            <div className="px-4 py-2 rounded-xl font-bold text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: '#4ade80' }}>
+            <div className="px-4 py-2 rounded-xl font-bold text-sm tabular-nums" style={{ backgroundColor: 'var(--bg-elevated)', color: '#4ade80' }}>
               Total: {formatCurrency(matTotal)}
             </div>
           </div>
@@ -1264,7 +1264,7 @@ export default function PaymentApplicationDetailPage() {
             </div>
           </div>
           {docs.length === 0 ? (
-            <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+            <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
               <FileText size={28} className="mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
               <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No documents generated yet</p>
               <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Generate a PDF or Excel workbook using the buttons above</p>
@@ -1282,10 +1282,10 @@ export default function PaymentApplicationDetailPage() {
                       <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
                         {doc.mime_type === 'application/pdf' ? '📄 PDF' : '📊 Excel'}
                       </td>
-                      <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+                      <td className="px-4 py-3 text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
                         {doc.file_size ? `${Math.round(doc.file_size / 1024)} KB` : '—'}
                       </td>
-                      <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+                      <td className="px-4 py-3 text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
                         {doc.created_at ? formatDate(doc.created_at) : '—'}
                       </td>
                       <td className="px-4 py-3">
@@ -1319,7 +1319,7 @@ export default function PaymentApplicationDetailPage() {
               )}
             </h2>
             {!pa.payment_notices?.length ? (
-              <div className="rounded-xl p-6 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+              <div className="rounded-xl p-6 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>No Payment Notice issued for this application.</p>
               </div>
             ) : (
@@ -1335,13 +1335,13 @@ export default function PaymentApplicationDetailPage() {
                       const doc = n.documents?.[0];
                       return (
                         <tr key={n.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                          <td className="px-4 py-3 text-xs font-mono" style={{ color: 'var(--gold)' }}>
+                          <td className="px-4 py-3 text-[11px] font-mono" style={{ color: 'var(--gold)' }}>
                             {n.reference ?? `PN-${n.id}`}
                           </td>
-                          <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+                          <td className="px-4 py-3 text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
                             {n.notice_date ? formatDate(n.notice_date) : '—'}
                           </td>
-                          <td className="px-4 py-3 text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                          <td className="px-4 py-3 text-sm font-bold tabular-nums" style={{ color: 'var(--text-primary)' }}>
                             {formatCurrency(fmt(n.notified_sum))}
                           </td>
                           <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{n.issued_by ?? '—'}</td>
@@ -1380,7 +1380,7 @@ export default function PaymentApplicationDetailPage() {
               )}
             </h2>
             {!pa.pay_less_notices?.length ? (
-              <div className="rounded-xl p-6 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+              <div className="rounded-xl p-6 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>No Pay Less Notice issued for this application.</p>
               </div>
             ) : (
@@ -1396,17 +1396,17 @@ export default function PaymentApplicationDetailPage() {
                       const plnDoc = n.documents?.[0];
                       return (
                       <tr key={n.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td className="px-4 py-3 text-xs font-mono" style={{ color: 'var(--text-muted)' }}>{n.reference ?? `PLN-${n.id}`}</td>
-                        <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+                        <td className="px-4 py-3 text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>{n.reference ?? `PLN-${n.id}`}</td>
+                        <td className="px-4 py-3 text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
                           {n.notice_date ? formatDate(n.notice_date) : '—'}
                         </td>
-                        <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                        <td className="px-4 py-3 text-sm tabular-nums" style={{ color: 'var(--text-secondary)' }}>
                           {formatCurrency(fmt(n.original_amount_due ?? n.notified_sum))}
                         </td>
-                        <td className="px-4 py-3 text-sm font-medium" style={{ color: '#f87171' }}>
+                        <td className="px-4 py-3 text-sm font-medium tabular-nums" style={{ color: '#f87171' }}>
                           {formatCurrency(fmt(n.total_deductions))}
                         </td>
-                        <td className="px-4 py-3 text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                        <td className="px-4 py-3 text-sm font-bold tabular-nums" style={{ color: 'var(--text-primary)' }}>
                           {formatCurrency(fmt(n.revised_amount_payable ?? n.notified_sum))}
                         </td>
                         <td className="px-4 py-3 text-xs max-w-[160px]" style={{ color: 'var(--text-secondary)' }}>
@@ -1452,7 +1452,7 @@ export default function PaymentApplicationDetailPage() {
               <span className="ml-3">→ Amount Due: <strong style={{ color: '#4ade80' }}>{formatCurrency(amountDue)}</strong></span>
             </div>
             <button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: saveMutation.isPending ? 0.6 : 1 }}>
               {saveMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
               Save

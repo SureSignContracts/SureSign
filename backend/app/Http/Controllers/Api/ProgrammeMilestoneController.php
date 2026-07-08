@@ -7,11 +7,33 @@ use App\Models\Contract;
 use App\Models\ContractAiAnalysis;
 use App\Models\ContractProgrammeMilestone;
 use App\Models\Project;
+use App\Models\TradePackage;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class ProgrammeMilestoneController extends Controller
 {
+    private const RULES = [
+        'name'             => 'required|string|max:255',
+        'milestone_type'   => 'nullable|in:commencement,sectional_completion,completion,handover,obligation,other',
+        'responsible_party'=> 'nullable|in:contractor,employer,both',
+        'status'           => 'nullable|in:not_started,in_progress,complete,delayed,at_risk',
+        'planned_date'     => 'nullable|date',
+        'forecast_date'    => 'nullable|date',
+        'actual_date'      => 'nullable|date',
+        'planned_start'    => 'nullable|date',
+        'forecast_start'   => 'nullable|date',
+        'actual_start'     => 'nullable|date',
+        'duration_days'    => 'nullable|integer|min:0',
+        'progress_pct'     => 'nullable|integer|min:0|max:100',
+        'depends_on'       => 'nullable|array',
+        'depends_on.*'     => 'integer',
+        'group_name'       => 'nullable|string|max:255',
+        'source_text'      => 'nullable|string',
+        'notes'            => 'nullable|string',
+        'sort_order'       => 'nullable|integer',
+    ];
+
     public function index(Contract $contract)
     {
         return response()->json(
@@ -26,7 +48,17 @@ class ProgrammeMilestoneController extends Controller
     {
         return response()->json(
             ContractProgrammeMilestone::where('project_id', $project->id)
-                ->with('contract:id,title,reference_number')
+                ->with(['contract:id,title,reference_number', 'tradePackage:id,name'])
+                ->orderBy('planned_date')
+                ->get()
+        );
+    }
+
+    public function indexByTradePackage(Project $project, TradePackage $tradePackage)
+    {
+        return response()->json(
+            ContractProgrammeMilestone::where('trade_package_id', $tradePackage->id)
+                ->orderBy('sort_order')
                 ->orderBy('planned_date')
                 ->get()
         );
@@ -34,18 +66,7 @@ class ProgrammeMilestoneController extends Controller
 
     public function store(Request $request, Contract $contract)
     {
-        $validated = $request->validate([
-            'name'             => 'required|string|max:255',
-            'milestone_type'   => 'nullable|in:commencement,sectional_completion,completion,handover,obligation,other',
-            'responsible_party'=> 'nullable|in:contractor,employer,both',
-            'status'           => 'nullable|in:not_started,in_progress,complete,delayed,at_risk',
-            'planned_date'     => 'nullable|date',
-            'forecast_date'    => 'nullable|date',
-            'actual_date'      => 'nullable|date',
-            'source_text'      => 'nullable|string',
-            'notes'            => 'nullable|string',
-            'sort_order'       => 'nullable|integer',
-        ]);
+        $validated = $request->validate(self::RULES);
 
         $milestone = ContractProgrammeMilestone::create(array_merge($validated, [
             'contract_id'    => $contract->id,
@@ -58,20 +79,24 @@ class ProgrammeMilestoneController extends Controller
         return response()->json($milestone, 201);
     }
 
+    public function storeForTradePackage(Request $request, Project $project, TradePackage $tradePackage)
+    {
+        $validated = $request->validate(self::RULES);
+
+        $milestone = ContractProgrammeMilestone::create(array_merge($validated, [
+            'trade_package_id' => $tradePackage->id,
+            'project_id'       => $tradePackage->project_id,
+            'is_ai_generated'  => false,
+            'milestone_type'   => $validated['milestone_type'] ?? 'other',
+            'status'           => $validated['status'] ?? 'not_started',
+        ]));
+
+        return response()->json($milestone, 201);
+    }
+
     public function update(Request $request, ContractProgrammeMilestone $milestone)
     {
-        $validated = $request->validate([
-            'name'             => 'sometimes|string|max:255',
-            'milestone_type'   => 'nullable|in:commencement,sectional_completion,completion,handover,obligation,other',
-            'responsible_party'=> 'nullable|in:contractor,employer,both',
-            'status'           => 'nullable|in:not_started,in_progress,complete,delayed,at_risk',
-            'planned_date'     => 'nullable|date',
-            'forecast_date'    => 'nullable|date',
-            'actual_date'      => 'nullable|date',
-            'source_text'      => 'nullable|string',
-            'notes'            => 'nullable|string',
-            'sort_order'       => 'nullable|integer',
-        ]);
+        $validated = $request->validate(array_merge(self::RULES, ['name' => 'sometimes|string|max:255']));
 
         $milestone->update($validated);
 

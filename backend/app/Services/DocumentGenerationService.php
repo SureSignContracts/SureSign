@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Document;
 use App\Models\Organization;
 use App\Models\Project;
+use App\Models\TradePackage;
 use App\Models\User;
 use App\Services\BrandingService;
 use App\Services\CurrencyService;
@@ -28,6 +29,9 @@ class DocumentGenerationService
      * @param  string|null    $category    Folder category / folder path
      * @param  string|null    $reference   Reference number
      * @param  Model|null     $relatedModel  Morphable parent (PaymentApplication, etc.)
+     * @param  TradePackage|null $tradePackage  Set when this document belongs to a trade
+     *                                          package's subcontract, so it surfaces on
+     *                                          that package's Documents tab (Sprint 6C).
      * @return Document
      */
     public static function generatePdf(
@@ -40,7 +44,8 @@ class DocumentGenerationService
         ?string $category = null,
         ?string $reference = null,
         ?Model $relatedModel = null,
-        bool $skipCanvas = false
+        bool $skipCanvas = false,
+        ?TradePackage $tradePackage = null
     ): Document {
         // Load branding for the organisation
         $branding = BrandingService::forOrganization($project->organization_id);
@@ -110,6 +115,7 @@ class DocumentGenerationService
             'template_data'    => $viewData,
             'documentable_type' => $relatedModel ? get_class($relatedModel) : null,
             'documentable_id'   => $relatedModel ? $relatedModel->id : null,
+            'trade_package_id'  => $tradePackage?->id,
         ]);
 
         // Mirror generated PDF to local mirror path if enabled

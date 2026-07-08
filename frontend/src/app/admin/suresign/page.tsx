@@ -22,6 +22,7 @@ interface PlatformSettings {
   email_subject_line:     string;
   email_body_template:    string;
   email_reply_to:         string;
+  admin_email:            string;
   brevo_api_key:          string;
   has_brevo_key:          boolean;
   currency:               string;
@@ -111,7 +112,7 @@ function SaveBtn({ onClick, pending, saved }: { onClick: () => void; pending: bo
   return (
     <button
       onClick={onClick} disabled={pending}
-      className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-60"
+      className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-60 active:scale-[0.98]"
       style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
     >
       {pending ? <RefreshCw size={14} className="animate-spin" /> : saved ? <Check size={14} /> : <Save size={14} />}
@@ -174,7 +175,7 @@ function UploadTile({ label, hint, accept, currentUrl, onUpload, onRemove, uploa
           </>
         ) : (
           <div className="flex flex-col items-center gap-2 p-4">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'rgba(185,149,102,0.12)' }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--gold-15)' }}>
               {isPdf ? <FileUp size={15} style={{ color: 'var(--gold)' }} /> : <ImageIcon size={15} style={{ color: 'var(--gold)' }} />}
             </div>
             <span className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>{uploading ? 'Uploading\u2026' : 'Click to upload'}</span>
@@ -238,7 +239,7 @@ export default function AdminSureSignPage() {
         logo_url: null, letterhead_header_url: null, letterhead_footer_url: null,
         letterhead_pdf_url: null, email_header_url: null, email_footer_url: null,
         email_subject_line: '', email_body_template: '', email_reply_to: '',
-        email_sender_email: '', email_sender_name: 'SureSign',
+        email_sender_email: '', email_sender_name: 'SureSign Contracts', admin_email: '',
         brevo_api_key: '', has_brevo_key: false,
         currency: 'GBP', currency_symbol: '\u00a3', date_format: 'DD/MM/YYYY', timezone: 'Europe/London',
         hidden_pages: [],
@@ -248,8 +249,8 @@ export default function AdminSureSignPage() {
 
   // ── Per-section form state ────────────────────────────────────────────────
   const [emailForm, setEmailForm] = useState({
-    email_sender_email: '', email_sender_name: 'SureSign',
-    email_reply_to: '', email_subject_line: '', email_body_template: '', brevo_api_key: '',
+    email_sender_email: '', email_sender_name: 'SureSign Contracts',
+    email_reply_to: '', admin_email: '', email_subject_line: '', email_body_template: '', brevo_api_key: '',
   });
   const [siteForm, setSiteForm] = useState({
     currency: 'GBP', currency_symbol: '\u00a3', date_format: 'DD/MM/YYYY', timezone: 'Europe/London',    hidden_pages: [] as string[],  });
@@ -258,8 +259,9 @@ export default function AdminSureSignPage() {
     if (!data) return;
     setEmailForm({
       email_sender_email:  data.email_sender_email  ?? '',
-      email_sender_name:   data.email_sender_name   ?? 'SureSign',
+      email_sender_name:   data.email_sender_name   ?? 'SureSign Contracts',
       email_reply_to:      data.email_reply_to      ?? '',
+      admin_email:         data.admin_email         ?? '',
       email_subject_line:  data.email_subject_line  ?? '',
       email_body_template: data.email_body_template ?? '',
       brevo_api_key:       data.brevo_api_key        ?? '',
@@ -386,17 +388,17 @@ export default function AdminSureSignPage() {
 
       {/* ── Page header ── */}
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'rgba(185,149,102,0.12)' }}>
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--gold-15)' }}>
           <Gem size={20} style={{ color: 'var(--gold)' }} />
         </div>
         <div>
-          <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>SureSign Settings</h1>
+          <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>SureSign Contracts settings</h1>
           <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Platform-wide branding, documents, email &amp; site configuration</p>
         </div>
       </div>
 
       {/* ── Tab bar ── */}
-      <div className="flex gap-1 p-1 rounded-xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+      <div className="flex gap-1 p-1 rounded-xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
         {TABS.map(tab => {
           const Icon = tab.icon;
           const active = activeTab === tab.id;
@@ -430,9 +432,9 @@ export default function AdminSureSignPage() {
 
       {/* ══ BRANDING TAB ══ */}
       {activeTab === 'branding' && (
-        <div className="rounded-2xl p-5 space-y-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+        <div className="rounded-2xl p-5 space-y-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
           <UploadTile
-            label="SureSign Logo"
+            label="SureSign Contracts logo"
             hint="Transparent background recommended · PNG or SVG · min 300 × 100 px"
             accept="image/png,image/svg+xml,image/jpeg,image/webp"
             currentUrl={data?.logo_url ?? null}
@@ -451,10 +453,10 @@ export default function AdminSureSignPage() {
       {/* ══ DOCUMENT TAB ══ */}
       {activeTab === 'document' && (
         <>
-          <div className="rounded-2xl p-5 space-y-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          <div className="rounded-2xl p-5 space-y-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
             <div className="space-y-3">
               <SubLabel>Letterhead — Header &amp; Footer Images</SubLabel>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <UploadTile
                   label="Header Image"
                   hint="Top of every PDF · A4 width (2480 px) · max 130 px tall · PNG"
@@ -511,7 +513,7 @@ export default function AdminSureSignPage() {
           </div>
 
           {/* Generate Test PDF */}
-          <div className="rounded-2xl p-5 flex items-center justify-between" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          <div className="rounded-2xl p-5 flex items-center justify-between" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
             <div>
               <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Generate Test PDF</p>
               <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
@@ -539,10 +541,10 @@ export default function AdminSureSignPage() {
       {/* ══ EMAIL TAB ══ */}
       {activeTab === 'email' && (
         <>
-          <div className="rounded-2xl p-5 space-y-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          <div className="rounded-2xl p-5 space-y-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
             <div className="space-y-3">
               <SubLabel>Email Header &amp; Footer Images</SubLabel>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <UploadTile
                   label="Header Image"
                   hint="Top of every email · 600 px wide · PNG"
@@ -614,7 +616,7 @@ export default function AdminSureSignPage() {
                 label="Sender Name"
                 value={emailForm.email_sender_name}
                 onChange={v => setEmailForm(p => ({ ...p, email_sender_name: v }))}
-                placeholder="SureSign"
+                placeholder="SureSign Contracts"
                 hint="Display name shown in the recipient's inbox."
               />
             </div>
@@ -629,10 +631,19 @@ export default function AdminSureSignPage() {
             />
 
             <Field
+              label="Admin Email"
+              value={emailForm.admin_email}
+              onChange={v => setEmailForm(p => ({ ...p, admin_email: v }))}
+              placeholder="tech@suresigncontracts.com"
+              type="email"
+              hint="Receives a copy of every notification email sent to a client organisation — separate from the sender/reply-to address above."
+            />
+
+            <Field
               label="Default Email Subject Line"
               value={emailForm.email_subject_line}
               onChange={v => setEmailForm(p => ({ ...p, email_subject_line: v }))}
-              placeholder="You have a new document from SureSign"
+              placeholder="You have a new document from SureSign Contracts"
               hint="Use {{document_name}} and {{company_name}} as merge fields."
             />
 
@@ -643,7 +654,7 @@ export default function AdminSureSignPage() {
                 value={emailForm.email_body_template}
                 onChange={e => setEmailForm(p => ({ ...p, email_body_template: e.target.value }))}
                 rows={8}
-                placeholder={'Dear {{recipient_name}},\n\nPlease find attached "{{document_name}}" from {{company_name}}.\n\nKind regards,\nThe SureSign Team'}
+                placeholder={'Dear {{recipient_name}},\n\nPlease find attached "{{document_name}}" from {{company_name}}.\n\nKind regards,\nThe SureSign Contracts Team'}
                 className="w-full px-3 py-2.5 rounded-lg text-sm outline-none resize-none font-mono"
                 style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
               />
@@ -669,7 +680,7 @@ export default function AdminSureSignPage() {
           </div>
 
           {/* Send Test Email */}
-          <div className="rounded-2xl p-5 space-y-3" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          <div className="rounded-2xl p-5 space-y-3" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
             <div>
               <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Send Test Email</p>
               <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
@@ -707,7 +718,7 @@ export default function AdminSureSignPage() {
 
       {/* ══ SITE TAB ══ */}
       {activeTab === 'site' && (
-        <div className="rounded-2xl p-5 space-y-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+        <div className="rounded-2xl p-5 space-y-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
           <div className="space-y-3">
             <SubLabel>Currency</SubLabel>
             <div className="grid grid-cols-2 gap-4">
@@ -728,7 +739,7 @@ export default function AdminSureSignPage() {
             </div>
             <div className="flex items-center gap-2.5">
               <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Preview:</span>
-              <span className="px-3 py-1 rounded-lg text-sm font-semibold" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}>
+              <span className="px-3 py-1 rounded-lg text-sm font-semibold tabular-nums" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}>
                 {siteForm.currency_symbol}1,234.56 {siteForm.currency}
               </span>
             </div>
@@ -798,8 +809,8 @@ export default function AdminSureSignPage() {
                     }}
                     className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-sm transition-all"
                     style={{
-                      backgroundColor: hidden ? 'var(--bg-elevated)' : 'rgba(185,149,102,0.08)',
-                      border: `1px solid ${hidden ? 'var(--border)' : 'rgba(185,149,102,0.3)'}`,
+                      backgroundColor: hidden ? 'var(--bg-elevated)' : 'var(--gold-8)',
+                      border: `1px solid ${hidden ? 'var(--border)' : 'var(--gold-30)'}`,
                       color: hidden ? 'var(--text-muted)' : 'var(--text-primary)',
                     }}
                   >
@@ -807,7 +818,7 @@ export default function AdminSureSignPage() {
                     <span
                       className="text-xs px-1.5 py-0.5 rounded-md font-medium"
                       style={{
-                        backgroundColor: hidden ? 'rgba(90,86,82,0.15)' : 'rgba(185,149,102,0.15)',
+                        backgroundColor: hidden ? 'rgba(90,86,82,0.15)' : 'var(--gold-15)',
                         color: hidden ? 'var(--text-muted)' : 'var(--gold)',
                       }}
                     >

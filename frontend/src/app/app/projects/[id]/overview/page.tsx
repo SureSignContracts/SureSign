@@ -7,6 +7,7 @@ import { formatDate } from '@/lib/utils';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import CountUp from '@/components/ui/CountUp';
 import { DollarSign, FileText, MessageSquare, GitBranch, AlertCircle, Activity, BarChart2, ChevronRight, ShieldAlert, TrendingUp, Zap, FileCheck } from 'lucide-react';
+import PageTourButton from '@/components/tours/PageTourButton';
 
 // ── Health ─────────────────────────────────────────────────────────────────
 
@@ -33,11 +34,11 @@ function ProjectHealthWidget({ health }: { health: any }) {
   const cfg = HEALTH_CONFIG[health.rating as keyof typeof HEALTH_CONFIG] ?? HEALTH_CONFIG.healthy;
   const domains = health.domains ?? {};
   return (
-    <div className="rounded-2xl p-5 flex flex-col gap-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="ss-animate-in rounded-2xl p-5 flex flex-col gap-4" data-tour="overview-health" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <TrendingUp size={14} style={{ color: 'var(--text-muted)' }} />
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Project Health</h2>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Project health</h2>
         </div>
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
           style={{ backgroundColor: cfg.bg, color: cfg.color }}>
@@ -93,11 +94,17 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 function ActionRow({ action }: { action: any }) {
+  const router = useRouter();
   const color = PRIORITY_COLORS[action.priority] ?? 'var(--text-muted)';
   const isOverdue = action.status === 'overdue';
   const isDueToday = action.status === 'due_today';
+  const clickable = Boolean(action.action_url);
   return (
-    <div className="flex items-start gap-3 py-2.5" style={{ borderBottom: '1px solid var(--border)' }}>
+    <div
+      className={`flex items-start gap-3 py-2.5 ${clickable ? 'cursor-pointer transition-opacity hover:opacity-80' : ''}`}
+      style={{ borderBottom: '1px solid var(--border)' }}
+      onClick={clickable ? () => router.push(action.action_url) : undefined}
+    >
       <div className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" style={{ backgroundColor: color }} />
       <div className="flex-1 min-w-0">
         <p className="text-xs font-medium truncate" style={{ color: 'var(--text-primary)' }}>{action.title}</p>
@@ -129,11 +136,11 @@ function UpcomingActionsWidget({ actions }: { actions: any }) {
   const allVisible = [...overdue, ...dueToday, ...upcoming7].slice(0, 8);
 
   return (
-    <div className="rounded-2xl p-5 flex flex-col gap-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="ss-animate-in rounded-2xl p-5 flex flex-col gap-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Zap size={14} style={{ color: 'var(--text-muted)' }} />
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Upcoming Actions</h2>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Upcoming actions</h2>
         </div>
         <div className="flex items-center gap-2">
           {counts.overdue > 0 && (
@@ -168,11 +175,11 @@ function RiskSummaryWidget({ riskSummary }: { riskSummary: any }) {
   if (!riskSummary || (riskSummary.critical === 0 && riskSummary.high === 0 && riskSummary.non_standard_amendments === 0)) return null;
   const topRisks: any[] = riskSummary.top_risks ?? [];
   return (
-    <div className="rounded-2xl p-5 flex flex-col gap-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="ss-animate-in rounded-2xl p-5 flex flex-col gap-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ShieldAlert size={14} style={{ color: 'var(--text-muted)' }} />
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Contract Risks</h2>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Contract risks</h2>
         </div>
         <div className="flex items-center gap-2">
           {riskSummary.critical > 0 && (
@@ -239,7 +246,7 @@ function FinalAccountRow({ fa, formatCurrency, projectId }: { fa: any; formatCur
     <div
       className="py-2.5 cursor-pointer transition-opacity hover:opacity-80"
       style={{ borderBottom: '1px solid var(--border)' }}
-      onClick={() => router.push(`/app/projects/${projectId}/commercial?tab=final-account&fa=${fa.id}`)}
+      onClick={() => router.push(fa.action_url ?? `/app/projects/${projectId}/commercial?tab=final-account&fa=${fa.id}`)}
     >
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0 flex-1">
@@ -268,8 +275,8 @@ function FinalAccountRow({ fa, formatCurrency, projectId }: { fa: any; formatCur
         </div>
         {fa.final_balance_due !== null && fa.final_balance_due !== undefined && (
           <div className="text-right shrink-0">
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Final Balance Due</p>
-            <p className="text-sm font-bold" style={{ color: 'var(--gold)' }}>{formatCurrency(fa.final_balance_due)}</p>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Final balance due</p>
+            <p className="text-sm font-bold tabular-nums" style={{ color: 'var(--gold)' }}>{formatCurrency(fa.final_balance_due)}</p>
           </div>
         )}
       </div>
@@ -281,7 +288,7 @@ function FinalAccountsWidget({ finalAccounts, projectId, formatCurrency }: { fin
   const router = useRouter();
 
   return (
-    <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <FileCheck size={14} style={{ color: 'var(--text-muted)' }} />
@@ -321,30 +328,28 @@ function InfoRow({ label, value }: { label: string; value?: string | null }) {
 }
 
 function StatCard({
-  label, value, color, icon: Icon, href, index = 0,
+  label, value, icon: Icon, href, index = 0,
 }: {
-  label: string; value: number | string; color: string; icon: React.ElementType; href?: string; index?: number;
+  label: string; value: number | string; icon: React.ElementType; href?: string; index?: number;
 }) {
   const router = useRouter();
   const delay = index * 70;
   return (
     <div
       onClick={() => href && router.push(href)}
-      className="ss-animate-in rounded-xl px-4 py-3 flex items-center gap-3 transition-all"
+      className="ss-animate-in group rounded-xl px-4 py-3 flex items-center gap-3 transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-pop)] hover:-translate-y-0.5"
       style={{
-        backgroundColor: 'var(--bg-elevated)',
+        backgroundColor: 'var(--bg-surface)',
         cursor: href ? 'pointer' : 'default',
-        border: '1px solid transparent',
+        border: '1px solid var(--border)',
         animationDelay: `${delay}ms`,
       }}
-      onMouseEnter={e => { if (href) (e.currentTarget as HTMLElement).style.borderColor = color + '60'; }}
-      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'transparent'; }}
     >
-      <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: color + '18' }}>
-        <Icon size={16} style={{ color }} />
+      <div className="w-9 h-9 rounded-lg flex items-center justify-center transition-transform duration-200 group-hover:scale-110" style={{ backgroundColor: 'var(--gold-15)' }}>
+        <Icon size={16} style={{ color: 'var(--gold)' }} />
       </div>
       <div>
-        <div className="text-lg font-bold leading-none" style={{ color }}>
+        <div className="text-lg font-bold leading-none tabular-nums" style={{ color: 'var(--text-primary)' }}>
           {typeof value === 'number' ? <CountUp value={value} delay={delay} /> : value}
         </div>
         <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{label}</div>
@@ -372,27 +377,6 @@ const ACTIVITY_ICONS: Record<string, React.ElementType> = {
   variation_approved:               GitBranch,
   variation_rejected:               GitBranch,
   variation_resubmitted:            GitBranch,
-};
-
-const ACTIVITY_COLORS: Record<string, string> = {
-  project_created:               '#4ade80',
-  contract_added:                '#60a5fa',
-  contract_updated:              '#60a5fa',
-  payment_application_created:   '#f59e0b',
-  payment_application_submitted: '#facc15',
-  payment_application_certified: '#4ade80',
-  payment_application_paid:      '#4ade80',
-  pdf_generated:                 '#a78bfa',
-  rfi_created:                   '#fb923c',
-  variation_created:             '#8b5cf6',
-  variation_updated:             '#8b5cf6',
-  variation_submitted:           '#fb923c',
-  variation_instructed:          '#60a5fa',
-  variation_quoted:              '#c084fc',
-  variation_assessed:            '#facc15',
-  variation_approved:            '#4ade80',
-  variation_rejected:            '#f87171',
-  variation_resubmitted:         '#fb923c',
 };
 
 // ─── Programme helpers ────────────────────────────────────────────────────────
@@ -433,7 +417,7 @@ function ProgrammeOverviewWidget({ milestones, projectId }: { milestones: any[];
     : null;
 
   return (
-    <div className="rounded-2xl p-5 flex flex-col gap-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="ss-animate-in rounded-2xl p-5 flex flex-col gap-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <BarChart2 size={14} style={{ color: 'var(--text-muted)' }} />
@@ -462,7 +446,7 @@ function ProgrammeOverviewWidget({ milestones, projectId }: { milestones: any[];
 
       {next ? (
         <div className="rounded-xl p-3" style={{ backgroundColor: 'var(--bg-elevated)' }}>
-          <p className="text-xs mb-0.5" style={{ color: 'var(--text-muted)' }}>Next Milestone</p>
+          <p className="text-xs mb-0.5" style={{ color: 'var(--text-muted)' }}>Next milestone</p>
           <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{next.name}</p>
           {nextDate && (
             <p className="text-xs mt-0.5" style={{ color: daysToNext !== null && daysToNext < 0 ? '#f87171' : daysToNext !== null && daysToNext <= 7 ? '#facc15' : 'var(--text-muted)' }}>
@@ -498,11 +482,10 @@ function ActivityFeed({ activities }: { activities: any[] }) {
     <div className="space-y-0">
       {activities.slice(0, 8).map((a: any, i: number) => {
         const Icon = ACTIVITY_ICONS[a.activity_type] ?? Activity;
-        const color = ACTIVITY_COLORS[a.activity_type] ?? 'var(--text-muted)';
         return (
           <div key={a.id} className="flex gap-3 py-2.5" style={{ borderBottom: i < activities.length - 1 ? '1px solid var(--border)' : 'none' }}>
-            <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5" style={{ backgroundColor: color + '18' }}>
-              <Icon size={13} style={{ color }} />
+            <div className="w-7 h-7 rounded-lg flex-shrink-0 flex items-center justify-center mt-0.5" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+              <Icon size={13} style={{ color: 'var(--text-secondary)' }} />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium truncate" style={{ color: 'var(--text-primary)' }}>{a.title}</p>
@@ -584,7 +567,7 @@ export default function ProjectOverviewPage() {
         </div>
         <div className="grid lg:grid-cols-2 gap-5">
           {[...Array(2)].map((_, i) => (
-            <div key={i} className="rounded-2xl p-5 space-y-3 h-64 animate-pulse" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }} />
+            <div key={i} className="rounded-2xl p-5 space-y-3 h-64 animate-pulse" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }} />
           ))}
         </div>
       </div>
@@ -604,9 +587,12 @@ export default function ProjectOverviewPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-            {project?.name}
-          </h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-[1.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>
+              {project?.name}
+            </h1>
+            <PageTourButton tourKey="page-project-overview" label="Take a tour of this page" />
+          </div>
           <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
             {project?.code} {project?.type ? `· ${project.type}` : ''}
           </p>
@@ -625,11 +611,11 @@ export default function ProjectOverviewPage() {
       </div>
 
       {/* Clickable stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label="Open RFIs"          value={statsData?.open_rfis ?? 0}          color="#f59e0b" icon={MessageSquare} href={`/app/projects/${id}/rfis?status=open`} index={0} />
-        <StatCard label="Pending Variations"  value={statsData?.pending_variations ?? 0}  color="#8b5cf6" icon={GitBranch}     href={`/app/projects/${id}/variations?status=pending`} index={1} />
-        <StatCard label="Payment Apps"        value={statsData?.payment_apps ?? 0}        color="#10b981" icon={DollarSign}    href={`/app/projects/${id}/commercial`} index={2} />
-        <StatCard label="Open Snagging"       value={statsData?.open_snagging ?? 0}       color="#ef4444" icon={AlertCircle}   href={`/app/projects/${id}/snagging`} index={3} />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" data-tour="overview-stats">
+        <StatCard label="Open RFIs"          value={statsData?.open_rfis ?? 0}          icon={MessageSquare} href={`/app/projects/${id}/rfis?status=open`} index={0} />
+        <StatCard label="Pending Variations"  value={statsData?.pending_variations ?? 0}  icon={GitBranch}     href={`/app/projects/${id}/variations?status=pending`} index={1} />
+        <StatCard label="Payment Apps"        value={statsData?.payment_apps ?? 0}        icon={DollarSign}    href={`/app/projects/${id}/commercial`} index={2} />
+        <StatCard label="Open Snagging"       value={statsData?.open_snagging ?? 0}       icon={AlertCircle}   href={`/app/projects/${id}/snagging`} index={3} />
       </div>
 
       {/* Operational intelligence — health + actions (most urgent first) */}
@@ -652,8 +638,10 @@ export default function ProjectOverviewPage() {
 
       {/* Programme & Variation overview */}
       <div className="grid lg:grid-cols-2 gap-5">
-        <ProgrammeOverviewWidget milestones={milestones} projectId={id!} />
-        <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+        <div data-tour="overview-programme">
+          <ProgrammeOverviewWidget milestones={milestones} projectId={id!} />
+        </div>
+        <div className="rounded-2xl p-5" data-tour="overview-variations" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <GitBranch size={14} style={{ color: 'var(--text-muted)' }} />
@@ -667,16 +655,16 @@ export default function ProjectOverviewPage() {
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="rounded-xl p-3 text-center" style={{ backgroundColor: 'var(--bg-elevated)' }}>
-              <p className="text-xl font-bold" style={{ color: 'var(--gold)' }}>{statsData?.pending_variations ?? 0}</p>
+              <p className="text-xl font-bold tabular-nums" style={{ color: 'var(--gold)' }}>{statsData?.pending_variations ?? 0}</p>
               <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Pending</p>
             </div>
             <div className="rounded-xl p-3 text-center" style={{ backgroundColor: 'var(--bg-elevated)' }}>
-              <p className="text-xl font-bold" style={{ color: '#4ade80' }}>{statsData?.approved_variations ?? 0}</p>
+              <p className="text-xl font-bold tabular-nums" style={{ color: '#4ade80' }}>{statsData?.approved_variations ?? 0}</p>
               <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Approved</p>
             </div>
             <div className="rounded-xl p-3 text-center col-span-2" style={{ backgroundColor: 'var(--bg-elevated)' }}>
-              <p className="text-xl font-bold" style={{ color: '#fb923c' }}>{statsData?.variation_programme_days ?? 0}d</p>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Programme Impact</p>
+              <p className="text-xl font-bold tabular-nums" style={{ color: '#fb923c' }}>{statsData?.variation_programme_days ?? 0}d</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Programme impact</p>
             </div>
           </div>
         </div>
@@ -688,21 +676,21 @@ export default function ProjectOverviewPage() {
       {/* Contract value + certified summary */}
       {(statsData?.contract_value || statsData?.total_certified) && (
         <div className="grid grid-cols-2 gap-4">
-          <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Contract Value</p>
-            <p className="text-xl font-bold mt-1" style={{ color: 'var(--gold)' }}>{formatCurrency(statsData?.contract_value ?? 0)}</p>
+          <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Contract value</p>
+            <p className="text-2xl font-bold mt-1 tabular-nums" style={{ color: 'var(--gold)' }}>{formatCurrency(statsData?.contract_value ?? 0)}</p>
           </div>
-          <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Total Certified</p>
-            <p className="text-xl font-bold mt-1" style={{ color: '#4ade80' }}>{formatCurrency(statsData?.total_certified ?? 0)}</p>
+          <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Total certified</p>
+            <p className="text-2xl font-bold mt-1 tabular-nums" style={{ color: '#4ade80' }}>{formatCurrency(statsData?.total_certified ?? 0)}</p>
           </div>
         </div>
       )}
 
       <div className="grid lg:grid-cols-2 gap-5">
         {/* Project details */}
-        <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
-          <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-secondary)' }}>Project Details</h2>
+        <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+          <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-secondary)' }}>Project details</h2>
           <InfoRow label="Project Name"    value={project?.name} />
           <InfoRow label="Project Number"  value={project?.code} />
           <InfoRow label="Type of Work"    value={project?.type} />
@@ -714,8 +702,8 @@ export default function ProjectOverviewPage() {
         </div>
 
         {/* Client info */}
-        <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
-          <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-secondary)' }}>Client Information</h2>
+        <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+          <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-secondary)' }}>Client information</h2>
           {project?.client ? (
             <>
               <InfoRow label="Client Name"    value={project.client.name} />
@@ -734,9 +722,9 @@ export default function ProjectOverviewPage() {
       <RiskSummaryWidget riskSummary={riskSummary} />
 
       {/* Activity timeline */}
-      <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+      <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Recent Activity</h2>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Recent activity</h2>
           <Activity size={14} style={{ color: 'var(--text-muted)' }} />
         </div>
         <ActivityFeed activities={activities} />
@@ -744,7 +732,7 @@ export default function ProjectOverviewPage() {
 
       {/* Description */}
       {project?.description && (
-        <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+        <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
           <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>Description</h2>
           <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
             {project.description}

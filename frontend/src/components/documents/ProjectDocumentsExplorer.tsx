@@ -24,6 +24,8 @@ import toast from 'react-hot-toast';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import GeneratePackageModal from '@/components/documents/GeneratePackageModal';
+import Button from '@/components/ui/Button';
+import PageTourButton from '@/components/tours/PageTourButton';
 
 type DocSource = 'generated' | 'uploaded';
 type ViewMode = 'list' | 'folder';
@@ -161,8 +163,8 @@ function UploadModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }} onClick={onClose}>
       <div
-        className="w-full max-w-md rounded-2xl shadow-xl p-6 space-y-5"
-        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+        className="ss-animate-in w-full max-w-md rounded-2xl p-6 space-y-5"
+        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
@@ -225,7 +227,7 @@ function UploadModal({
             {file ? (
               <div
                 className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg"
-                style={{ backgroundColor: 'rgba(185,149,102,0.08)', border: '1px solid rgba(185,149,102,0.3)' }}
+                style={{ backgroundColor: 'var(--gold-8)', border: '1px solid var(--gold-30)' }}
               >
                 <span className="text-xs truncate" style={{ color: 'var(--text-primary)' }}>{file.name}</span>
                 <button
@@ -287,8 +289,8 @@ function DeleteConfirmModal({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-sm rounded-2xl shadow-xl p-6 space-y-4"
-        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+      <div className="ss-animate-in w-full max-w-sm rounded-2xl p-6 space-y-4"
+        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
         <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Delete Document</h2>
         <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
           Are you sure you want to delete this document?
@@ -305,7 +307,7 @@ function DeleteConfirmModal({
             Cancel
           </button>
           <button onClick={onConfirm} disabled={deleting}
-            className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60"
+            className="px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.98] disabled:opacity-60"
             style={{ backgroundColor: '#ef4444', color: '#fff' }}>
             {deleting ? 'Deleting…' : 'Delete File'}
           </button>
@@ -320,20 +322,22 @@ function FolderCard({
   subtitle,
   meta,
   onClick,
+  index = 0,
 }: {
   title: string;
   subtitle?: string;
   meta?: string;
   onClick: () => void;
+  index?: number;
 }) {
   return (
     <button
       onClick={onClick}
-      className="w-full rounded-xl p-4 text-left transition-colors hover:border-[var(--gold)] group"
-      style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+      className="ss-animate-in w-full rounded-xl p-4 text-left transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-pop)] hover:border-[var(--gold)] hover:-translate-y-0.5 group"
+      style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', animationDelay: `${Math.min(index * 45, 360)}ms` }}
     >
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: 'rgba(185,149,102,0.12)' }}>
+        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: 'var(--gold-15)' }}>
           <Folder size={20} style={{ color: 'var(--gold)' }} />
         </div>
         <div className="min-w-0 flex-1">
@@ -564,19 +568,23 @@ export default function ProjectDocumentsExplorer({ compact = false }: { compact?
       {!compact && (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Documents</h1>
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-[1.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>Documents</h1>
+              <PageTourButton tourKey="page-documents" label="Take a tour of this page" />
+            </div>
             <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Project document library</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" data-tour="documents-header-actions">
             <Link
               href={`/app/projects/${id}/documents/register`}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-colors hover:bg-[var(--bg-hover)]"
+              data-tour="documents-register-link"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all active:scale-[0.98] hover:bg-[var(--bg-hover)]"
               style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
             >
               <ClipboardList size={13} />
               Document Register
             </Link>
-            <div className="flex overflow-hidden rounded-lg" style={{ border: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)' }}>
+            <div className="flex overflow-hidden rounded-full" style={{ border: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)' }}>
               {(['folder', 'list'] as const).map((mode) => (
                 <button
                   key={mode}
@@ -584,7 +592,7 @@ export default function ProjectDocumentsExplorer({ compact = false }: { compact?
                     setViewMode(mode);
                     if (mode === 'folder') setModuleKeyPath(null);
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-all active:scale-[0.97]"
                   style={{
                     backgroundColor: viewMode === mode ? 'var(--gold)' : 'transparent',
                     color: viewMode === mode ? 'var(--accent-fg)' : 'var(--text-muted)',
@@ -598,7 +606,7 @@ export default function ProjectDocumentsExplorer({ compact = false }: { compact?
 
             <button
               onClick={() => setShowUploadModal(true)}
-              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-opacity hover:opacity-90"
+              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all active:scale-[0.98] hover:opacity-90"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
             >
               <Upload size={15} />
@@ -617,7 +625,7 @@ export default function ProjectDocumentsExplorer({ compact = false }: { compact?
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex overflow-hidden rounded-lg" style={{ border: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)' }}>
+            <div className="flex overflow-hidden rounded-full" style={{ border: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)' }}>
               {(['folder', 'list'] as const).map((mode) => (
                 <button
                   key={mode}
@@ -625,7 +633,7 @@ export default function ProjectDocumentsExplorer({ compact = false }: { compact?
                     setViewMode(mode);
                     if (mode === 'folder') setModuleKeyPath(null);
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-all active:scale-[0.97]"
                   style={{
                     backgroundColor: viewMode === mode ? 'var(--gold)' : 'transparent',
                     color: viewMode === mode ? 'var(--accent-fg)' : 'var(--text-muted)',
@@ -638,7 +646,7 @@ export default function ProjectDocumentsExplorer({ compact = false }: { compact?
             </div>
             <button
               onClick={() => setShowUploadModal(true)}
-              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-opacity hover:opacity-90"
+              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all active:scale-[0.98] hover:opacity-90"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
             >
               <Upload size={15} />
@@ -674,13 +682,14 @@ export default function ProjectDocumentsExplorer({ compact = false }: { compact?
               <EmptyState title="No documents uploaded for this project yet" body="Upload the main contract to get started." />
             ) : (
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                {moduleFolders.map((module) => (
+                {moduleFolders.map((module, index) => (
                   <FolderCard
                     key={module.key}
                     title={module.name}
                     subtitle={`${module.files_count} file${module.files_count !== 1 ? 's' : ''}`}
                     meta={module.last_updated ? formatDate(module.last_updated) : undefined}
                     onClick={() => setModuleKeyPath(module.key)}
+                    index={index}
                   />
                 ))}
               </div>
@@ -691,12 +700,13 @@ export default function ProjectDocumentsExplorer({ compact = false }: { compact?
             </div>
           ) : showSubfolders ? (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-              {subfolders.map((folder) => (
+              {subfolders.map((folder, index) => (
                 <FolderCard
                   key={folder.key}
                   title={folder.name}
                   subtitle={`${folder.files_count} file${folder.files_count !== 1 ? 's' : ''}`}
                   onClick={() => setModuleKeyPath(folder.key)}
+                  index={index}
                 />
               ))}
             </div>
@@ -705,13 +715,14 @@ export default function ProjectDocumentsExplorer({ compact = false }: { compact?
               <EmptyState title="No trade packages yet" body="Trade package folders will appear here once they are created." />
             ) : (
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                {tradePackages.map((tradePackage) => (
+                {tradePackages.map((tradePackage, index) => (
                   <FolderCard
                     key={tradePackage.id}
                     title={tradePackage.name}
                     subtitle={`${tradePackage.files_count} file${tradePackage.files_count !== 1 ? 's' : ''}`}
                     meta={tradePackage.package_reference ?? tradePackage.package_code ?? undefined}
                     onClick={() => setModuleKeyPath(tradePackage.key)}
+                    index={index}
                   />
                 ))}
               </div>
@@ -764,9 +775,9 @@ export default function ProjectDocumentsExplorer({ compact = false }: { compact?
                                   <span className="max-w-[240px] truncate text-xs font-medium" style={{ color: 'var(--text-primary)' }}>{file.original_name}</span>
                                 </div>
                               </td>
-                              <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{formatBytes(file.file_size)}</td>
+                              <td className="px-4 py-3 text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>{formatBytes(file.file_size)}</td>
                               <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{file.uploader?.name ?? '—'}</td>
-                              <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{formatDate(file.created_at)}</td>
+                              <td className="px-4 py-3 text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>{formatDate(file.created_at)}</td>
                               <td className="px-4 py-3">
                                 <div className="flex items-center gap-2">
                                   <button
@@ -826,9 +837,9 @@ export default function ProjectDocumentsExplorer({ compact = false }: { compact?
                                     </div>
                                   </td>
                                   <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{doc.reference_number ?? '—'}</td>
-                                  <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{formatBytes(doc.file_size)}</td>
+                                  <td className="px-4 py-3 text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>{formatBytes(doc.file_size)}</td>
                                   <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{doc.creator?.name ?? '—'}</td>
-                                  <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{formatDate(doc.created_at)}</td>
+                                  <td className="px-4 py-3 text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>{formatDate(doc.created_at)}</td>
                                   <td className="px-4 py-3">
                                     <div className="flex items-center gap-2">
                                       <button
@@ -892,7 +903,7 @@ export default function ProjectDocumentsExplorer({ compact = false }: { compact?
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search…"
                 className="rounded-lg py-2 pl-9 pr-4 text-sm outline-none"
-                style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)', minWidth: '200px' }}
+                style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)', minWidth: '200px', boxShadow: 'var(--shadow-card)' }}
               />
             </div>
           </div>
@@ -909,7 +920,7 @@ export default function ProjectDocumentsExplorer({ compact = false }: { compact?
             )}
           </div>
 
-          <div className="overflow-hidden rounded-2xl" style={{ border: '1px solid var(--border)' }}>
+          <div className="overflow-hidden rounded-2xl" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
             <div className="grid grid-cols-[2.3fr_1fr_1fr_1fr_auto] gap-4 px-5 py-3 text-xs font-medium uppercase tracking-wider" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
               <span>Name</span>
               <span>Type</span>
@@ -922,7 +933,7 @@ export default function ProjectDocumentsExplorer({ compact = false }: { compact?
             ) : (
               <div className="divide-y" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-surface)' }}>
                 {filteredItems.map((item) => (
-                  <div key={item.id} className="grid grid-cols-[2.3fr_1fr_1fr_1fr_auto] gap-4 items-center px-5 py-3">
+                  <div key={item.id} className="grid grid-cols-[2.3fr_1fr_1fr_1fr_auto] gap-4 items-center px-5 py-3 transition-colors hover:bg-[var(--bg-hover)]">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <FileTypeBadge name={item.original_name || item.file_name} mimeType={item.mime_type} />
                       <div className="min-w-0">
@@ -938,7 +949,7 @@ export default function ProjectDocumentsExplorer({ compact = false }: { compact?
                       {docSource === 'uploaded' ? 'Upload' : item.type || 'Document'}
                     </span>
                     <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{currentFolder?.name || 'All'}</span>
-                    <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{formatDate(item.created_at)}</span>
+                    <span className="text-sm tabular-nums" style={{ color: 'var(--text-muted)' }}>{formatDate(item.created_at)}</span>
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => setPreviewTarget({

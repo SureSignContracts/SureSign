@@ -218,7 +218,8 @@ class VariationController extends Controller
             NotificationService::VARIATION_SUBMITTED,
             "Variation #{$variation->variation_number} Submitted",
             "Variation #{$variation->variation_number} \"{$variation->title}\" has been submitted.",
-            'variation.submitted'
+            'variation.submitted',
+            $variation
         );
 
         return response()->json($variation->fresh()->load('creator:id,name'));
@@ -254,7 +255,8 @@ class VariationController extends Controller
             NotificationService::VARIATION_INSTRUCTED,
             "Variation #{$variation->variation_number} Instructed",
             "Variation #{$variation->variation_number} \"{$variation->title}\" has been formally instructed. Quotation due: {$this->formatDate($variation->quotation_due_date)}.",
-            'variation.instructed'
+            'variation.instructed',
+            $variation
         );
 
         return response()->json($variation->fresh()->load('creator:id,name'));
@@ -293,7 +295,8 @@ class VariationController extends Controller
             NotificationService::VARIATION_QUOTED,
             "Quotation Received — Variation #{$variation->variation_number}",
             "Quotation received for Variation #{$variation->variation_number} \"{$variation->title}\".",
-            'variation.quoted'
+            'variation.quoted',
+            $variation
         );
 
         return response()->json($variation->fresh()->load('creator:id,name'));
@@ -333,7 +336,8 @@ class VariationController extends Controller
             "Variation #{$variation->variation_number} Assessed",
             "Variation #{$variation->variation_number} \"{$variation->title}\" has been assessed."
                 . ($assessedAmount ? " Counter-assessed value: {$this->formatAmount($assessedAmount)}." : ''),
-            'variation.assessed'
+            'variation.assessed',
+            $variation
         );
 
         return response()->json($variation->fresh()->load('creator:id,name'));
@@ -373,7 +377,8 @@ class VariationController extends Controller
             NotificationService::VARIATION_APPROVED,
             "Variation #{$variation->variation_number} Approved",
             "Variation #{$variation->variation_number} \"{$variation->title}\" has been approved. Agreed amount: {$this->formatAmount($variation->agreed_amount)}.",
-            'variation.approved'
+            'variation.approved',
+            $variation
         );
 
         return response()->json($variation->fresh()->load('creator:id,name'));
@@ -409,7 +414,8 @@ class VariationController extends Controller
             NotificationService::VARIATION_REJECTED,
             "Variation #{$variation->variation_number} Rejected",
             "Variation #{$variation->variation_number} \"{$variation->title}\" has been rejected. Reason: {$validated['rejection_reason']}",
-            'variation.rejected'
+            'variation.rejected',
+            $variation
         );
 
         return response()->json($variation->fresh()->load('creator:id,name'));
@@ -462,7 +468,8 @@ class VariationController extends Controller
             NotificationService::VARIATION_RESUBMITTED,
             "Variation #{$variation->variation_number} Resubmitted",
             "Variation #{$variation->variation_number} \"{$variation->title}\" has been resubmitted.",
-            'variation.resubmitted'
+            'variation.resubmitted',
+            $variation
         );
 
         return response()->json($variation->fresh()->load('creator:id,name'));
@@ -543,10 +550,10 @@ class VariationController extends Controller
         );
     }
 
-    private function notify($user, string $type, string $title, string $message, string $emailEvent): void
+    private function notify($user, string $type, string $title, string $message, string $emailEvent, ?Variation $variation = null): void
     {
         NotificationService::send($user, $type, $title, $message);
-        EmailNotificationService::send($emailEvent, $title, $message);
+        EmailNotificationService::send($emailEvent, $title, $message, [], $variation?->organization);
     }
 
     private function formatDate($date): string

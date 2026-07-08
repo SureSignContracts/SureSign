@@ -61,7 +61,7 @@ export default function CountUp({
   }, [value, duration, delay]);
 
   return (
-    <span className={className} style={style}>
+    <span className={`tabular-nums ${className ?? ''}`} style={style}>
       {display.toLocaleString()}
     </span>
   );

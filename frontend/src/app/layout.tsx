@@ -1,12 +1,13 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import Providers from './providers';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+const geistSans = Geist({ subsets: ['latin'], variable: '--font-sans' });
+const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-mono' });
 
 export const metadata: Metadata = {
-  title: 'SureSign – Construction Contract Administration',
+  title: 'SureSign Contracts – Construction Contract Administration',
   description: 'AI-powered construction administration & contract management platform',
   icons: {
     icon: '/favicon.ico',
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={inter.variable} suppressHydrationWarning>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <head>
         {/* Inline script prevents flash of wrong theme/accent before React hydrates */}
         <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('suresign-theme')||'light';document.documentElement.setAttribute('data-theme',t);}catch(e){}` }} />

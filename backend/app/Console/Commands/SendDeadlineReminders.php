@@ -50,7 +50,7 @@ class SendDeadlineReminders extends Command
 
                 $apps = PaymentApplication::whereDate($field, $targetDate)
                     ->whereNotIn('status', $excludedStatuses)
-                    ->with('contract.project', 'createdBy')
+                    ->with('contract.project', 'createdBy', 'organization')
                     ->get();
 
                 foreach ($apps as $app) {
@@ -63,7 +63,7 @@ class SendDeadlineReminders extends Command
                     $emailBody    = "{$label} for {$appRef} ({$contractTitle}) is due {$daysText} on {$targetDate}.";
 
                     // Email reminder
-                    EmailNotificationService::send('deadline.reminder', $emailSubject, $emailBody);
+                    EmailNotificationService::send('deadline.reminder', $emailSubject, $emailBody, [], $app->organization);
 
                     // In-app notification for the PA creator (if resolved)
                     $user = $app->createdBy ?? null;

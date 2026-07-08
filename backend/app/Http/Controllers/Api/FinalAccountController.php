@@ -284,7 +284,7 @@ class FinalAccountController extends Controller
                 'isDraft'      => $isDraft,
             ],
             $title,
-            'final_account_statement', '02_Commercial', $finalAccount->reference, $finalAccount
+            'final_account_statement', '02_Commercial', $finalAccount->reference, $finalAccount, false, $finalAccount->tradePackage
         );
 
         ProjectActivityService::record(
@@ -323,7 +323,7 @@ class FinalAccountController extends Controller
                 'issuedBy'           => $request->user(),
             ],
             "Final Certificate — {$finalAccount->reference}",
-            'final_certificate', '02_Commercial', $certificateNumber, $finalAccount
+            'final_certificate', '02_Commercial', $certificateNumber, $finalAccount, false, $finalAccount->tradePackage
         );
 
         ProjectActivityService::record(

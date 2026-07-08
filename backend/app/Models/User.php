@@ -17,7 +17,8 @@ class User extends Authenticatable
         'organization_id', 'name', 'first_name', 'last_name',
         'email', 'phone', 'job_title', 'avatar', 'password',
         'address', 'city', 'province', 'postal_code', 'country',
-        'is_active', 'last_login_at',
+        'is_active', 'last_login_at', 'email_verified_at',
+        'banned_at', 'banned_reason', 'must_change_password', 'tours_reset_at',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -25,11 +26,19 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'last_login_at'     => 'datetime',
-            'password'          => 'hashed',
-            'is_active'         => 'boolean',
+            'email_verified_at'     => 'datetime',
+            'last_login_at'         => 'datetime',
+            'password'              => 'hashed',
+            'is_active'             => 'boolean',
+            'banned_at'             => 'datetime',
+            'must_change_password'  => 'boolean',
+            'tours_reset_at'        => 'datetime',
         ];
+    }
+
+    public function isBanned(): bool
+    {
+        return $this->banned_at !== null;
     }
 
     public function organization() { return $this->belongsTo(Organization::class); }

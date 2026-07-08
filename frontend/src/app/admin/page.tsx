@@ -57,7 +57,7 @@ export default function AdminDashboardPage() {
             {greeting()}, {firstName}
           </h1>
           <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>
-            Platform overview for SureSign.
+            Platform overview for SureSign Contracts.
           </p>
         </div>
         <span
@@ -71,24 +71,24 @@ export default function AdminDashboardPage() {
       {/* ── Stats ──────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Companies',  value: s.total_companies ?? 0, sub: 'on the platform',           icon: Building2,    color: '#3b82f6', href: '/admin/companies' },
-          { label: 'Projects',   value: s.total_projects   ?? 0, sub: `${s.active_projects ?? 0} active`, icon: FolderKanban, color: '#10b981', href: '/admin/projects'  },
-          { label: 'Users',      value: s.total_users      ?? 0, sub: 'registered accounts',      icon: Users,        color: '#8b5cf6', href: '/admin/users'     },
-          { label: 'Documents',  value: s.total_documents  ?? 0, sub: 'uploaded files',           icon: FileText,     color: '#f59e0b', href: '/admin/documents' },
+          { label: 'Companies',  value: s.total_companies ?? 0, sub: 'on the platform',           icon: Building2,    href: '/admin/companies' },
+          { label: 'Projects',   value: s.total_projects   ?? 0, sub: `${s.active_projects ?? 0} active`, icon: FolderKanban, href: '/admin/projects'  },
+          { label: 'Users',      value: s.total_users      ?? 0, sub: 'registered accounts',      icon: Users,        href: '/admin/users'     },
+          { label: 'Documents',  value: s.total_documents  ?? 0, sub: 'uploaded files',           icon: FileText,     href: '/admin/documents' },
         ].map((item, i) => (
           <Link
             key={item.label}
             href={item.href}
-            className="group ss-animate-in rounded-2xl p-5 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
+            className="group ss-animate-in rounded-2xl p-5 transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-pop)] hover:-translate-y-0.5"
             style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', animationDelay: `${i * 70}ms` }}
           >
             <div className="flex items-center justify-between mb-4">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center transition-transform duration-200 group-hover:scale-110" style={{ backgroundColor: item.color + '15' }}>
-                <item.icon size={16} style={{ color: item.color }} />
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center transition-transform duration-200 group-hover:scale-110" style={{ backgroundColor: 'var(--gold-15)' }}>
+                <item.icon size={16} style={{ color: 'var(--gold)' }} />
               </div>
               <ChevronRight size={14} className="opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" style={{ color: 'var(--text-muted)' }} />
             </div>
-            <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+            <p className="text-2xl font-bold tabular-nums" style={{ color: 'var(--text-primary)' }}>
               {isLoading ? '–' : <CountUp value={item.value} delay={i * 70} />}
             </p>
             <p className="text-sm mt-1 font-medium" style={{ color: 'var(--text-secondary)' }}>{item.label}</p>
@@ -100,25 +100,25 @@ export default function AdminDashboardPage() {
       {/* ── Quick Actions ──────────────────────────────────── */}
       <div>
         <h2 className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: 'var(--text-muted)' }}>
-          Quick Actions
+          Quick actions
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {[
-            { label: 'New Company',  icon: Plus,           href: '/admin/companies',  color: '#3b82f6' },
-            { label: 'New Project',  icon: FolderKanban,   href: '/admin/projects',   color: '#10b981' },
-            { label: 'Templates',    icon: LayoutTemplate, href: '/admin/templates',  color: '#8b5cf6' },
-            { label: 'Users',        icon: Users,          href: '/admin/users',      color: '#ec4899' },
-            { label: 'Storage',      icon: HardDrive,      href: '/admin/storage',    color: '#f59e0b' },
-            { label: 'AI / Prompts', icon: Cpu,            href: '/admin/prompts',    color: '#6366f1' },
+            { label: 'New company',  icon: Plus,           href: '/admin/companies' },
+            { label: 'New project',  icon: FolderKanban,   href: '/admin/projects'  },
+            { label: 'Templates',    icon: LayoutTemplate, href: '/admin/templates' },
+            { label: 'Users',        icon: Users,          href: '/admin/users'     },
+            { label: 'Storage',      icon: HardDrive,      href: '/admin/storage'   },
+            { label: 'AI / Prompts', icon: Cpu,            href: '/admin/prompts'   },
           ].map((item, i) => (
             <Link
               key={item.label}
               href={item.href}
-              className="group ss-animate-in flex flex-col items-center gap-2 p-4 rounded-2xl text-center transition-all duration-200 hover:shadow-sm hover:-translate-y-0.5"
+              className="group ss-animate-in flex flex-col items-center gap-2 p-4 rounded-2xl text-center transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-pop)] hover:-translate-y-0.5"
               style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', animationDelay: `${280 + i * 50}ms` }}
             >
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center transition-transform duration-200 group-hover:scale-110" style={{ backgroundColor: item.color + '15' }}>
-                <item.icon size={16} style={{ color: item.color }} />
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center transition-transform duration-200 group-hover:scale-110" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+                <item.icon size={16} style={{ color: 'var(--text-secondary)' }} />
               </div>
               <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>{item.label}</span>
             </Link>
@@ -130,10 +130,10 @@ export default function AdminDashboardPage() {
       <div className="grid lg:grid-cols-2 gap-5">
 
         {/* Companies */}
-        <div className="ss-animate-in rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', animationDelay: '600ms' }}>
+        <div className="ss-animate-in rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '600ms' }}>
           <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
-            <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Recent Companies</h3>
-            <Link href="/admin/companies" className="flex items-center gap-1 text-xs hover:opacity-75 transition-opacity" style={{ color: 'var(--text-gold)' }}>
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Recent companies</h3>
+            <Link href="/admin/companies" className="flex items-center gap-1 text-xs hover:opacity-75 transition-opacity" style={{ color: 'var(--gold)' }}>
               View all <ArrowRight size={11} />
             </Link>
           </div>
@@ -162,10 +162,10 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Projects */}
-        <div className="ss-animate-in rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', animationDelay: '680ms' }}>
+        <div className="ss-animate-in rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '680ms' }}>
           <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
-            <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Recent Projects</h3>
-            <Link href="/admin/projects" className="flex items-center gap-1 text-xs hover:opacity-75 transition-opacity" style={{ color: 'var(--text-gold)' }}>
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Recent projects</h3>
+            <Link href="/admin/projects" className="flex items-center gap-1 text-xs hover:opacity-75 transition-opacity" style={{ color: 'var(--gold)' }}>
               View all <ArrowRight size={11} />
             </Link>
           </div>
@@ -201,9 +201,9 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* ── Recent Activity ────────────────────────────────── */}
-      <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+      <div className="ss-animate-in rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '760ms' }}>
         <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
-          <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Recent Activity</h3>
+          <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Recent activity</h3>
         </div>
         {isLoading ? (
           <div className="p-5 space-y-3">

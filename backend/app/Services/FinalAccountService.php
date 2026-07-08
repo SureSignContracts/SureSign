@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Contract;
 use App\Models\FinalAccount;
 use App\Models\FinalAccountItem;
+use App\Models\LossAndExpenseClaim;
 use App\Models\PayLessNotice;
 use App\Models\PaymentApplication;
 use App\Models\RetentionRelease;
@@ -134,6 +135,29 @@ class FinalAccountService
                 'sort_order'       => $sortOrder++,
             ]);
         }
+
+        // 4. Agreed Loss & Expense claims that were agreed before this Final
+        // Account existed (LossAndExpenseClaimController::decide() creates the
+        // item immediately when a Final Account already exists — this only
+        // catches the ones that couldn't be, so nothing is lost either way).
+        $agreedClaims = LossAndExpenseClaim::where('contract_id', $contract->id)
+            ->where('status', 'agreed')
+            ->whereNull('final_account_item_id')
+            ->get();
+
+        foreach ($agreedClaims as $claim) {
+            $item = FinalAccountItem::create([
+                'final_account_id' => $fa->id,
+                'category'         => FinalAccount::CATEGORY_LOSS_AND_EXPENSE,
+                'description'      => "L&E Claim #{$claim->claim_number} — {$claim->title}",
+                'source_type'      => 'loss_and_expense_claim',
+                'source_id'        => $claim->id,
+                'amount'           => $claim->amount_agreed ?? 0,
+                'is_auto_seeded'   => true,
+                'sort_order'       => $sortOrder++,
+            ]);
+            $claim->update(['final_account_item_id' => $item->id]);
+        }
     }
 
     /**
@@ -188,6 +212,25 @@ class FinalAccountService
                 'is_auto_seeded'   => true,
                 'sort_order'       => $sortOrder++,
             ]);
+        }
+
+        $agreedClaims = LossAndExpenseClaim::where('trade_package_id', $package->id)
+            ->where('status', 'agreed')
+            ->whereNull('final_account_item_id')
+            ->get();
+
+        foreach ($agreedClaims as $claim) {
+            $item = FinalAccountItem::create([
+                'final_account_id' => $fa->id,
+                'category'         => FinalAccount::CATEGORY_LOSS_AND_EXPENSE,
+                'description'      => "L&E Claim #{$claim->claim_number} — {$claim->title}",
+                'source_type'      => 'loss_and_expense_claim',
+                'source_id'        => $claim->id,
+                'amount'           => $claim->amount_agreed ?? 0,
+                'is_auto_seeded'   => true,
+                'sort_order'       => $sortOrder++,
+            ]);
+            $claim->update(['final_account_item_id' => $item->id]);
         }
     }
 

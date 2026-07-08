@@ -30,6 +30,10 @@ class AuthController extends Controller
             return response()->json(['message' => 'Your account has been deactivated.'], 403);
         }
 
+        if ($user->isBanned()) {
+            return response()->json(['message' => 'Your account has been banned.'], 403);
+        }
+
         $user->update(['last_login_at' => now()]);
 
         $token = $user->createToken('suresign-token')->plainTextToken;
@@ -76,6 +80,35 @@ class AuthController extends Controller
         return response()->json(['message' => 'Password updated.']);
     }
 
+    // Used only for the admin-forced "must change password" flow — the user
+    // is already authenticated via a valid token, so no current_password is
+    // required, but the must_change_password flag (settable only by a Super
+    // Admin action) gates this endpoint so it can't be used as a bypass for
+    // the ordinary current-password-required change flow above.
+    public function forcePasswordChange(Request $request)
+    {
+        $user = $request->user();
+
+        if (! $user->must_change_password) {
+            return response()->json(['message' => 'Password change is not required.'], 422);
+        }
+
+        $request->validate([
+            'password' => [
+                'required',
+                'confirmed',
+                Password::min(8)->mixedCase()->numbers()->symbols(),
+            ],
+        ]);
+
+        $user->update([
+            'password'              => Hash::make($request->password),
+            'must_change_password'  => false,
+        ]);
+
+        return response()->json(['message' => 'Password updated.', 'user' => $this->userResource($user->fresh())]);
+    }
+
     private function userResource(User $user): array
     {
         return [
@@ -94,6 +127,11 @@ class AuthController extends Controller
             'country'     => $user->country,
             'roles'       => $user->getRoleNames(),
             'permissions' => $user->getAllPermissions()->pluck('name'),
+            'email_verified_at'    => $user->email_verified_at,
+            'is_active'            => $user->is_active,
+            'banned_at'            => $user->banned_at,
+            'must_change_password' => $user->must_change_password,
+            'tours_reset_at'       => $user->tours_reset_at,
             'organization' => $user->organization ? [
                 'id'           => $user->organization->id,
                 'name'         => $user->organization->name,

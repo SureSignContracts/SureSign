@@ -8,6 +8,8 @@ import AppSidebar from '@/components/layout/AppSidebar';
 import MobileTopBar from '@/components/layout/MobileTopBar';
 import SureSignLoader from '@/components/ui/SureSignLoader';
 import AiAnalysisWidget from '@/components/ai/AiAnalysisWidget';
+import GlobalTourLauncher from '@/components/tours/GlobalTourLauncher';
+import ForcePasswordChangeGate from '@/components/auth/ForcePasswordChangeGate';
 import api from '@/lib/api';
 
 function isLightColor(hex: string): boolean {
@@ -90,6 +92,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return <SureSignLoader />;
   }
 
+  // A Super Admin forced a password reset (or set a temp password requiring
+  // one) — block everything else until it's changed.
+  if (user.must_change_password) {
+    return <ForcePasswordChangeGate />;
+  }
+
   // On the onboarding page, don't show the sidebar
   if (pathname === '/app/onboarding') {
     return <>{children}</>;
@@ -121,6 +129,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Global — persists across all app pages so analysis progress stays visible
           even after navigating away from the project. */}
       <AiAnalysisWidget />
+      <GlobalTourLauncher />
     </div>
   );
 }

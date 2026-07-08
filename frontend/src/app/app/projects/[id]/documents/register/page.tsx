@@ -119,12 +119,12 @@ export default function DocumentRegisterPage() {
         </div>
 
         {/* Type filter pills */}
-        <div className="flex flex-wrap gap-1 p-1 rounded-lg" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+        <div className="flex flex-wrap gap-1 p-1 rounded-full" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
           {typeOptions.map(t => (
             <button
               key={t}
               onClick={() => handleTypeFilter(t)}
-              className="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+              className="px-3 py-1.5 rounded-full text-xs font-medium transition-all active:scale-[0.97]"
               style={
                 typeFilter === t
                   ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
@@ -206,7 +206,7 @@ export default function DocumentRegisterPage() {
                     className="hover:bg-[var(--bg-hover)] transition-colors"
                     style={{ borderBottom: '1px solid var(--border)' }}
                   >
-                    <td className="px-5 py-3 font-mono text-xs font-semibold" style={{ color: 'var(--gold)' }}>
+                    <td className="px-5 py-3 font-mono text-[11px] font-semibold" style={{ color: 'var(--gold)' }}>
                       {entry.document_number ?? '—'}
                     </td>
                     <td className="px-5 py-3 font-medium max-w-[280px] truncate" style={{ color: 'var(--text-primary)' }}>
@@ -223,7 +223,7 @@ export default function DocumentRegisterPage() {
                     <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
                       {entry.package_name ?? '—'}
                     </td>
-                    <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+                    <td className="px-5 py-3 text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
                       {entry.document_date ? formatDate(entry.document_date) : '—'}
                     </td>
                   </tr>
@@ -237,7 +237,7 @@ export default function DocumentRegisterPage() {
       {/* Pagination */}
       {!isLoading && lastPage > 1 && (
         <div className="flex items-center justify-between">
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          <p className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
             Page {meta?.current_page} of {lastPage} &mdash; {meta?.total} total
           </p>
           <div className="flex gap-2">

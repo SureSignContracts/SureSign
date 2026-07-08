@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Download, ExternalLink, X } from 'lucide-react';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
+import Button from '@/components/ui/Button';
 
 export type PreviewTarget = {
   id: number;
@@ -240,14 +241,10 @@ export default function DocumentPreviewModal({
           style={{ borderTop: '1px solid var(--border)', backgroundColor: 'var(--bg-elevated)' }}
         >
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleDownload}
-              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-opacity hover:opacity-90"
-              style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
-            >
+            <Button onClick={handleDownload}>
               <Download size={14} />
               Download
-            </button>
+            </Button>
             {canOpenNewTab && (
               <button
                 onClick={handleOpenNewTab}

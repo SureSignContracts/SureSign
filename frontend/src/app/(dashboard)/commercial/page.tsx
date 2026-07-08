@@ -50,10 +50,10 @@ export default function CommercialPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 rounded-lg mb-6 w-fit" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+      <div className="flex gap-1 p-1 rounded-full mb-6 w-fit" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
         {(['payment-applications', 'variations'] as Tab[]).map((t) => (
           <button key={t} onClick={() => setTab(t)}
-            className="px-4 py-2 rounded-md text-sm font-medium transition-all"
+            className="px-4 py-2 rounded-full text-sm font-medium transition-all active:scale-[0.97]"
             style={tab === t
               ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
               : { color: 'var(--text-secondary)' }
@@ -85,7 +85,7 @@ export default function CommercialPage() {
                     style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)' }}
                   >
                     <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                         style={{ backgroundColor: 'rgba(185,149,102,0.1)' }}>
+                         style={{ backgroundColor: 'var(--gold-15)' }}>
                       <DollarSign size={18} style={{ color: 'var(--gold)' }} />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -135,7 +135,7 @@ export default function CommercialPage() {
                     style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)' }}
                   >
                     <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                         style={{ backgroundColor: 'rgba(185,149,102,0.1)' }}>
+                         style={{ backgroundColor: 'var(--gold-15)' }}>
                       <GitBranch size={18} style={{ color: 'var(--gold)' }} />
                     </div>
                     <div className="flex-1 min-w-0">

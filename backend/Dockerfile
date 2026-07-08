@@ -27,6 +27,8 @@ COPY . .
 RUN mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions storage/framework/views storage/logs \
     && chmod -R 775 bootstrap/cache storage
 
+COPY docker/php.ini /usr/local/etc/php/conf.d/suresign-uploads.ini
+
 RUN composer install --optimize-autoloader --no-interaction \
     && php artisan package:discover --ansi
 

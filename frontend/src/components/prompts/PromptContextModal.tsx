@@ -368,12 +368,12 @@ export default function PromptContextModal({
   if (!template && templateId) {
     return (
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center"
+        className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm"
         style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
       >
         <div
-          className="rounded-2xl p-8 flex items-center gap-3"
-          style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+          className="rounded-2xl p-8 flex items-center gap-3 ss-animate-in"
+          style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}
         >
           <RefreshCw size={16} className="animate-spin" style={{ color: 'var(--text-muted)' }} />
           <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Loading prompt…</span>
@@ -392,8 +392,8 @@ export default function PromptContextModal({
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
-        className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl overflow-hidden"
-        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+        className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl overflow-hidden ss-animate-in"
+        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}
       >
         {/* ── Header ── */}
         <div
@@ -405,7 +405,7 @@ export default function PromptContextModal({
               {template.is_featured && (
                 <span
                   className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                  style={{ backgroundColor: 'rgba(185,149,102,0.15)', color: 'var(--gold)' }}
+                  style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}
                 >
                   <Star size={9} /> Featured
                 </span>
@@ -472,7 +472,7 @@ export default function PromptContextModal({
                 </div>
                 <span
                   className="text-[10px] px-2 py-1 rounded-full"
-                  style={{ backgroundColor: 'rgba(185,149,102,0.12)', color: 'var(--gold)', border: '1px solid rgba(185,149,102,0.3)' }}
+                  style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)', border: '1px solid var(--gold-30)' }}
                 >
                   Project context auto-filled
                 </span>
@@ -589,7 +589,7 @@ export default function PromptContextModal({
               {selectedProjectId && !renderLoading && (
                 <span
                   className="text-[10px] px-2 py-0.5 rounded-full"
-                  style={{ backgroundColor: 'rgba(185,149,102,0.12)', color: 'var(--gold)' }}
+                  style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}
                 >
                   Context filled
                 </span>
@@ -641,7 +641,7 @@ export default function PromptContextModal({
             <button
               onClick={handleCopyRendered}
               disabled={renderLoading}
-              className="flex items-center gap-1.5 text-sm px-4 py-2 rounded-lg font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
+              className="flex items-center gap-1.5 text-sm px-4 py-2 rounded-lg font-medium transition-opacity hover:opacity-90 disabled:opacity-50 active:scale-[0.98]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
             >
               {copiedRendered ? <Check size={14} /> : <Copy size={14} />}

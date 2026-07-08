@@ -25,6 +25,10 @@ class CalendarController extends Controller
         'obligation'      => '#e879f9',
         'milestone'       => '#94a3b8',
         'final_account'   => '#facc15',
+        'delay_event'     => '#fb923c',
+        'eot_request'     => '#60a5fa',
+        'loss_and_expense'=> '#e879f9',
+        'retention'       => '#34d399',
     ];
 
     public function __construct(private OperationalIntelligenceService $intelligence) {}
@@ -35,6 +39,21 @@ class CalendarController extends Controller
 
         if (!$user->hasRole('Super Admin') && !$user->hasRole('Admin') && $user->organization_id !== $project->organization_id) {
             abort(403);
+        }
+
+        // Trade-package-scoped summary (Sprint 6C) — a distinct, self-contained code
+        // path rather than threading a conditional through sections A-D below, since
+        // OperationalIntelligenceService::getItemsForTradePackage() already returns a
+        // complete, correctly-scoped item set (no per-section carve-outs needed).
+        if ($request->filled('trade_package_id')) {
+            $tradePackage = \App\Models\TradePackage::where('project_id', $project->id)
+                ->find($request->query('trade_package_id'));
+
+            if (!$tradePackage) {
+                return response()->json(['message' => 'Trade package not found for this project.'], 404);
+            }
+
+            return $this->tradePackageEvents($project, $tradePackage);
         }
 
         $events = [];
@@ -96,10 +115,11 @@ class CalendarController extends Controller
             ->with('contract:id,title')
             ->get();
 
-        $paymentActionUrl = "/app/projects/{$project->id}/commercial?tab=applications";
-
         foreach ($payApps as $app) {
             $contractTitle = $app->contract->title ?? null;
+            $paymentActionUrl = \App\Services\TradePackages\WorkspaceNavigationResolver::actionUrl(
+                $project->id, \App\Models\CalendarEvent::SOURCE_PAYMENT_APPLICATION, $app->id, $app->trade_package_id
+            );
 
             if (!empty($app->application_date)) {
                 $days = $this->daysFromToday($app->application_date);
@@ -170,12 +190,13 @@ class CalendarController extends Controller
             ->with('contract:id,title')
             ->get();
 
-        $milestoneActionUrl = "/app/projects/{$project->id}/programme";
-
         foreach ($milestones as $m) {
             $date = $m->actual_date ?? $m->forecast_date ?? $m->planned_date;
             if (!$date) continue;
             $contractTitle = $m->contract?->title ?? null;
+            $milestoneActionUrl = \App\Services\TradePackages\WorkspaceNavigationResolver::actionUrl(
+                $project->id, \App\Models\CalendarEvent::SOURCE_PROGRAMME_MILESTONE, $m->id, $m->trade_package_id
+            );
             $type = in_array($m->milestone_type, ['commencement','completion'])
                 ? $m->milestone_type
                 : 'milestone';
@@ -230,10 +251,11 @@ class CalendarController extends Controller
             ->map(fn($fa) => $fa->contract->title ?? $fa->tradePackage->name ?? null);
 
         foreach ($faItems as $item) {
-            // Deep-links to the specific Final Account card — mirrors
-            // NotificationEngineService's 'final_account' URL + &fa={id} pattern
-            // so calendar, notification, and dashboard consumers land in the same place.
-            $faActionUrl = "/app/projects/{$project->id}/commercial?tab=final-account&fa={$item['source_id']}";
+            // Routes to the Trade Package Workspace Commercial tab when this
+            // Final Account belongs to a trade package, otherwise to the
+            // project Commercial tab's Final Account card — computed by
+            // OperationalIntelligenceService via WorkspaceNavigationResolver.
+            $faActionUrl = $item['action_url'];
 
             $events[] = $this->makeEvent(
                 "final-account-{$item['source_id']}-{$item['source_field']}",
@@ -252,6 +274,67 @@ class CalendarController extends Controller
         }
 
         // Filter out any events with null dates
+        $events = array_values(array_filter($events, fn($e) => !empty($e['date'])));
+
+        return response()->json(['data' => $events]);
+    }
+
+    /**
+     * GET /projects/{project}/calendar-events?trade_package_id=X
+     *
+     * Full calendar summary for one trade package, sourced entirely from
+     * OperationalIntelligenceService::getItemsForTradePackage() — that method
+     * already aggregates Payment Applications, Retention, Final Accounts,
+     * Programme Milestones, Delay Events, and EOT Requests for this package.
+     */
+    private function tradePackageEvents(Project $project, \App\Models\TradePackage $tradePackage)
+    {
+        $items = $this->intelligence->getItemsForTradePackage($project->id, $tradePackage->id);
+
+        $workspaceRoot = "/app/projects/{$project->id}/subcontracts/{$tradePackage->id}";
+
+        $typeMap = [
+            \App\Models\CalendarEvent::SOURCE_PAYMENT_APPLICATION => 'payment_due',
+            \App\Models\CalendarEvent::SOURCE_RETENTION_RELEASE   => 'retention',
+            \App\Models\CalendarEvent::SOURCE_FINAL_ACCOUNT       => 'final_account',
+            \App\Models\CalendarEvent::SOURCE_PROGRAMME_MILESTONE => 'milestone',
+            \App\Models\CalendarEvent::SOURCE_DELAY_EVENT         => 'delay_event',
+            \App\Models\CalendarEvent::SOURCE_EOT_REQUEST         => 'eot_request',
+            \App\Models\CalendarEvent::SOURCE_LOSS_AND_EXPENSE    => 'loss_and_expense',
+        ];
+
+        // Sprint 6D Phase 2 — route into the correct Workspace tab (and Delay & EOT
+        // sub-tab) instead of always landing on the workspace root. Sprint 6E
+        // consolidated this mapping into WorkspaceNavigationResolver (also used
+        // by CalendarController::events() and OperationalIntelligenceService)
+        // instead of keeping a local copy of the same tab map.
+
+        $events = [];
+        foreach ($items as $item) {
+            $type = $typeMap[$item['source_type']] ?? 'key_date';
+            if ($item['source_field'] === 'commencement_date') $type = 'commencement';
+            if ($item['source_field'] === 'completion_date') $type = 'completion';
+
+            $actionUrl = \App\Services\TradePackages\WorkspaceNavigationResolver::actionUrl(
+                $project->id, $item['source_type'], $item['source_id'], $tradePackage->id
+            ) ?? $workspaceRoot;
+
+            $events[] = $this->makeEvent(
+                "tp-{$tradePackage->id}-{$item['source_type']}-{$item['source_id']}-{$item['source_field']}",
+                $item['title'],
+                $this->toDateString($item['event_date']),
+                $type,
+                $item['description'] ?? null,
+                null,
+                $tradePackage->name,
+                $item['meta'] ?? [],
+                $item['category'],
+                $item['priority'],
+                $item['status'],
+                $actionUrl
+            );
+        }
+
         $events = array_values(array_filter($events, fn($e) => !empty($e['date'])));
 
         return response()->json(['data' => $events]);

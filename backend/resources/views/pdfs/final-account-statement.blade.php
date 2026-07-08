@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-    <title>Final Account Statement — {{ $finalAccount->reference }}</title>
+    <title>Final Account Statement: {{ $finalAccount->reference }}</title>
     <style>
         @page {
             margin-top:    145px;
@@ -242,7 +242,7 @@
     <hr class="rule">
 
     {{-- Line Items ──────────────────────────────────────────────────────── --}}
-    <div class="sh">Financial Breakdown — Line Items</div>
+    <div class="sh">Financial Breakdown: Line Items</div>
     @forelse($itemsByCategory as $category => $categoryItems)
     <div class="li-cat">{{ $categoryLabels[$category] ?? ucfirst(str_replace('_', ' ', $category)) }}</div>
     <table class="ft">
@@ -289,7 +289,7 @@
     </div>
 
     <div class="doc-footer">
-        Generated electronically by SureSign &nbsp;·&nbsp; {{ now()->format('d M Y, H:i') }}
+        Generated electronically by SureSign Contracts &nbsp;·&nbsp; {{ now()->format('d M Y, H:i') }}
         &nbsp;·&nbsp; Final Account Ref: {{ $finalAccount->reference }}
         @if($isDraft) &nbsp;·&nbsp; This is a draft document and does not represent an agreed commercial position. @endif
     </div>

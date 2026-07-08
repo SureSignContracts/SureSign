@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-    <title>SureSign Letterhead Test</title>
+    <title>SureSign Contracts Letterhead Test</title>
     <style>
         /*
          * @page margins reserve space for the header/footer images
@@ -140,7 +140,7 @@
         <div class="title-row">
             <div class="title-cell">
                 <div class="badge">Test Document</div>
-                <h1>SureSign Letterhead Test</h1>
+                <h1>SureSign Contracts Letterhead Test</h1>
                 <div class="meta">Generated: {{ now()->format('d M Y, H:i') }} &nbsp;|&nbsp; Ref: TEST-{{ strtoupper(substr(md5(now()), 0, 8)) }}</div>
             </div>
         </div>
@@ -187,7 +187,7 @@
 
         <div class="section-heading">Sample Content</div>
         <p>
-            This is a sample paragraph demonstrating how body text appears on a SureSign-generated document.
+            This is a sample paragraph demonstrating how body text appears on a SureSign Contracts-generated document.
             The font, spacing, and layout above will be used for all contracts, RFIs, payment applications,
             site instructions and other documents produced by the platform.
         </p>
@@ -208,7 +208,7 @@
         <div class="section-heading">Signature Block</div>
         <p>Yours sincerely,</p>
         <p style="margin-top:24px;">
-            <strong>SureSign Platform</strong><br>
+            <strong>SureSign Contracts Platform</strong><br>
             <span style="color:#888888;">Automated Document Management</span>
         </p>
 

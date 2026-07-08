@@ -63,6 +63,23 @@ class Contract extends Model {
     public function finalAccount()         { return $this->hasOne(FinalAccount::class); }
 
     /**
+     * The authoritative completion date once EOTs are factored in: the most
+     * recently granted EOT's revised_completion_date, falling back to the
+     * original contract completion_date if none have been granted. This does
+     * not mutate completion_date itself — see EotRequestController::decide().
+     */
+    public function currentCompletionDate(): ?\Carbon\Carbon
+    {
+        $latestGranted = EotRequest::where('contract_id', $this->id)
+            ->where('status', 'granted')
+            ->whereNotNull('revised_completion_date')
+            ->orderByDesc('decided_at')
+            ->first();
+
+        return $latestGranted?->revised_completion_date ?? $this->completion_date;
+    }
+
+    /**
      * A contract may be hard-deleted only when it is a draft with no linked records.
      * Issued/active contracts and any contract with attached data must be archived instead.
      */

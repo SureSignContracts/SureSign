@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { Package, Plus, Search, AlertCircle, X } from 'lucide-react';
+import PageTourButton from '@/components/tours/PageTourButton';
 
 const PRIORITY_COLORS: Record<string, { bg: string; text: string }> = {
   low:      { bg: 'rgba(90,86,82,0.2)',    text: '#9a9490' },
@@ -58,7 +59,7 @@ function SnagModal({ projectId, snag, onClose }: { projectId: string; snag?: any
   const mutation = useMutation({
     mutationFn: (data: typeof form) =>
       isEdit
-        ? api.put(`/snagging/${snag.id}`, data).then(r => r.data)
+        ? api.put(`/projects/${projectId}/snagging/${snag.id}`, data).then(r => r.data)
         : api.post(`/projects/${projectId}/snagging`, data).then(r => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['project-snagging', projectId] });
@@ -79,8 +80,8 @@ function SnagModal({ projectId, snag, onClose }: { projectId: string; snag?: any
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+      <div className="ss-animate-in w-full max-w-lg rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
           <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
             {isEdit ? 'Edit Snag' : 'Add Snag Item'}
@@ -127,7 +128,7 @@ function SnagModal({ projectId, snag, onClose }: { projectId: string; snag?: any
             </div>
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Due Date</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Due date</label>
             <input type="date" value={form.due_date} onChange={set('due_date')}
               className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
           </div>
@@ -141,7 +142,7 @@ function SnagModal({ projectId, snag, onClose }: { projectId: string; snag?: any
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm"
               style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
             <button type="submit" disabled={mutation.isPending}
-              className="px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-60"
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
               {mutation.isPending ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Snag'}
             </button>
@@ -160,6 +161,7 @@ export default function ProjectSnaggingPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [modal, setModal] = useState<{ open: boolean; snag?: any }>({ open: false });
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['project-snagging', id],
@@ -167,10 +169,11 @@ export default function ProjectSnaggingPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (snagId: number) => api.delete(`/snagging/${snagId}`),
+    mutationFn: (snagId: number) => api.delete(`/projects/${id}/snagging/${snagId}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['project-snagging', id] });
       qc.invalidateQueries({ queryKey: ['project-activities', id] });
+      setDeleteTarget(null);
     },
   });
 
@@ -195,14 +198,30 @@ export default function ProjectSnaggingPage() {
         <SnagModal projectId={id} snag={modal.snag} onClose={() => setModal({ open: false })} />
       )}
 
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="w-full max-w-sm rounded-xl p-5" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+            <p className="text-sm mb-4" style={{ color: 'var(--text-primary)' }}>Delete Snag #{deleteTarget.snag_number ?? deleteTarget.id}? This cannot be undone.</p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setDeleteTarget(null)} className="px-3 py-1.5 rounded-lg text-sm" style={{ color: 'var(--text-secondary)' }}>Cancel</button>
+              <button onClick={() => deleteMutation.mutate(deleteTarget.id)} className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white" style={{ backgroundColor: '#a11a1a' }}>Confirm</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Snagging</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-[1.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>Snagging</h1>
+            <PageTourButton tourKey="page-snagging" label="Take a tour of this page" />
+          </div>
           <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Defect tracking and snag list management</p>
         </div>
         <button
+          data-tour="snagging-new"
           onClick={() => setModal({ open: true })}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 active:scale-[0.98]"
           style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
         >
           <Plus size={15} />
@@ -211,22 +230,22 @@ export default function ProjectSnaggingPage() {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4" data-tour="snagging-summary">
         {[
           { label: 'Total',       value: allItems.length, color: 'var(--gold)' },
           { label: 'Open',        value: openCount,       color: '#f87171' },
           { label: 'In Progress', value: inProgressCount, color: '#60a5fa' },
           { label: 'Closed',      value: closedCount,     color: '#4ade80' },
-        ].map(({ label, value, color }) => (
-          <div key={label} className="rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+        ].map(({ label, value, color }, i) => (
+          <div key={label} className="ss-animate-in rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: `${i * 50}ms` }}>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}</p>
-            <p className="text-xl font-bold mt-1" style={{ color }}>{value}</p>
+            <p className="text-xl font-bold mt-1 tabular-nums" style={{ color }}>{value}</p>
           </div>
         ))}
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3 flex-wrap">
+      <div className="flex gap-3 flex-wrap" data-tour="snagging-filters">
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
           <input
@@ -234,13 +253,13 @@ export default function ProjectSnaggingPage() {
             onChange={e => setSearch(e.target.value)}
             placeholder="Search snag items…"
             className="pl-9 pr-4 py-2 rounded-lg text-sm outline-none"
-            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)', minWidth: '220px' }}
+            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)', minWidth: '220px', boxShadow: 'var(--shadow-card)' }}
           />
         </div>
-        <div className="flex gap-1 p-1 rounded-lg" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+        <div className="flex gap-1 p-1 rounded-full" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
           {(['all', ...STATUSES] as const).map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
-              className="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+              className="px-3 py-1.5 rounded-full text-xs font-medium transition-all active:scale-[0.97]"
               style={statusFilter === s
                 ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
                 : { color: 'var(--text-secondary)' }
@@ -252,27 +271,27 @@ export default function ProjectSnaggingPage() {
       </div>
 
       {/* Items list */}
-      <div className="space-y-2">
+      <div className="space-y-2" data-tour="snagging-list">
         {isLoading ? (
           [...Array(5)].map((_, i) => (
             <div key={i} className="h-16 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-surface)' }} />
           ))
         ) : items.length === 0 ? (
-          <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
             <Package size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No snag items found</p>
             <button onClick={() => setModal({ open: true })}
-              className="mt-4 px-4 py-2 rounded-lg text-xs font-medium"
+              className="mt-4 px-4 py-2 rounded-lg text-xs font-medium transition-all active:scale-[0.98]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
               Add First Snag
             </button>
           </div>
-        ) : items.map((s: any) => {
+        ) : items.map((s: any, i: number) => {
           const statusBadge   = STATUS_COLORS[s.status]    ?? { bg: 'var(--bg-elevated)', text: 'var(--text-muted)' };
           const priorityBadge = PRIORITY_COLORS[s.priority] ?? { bg: 'var(--bg-elevated)', text: 'var(--text-muted)' };
           return (
-            <div key={s.id} className="flex items-center justify-between p-4 rounded-xl transition-colors"
-              style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+            <div key={s.id} className="ss-animate-in flex items-center justify-between p-4 rounded-xl transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-pop)] hover:-translate-y-0.5"
+              style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', animationDelay: `${Math.min(i * 45, 360)}ms` }}>
               <div className="flex items-center gap-4 flex-1 min-w-0">
                 <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
                   style={{ backgroundColor: 'rgba(239,68,68,0.08)' }}>
@@ -280,13 +299,13 @@ export default function ProjectSnaggingPage() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
-                    <span className="font-mono text-xs mr-2" style={{ color: 'var(--text-muted)' }}>#{s.snag_number}</span>
+                    <span className="font-mono text-[11px] mr-2" style={{ color: 'var(--text-muted)' }}>#{s.snag_number}</span>
                     {s.title}
                   </p>
                   <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>
                     {s.location ? `${s.location} · ` : ''}
                     {s.category ? `${s.category} · ` : ''}
-                    {s.created_at ? formatDate(s.created_at) : ''}
+                    <span className="tabular-nums">{s.created_at ? formatDate(s.created_at) : ''}</span>
                     {s.assignee ? ` · ${s.assignee.name}` : ''}
                   </p>
                 </div>
@@ -304,7 +323,7 @@ export default function ProjectSnaggingPage() {
                   className="px-3 py-1 rounded-lg text-xs hover:bg-[var(--bg-hover)] transition-colors"
                   style={{ color: 'var(--text-muted)' }}>Edit</button>
                 <button
-                  onClick={() => { if (confirm('Delete this snag?')) deleteMutation.mutate(s.id); }}
+                  onClick={() => setDeleteTarget(s)}
                   className="px-3 py-1 rounded-lg text-xs hover:bg-[var(--bg-hover)] transition-colors"
                   style={{ color: '#f87171' }}>Delete</button>
               </div>

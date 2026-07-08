@@ -195,8 +195,8 @@ export default function AdminDocumentRegisterPage() {
         </div>
         {!isLoading && total > 0 && (
           <div
-            className="text-xs px-3 py-1.5 rounded-full font-medium"
-            style={{ backgroundColor: 'rgba(185,149,102,0.12)', color: 'var(--gold)', border: '1px solid rgba(185,149,102,0.3)' }}
+            className="text-xs px-3 py-1.5 rounded-full font-medium tabular-nums"
+            style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)', border: '1px solid var(--gold-30)' }}
           >
             {total} {total === 1 ? 'document' : 'documents'}
           </div>
@@ -279,7 +279,7 @@ export default function AdminDocumentRegisterPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl overflow-x-auto" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+      <div className="rounded-2xl overflow-x-auto" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
         <table className="w-full min-w-[720px]">
           <thead>
             <tr
@@ -314,11 +314,11 @@ export default function AdminDocumentRegisterPage() {
                   {/* Document Number */}
                   <td className="px-4 py-3">
                     <span
-                      className="inline-block font-mono text-xs px-2 py-1 rounded-md"
+                      className="inline-block font-mono text-[11px] px-2 py-1 rounded-md"
                       style={{
-                        backgroundColor: 'rgba(185,149,102,0.10)',
+                        backgroundColor: 'var(--gold-15)',
                         color: 'var(--gold)',
-                        border: '1px solid rgba(185,149,102,0.25)',
+                        border: '1px solid var(--gold-30)',
                         letterSpacing: '0.03em',
                       }}
                     >
@@ -350,7 +350,7 @@ export default function AdminDocumentRegisterPage() {
                           {entry.project_name}
                         </p>
                         {entry.project_code && (
-                          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{entry.project_code}</p>
+                          <p className="text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>{entry.project_code}</p>
                         )}
                       </div>
                     ) : (
@@ -371,7 +371,7 @@ export default function AdminDocumentRegisterPage() {
 
                   {/* Date */}
                   <td className="px-4 py-3">
-                    <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                    <span className="text-sm tabular-nums" style={{ color: 'var(--text-muted)' }}>
                       {entry.document_date
                         ? formatDate(entry.document_date)
                         : entry.created_at

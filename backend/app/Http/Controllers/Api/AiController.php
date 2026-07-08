@@ -180,7 +180,7 @@ class AiController extends Controller
 
         return response()->json([
             'data'    => $analysis->fresh(),
-            'message' => 'Saved response re-parsed successfully — no AI credits were used.',
+            'message' => 'Saved response re-parsed successfully. No AI credits were used.',
         ]);
     }
 
@@ -262,7 +262,7 @@ class AiController extends Controller
 
         return response()->json([
             'message'  => $wasFree
-                ? 'Analysis cancelled before it started — no AI credits were used.'
+                ? 'Analysis cancelled before it started. No AI credits were used.'
                 : 'Analysis cancelled. It had already started, so the in-progress AI usage may still be charged.',
             'was_free' => $wasFree,
         ]);

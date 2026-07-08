@@ -269,7 +269,7 @@ function FinRow({ label, value, highlight, negative, indent }: {
   return (
     <div className="flex justify-between items-center py-2" style={{ borderBottom: '1px solid var(--border)', paddingLeft: indent ? '12px' : undefined }}>
       <span className="text-xs" style={{ color: highlight ? 'var(--text-primary)' : 'var(--text-muted)' }}>{label}</span>
-      <span className="text-sm font-semibold" style={{ color: negative ? '#f87171' : highlight ? 'var(--gold)' : 'var(--text-secondary)' }}>
+      <span className="text-sm font-semibold tabular-nums" style={{ color: negative ? '#f87171' : highlight ? 'var(--gold)' : 'var(--text-secondary)' }}>
         {negative ? `(${value})` : value}
       </span>
     </div>
@@ -406,7 +406,7 @@ function FAItemsSection({ items, isLocked, onAdd, onEdit, onDelete }: {
               >
                 <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{label}</span>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs font-semibold" style={{ color: isNeg ? '#f87171' : 'var(--gold)' }}>
+                  <span className="text-xs font-semibold tabular-nums" style={{ color: isNeg ? '#f87171' : 'var(--gold)' }}>
                     {isNeg ? `(${formatCurrency(total)})` : formatCurrency(total)}
                   </span>
                   <ChevronDown size={13} style={{
@@ -438,7 +438,7 @@ function FAItemsSection({ items, isLocked, onAdd, onEdit, onDelete }: {
                             Auto
                           </span>
                         )}
-                        <span className="text-sm font-semibold" style={{ color: isNeg ? '#f87171' : 'var(--text-secondary)' }}>
+                        <span className="text-sm font-semibold tabular-nums" style={{ color: isNeg ? '#f87171' : 'var(--text-secondary)' }}>
                           {isNeg ? `(${formatCurrency(fmt(item.amount))})` : formatCurrency(fmt(item.amount))}
                         </span>
                         {!isLocked && item.category !== 'contract_sum' && (
@@ -504,9 +504,9 @@ function FAItemModal({ faId, item, onClose, onSaved }: {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-md rounded-2xl shadow-xl max-h-[92vh] overflow-y-auto"
-        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+      <div className="w-full max-w-md rounded-2xl max-h-[92vh] overflow-y-auto ss-animate-in"
+        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
         <div className="flex items-start justify-between p-5" style={{ borderBottom: '1px solid var(--border)' }}>
           <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
             {item ? 'Edit Item' : 'Add Line Item'}
@@ -585,7 +585,7 @@ function FAItemModal({ faId, item, onClose, onSaved }: {
               Cancel
             </button>
             <button type="submit" disabled={saving}
-              className="px-4 py-2 rounded-lg text-sm font-medium"
+              className="px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: saving ? 0.6 : 1 }}>
               {saving ? 'Saving...' : item ? 'Save Changes' : 'Add Item'}
             </button>
@@ -740,7 +740,7 @@ function FinalAccountCard({ name, subtitle, contractId, tradePackageId, fa, proj
   // ── No FA yet ──────────────────────────────────────────────────────────────
   if (!fa) {
     return (
-      <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+      <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
         <div className="flex items-start justify-between">
           <div>
             <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{name}</p>
@@ -757,7 +757,7 @@ function FinalAccountCard({ name, subtitle, contractId, tradePackageId, fa, proj
             <button
               onClick={() => createMutation.mutate()}
               disabled={createMutation.isPending}
-              className="px-4 py-2 rounded-lg text-xs font-medium"
+              className="px-4 py-2 rounded-lg text-xs font-medium active:scale-[0.98]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: createMutation.isPending ? 0.6 : 1 }}
             >
               {createMutation.isPending ? 'Creating...' : 'Create Final Account'}
@@ -770,7 +770,7 @@ function FinalAccountCard({ name, subtitle, contractId, tradePackageId, fa, proj
 
   // ── FA exists ──────────────────────────────────────────────────────────────
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
 
       {/* Clickable header — expands/collapses the card */}
       <button
@@ -781,7 +781,7 @@ function FinalAccountCard({ name, subtitle, contractId, tradePackageId, fa, proj
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{name}</p>
             {fa.reference && (
-              <span className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>{fa.reference}</span>
+              <span className="font-mono text-[11px]" style={{ color: 'var(--text-muted)' }}>{fa.reference}</span>
             )}
             <FAStatusBadge status={fa.status} />
             {fa.is_locked && (
@@ -809,13 +809,13 @@ function FinalAccountCard({ name, subtitle, contractId, tradePackageId, fa, proj
             <div className="hidden sm:flex gap-4 text-right">
               <div>
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Adj. Contract Sum</p>
-                <p className="text-sm font-bold" style={{ color: 'var(--gold)' }}>
+                <p className="text-sm font-bold tabular-nums" style={{ color: 'var(--gold)' }}>
                   {formatCurrency(displayTotals.adjusted_contract_sum)}
                 </p>
               </div>
               <div>
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Final Balance Due</p>
-                <p className="text-sm font-bold" style={{ color: displayTotals.final_balance_due >= 0 ? '#4ade80' : '#f87171' }}>
+                <p className="text-sm font-bold tabular-nums" style={{ color: displayTotals.final_balance_due >= 0 ? '#4ade80' : '#f87171' }}>
                   {formatCurrency(displayTotals.final_balance_due)}
                 </p>
               </div>
@@ -1010,7 +1010,7 @@ function FinalAccountCard({ name, subtitle, contractId, tradePackageId, fa, proj
             <div className="rounded-xl p-3" style={{ backgroundColor: 'var(--bg-elevated)' }}>
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                 JCT dispute window expires:{' '}
-                <span style={{ color: 'var(--text-secondary)' }}>{formatDate(fa.dispute_window_expires_at)}</span>
+                <span className="tabular-nums" style={{ color: 'var(--text-secondary)' }}>{formatDate(fa.dispute_window_expires_at)}</span>
               </p>
             </div>
           )}
@@ -1060,7 +1060,7 @@ export function FinalAccountTab({ contracts, tradePackages, projectId }: {
 
   if (mainContracts.length === 0 && tradePackages.length === 0) {
     return (
-      <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+      <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
         <FileCheck size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
         <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>No contracts or trade packages</p>
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Create a contract or trade package to start a Final Account.</p>

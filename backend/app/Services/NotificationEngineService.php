@@ -42,6 +42,7 @@ class NotificationEngineService
         'deliverables'=> SuresignNotification::CATEGORY_DELIVERABLE,
         'notices'     => SuresignNotification::CATEGORY_NOTICE,
         'commercial'  => SuresignNotification::CATEGORY_COMMERCIAL,
+        'communication' => SuresignNotification::CATEGORY_COMMUNICATION,
     ];
 
     // source_type → action URL suffix
@@ -55,6 +56,11 @@ class NotificationEngineService
         'contract_notice'      => '/contracts',
         'programme_milestone'  => '/programme',
         'final_account'        => '/commercial?tab=final-account',
+        // No dedicated Delay & EOT page exists yet — deep-link to Programme
+        // (the closest related existing view) until a real page is built.
+        'delay_event'          => '/programme',
+        'eot_request'          => '/programme',
+        'rfi'                  => '/rfis',
     ];
 
     public function __construct(private UpcomingActionsService $upcomingActions) {}
@@ -128,12 +134,34 @@ class NotificationEngineService
             ->whereNotIn('status', [SuresignNotification::STATUS_RESOLVED, SuresignNotification::STATUS_EXPIRED])
             ->first();
 
+        $freshTitle   = $this->buildTitle($action);
+        $freshMessage = $this->buildMessage($action);
+        $freshData    = $this->buildData($action);
+
         if ($existing) {
-            // Escalate priority if urgency has increased, but only for unread notifications
-            if ($existing->status === SuresignNotification::STATUS_UNREAD
-                && $this->priorityOrder($priority) < $this->priorityOrder($existing->priority)
-            ) {
-                $existing->update(['priority' => $priority]);
+            // The underlying due date/status can change without the escalation
+            // condition below ever firing (e.g. pushed further out, or changed
+            // but still the same priority bucket) — refresh the displayed
+            // content whenever it's gone stale, independent of escalation.
+            $contentChanged = $existing->title !== $freshTitle
+                || $existing->message !== $freshMessage
+                || ($existing->data['due_date'] ?? null) !== $freshData['due_date']
+                || $existing->action_url !== $actionUrl;
+
+            // Escalate priority if urgency has increased, but only for unread
+            // notifications — never silently de-escalate one a user hasn't
+            // seen yet, and never touch priority on a read/dismissed one.
+            $shouldEscalate = $existing->status === SuresignNotification::STATUS_UNREAD
+                && $this->priorityOrder($priority) < $this->priorityOrder($existing->priority);
+
+            if ($contentChanged || $shouldEscalate) {
+                $existing->update([
+                    'title'      => $freshTitle,
+                    'message'    => $freshMessage,
+                    'data'       => $freshData,
+                    'action_url' => $actionUrl,
+                    'priority'   => $shouldEscalate ? $priority : $existing->priority,
+                ]);
                 $stats['updated']++;
             } else {
                 $stats['skipped']++;
@@ -149,19 +177,13 @@ class NotificationEngineService
             'category'        => $category,
             'priority'        => $priority,
             'status'          => SuresignNotification::STATUS_UNREAD,
-            'title'           => $this->buildTitle($action),
-            'message'         => $this->buildMessage($action),
+            'title'           => $freshTitle,
+            'message'         => $freshMessage,
             'source_type'     => $action['source_type'],
             'source_id'       => $action['source_id'],
             'source_field'    => $action['source_field'],
             'action_url'      => $actionUrl,
-            'data'            => [
-                'action_status'  => $action['status'],
-                'days_remaining' => $action['days_remaining'],
-                'due_date'       => $action['due_date'],
-                'contract_id'    => $action['contract_id'],
-                'meta'           => $action['meta'] ?? [],
-            ],
+            'data'            => $freshData,
             'is_read'         => false,
         ]);
 
@@ -229,8 +251,21 @@ class NotificationEngineService
         return SuresignNotification::PRIORITY_INFO;
     }
 
+    /**
+     * Sprint 6G — $action already carries a correctly-computed, trade-package-
+     * aware action_url (OperationalIntelligenceService builds it via
+     * WorkspaceNavigationResolver, same as Calendar/Dashboard). Prefer it
+     * outright instead of recomputing a generic project-level URL from the
+     * local URL_MAP below, which never checked trade_package_id and always
+     * routed trade-package-owned records to the wrong page. URL_MAP stays
+     * only as a defensive fallback for any action that somehow lacks it.
+     */
     private function resolveActionUrl(array $action, Project $project): string
     {
+        if (!empty($action['action_url'])) {
+            return $action['action_url'];
+        }
+
         $base   = "/app/projects/{$project->id}";
         $suffix = self::URL_MAP[$action['source_type']] ?? '';
 
@@ -272,6 +307,17 @@ class NotificationEngineService
         }
 
         return $action['description'] ?? '';
+    }
+
+    private function buildData(array $action): array
+    {
+        return [
+            'action_status'  => $action['status'],
+            'days_remaining' => $action['days_remaining'],
+            'due_date'       => $action['due_date'],
+            'contract_id'    => $action['contract_id'],
+            'meta'           => $action['meta'] ?? [],
+        ];
     }
 
     private function sourceKey(array $action, string $category): string

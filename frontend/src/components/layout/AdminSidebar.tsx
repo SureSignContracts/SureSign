@@ -32,7 +32,7 @@ const NAV_GROUPS = [
       { href: '/admin/companies', label: 'Companies',      icon: Building2,    pageKey: 'companies' },
       { href: '/admin/projects',  label: 'Projects',       icon: FolderKanban, pageKey: 'projects'  },
       { href: '/admin/documents', label: 'Documents',      icon: FileText,     pageKey: 'documents' },
-      { href: '/admin/users',     label: 'Users',          icon: Users,        pageKey: 'users'     },
+      { href: '/admin/users',     label: 'Users',          icon: Users,        pageKey: 'users',     superAdminOnly: true },
     ],
   },
   {
@@ -253,7 +253,7 @@ function ProfilePopover({
 
       <button
         onClick={onLogout}
-        className="group w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs transition-colors hover:bg-red-50"
+        className="group w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs transition-colors hover:bg-red-500/10"
         style={{ color: '#ef4444', borderTop: '1px solid var(--border)' }}
       >
         <LogOut size={13} className="transition-transform duration-150 group-hover:translate-x-0.5" />
@@ -455,9 +455,9 @@ export default function AdminSidebar({
         mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0',
       )}
       style={{
-        width:    showCollapsed ? '64px' : '224px',
-        minWidth: showCollapsed ? '64px' : '224px',
-        maxWidth: showCollapsed ? '64px' : '224px',
+        width:    showCollapsed ? '64px' : '248px',
+        minWidth: showCollapsed ? '64px' : '248px',
+        maxWidth: showCollapsed ? '64px' : '248px',
         transition: 'transform 300ms cubic-bezier(0.4,0,0.2,1), width 260ms cubic-bezier(0.4,0,0.2,1), min-width 260ms cubic-bezier(0.4,0,0.2,1), max-width 260ms cubic-bezier(0.4,0,0.2,1)',
         backgroundColor: 'var(--bg-base)',
       }}
@@ -478,7 +478,7 @@ export default function AdminSidebar({
           </div>
         ) : (
           /* Expanded: logo + wordmark + collapse button — logo nudged to sit over the nav icon column */
-          <div className="w-full flex items-center gap-2.5 pl-4 pr-3">
+          <div className="w-full flex items-center gap-2.5 pl-[14px] pr-3">
             <img
               src={theme === 'dark' ? '/logo_white/SureSign_WLOGO.png' : '/logo_black/SureSign_BLOGO.png'}
               alt="SureSign"

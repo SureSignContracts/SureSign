@@ -15,11 +15,22 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Endpoints where a 401 means "these credentials were rejected", not
+// "your session expired" — a failed login attempt must never trigger the
+// global session-expiry redirect below. Previously it did: entering a wrong
+// password (including a stale one from browser autofill) returned 401 from
+// /auth/login, which this interceptor treated as an expired session and
+// force-reloaded straight back to /login — indistinguishable from an
+// infinite loop, especially if autofill resubmitted the same bad password.
+const AUTH_ENDPOINTS_EXEMPT_FROM_SESSION_REDIRECT = ['/auth/login', '/auth/register'];
+
 // Handle 401 globally
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401 && typeof window !== 'undefined') {
+    const url: string = err.config?.url || '';
+    const isExemptAuthEndpoint = AUTH_ENDPOINTS_EXEMPT_FROM_SESSION_REDIRECT.some((p) => url.includes(p));
+    if (err.response?.status === 401 && !isExemptAuthEndpoint && typeof window !== 'undefined') {
       localStorage.removeItem('suresign_token');
       window.location.href = '/login';
     }

@@ -118,7 +118,7 @@ export default function SiteAdminPage() {
                 style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)' }}
               >
                 <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                     style={{ backgroundColor: 'rgba(185,149,102,0.1)' }}>
+                     style={{ backgroundColor: 'var(--gold-15)' }}>
                   <Icon size={18} style={{ color: 'var(--gold)' }} />
                 </div>
                 <div className="flex-1 min-w-0">

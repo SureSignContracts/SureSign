@@ -41,17 +41,17 @@ export default function AdminSupportPage() {
           { label: 'In Progress', value: data?.counts?.in_progress ?? 0, icon: Clock,       color: '#60a5fa' },
           { label: 'Resolved',    value: data?.counts?.resolved ?? 0,    icon: CheckCircle2,color: '#4ade80' },
           { label: 'Total',       value: data?.counts?.total ?? 0,       icon: MessageSquare,color: 'var(--gold)' },
-        ].map(stat => (
+        ].map((stat, i) => (
           <div
             key={stat.label}
-            className="rounded-xl p-4 flex items-center gap-3"
-            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+            className="rounded-xl p-4 flex items-center gap-3 ss-animate-in"
+            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: `${Math.min(i * 45, 360)}ms` }}
           >
             <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: stat.color + '18' }}>
               <stat.icon size={16} style={{ color: stat.color }} />
             </div>
             <div>
-              <p className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{isLoading ? '–' : stat.value}</p>
+              <p className="text-xl font-bold tabular-nums" style={{ color: 'var(--text-primary)' }}>{isLoading ? '–' : stat.value}</p>
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{stat.label}</p>
             </div>
           </div>
@@ -71,7 +71,7 @@ export default function AdminSupportPage() {
       </div>
 
       {/* Tickets table */}
-      <div className="rounded-2xl overflow-x-auto" style={{ border: '1px solid var(--border)' }}>
+      <div className="rounded-2xl overflow-x-auto" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
         <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
@@ -102,7 +102,7 @@ export default function AdminSupportPage() {
               const badge = STATUS_COLORS[t.status] || STATUS_COLORS.closed;
               return (
                 <tr key={t.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td className="px-5 py-3 font-mono text-xs" style={{ color: 'var(--text-muted)' }}>#{t.id}</td>
+                  <td className="px-5 py-3 font-mono text-[11px]" style={{ color: 'var(--text-muted)' }}>#{t.id}</td>
                   <td className="px-5 py-3 font-medium" style={{ color: 'var(--text-primary)' }}>{t.subject}</td>
                   <td className="px-5 py-3" style={{ color: 'var(--text-secondary)' }}>{t.company?.name ?? '–'}</td>
                   <td className="px-5 py-3">
@@ -111,7 +111,7 @@ export default function AdminSupportPage() {
                       {t.status?.replace(/_/g, ' ')}
                     </span>
                   </td>
-                  <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{t.created_at ?? '–'}</td>
+                  <td className="px-5 py-3 text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>{t.created_at ?? '–'}</td>
                 </tr>
               );
             })}

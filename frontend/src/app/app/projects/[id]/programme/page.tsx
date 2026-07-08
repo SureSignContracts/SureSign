@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
+import PageTourButton from '@/components/tours/PageTourButton';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -26,17 +27,17 @@ const MILESTONE_TYPES: Record<string, string> = {
 };
 
 const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
-  not_started: { label: 'Not Started', bg: 'rgba(90,86,82,0.2)',    text: '#9a9490' },
-  in_progress: { label: 'In Progress', bg: 'rgba(59,130,246,0.15)', text: '#60a5fa' },
+  not_started: { label: 'Not started', bg: 'rgba(90,86,82,0.2)',    text: '#9a9490' },
+  in_progress: { label: 'In progress', bg: 'rgba(59,130,246,0.15)', text: '#60a5fa' },
   complete:    { label: 'Complete',    bg: 'rgba(34,197,94,0.12)',   text: '#4ade80' },
   delayed:     { label: 'Delayed',     bg: 'rgba(239,68,68,0.12)',   text: '#f87171' },
-  at_risk:     { label: 'At Risk',     bg: 'rgba(249,115,22,0.12)',  text: '#fb923c' },
+  at_risk:     { label: 'At risk',     bg: 'rgba(249,115,22,0.12)',  text: '#fb923c' },
 };
 
 const HEALTH_CONFIG: Record<string, { label: string; bg: string; text: string; dot: string }> = {
   on_track: { label: 'On Track',          bg: 'rgba(34,197,94,0.12)',  text: '#4ade80',  dot: '#4ade80' },
-  due_soon: { label: 'Due Soon',          bg: 'rgba(234,179,8,0.12)',  text: '#facc15',  dot: '#facc15' },
-  at_risk:  { label: 'At Risk',           bg: 'rgba(239,68,68,0.12)',  text: '#f87171',  dot: '#f87171' },
+  due_soon: { label: 'Due soon',          bg: 'rgba(234,179,8,0.12)',  text: '#facc15',  dot: '#facc15' },
+  at_risk:  { label: 'At risk',           bg: 'rgba(239,68,68,0.12)',  text: '#f87171',  dot: '#f87171' },
   delayed:  { label: 'Delayed',           bg: 'rgba(249,115,22,0.12)', text: '#fb923c',  dot: '#fb923c' },
   no_data:  { label: 'No Programme Data', bg: 'rgba(90,86,82,0.2)',    text: '#9a9490',  dot: '#9a9490' },
 };
@@ -55,25 +56,26 @@ type Milestone = {
   forecast_date: string | null;
   actual_date:   string | null;
 
-  // ── Future Gantt fields (not yet in API — accept gracefully as undefined) ──
-  // When activity-level programme is introduced, add these to the backend model
-  // and migration. The timeline renderer already checks for null/undefined, so
-  // no UI changes are required when these start arriving.
+  // ── Activity-level programme fields (Sprint 5 Programme Foundation) ───────
+  // Live on the backend now — see contract_programme_milestones migration.
+  // Still optional here: existing plain-milestone rows simply don't populate
+  // them, and the timeline renderer already tolerates null/undefined.
   planned_start?:   string | null; // planned activity start date
   planned_finish?:  string | null; // alias for planned_date when activities have duration
   forecast_start?:  string | null; // revised start forecast
   forecast_finish?: string | null; // revised finish forecast
   actual_start?:    string | null; // recorded start
   actual_finish?:   string | null; // recorded finish (= actual_date for milestones)
-  duration_days?:   number | null; // planned duration — drives duration bar width
-  progress_pct?:    number | null; // 0–100 — drives fill bar within duration bar
-  depends_on?:      number[];      // IDs of predecessor milestones (for dependency lines)
+  duration_days?:   number | null; // planned duration in days
+  progress_pct?:    number | null; // 0–100
+  depends_on?:      number[] | null; // IDs of predecessor milestones/activities
   group_name?:      string | null; // "Block A" / "Block B" etc. for section grouping
 
   source_text: string | null;
   notes: string | null;
   is_ai_generated: boolean;
   contract?: { id: number; title: string; reference_number?: string | null };
+  trade_package?: { id: number; name: string } | null;
 };
 
 type ContractOption = { id: number; title: string; reference_number?: string | null };
@@ -152,8 +154,8 @@ function NextMilestoneCard({ milestones }: { milestones: Milestone[] }) {
   if (!next) {
     if (milestones.length > 0) {
       return (
-        <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
-          <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Next Critical Milestone</p>
+        <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+          <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Next critical milestone</p>
           <p className="text-sm" style={{ color: '#4ade80' }}>All milestones complete.</p>
         </div>
       );
@@ -166,10 +168,10 @@ function NextMilestoneCard({ milestones }: { milestones: Milestone[] }) {
   const isOverdue = daysRemaining !== null && daysRemaining < 0;
 
   return (
-    <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
       <div className="flex items-center gap-2 mb-3">
         <Clock size={14} style={{ color: 'var(--text-muted)' }} />
-        <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Next Critical Milestone</p>
+        <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Next critical milestone</p>
       </div>
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
@@ -241,11 +243,11 @@ function HealthSummary({ milestones }: { milestones: Milestone[] }) {
   const aiCount    = milestones.filter(m => m.is_ai_generated).length;
 
   return (
-    <div className="ss-animate-in rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="ss-animate-in rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <BarChart2 size={14} style={{ color: 'var(--text-muted)' }} />
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Programme Health</h2>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Programme health</h2>
         </div>
         <span
           className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold"
@@ -260,12 +262,12 @@ function HealthSummary({ milestones }: { milestones: Milestone[] }) {
           { label: 'Total',     value: milestones.length, color: 'var(--gold)' },
           { label: 'Complete',  value: completed,         color: '#4ade80' },
           { label: 'Overdue',   value: overdue,           color: '#f87171' },
-          { label: 'Due Soon',  value: dueSoon,           color: '#facc15' },
-          { label: 'At Risk',   value: atRisk,            color: '#fb923c' },
-          { label: 'AI Generated', value: aiCount,        color: 'var(--text-secondary)' },
+          { label: 'Due soon',  value: dueSoon,           color: '#facc15' },
+          { label: 'At risk',   value: atRisk,            color: '#fb923c' },
+          { label: 'AI generated', value: aiCount,        color: 'var(--text-secondary)' },
         ].map((s, i) => (
-          <div key={s.label} className="text-center rounded-xl p-3" style={{ backgroundColor: 'var(--bg-elevated)' }}>
-            <p className="text-lg font-bold leading-none" style={{ color: s.color }}>
+          <div key={s.label} className="ss-animate-in text-center rounded-xl p-3" style={{ backgroundColor: 'var(--bg-elevated)', animationDelay: `${i * 60}ms` }}>
+            <p className="text-lg font-bold leading-none tabular-nums" style={{ color: s.color }}>
               <CountUp value={s.value} delay={i * 60} />
             </p>
             <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{s.label}</p>
@@ -416,7 +418,7 @@ function TimelineView({ milestones }: { milestones: Milestone[] }) {
           <svg width="14" height="14" viewBox="0 0 14 14" style={{ flexShrink: 0 }}>
             <circle cx="7" cy="7" r="5.5" fill="none" stroke="#9a9490" strokeWidth="2" />
           </svg>
-          <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500 }}>Planned Date</span>
+          <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500 }}>Planned date</span>
         </div>
 
         {/* ◆ Forecast Date */}
@@ -425,7 +427,7 @@ function TimelineView({ milestones }: { milestones: Milestone[] }) {
             <svg width="12" height="12" viewBox="0 0 12 12" style={{ flexShrink: 0 }}>
               <rect x="1.5" y="1.5" width="9" height="9" fill="#facc15" transform="rotate(45 6 6)" rx="1" />
             </svg>
-            <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500 }}>Forecast Date</span>
+            <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500 }}>Forecast date</span>
           </div>
         )}
 
@@ -435,7 +437,7 @@ function TimelineView({ milestones }: { milestones: Milestone[] }) {
             <svg width="14" height="14" viewBox="0 0 14 14" style={{ flexShrink: 0 }}>
               <circle cx="7" cy="7" r="5.5" fill="#4ade80" />
             </svg>
-            <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500 }}>Actual Date</span>
+            <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500 }}>Actual date</span>
           </div>
         )}
 
@@ -860,8 +862,8 @@ function MilestoneModal({
   const labelStyle = { color: 'var(--text-muted)' };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-lg rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+      <div className="ss-animate-in w-full max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
         <div className="flex items-center justify-between p-5" style={{ borderBottom: '1px solid var(--border)' }}>
           <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
             {isEdit ? 'Edit Milestone' : 'New Milestone'}
@@ -882,7 +884,7 @@ function MilestoneModal({
             </div>
           )}
           <div>
-            <label className="block text-xs mb-1" style={labelStyle}>Milestone Name *</label>
+            <label className="block text-xs mb-1" style={labelStyle}>Milestone name *</label>
             <input value={form.name} onChange={e => set('name', e.target.value)} required
               className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
           </div>
@@ -895,7 +897,7 @@ function MilestoneModal({
               </select>
             </div>
             <div>
-              <label className="block text-xs mb-1" style={labelStyle}>Responsible Party</label>
+              <label className="block text-xs mb-1" style={labelStyle}>Responsible party</label>
               <select value={form.responsible_party} onChange={e => set('responsible_party', e.target.value)}
                 className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
                 <option value="contractor">Contractor</option>
@@ -911,17 +913,17 @@ function MilestoneModal({
               </select>
             </div>
             <div>
-              <label className="block text-xs mb-1" style={labelStyle}>Planned Date</label>
+              <label className="block text-xs mb-1" style={labelStyle}>Planned date</label>
               <input type="date" value={form.planned_date} onChange={e => set('planned_date', e.target.value)}
                 className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
             </div>
             <div>
-              <label className="block text-xs mb-1" style={labelStyle}>Forecast Date</label>
+              <label className="block text-xs mb-1" style={labelStyle}>Forecast date</label>
               <input type="date" value={form.forecast_date} onChange={e => set('forecast_date', e.target.value)}
                 className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
             </div>
             <div>
-              <label className="block text-xs mb-1" style={labelStyle}>Actual Date</label>
+              <label className="block text-xs mb-1" style={labelStyle}>Actual date</label>
               <input type="date" value={form.actual_date} onChange={e => set('actual_date', e.target.value)}
                 className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
             </div>
@@ -935,7 +937,7 @@ function MilestoneModal({
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm"
               style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
             <button type="submit" disabled={isPending || (!isEdit && !form.contract_id)}
-              className="px-4 py-2 rounded-lg text-sm font-medium"
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.98]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: isPending ? 0.7 : 1 }}>
               {isPending ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Milestone'}
             </button>
@@ -969,7 +971,7 @@ function SeedButton({ projectId, contracts }: { projectId: string; contracts: Co
   if (contracts.length === 1) {
     return (
       <button onClick={() => mutate(contracts[0].id)} disabled={isPending}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
+        className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
         style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
         <Sparkles size={14} style={{ color: 'var(--gold)' }} />
         {isPending ? 'Seeding…' : 'Seed from AI'}
@@ -980,7 +982,7 @@ function SeedButton({ projectId, contracts }: { projectId: string; contracts: Co
   return (
     <div className="relative">
       <button onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium"
+        className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.98]"
         style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
         <Sparkles size={14} style={{ color: 'var(--gold)' }} />
         Seed from AI <ChevronDown size={13} />
@@ -1040,16 +1042,21 @@ export default function ProjectProgrammePage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Programme</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-[1.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>Programme</h1>
+            <PageTourButton tourKey="page-programme" label="Take a tour of this page" />
+          </div>
           <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Contract milestones and key dates</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           {canWrite && contracts.length > 0 && (
-            <SeedButton projectId={id!} contracts={contracts} />
+            <div data-tour="programme-seed">
+              <SeedButton projectId={id!} contracts={contracts} />
+            </div>
           )}
           {canWrite && (
-            <button onClick={() => setShowModal(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90"
+            <button data-tour="programme-new" onClick={() => setShowModal(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 active:scale-[0.98]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
               <Plus size={15} />
               Add Milestone
@@ -1059,17 +1066,17 @@ export default function ProjectProgrammePage() {
       </div>
 
       {/* Health Summary */}
-      {!isLoading && <HealthSummary milestones={milestones} />}
+      {!isLoading && <div data-tour="programme-health"><HealthSummary milestones={milestones} /></div>}
 
       {/* Next Critical Milestone */}
       {!isLoading && milestones.length > 0 && <NextMilestoneCard milestones={milestones} />}
 
       {/* Filter + View toggle row */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex gap-1 p-1 rounded-lg w-fit" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+      <div className="flex items-center justify-between flex-wrap gap-3" data-tour="programme-filters">
+        <div className="flex gap-1 p-1 rounded-full w-fit" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
           {(['all', 'not_started', 'in_progress', 'complete', 'delayed', 'at_risk'] as const).map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
-              className="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+              className="px-3 py-1.5 rounded-full text-xs font-medium transition-all active:scale-[0.97]"
               style={statusFilter === s ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' } : { color: 'var(--text-secondary)' }}>
               {s === 'all' ? 'All' : STATUS_CONFIG[s]?.label ?? s}
             </button>
@@ -1077,10 +1084,10 @@ export default function ProjectProgrammePage() {
         </div>
 
         {/* View toggle */}
-        <div className="flex gap-1 p-1 rounded-lg" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+        <div className="flex gap-1 p-1 rounded-full" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
           {(['table', 'timeline'] as const).map(v => (
             <button key={v} onClick={() => setViewMode(v)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all active:scale-[0.97]"
               style={viewMode === v ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' } : { color: 'var(--text-secondary)' }}>
               {v === 'table' ? <List size={12} /> : <BarChart2 size={12} />}
               {v === 'table' ? 'Table' : 'Timeline'}
@@ -1096,7 +1103,7 @@ export default function ProjectProgrammePage() {
 
       {/* Table view */}
       {viewMode === 'table' && (
-        <div className="rounded-2xl overflow-x-auto" style={{ border: '1px solid var(--border)' }}>
+        <div className="rounded-2xl overflow-x-auto" data-tour="programme-table" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
           <table className="w-full min-w-[780px] text-sm">
             <thead>
               <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
@@ -1151,73 +1158,104 @@ export default function ProjectProgrammePage() {
                     )}
                   </td>
                 </tr>
-              ) : filtered.map(m => {
+              ) : filtered.map((m, idx) => {
                 const badge   = STATUS_CONFIG[m.status] ?? { label: m.status, bg: 'var(--bg-elevated)', text: 'var(--text-muted)' };
                 const now     = today();
                 const isLate  = m.planned_date && !m.actual_date && m.planned_date < now && m.status !== 'complete';
+                const prevGroup = idx > 0 ? filtered[idx - 1].group_name : undefined;
+                const showGroupHeader = !!m.group_name && m.group_name !== prevGroup;
+                const sourceLabel = m.trade_package?.name ?? m.contract?.title;
 
                 return (
-                  <tr key={m.id} className="hover:bg-[var(--bg-hover)] transition-colors" style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td className="px-4 py-3 max-w-[220px]">
-                      <div className="flex items-center gap-2">
-                        {m.is_ai_generated && (
-                          <Sparkles size={11} style={{ color: 'var(--gold)', flexShrink: 0 }} />
-                        )}
-                        <span className="font-medium truncate" style={{ color: 'var(--text-primary)' }}>{m.name}</span>
-                      </div>
-                      {m.contract && (
-                        <span className="text-xs block truncate" style={{ color: 'var(--text-muted)' }}>{m.contract.title}</span>
-                      )}
-                      {m.is_ai_generated && <AiSourcePanel milestone={m} />}
-                    </td>
-                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                      {MILESTONE_TYPES[m.milestone_type] ?? m.milestone_type}
-                    </td>
-                    <td className="px-4 py-3 text-xs capitalize" style={{ color: 'var(--text-secondary)' }}>
-                      {m.responsible_party}
-                    </td>
-                    <td className="px-4 py-3 text-xs" style={{ color: isLate ? '#f87171' : 'var(--text-secondary)' }}>
-                      {m.planned_date ? formatDate(m.planned_date) : '—'}
-                      {isLate && (
-                        <span className="flex items-center gap-1 mt-0.5" style={{ color: '#f87171' }}>
-                          <AlertTriangle size={9} />Overdue
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                      {m.forecast_date ? formatDate(m.forecast_date) : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-xs" style={{ color: m.actual_date ? '#4ade80' : 'var(--text-muted)' }}>
-                      {m.actual_date ? (
-                        <span className="flex items-center gap-1"><Check size={11} />{formatDate(m.actual_date)}</span>
-                      ) : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-xs">
-                      <VarianceCell m={m} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium"
-                        style={{ backgroundColor: badge.bg, color: badge.text }}>
-                        {badge.label}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      {canWrite && (
-                        <div className="flex items-center gap-1">
-                          <button onClick={() => setEditMilestone(m)}
-                            className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--bg-hover)] transition-colors"
-                            style={{ color: 'var(--text-muted)' }}>
-                            Edit
-                          </button>
-                          <button onClick={() => { if (confirm('Remove this milestone?')) deleteMilestone(m.id); }}
-                            className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--bg-hover)] transition-colors"
-                            style={{ color: '#f87171' }}>
-                            ✕
-                          </button>
+                  <>
+                    {showGroupHeader && (
+                      <tr key={`group-${m.group_name}-${m.id}`}>
+                        <td colSpan={9} className="px-4 pt-4 pb-1.5">
+                          <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{m.group_name}</span>
+                        </td>
+                      </tr>
+                    )}
+                    <tr key={m.id} className="hover:bg-[var(--bg-hover)] transition-colors" style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td className="px-4 py-3 max-w-[220px]">
+                        <div className="flex items-center gap-2">
+                          {m.is_ai_generated && (
+                            <Sparkles size={11} style={{ color: 'var(--gold)', flexShrink: 0 }} />
+                          )}
+                          <span className="font-medium truncate" style={{ color: 'var(--text-primary)' }}>{m.name}</span>
                         </div>
-                      )}
-                    </td>
-                  </tr>
+                        {sourceLabel && (
+                          <span className="text-xs block truncate" style={{ color: 'var(--text-muted)' }}>{sourceLabel}</span>
+                        )}
+                        {m.is_ai_generated && <AiSourcePanel milestone={m} />}
+                      </td>
+                      <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                        {MILESTONE_TYPES[m.milestone_type] ?? m.milestone_type}
+                      </td>
+                      <td className="px-4 py-3 text-xs capitalize" style={{ color: 'var(--text-secondary)' }}>
+                        {m.responsible_party}
+                      </td>
+                      <td className="px-4 py-3 text-xs tabular-nums" style={{ color: isLate ? '#f87171' : 'var(--text-secondary)' }}>
+                        {m.planned_start && m.planned_date && m.planned_start !== m.planned_date ? (
+                          <>{formatDate(m.planned_start)} → {formatDate(m.planned_date)}</>
+                        ) : (
+                          m.planned_date ? formatDate(m.planned_date) : '—'
+                        )}
+                        {m.duration_days ? <span className="block" style={{ color: 'var(--text-muted)' }}>{m.duration_days}d</span> : null}
+                        {isLate && (
+                          <span className="flex items-center gap-1 mt-0.5" style={{ color: '#f87171' }}>
+                            <AlertTriangle size={9} />Overdue
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>
+                        {m.forecast_start && m.forecast_date && m.forecast_start !== m.forecast_date ? (
+                          <>{formatDate(m.forecast_start)} → {formatDate(m.forecast_date)}</>
+                        ) : (
+                          m.forecast_date ? formatDate(m.forecast_date) : '—'
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-xs tabular-nums" style={{ color: m.actual_date ? '#4ade80' : 'var(--text-muted)' }}>
+                        {m.actual_date ? (
+                          <span className="flex items-center gap-1"><Check size={11} />{formatDate(m.actual_date)}</span>
+                        ) : m.actual_start ? (
+                          <span>Started {formatDate(m.actual_start)}</span>
+                        ) : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-xs tabular-nums">
+                        <VarianceCell m={m} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium"
+                          style={{ backgroundColor: badge.bg, color: badge.text }}>
+                          {badge.label}
+                        </span>
+                        {typeof m.progress_pct === 'number' && (
+                          <div className="mt-1.5 flex items-center gap-1.5">
+                            <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-elevated)', minWidth: 40 }}>
+                              <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, m.progress_pct))}%`, backgroundColor: 'var(--gold)' }} />
+                            </div>
+                            <span className="text-[10px] tabular-nums" style={{ color: 'var(--text-muted)' }}>{m.progress_pct}%</span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {canWrite && (
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => setEditMilestone(m)}
+                              className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--bg-hover)] transition-colors"
+                              style={{ color: 'var(--text-muted)' }}>
+                              Edit
+                            </button>
+                            <button onClick={() => { if (confirm('Remove this milestone?')) deleteMilestone(m.id); }}
+                              className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--bg-hover)] transition-colors"
+                              style={{ color: '#f87171' }}>
+                              ✕
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  </>
                 );
               })}
             </tbody>

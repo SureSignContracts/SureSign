@@ -101,7 +101,9 @@ class AnalyseContractWithAiJob implements ShouldQueue
                 EmailNotificationService::send(
                     'ai_analysis.completed',
                     'Contract Analysis Complete',
-                    "AI analysis is ready for contract: {$analysis->contract->title}. Log in to review and confirm the results."
+                    "AI analysis is ready for contract: {$analysis->contract->title}. Log in to review and confirm the results.",
+                    [],
+                    $user->organization
                 );
             }
         } catch (\Throwable $e) {

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-    <title>Final Certificate — {{ $finalAccount->reference }}</title>
+    <title>Final Certificate: {{ $finalAccount->reference }}</title>
     <style>
         @page {
             margin-top:    145px;
@@ -218,7 +218,7 @@
         <div class="sig-cell">
             <div class="sig-line"></div>
             <div class="sig-lbl">Issued By</div>
-            <div class="sig-val">{{ $issuedBy?->name ?: 'Generated electronically by SureSign' }}</div>
+            <div class="sig-val">{{ $issuedBy?->name ?: 'Generated electronically by SureSign Contracts' }}</div>
             <div class="sig-sub">Date: {{ $certDateFmt }}</div>
         </div>
         <div class="sig-gap"></div>
@@ -231,7 +231,7 @@
     </div>
 
     <div class="doc-footer">
-        Generated electronically by SureSign &nbsp;·&nbsp; {{ now()->format('d M Y, H:i') }}
+        Generated electronically by SureSign Contracts &nbsp;·&nbsp; {{ now()->format('d M Y, H:i') }}
         &nbsp;·&nbsp; Certificate: {{ $certificateNumber }} &nbsp;·&nbsp; Final Account Ref: {{ $finalAccount->reference }}
     </div>
 

@@ -346,7 +346,7 @@
     </div>
 
     <div class="doc-footer">
-        Generated electronically by SureSign &nbsp;·&nbsp; {{ now()->format('d M Y, H:i') }} &nbsp;·&nbsp; Ref: {{ $appRef }}
+        Generated electronically by SureSign Contracts &nbsp;·&nbsp; {{ now()->format('d M Y, H:i') }} &nbsp;·&nbsp; Ref: {{ $appRef }}
     </div>
 
 </div>

@@ -77,7 +77,7 @@ export default function AiPage() {
       <div className="flex-shrink-0 px-6 py-4 flex items-center gap-3"
            style={{ borderBottom: '1px solid var(--border)' }}>
         <div className="w-9 h-9 rounded-xl flex items-center justify-center"
-             style={{ backgroundColor: 'rgba(185,149,102,0.15)' }}>
+             style={{ backgroundColor: 'var(--gold-15)' }}>
           <Brain size={18} style={{ color: 'var(--gold)' }} />
         </div>
         <div>
@@ -91,7 +91,7 @@ export default function AiPage() {
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full max-w-lg mx-auto text-center">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
-                 style={{ backgroundColor: 'rgba(185,149,102,0.1)' }}>
+                 style={{ backgroundColor: 'var(--gold-15)' }}>
               <Sparkles size={28} style={{ color: 'var(--gold)' }} />
             </div>
             <h2 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
@@ -119,7 +119,7 @@ export default function AiPage() {
                   'w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-medium',
                 )}
                   style={msg.role === 'user'
-                    ? { backgroundColor: 'rgba(185,149,102,0.2)', color: 'var(--gold)' }
+                    ? { backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }
                     : { backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)' }
                   }
                 >

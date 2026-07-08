@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-    <title>Variation Order — {{ $variation->variation_number ?? '—' }}</title>
+    <title>Variation Order: {{ $variation->variation_number ?? 'Unreferenced' }}</title>
     <style>
         @page { margin-top: 145px; margin-bottom: 110px; margin-left: 0; margin-right: 0; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -77,7 +77,7 @@
         </tr>
         <tr>
             <td>Contract</td>
-            <td>{{ $variation->contract->title ?? '—' }}@if($variation->contract?->reference_number) &nbsp;— Ref: {{ $variation->contract->reference_number }}@endif</td>
+            <td>{{ $variation->contract->title ?? '—' }}@if($variation->contract?->reference_number) &nbsp;(Ref: {{ $variation->contract->reference_number }})@endif</td>
         </tr>
         @if($variation->contract?->party_name)
         <tr>

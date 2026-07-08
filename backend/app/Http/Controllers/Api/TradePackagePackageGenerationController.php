@@ -597,6 +597,7 @@ class TradePackagePackageGenerationController extends Controller
             'template_id'       => $template->id,
             'documentable_type' => TradePackage::class,
             'documentable_id'   => $tradePackage->id,
+            'trade_package_id'  => $tradePackage->id,
             'title'             => basename($filename, '.docx'),
             'type'              => $documentType,
             'category'          => 'subcontract',

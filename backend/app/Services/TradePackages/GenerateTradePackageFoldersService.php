@@ -11,27 +11,6 @@ use Illuminate\Support\Str;
 class GenerateTradePackageFoldersService
 {
     /**
-     * Standard trade package name → code map.
-     */
-    private const STANDARD_CODE_MAP = [
-        'Concrete Frame'          => 'CF',
-        'Brickwork'               => 'BW',
-        'Windows & Doors'         => 'WD',
-        'Roofing'                 => 'RF',
-        'M&E'                     => 'ME',
-        'Groundworks'             => 'GW',
-        'Drylining & Plastering'  => 'DP',
-        'Steelwork'               => 'ST',
-        'Landscaping'             => 'LS',
-        'Demolition'              => 'DM',
-        'Fire Stopping'           => 'FS',
-        'External Works'          => 'EW',
-        'Access Control'          => 'AC',
-        'CCTV'                    => 'CC',
-        'Solar PV'                => 'SP',
-    ];
-
-    /**
      * Generate trade packages for a project from the given array of package definitions.
      *
      * Each entry in $packages should have:
@@ -105,7 +84,7 @@ class GenerateTradePackageFoldersService
         // Use provided code if given
         $base = $providedCode
             ? strtoupper(trim($providedCode))
-            : (self::STANDARD_CODE_MAP[$name] ?? $this->initialsCode($name));
+            : (TradePackageCatalogueService::codeForName($name) ?? $this->initialsCode($name));
 
         return $this->uniqueCode($base, $projectId);
     }

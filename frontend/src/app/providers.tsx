@@ -40,7 +40,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             iconTheme: { primary: 'var(--gold)', secondary: 'var(--accent-fg)' },
             style: {
               background: 'var(--bg-surface)',
-              border: '1px solid rgba(185,149,102,0.35)',
+              border: '1px solid var(--gold-30)',
               color: 'var(--text-primary)',
             },
           },

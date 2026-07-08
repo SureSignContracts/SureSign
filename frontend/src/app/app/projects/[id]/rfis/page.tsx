@@ -9,6 +9,7 @@ import { MessageSquare, Plus, Search, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PromptActionButton from '@/components/prompts/PromptActionButton';
+import PageTourButton from '@/components/tours/PageTourButton';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   open:             { bg: 'rgba(234,179,8,0.12)',  text: '#facc15' },
@@ -72,8 +73,8 @@ function NewRfiModal({ projectId, onClose }: { projectId: string; onClose: () =>
   const inputStyle = { backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-lg rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+      <div className="ss-animate-in w-full max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
         <div className="flex items-center justify-between p-5" style={{ borderBottom: '1px solid var(--border)' }}>
           <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>New RFI</h2>
           <button onClick={onClose}><X size={18} style={{ color: 'var(--text-muted)' }} /></button>
@@ -100,17 +101,17 @@ function NewRfiModal({ projectId, onClose }: { projectId: string; onClose: () =>
               </select>
             </div>
             <div>
-              <label className="block text-xs mb-1" style={labelStyle}>Date Raised</label>
+              <label className="block text-xs mb-1" style={labelStyle}>Date raised</label>
               <input type="date" value={form.raised_date} onChange={e => set('raised_date', e.target.value)}
                 className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
             </div>
             <div>
-              <label className="block text-xs mb-1" style={labelStyle}>Response Required By</label>
+              <label className="block text-xs mb-1" style={labelStyle}>Response required by</label>
               <input type="date" value={form.response_due_date} onChange={e => set('response_due_date', e.target.value)}
                 className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
             </div>
             <div>
-              <label className="block text-xs mb-1" style={labelStyle}>Cost Impact (£)</label>
+              <label className="block text-xs mb-1" style={labelStyle}>Cost impact</label>
               <input type="number" value={form.cost_impact_amount} onChange={e => set('cost_impact_amount', e.target.value)}
                 className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
             </div>
@@ -122,14 +123,14 @@ function NewRfiModal({ projectId, onClose }: { projectId: string; onClose: () =>
           </label>
           {form.programme_impact && (
             <div>
-              <label className="block text-xs mb-1" style={labelStyle}>Programme Impact (days)</label>
+              <label className="block text-xs mb-1" style={labelStyle}>Programme impact (days)</label>
               <input type="number" value={form.programme_impact_days} onChange={e => set('programme_impact_days', e.target.value)}
                 className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
             </div>
           )}
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
-            <button type="submit" disabled={isPending} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: isPending ? 0.7 : 1 }}>
+            <button type="submit" disabled={isPending} className="px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.98]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: isPending ? 0.7 : 1 }}>
               {isPending ? 'Raising…' : 'Raise RFI'}
             </button>
           </div>
@@ -146,7 +147,6 @@ function RfiResponseModal({ rfi, projectId, onClose }: { rfi: any; projectId: st
   const [form, setForm] = useState({
     response:       rfi.response ?? '',
     responded_at:   rfi.responded_at ? String(rfi.responded_at).slice(0, 10) : new Date().toISOString().split('T')[0],
-    assigned_to:    rfi.assigned_to ?? '',
   });
 
   const { mutate, isPending } = useMutation({
@@ -165,8 +165,8 @@ function RfiResponseModal({ rfi, projectId, onClose }: { rfi: any; projectId: st
   const labelStyle = { color: 'var(--text-muted)' };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-md rounded-2xl shadow-xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+      <div className="ss-animate-in w-full max-w-md rounded-2xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
         <div className="flex items-center justify-between p-5" style={{ borderBottom: '1px solid var(--border)' }}>
           <div>
             <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Respond to RFI</h2>
@@ -180,23 +180,20 @@ function RfiResponseModal({ rfi, projectId, onClose }: { rfi: any; projectId: st
             <textarea value={form.response} onChange={e => setForm(p => ({ ...p, response: e.target.value }))} required rows={5}
               className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none" style={inputStyle} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs mb-1" style={labelStyle}>Response Date</label>
-              <input type="date" value={form.responded_at} onChange={e => setForm(p => ({ ...p, responded_at: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-            </div>
-            <div>
-              <label className="block text-xs mb-1" style={labelStyle}>Assigned To</label>
-              <input value={form.assigned_to} onChange={e => setForm(p => ({ ...p, assigned_to: e.target.value }))}
-                placeholder="Name or email"
-                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
-            </div>
+          {/* "Assigned to" removed — rfis.assigned_to is a real FK to
+              users.id, but this form only ever had a free-text name field
+              for it, which the backend now correctly rejects instead of
+              silently discarding or crashing. Needs a user-picker before
+              this can come back. */}
+          <div>
+            <label className="block text-xs mb-1" style={labelStyle}>Response date</label>
+            <input type="date" value={form.responded_at} onChange={e => setForm(p => ({ ...p, responded_at: e.target.value }))}
+              className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm"
               style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
-            <button type="submit" disabled={isPending} className="px-4 py-2 rounded-lg text-sm font-medium"
+            <button type="submit" disabled={isPending} className="px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.98]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: isPending ? 0.7 : 1 }}>
               {isPending ? 'Saving…' : 'Record Response'}
             </button>
@@ -244,13 +241,17 @@ export default function ProjectRfisPage() {
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>RFIs</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-[1.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>RFIs</h1>
+            <PageTourButton tourKey="page-rfis" label="Take a tour of this page" />
+          </div>
           <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Requests for Information</p>
         </div>
         {canWrite && (
         <button
+          data-tour="rfis-new"
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 active:scale-[0.98]"
           style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
         >
           <Plus size={15} />
@@ -260,21 +261,21 @@ export default function ProjectRfisPage() {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-4" data-tour="rfis-summary">
         {[
           { label: 'Total', value: (data?.data ?? []).length, color: 'var(--gold)' },
           { label: 'Open', value: openCount, color: '#facc15' },
           { label: 'Pending Response', value: pendingCount, color: '#fb923c' },
         ].map(s => (
-          <div key={s.label} className="rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          <div key={s.label} className="rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{s.label}</p>
-            <p className="text-xl font-bold mt-1" style={{ color: s.color }}>{s.value}</p>
+            <p className="text-xl font-bold mt-1 tabular-nums" style={{ color: s.color }}>{s.value}</p>
           </div>
         ))}
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3 flex-wrap">
+      <div className="flex gap-3 flex-wrap" data-tour="rfis-filters">
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
           <input
@@ -282,13 +283,13 @@ export default function ProjectRfisPage() {
             onChange={e => setSearch(e.target.value)}
             placeholder="Search RFIs…"
             className="pl-9 pr-4 py-2 rounded-lg text-sm outline-none"
-            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)', minWidth: '220px' }}
+            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)', minWidth: '220px', boxShadow: 'var(--shadow-card)' }}
           />
         </div>
-        <div className="flex gap-1 p-1 rounded-lg" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+        <div className="flex gap-1 p-1 rounded-full" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
           {(['all', 'open', 'pending_response', 'responded', 'closed'] as const).map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
-              className="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+              className="px-3 py-1.5 rounded-full text-xs font-medium transition-all active:scale-[0.97]"
               style={statusFilter === s ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' } : { color: 'var(--text-secondary)' }}>
               {s === 'all' ? 'All' : RFI_STATUS_LABELS[s] ?? s}
             </button>
@@ -297,7 +298,7 @@ export default function ProjectRfisPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl overflow-x-auto" style={{ border: '1px solid var(--border)' }}>
+      <div className="rounded-2xl overflow-x-auto" data-tour="rfis-table" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
         <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
@@ -323,7 +324,7 @@ export default function ProjectRfisPage() {
                   <MessageSquare size={28} className="mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
                   <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No RFIs yet</p>
                   {canWrite && (
-                  <button onClick={() => setShowModal(true)} className="mt-3 px-3 py-1.5 rounded-lg text-xs font-medium" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+                  <button onClick={() => setShowModal(true)} className="mt-3 px-3 py-1.5 rounded-lg text-xs font-medium transition-all active:scale-[0.98]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
                     Raise First RFI
                   </button>
                   )}
@@ -333,7 +334,7 @@ export default function ProjectRfisPage() {
               const badge = STATUS_COLORS[r.status] ?? { bg: 'var(--bg-elevated)', text: 'var(--text-muted)' };
               return (
                 <tr key={r.id} className="hover:bg-[var(--bg-hover)] transition-colors cursor-pointer" style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td className="px-5 py-3 font-mono font-semibold" style={{ color: 'var(--gold)' }}>#{r.rfi_number}</td>
+                  <td className="px-5 py-3 font-mono text-[11px] font-semibold" style={{ color: 'var(--gold)' }}>#{r.rfi_number}</td>
                   <td className="px-5 py-3 font-medium max-w-[240px] truncate" style={{ color: 'var(--text-primary)' }}>{r.subject}</td>
                   <td className="px-5 py-3">
                     <span className="text-xs font-medium" style={{ color: r.priority === 'urgent' ? '#ef4444' : r.priority === 'high' ? '#f59e0b' : 'var(--text-muted)' }}>

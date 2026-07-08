@@ -9,6 +9,7 @@ import {
   ChevronLeft, ChevronRight, CalendarDays, X, CalendarClock, CalendarRange, Layers,
   ArrowUpRight, AlertTriangle,
 } from 'lucide-react';
+import PageTourButton from '@/components/tours/PageTourButton';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -237,7 +238,7 @@ function StatChip({ icon: Icon, label, value }: { icon: typeof Layers; label: st
   return (
     <div
       className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl"
-      style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+      style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}
     >
       <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: tint('#b99566', '26') }}>
         <Icon size={14} style={{ color: 'var(--gold)' }} />
@@ -292,11 +293,11 @@ function EventDetailModal({ event, onClose }: { event: CalendarEvent; onClose: (
     : 'Contract';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
       onClick={onClose}>
       <div
-        className="w-full max-w-md rounded-2xl shadow-xl max-h-[88vh] overflow-y-auto"
-        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+        className="w-full max-w-md rounded-2xl max-h-[88vh] overflow-y-auto ss-animate-in"
+        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between p-5" style={{ borderBottom: '1px solid var(--border)' }}>
@@ -321,7 +322,7 @@ function EventDetailModal({ event, onClose }: { event: CalendarEvent; onClose: (
           <div className="space-y-2.5">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Due Date</p>
-              <p className="text-sm mt-0.5" style={{ color: 'var(--text-primary)' }}>{formatDate(event.date)}</p>
+              <p className="text-sm mt-0.5 tabular-nums" style={{ color: 'var(--text-primary)' }}>{formatDate(event.date)}</p>
             </div>
 
             {event.contract_title && (
@@ -342,7 +343,7 @@ function EventDetailModal({ event, onClose }: { event: CalendarEvent; onClose: (
           {event.action_url && (
             <button
               onClick={() => router.push(event.action_url!)}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-opacity hover:opacity-90"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.98]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
             >
               View in {moduleLabel} <ArrowUpRight size={14} />
@@ -374,7 +375,7 @@ function DayDetailPanel({
   return (
     <div
       className="rounded-2xl p-5 flex flex-col gap-4"
-      style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+      style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}
     >
       <div className="flex items-center justify-between">
         <div>
@@ -470,7 +471,7 @@ function OperationalSidebar({ events, todayStr, onEventClick }: {
   return (
     <div
       className="rounded-2xl p-5 flex flex-col gap-5"
-      style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+      style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}
     >
       <div className="flex items-center gap-2">
         <CalendarClock size={15} style={{ color: 'var(--gold)' }} />
@@ -505,7 +506,7 @@ function AgendaView({ events, todayStr, onEventClick }: { events: CalendarEvent[
     return (
       <div
         className="rounded-2xl p-8 text-center"
-        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}
       >
         <CalendarClock size={24} className="mx-auto mb-2" style={{ color: 'var(--text-muted)', opacity: 0.5 }} />
         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No upcoming events</p>
@@ -765,10 +766,11 @@ export default function ProjectCalendarPage() {
           <div className="flex items-center gap-2 mb-1">
             <CalendarDays size={18} style={{ color: 'var(--gold)' }} />
             <h1 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Project Calendar</h1>
+            <PageTourButton tourKey="page-calendar" label="Take a tour of this page" />
           </div>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Key dates, deadlines and obligations</p>
         </div>
-        <div className="flex flex-wrap gap-2.5">
+        <div className="flex flex-wrap gap-2.5" data-tour="calendar-summary">
           <StatChip icon={Layers}        label={hasActiveFilters ? 'Matching events' : 'Total events'} value={stats.total} />
           <StatChip icon={CalendarRange} label="This month"    value={stats.thisMonth} />
           <StatChip icon={CalendarClock} label="Upcoming"      value={stats.upcoming} />
@@ -777,7 +779,7 @@ export default function ProjectCalendarPage() {
 
       {/* View switcher + Filters */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+        <div className="flex rounded-xl overflow-hidden" data-tour="calendar-view-switcher" style={{ border: '1px solid var(--border)' }}>
           {(['month', 'week', 'agenda'] as ViewMode[]).map(v => (
             <button
               key={v}
@@ -793,14 +795,14 @@ export default function ProjectCalendarPage() {
           ))}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2" data-tour="calendar-filters">
           {QUICK_FILTERS.map(qf => (
             <button
               key={qf.key}
               onClick={() => setQuickFilter(qf.key)}
               className="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors"
               style={{
-                backgroundColor: quickFilter === qf.key ? 'rgba(185,149,102,0.18)' : 'var(--bg-elevated)',
+                backgroundColor: quickFilter === qf.key ? 'var(--gold-15)' : 'var(--bg-elevated)',
                 color: quickFilter === qf.key ? 'var(--gold)' : 'var(--text-muted)',
               }}
             >
@@ -816,7 +818,7 @@ export default function ProjectCalendarPage() {
       {/* Legend */}
       <div
         className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 rounded-xl"
-        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}
       >
         {LEGEND_TYPES.map(({ type, color }) => (
           <div key={type} className="flex items-center gap-1.5">
@@ -847,11 +849,11 @@ export default function ProjectCalendarPage() {
 
       {/* Month / Week views — desktop */}
       {view !== 'agenda' && (
-        <div className="hidden md:flex md:flex-col lg:flex-row gap-5">
+        <div className="hidden md:flex md:flex-col lg:flex-row gap-5" data-tour="calendar-main">
           <div className="flex-1 min-w-0">
             <div
               className="rounded-2xl overflow-hidden"
-              style={{ backgroundColor: 'var(--bg-surface)', border: view === 'month' ? '1px solid var(--border)' : 'none' }}
+              style={{ backgroundColor: 'var(--bg-surface)', border: view === 'month' ? '1px solid var(--border)' : 'none', boxShadow: view === 'month' ? 'var(--shadow-card)' : 'none' }}
             >
               {view === 'month' && (
                 <>
@@ -980,7 +982,7 @@ export default function ProjectCalendarPage() {
                       <ChevronLeft size={16} />
                     </button>
                     <div className="flex items-center gap-3">
-                      <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                      <h2 className="text-sm font-semibold tabular-nums" style={{ color: 'var(--text-primary)' }}>
                         {formatDate(toYMD(weekCells[0]))} – {formatDate(toYMD(weekCells[6]))}
                       </h2>
                       <button onClick={goToday} disabled={isViewingThisWeek}

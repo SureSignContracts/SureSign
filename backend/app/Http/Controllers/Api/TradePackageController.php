@@ -4,15 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\FileUpload;
-use App\Models\Organization;
 use App\Models\Project;
 use App\Models\TradePackage;
 use App\Services\LocalDocumentMirrorService;
 use App\Services\ProjectStorageService;
+use App\Services\TradePackages\TradePackageActivityService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class TradePackageController extends Controller
 {
@@ -87,99 +85,6 @@ class TradePackageController extends Controller
         return response()->json(['trade_packages' => $packages]);
     }
 
-    // ── Create ──────────────────────────────────────────────────────────────
-
-    /**
-     * POST /api/admin/trade-packages
-     */
-    public function store(Request $request)
-    {
-        $data = $request->validate(array_merge([
-            'project_id'          => 'required|integer|exists:projects,id',
-            'name'                => 'required|string|max:255',
-            'package_code'        => 'nullable|string|max:50',
-            'package_reference'   => 'nullable|string|max:100',
-            'contractor_name'     => 'nullable|string|max:255',
-            'description'         => 'nullable|string|max:2000',
-            'status'              => 'nullable|string|in:' . implode(',', TradePackage::STATUSES),
-        ], $this->subcontractRules()));
-
-        $project = Project::findOrFail($data['project_id']);
-
-        $slug = TradePackage::makeSlug($data['name'], $project->id);
-
-        // Build creatable attributes: core fields + any supplied subcontract fields.
-        $package = TradePackage::create(array_merge(
-            array_intersect_key($data, $this->subcontractRules()),
-            [
-                'organization_id'   => $project->organization_id,
-                'project_id'        => $project->id,
-                'name'              => $data['name'],
-                'slug'              => $slug,
-                'package_code'      => $data['package_code'] ?? null,
-                'package_reference' => $data['package_reference'] ?? null,
-                'contractor_name'   => $data['contractor_name'] ?? null,
-                'description'       => $data['description'] ?? null,
-                'status'            => $data['status'] ?? 'active',
-                'created_by'        => $request->user()?->id,
-            ]
-        ));
-
-        // Create local mirror folder for this package (flat — no subfolders)
-        $this->mirrorTradePackageFolders($package, $project);
-
-        return response()->json($package, 201);
-    }
-
-    // ── Create starter packages ─────────────────────────────────────────────
-
-    /**
-     * POST /api/admin/trade-packages/starters
-     * Creates the three default trade packages for a project (if none exist yet).
-     */
-    public function storeStarters(Request $request)
-    {
-        $data = $request->validate([
-            'project_id' => 'required|integer|exists:projects,id',
-        ]);
-
-        $project = Project::findOrFail($data['project_id']);
-
-        if (TradePackage::where('project_id', $project->id)->exists()) {
-            return response()->json(['message' => 'Trade packages already exist for this project.'], 422);
-        }
-
-        $starters = [
-            ['name' => 'Concrete Frame',   'package_code' => 'CF', 'contractor_name' => 'Harry Construction Ltd'],
-            ['name' => 'Brickwork',        'package_code' => 'BW', 'contractor_name' => null],
-            ['name' => 'Windows & Doors',  'package_code' => 'WD', 'contractor_name' => null],
-        ];
-
-        $created = [];
-        foreach ($starters as $def) {
-            $ref  = $project->code ? $project->code . '-' . $def['package_code'] : $def['package_code'];
-            $slug = TradePackage::makeSlug($def['name'], $project->id);
-
-            $package = TradePackage::create([
-                'organization_id'   => $project->organization_id,
-                'project_id'        => $project->id,
-                'name'              => $def['name'],
-                'slug'              => $slug,
-                'package_code'      => $def['package_code'],
-                'package_reference' => $ref,
-                'contractor_name'   => $def['contractor_name'],
-                'status'            => 'active',
-                'created_by'        => $request->user()?->id,
-            ]);
-
-            $this->mirrorTradePackageFolders($package, $project);
-
-            $created[] = $package;
-        }
-
-        return response()->json(['trade_packages' => $created], 201);
-    }
-
     // ── Update ──────────────────────────────────────────────────────────────
 
     /**
@@ -249,6 +154,21 @@ class TradePackageController extends Controller
     }
 
     /**
+     * GET /api/projects/{project}/trade-packages/{tradePackage}/activities
+     *
+     * Merged activity feed for this trade package — see TradePackageActivityService
+     * for why this can't be a single-table query (Sprint 6C).
+     */
+    public function activities(Request $request, Project $project, TradePackage $tradePackage, TradePackageActivityService $activityService)
+    {
+        $this->authorizeProjectPackage($request, $project, $tradePackage);
+
+        $page = max(1, (int) $request->query('page', 1));
+
+        return response()->json($activityService->forTradePackage($tradePackage, 50, $page));
+    }
+
+    /**
      * PUT /api/projects/{project}/trade-packages/{tradePackage}
      *
      * Tenant-isolated update used by the project workspace / contracts page.
@@ -315,11 +235,22 @@ class TradePackageController extends Controller
     }
 
     /**
-     * POST /api/admin/trade-packages/{tradePackage}/upload
+     * POST /api/trade-packages/{tradePackage}/upload
      * Upload a file directly into a trade package (no subfolder required).
      */
     public function uploadFile(Request $request, TradePackage $tradePackage)
     {
+        $project = $tradePackage->project;
+        $user    = $request->user();
+
+        if (
+            $user->organization_id !== $project->organization_id
+            && !$user->hasRole('Super Admin')
+            && !$user->hasRole('Admin')
+        ) {
+            abort(403, 'Access denied.');
+        }
+
         $allowedTypes = [
             'procurement_summary', 'tender_enquiry_letter', 'schedule_of_documents',
             'subcontract_draft', 'subcontract_template', 'executed_contract',
@@ -335,8 +266,7 @@ class TradePackageController extends Controller
             'notes'         => 'nullable|string|max:2000',
         ]);
 
-        $project = $tradePackage->project;
-        $file    = $request->file('file');
+        $file = $request->file('file');
 
         $storagePath = ProjectStorageService::buildFilePath($project, 'contracts', $file->getClientOriginalExtension());
         Storage::disk('local')->put($storagePath, file_get_contents($file->getRealPath()));
@@ -365,45 +295,4 @@ class TradePackageController extends Controller
         return response()->json($upload->load('uploader:id,name'), 201);
     }
 
-    // ── Mirror helper ───────────────────────────────────────────────────────
-
-    private function mirrorTradePackageFolders(TradePackage $package, Project $project): void
-    {
-        try {
-            if (!LocalDocumentMirrorService::isEnabled()) {
-                return;
-            }
-
-            $root = LocalDocumentMirrorService::getMirrorPath();
-            if (empty($root)) {
-                return;
-            }
-
-            $org      = $project->organization ?? \App\Models\Organization::find($project->organization_id);
-            $orgName  = \App\Services\SureSignFolderPathService::sanitizeSegment($org->name ?? 'Unknown');
-            $projName = \App\Services\SureSignFolderPathService::projectFolderName(
-                $project->name,
-                $project->code
-            );
-
-            // Create the flat package folder — files go directly inside, no subfolders
-            $packageDir = rtrim($root, '/\\') . DIRECTORY_SEPARATOR . $orgName
-                . DIRECTORY_SEPARATOR . $projName
-                . DIRECTORY_SEPARATOR . '01_Contracts'
-                . DIRECTORY_SEPARATOR . 'Subcontracts'
-                . DIRECTORY_SEPARATOR . \App\Services\SureSignFolderPathService::sanitizeSegment($package->name);
-
-            if (!is_dir($packageDir)) {
-                @mkdir($packageDir, 0755, true);
-            }
-
-            Log::info('[Mirror] Trade package folder created', ['package' => $package->name, 'path' => $packageDir]);
-
-        } catch (\Throwable $e) {
-            Log::warning('[Mirror] Trade package folder creation failed', [
-                'package' => $package->name,
-                'error'   => $e->getMessage(),
-            ]);
-        }
-    }
 }

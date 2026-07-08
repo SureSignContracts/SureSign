@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-    <title>Payment Certificate — Application #{{ $paymentApplication->application_number }}</title>
+    <title>Payment Certificate: Application #{{ $paymentApplication->application_number }}</title>
     <style>
         @page {
             margin-top:    145px;
@@ -293,7 +293,7 @@
             <table class="it">
                 <tr>
                     <td class="k">Certified By</td>
-                    <td class="v">{{ $certifierName ?: 'Generated electronically by SureSign' }}</td>
+                    <td class="v">{{ $certifierName ?: 'Generated electronically by SureSign Contracts' }}</td>
                 </tr>
                 @if($certifierRole)
                 <tr><td class="k">Role</td><td class="v">{{ $certifierRole }}</td></tr>
@@ -323,7 +323,7 @@
     </div>
 
     <div class="doc-footer">
-        Generated electronically by SureSign &nbsp;·&nbsp; {{ now()->format('d M Y, H:i') }}
+        Generated electronically by SureSign Contracts &nbsp;·&nbsp; {{ now()->format('d M Y, H:i') }}
         &nbsp;·&nbsp; Certificate Ref: {{ $certRef }} &nbsp;·&nbsp; Application: {{ $appRef }}
     </div>
 

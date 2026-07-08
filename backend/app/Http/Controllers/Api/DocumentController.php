@@ -495,7 +495,7 @@ class DocumentController extends Controller
             $tradePackages = \App\Models\TradePackage::where('project_id', $project->id)
                 ->whereNotIn('status', ['archived', 'inactive'])
                 ->orderBy('name')
-                ->get(['id', 'name', 'package_code', 'package_reference', 'contractor_name', 'description', 'status', 'contract_value', 'retention_percentage'])
+                ->get(['id', 'name', 'package_code', 'package_reference', 'contractor_name', 'description', 'status', 'contract_value', 'retention_percentage', 'is_custom'])
                 ->map(function ($pkg) use ($project) {
                     return [
                         'type'              => 'trade_package',
@@ -508,6 +508,7 @@ class DocumentController extends Controller
                         'status'            => $pkg->status,
                         'contract_value'    => $pkg->contract_value,
                         'retention_percentage' => $pkg->retention_percentage,
+                        'is_custom'         => (bool) $pkg->is_custom,
                         'key'               => "subcontracts/package/{$pkg->id}",
                         'files_count'       => FileUpload::where('project_id', $project->id)
                                                 ->where('trade_package_id', $pkg->id)
@@ -559,16 +560,30 @@ class DocumentController extends Controller
                 ->latest()
                 ->paginate(50);
 
+            // Generated documents (notices, certificates, statements, package docs) live in
+            // a separate `documents` table — tagged with trade_package_id since Sprint 6C so
+            // they can be surfaced here alongside uploaded files, without a second document
+            // system or a second UI.
+            $generatedDocuments = \App\Models\Document::where('trade_package_id', $tradePackageId)
+                ->with(['creator:id,name', 'documentable'])
+                ->latest()
+                ->get()
+                ->map(function (\App\Models\Document $doc) {
+                    $doc->setAttribute('source', $this->classifyDocumentSource($doc));
+                    return $doc;
+                });
+
             return response()->json([
-                'type'          => 'files',
-                'trade_package' => $tradePackage,
-                'data'          => $paginated->items(),
-                'total'         => $paginated->total(),
-                'per_page'      => $paginated->perPage(),
-                'from'          => $paginated->firstItem(),
-                'to'            => $paginated->lastItem(),
-                'current_page'  => $paginated->currentPage(),
-                'last_page'     => $paginated->lastPage(),
+                'type'                => 'files',
+                'trade_package'       => $tradePackage,
+                'data'                => $paginated->items(),
+                'total'               => $paginated->total(),
+                'per_page'            => $paginated->perPage(),
+                'from'                => $paginated->firstItem(),
+                'to'                  => $paginated->lastItem(),
+                'current_page'        => $paginated->currentPage(),
+                'last_page'           => $paginated->lastPage(),
+                'generated_documents' => $generatedDocuments,
             ]);
         }
 
@@ -658,5 +673,63 @@ class DocumentController extends Controller
             $paginated->toArray(),
             ['generated_docs' => $generatedDocs],
         ));
+    }
+
+    /**
+     * Sprint 6D Phase 3 — resolves a generated Document's `documentable` polymorphic
+     * relation into a human-readable label plus a workspace tab/subtab reference,
+     * mirroring the same source-classification convention used by
+     * TradePackageActivityService and CalendarController this sprint.
+     */
+    private function classifyDocumentSource(\App\Models\Document $document): ?array
+    {
+        $model = $document->documentable;
+        if (!$model) {
+            return null;
+        }
+
+        return match (get_class($model)) {
+            \App\Models\DelayEvent::class => [
+                'type' => 'delay_event', 'id' => $model->id,
+                'label' => "Delay Event #{$model->event_number}: {$model->title}",
+                'tab' => 'delay-eot', 'subtab' => 'delay',
+            ],
+            \App\Models\EotRequest::class => [
+                'type' => 'eot_request', 'id' => $model->id,
+                'label' => "EOT #{$model->eot_number}: {$model->title}",
+                'tab' => 'delay-eot', 'subtab' => 'eot',
+            ],
+            \App\Models\LossAndExpenseClaim::class => [
+                'type' => 'loss_and_expense_claim', 'id' => $model->id,
+                'label' => "L&E Claim #{$model->claim_number}: {$model->title}",
+                'tab' => 'delay-eot', 'subtab' => 'loss-expense',
+            ],
+            \App\Models\FinalAccount::class => [
+                'type' => 'final_account', 'id' => $model->id,
+                'label' => "Final Account {$model->reference}",
+                'tab' => 'commercial', 'subtab' => null,
+            ],
+            \App\Models\PaymentApplication::class => [
+                'type' => 'payment_application', 'id' => $model->id,
+                'label' => "Payment Application #{$model->application_number}",
+                'tab' => 'commercial', 'subtab' => null,
+            ],
+            \App\Models\PaymentNotice::class => [
+                'type' => 'payment_notice', 'id' => $model->id,
+                'label' => 'Payment Notice' . ($model->reference ? " ({$model->reference})" : ''),
+                'tab' => 'commercial', 'subtab' => null,
+            ],
+            \App\Models\PayLessNotice::class => [
+                'type' => 'pay_less_notice', 'id' => $model->id,
+                'label' => 'Pay Less Notice' . ($model->reference ? " ({$model->reference})" : ''),
+                'tab' => 'commercial', 'subtab' => null,
+            ],
+            \App\Models\TradePackage::class => [
+                'type' => 'trade_package', 'id' => $model->id,
+                'label' => 'Trade Package generation',
+                'tab' => 'overview', 'subtab' => null,
+            ],
+            default => null,
+        };
     }
 }

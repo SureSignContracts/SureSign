@@ -169,7 +169,7 @@ function NotifRow({
           {n.message}
         </p>
         <div className="flex items-center gap-2 mt-1 flex-wrap">
-          <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+          <span className="text-[10px] tabular-nums" style={{ color: 'var(--text-muted)' }}>
             {formatTimeAgo(n.created_at)}
           </span>
           {categoryLabel && (
@@ -331,7 +331,7 @@ export default function NotificationBell() {
       >
         <Bell size={20} />
         {displayCount && (
-          <span className={`absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none ${hasCritical ? 'bg-red-500 animate-pulse' : 'bg-red-500'}`}>
+          <span className={`absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 text-white text-[10px] font-bold tabular-nums rounded-full flex items-center justify-center leading-none ${hasCritical ? 'bg-red-500 animate-pulse' : 'bg-red-500'}`}>
             {displayCount}
           </span>
         )}

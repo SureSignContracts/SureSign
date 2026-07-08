@@ -1,4 +1,4 @@
-               <?php
+<?php
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ProjectController;
@@ -9,12 +9,17 @@ use App\Http\Controllers\Api\PaymentApplicationController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\AiController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\OrganizationController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\SiteDiaryController;
 use App\Http\Controllers\Api\MeetingMinutesController;
 use App\Http\Controllers\Api\EotRequestController;
+use App\Http\Controllers\Api\DelayEventController;
+use App\Http\Controllers\Api\RiskController;
+use App\Http\Controllers\Api\DeliveryDocumentController;
+use App\Http\Controllers\Api\LossAndExpenseClaimController;
 use App\Http\Controllers\Api\PayLessNoticeController;
 use App\Http\Controllers\Api\SiteInstructionController;
 use App\Http\Controllers\Api\AdminController;
@@ -33,6 +38,8 @@ use App\Http\Controllers\Api\ProgrammeMilestoneController;
 use App\Http\Controllers\Api\PromptController;
 use App\Http\Controllers\Api\CompaniesHouseController;
 use App\Http\Controllers\Api\GenerateTradePackageFoldersController;
+use App\Http\Controllers\Api\TradePackageCatalogueController;
+use App\Http\Controllers\Api\TradePackageAiController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\DocumentRegisterController;
 use App\Http\Controllers\Api\PaymentNoticeController;
@@ -61,10 +68,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
         Route::put('/password', [AuthController::class, 'updatePassword']);
+        Route::put('/force-password-change', [AuthController::class, 'forcePasswordChange']);
     });
 
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index']);
+
+    // Cross-project reports
+    Route::get('/reports/summary', [ReportController::class, 'summary']);
+    Route::get('/reports/commercial-summary', [ReportController::class, 'commercialSummary']);
 
     // Site settings (public read — all authenticated users)
     Route::get('/settings', [SuresignSettingController::class, 'publicShow']);
@@ -157,8 +169,22 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/trade-packages/{tradePackage}/payment-applications', [PaymentApplicationController::class, 'storeForTradePackage']);
         Route::get('/trade-packages/{tradePackage}/final-account',  [FinalAccountController::class, 'showForTradePackage']);
         Route::post('/trade-packages/{tradePackage}/final-account', [FinalAccountController::class, 'storeForTradePackage']);
+        Route::get('/trade-packages/{tradePackage}/programme',  [ProgrammeMilestoneController::class, 'indexByTradePackage']);
+        Route::post('/trade-packages/{tradePackage}/programme', [ProgrammeMilestoneController::class, 'storeForTradePackage']);
+        Route::get('/trade-packages/{tradePackage}/delay-events',  [DelayEventController::class, 'indexByTradePackage']);
+        Route::post('/trade-packages/{tradePackage}/delay-events', [DelayEventController::class, 'storeForTradePackage']);
+        Route::get('/trade-packages/{tradePackage}/eot-requests',  [EotRequestController::class, 'indexByTradePackage']);
+        Route::post('/trade-packages/{tradePackage}/eot-requests', [EotRequestController::class, 'storeForTradePackage']);
+        Route::get('/trade-packages/{tradePackage}/loss-and-expense-claims',  [LossAndExpenseClaimController::class, 'indexByTradePackage']);
+        Route::post('/trade-packages/{tradePackage}/loss-and-expense-claims', [LossAndExpenseClaimController::class, 'storeForTradePackage']);
+        Route::get('/trade-packages/{tradePackage}/risks',  [RiskController::class, 'indexByTradePackage']);
+        Route::post('/trade-packages/{tradePackage}/risks', [RiskController::class, 'storeForTradePackage']);
+        Route::get('/trade-packages/{tradePackage}/delivery-documents',  [DeliveryDocumentController::class, 'indexByTradePackage']);
+        Route::post('/trade-packages/{tradePackage}/delivery-documents', [DeliveryDocumentController::class, 'storeForTradePackage']);
+        Route::get('/trade-packages/{tradePackage}/delivery-documents/available-documents', [DeliveryDocumentController::class, 'availableDocuments']);
         // Trade package (subcontract) workspace + tenant-scoped update
         Route::get('/trade-packages/{tradePackage}/workspace', [TradePackageController::class, 'workspace']);
+        Route::get('/trade-packages/{tradePackage}/activities', [TradePackageController::class, 'activities']);
         Route::put('/trade-packages/{tradePackage}', [TradePackageController::class, 'updateForProject']);
         Route::get('/payment-notices', [PaymentNoticeController::class, 'index']);
         Route::get('/retention-releases', [RetentionReleaseController::class, 'index']);
@@ -169,6 +195,20 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('site-diaries', SiteDiaryController::class)->shallow();
         Route::apiResource('meetings', MeetingMinutesController::class)->shallow();
         Route::apiResource('eot-requests', EotRequestController::class)->shallow();
+        Route::post('/eot-requests/{eotRequest}/decide', [EotRequestController::class, 'decide']);
+        Route::post('/eot-requests/{eotRequest}/generate-decision-notice', [EotRequestController::class, 'generateDecisionNotice']);
+        Route::apiResource('delay-events', DelayEventController::class)->shallow();
+        Route::post('/delay-events/{delayEvent}/generate-notice', [DelayEventController::class, 'generateNotice']);
+        Route::apiResource('loss-and-expense-claims', LossAndExpenseClaimController::class)->shallow();
+        Route::post('/loss-and-expense-claims/{lossAndExpenseClaim}/decide', [LossAndExpenseClaimController::class, 'decide']);
+        Route::get('/risks', [RiskController::class, 'indexForProject']);
+        Route::post('/risks', [RiskController::class, 'storeForProject']);
+        Route::put('/risks/{risk}', [RiskController::class, 'update']);
+        Route::delete('/risks/{risk}', [RiskController::class, 'destroy']);
+        Route::get('/delivery-documents', [DeliveryDocumentController::class, 'indexForProject']);
+        Route::post('/delivery-documents', [DeliveryDocumentController::class, 'storeForProject']);
+        Route::put('/delivery-documents/{deliveryDocument}', [DeliveryDocumentController::class, 'update']);
+        Route::delete('/delivery-documents/{deliveryDocument}', [DeliveryDocumentController::class, 'destroy']);
         Route::apiResource('pay-less-notices', PayLessNoticeController::class)->shallow();
 
         Route::apiResource('site-instructions', SiteInstructionController::class)->shallow();
@@ -227,6 +267,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/templates', [DocumentTemplateController::class, 'index']);
     Route::post('/trade-packages/{tradePackage}/generate-package', [TradePackagePackageGenerationController::class, 'generate']);
     Route::post('/projects/{project}/subcontracts/generate-trade-packages', [GenerateTradePackageFoldersController::class, 'store']);
+    Route::get('/trade-packages/catalogue', [TradePackageCatalogueController::class, 'index']);
+    Route::post('/trade-packages/{tradePackage}/upload', [TradePackageController::class, 'uploadFile']);
+
+    // Trade Package AI onboarding (Sprint 6B Stage 1)
+    Route::post('/trade-packages/{tradePackage}/ai-analysis',  [TradePackageAiController::class, 'startAnalysis']);
+    Route::get('/trade-packages/{tradePackage}/ai-analysis',   [TradePackageAiController::class, 'getLatestAnalysis']);
+    Route::get('/trade-packages/{tradePackage}/ai-analyses',   [TradePackageAiController::class, 'listAnalyses']);
+    Route::get('/trade-package-ai-analyses/{analysis}',        [TradePackageAiController::class, 'showAnalysis']);
+    Route::post('/trade-package-ai-analyses/{analysis}/reparse', [TradePackageAiController::class, 'reparseAnalysis']);
+    Route::post('/trade-package-ai-analyses/{analysis}/confirm', [TradePackageAiController::class, 'confirmAnalysis']);
+    Route::post('/trade-package-ai-analyses/{analysis}/cancel',  [TradePackageAiController::class, 'cancelAnalysis']);
 
     // Document Register & Number types
     Route::get('/document-types', [DocumentRegisterController::class, 'types']);
@@ -276,10 +327,27 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/organization/letterhead-header',   [OrganizationController::class, 'uploadLetterheadHeader']);
     Route::post('/organization/letterhead-footer',   [OrganizationController::class, 'uploadLetterheadFooter']);
 
-    // Users (admin)
-    Route::middleware('role:Super Admin|Admin')->group(function () {
+    // User management — Super Admin only. Tightened from the previous
+    // 'Super Admin|Admin' gating: verification, bans, password/token
+    // controls and role changes are sensitive enough that regular Admins
+    // should not be able to call them (or see them rendered client-side).
+    // Throttled on top of the normal auth:sanctum rate limit — a compromised
+    // or careless Super Admin session shouldn't be able to mass-ban/mass-reset
+    // faster than a human clicking through the Users page ever would.
+    Route::middleware(['role:Super Admin', 'throttle:30,1'])->group(function () {
         Route::post('users/invite', [UserController::class, 'invite']);
         Route::apiResource('users', UserController::class)->except(['store']);
+        Route::post('users/{id}/verify-email',         [UserController::class, 'verifyEmail']);
+        Route::post('users/{id}/unverify-email',       [UserController::class, 'unverifyEmail']);
+        Route::post('users/{id}/ban',                  [UserController::class, 'ban']);
+        Route::post('users/{id}/unban',                [UserController::class, 'unban']);
+        Route::post('users/{id}/force-password-reset', [UserController::class, 'forcePasswordReset']);
+        Route::post('users/{id}/set-password',         [UserController::class, 'setPassword']);
+        Route::post('users/{id}/revoke-tokens',        [UserController::class, 'revokeTokens']);
+        Route::post('users/{id}/reset-tours',          [UserController::class, 'resetTours']);
+    });
+
+    Route::middleware('role:Super Admin|Admin')->group(function () {
         Route::apiResource('organizations', OrganizationController::class)->except(['show', 'update']);
 
         // Super Admin dashboard & management

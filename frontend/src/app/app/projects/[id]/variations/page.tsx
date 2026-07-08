@@ -15,6 +15,7 @@ import {
 import toast from 'react-hot-toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PromptActionButton from '@/components/prompts/PromptActionButton';
+import PageTourButton from '@/components/tours/PageTourButton';
 
 // ─── Status Config ────────────────────────────────────────────────────────────
 
@@ -127,7 +128,7 @@ function VariationProcedurePanel({ contractId }: { contractId: string }) {
           )}
           {isVerbal && (
             <span className="text-xs px-2 py-1 rounded-lg" style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: '#f87171' }}>
-              Verbal instructions — written confirmation required
+              Verbal instructions, written confirmation required
             </span>
           )}
         </div>
@@ -176,10 +177,10 @@ function NewVariationModal({ projectId, onClose }: { projectId: string; onClose:
   const sectionStyle = { color: 'var(--text-muted)', borderTop: '1px solid var(--border)' };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-xl rounded-2xl shadow-xl max-h-[92vh] overflow-y-auto" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+      <div className="ss-animate-in w-full max-w-xl rounded-2xl max-h-[92vh] overflow-y-auto" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
         <div className="flex items-center justify-between p-5" style={{ borderBottom: '1px solid var(--border)' }}>
-          <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>New Variation</h2>
+          <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>New variation</h2>
           <button onClick={onClose}><X size={18} style={{ color: 'var(--text-muted)' }} /></button>
         </div>
         <form onSubmit={e => { e.preventDefault(); mutate(form); }} className="p-5 space-y-5">
@@ -195,7 +196,7 @@ function NewVariationModal({ projectId, onClose }: { projectId: string; onClose:
                   <option key={c.id} value={c.id}>{c.title}{c.reference_number ? ` (${c.reference_number})` : ''}</option>
                 ))}
               </select>
-              {contracts.length === 0 && <p className="text-xs mt-1" style={{ color: '#f87171' }}>No contracts — add one first.</p>}
+              {contracts.length === 0 && <p className="text-xs mt-1" style={{ color: '#f87171' }}>No contracts. Add one first.</p>}
             </div>
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Title *</label>
@@ -262,7 +263,7 @@ function NewVariationModal({ projectId, onClose }: { projectId: string; onClose:
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm"
               style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
             <button type="submit" disabled={isPending || !form.contract_id}
-              className="px-4 py-2 rounded-lg text-sm font-medium"
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.98]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: (isPending || !form.contract_id) ? 0.7 : 1 }}>
               {isPending ? 'Creating…' : 'Create Variation'}
             </button>
@@ -315,8 +316,8 @@ function EditVariationModal({ variation, projectId, onClose }: { variation: any;
   const sectionStyle = { color: 'var(--text-muted)', borderTop: '1px solid var(--border)' };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-xl rounded-2xl shadow-xl max-h-[92vh] overflow-y-auto" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+      <div className="ss-animate-in w-full max-w-xl rounded-2xl max-h-[92vh] overflow-y-auto" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
         <div className="flex items-center justify-between p-5" style={{ borderBottom: '1px solid var(--border)' }}>
           <div>
             <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
@@ -324,7 +325,7 @@ function EditVariationModal({ variation, projectId, onClose }: { variation: any;
             </h2>
             {isWorkflowControlled && (
               <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                Status is managed via workflow actions — use action buttons on the variation list.
+                Status is managed via workflow actions. Use the action buttons on the variation list.
               </p>
             )}
           </div>
@@ -414,7 +415,7 @@ function EditVariationModal({ variation, projectId, onClose }: { variation: any;
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm"
               style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
             <button type="submit" disabled={isPending}
-              className="px-4 py-2 rounded-lg text-sm font-medium"
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.98]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: isPending ? 0.7 : 1 }}>
               {isPending ? 'Saving…' : 'Save Changes'}
             </button>
@@ -488,13 +489,13 @@ function WorkflowActionModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
-      <div className="w-full max-w-md rounded-2xl shadow-xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
+      <div className="ss-animate-in w-full max-w-md rounded-2xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
         <div className="flex items-center justify-between p-5" style={{ borderBottom: '1px solid var(--border)' }}>
           <div>
             <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{action.label} Variation</h2>
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-              #{variation.variation_number} — {variation.title}
+              #{variation.variation_number}: {variation.title}
             </p>
           </div>
           <button onClick={onClose}><X size={18} style={{ color: 'var(--text-muted)' }} /></button>
@@ -552,7 +553,7 @@ function WorkflowActionModal({
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm"
               style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
             <button type="submit" disabled={isPending}
-              className="px-4 py-2 rounded-lg text-sm font-medium"
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.98]"
               style={{ backgroundColor: actionColors[action.action] ?? 'var(--gold)', color: '#000', opacity: isPending ? 0.7 : 1 }}>
               {isPending ? 'Processing…' : action.label}
             </button>
@@ -568,7 +569,7 @@ function WorkflowActionModal({
 function GeneratePdfButton({ variationId }: { variationId: number }) {
   const { mutate, isPending } = useMutation({
     mutationFn: () => api.post(`/variations/${variationId}/generate-pdf`).then(r => r.data),
-    onSuccess: () => toast.success('PDF generated — check Documents'),
+    onSuccess: () => toast.success('PDF generated, check Documents'),
     onError: () => toast.error('Failed to generate PDF'),
   });
   return (
@@ -776,22 +777,22 @@ function CommercialSummary({
             : allVariations.filter((v: any) => v.status === s).length;
           const cfg = STATUS_COLORS[s] ?? { bg: 'var(--bg-elevated)', text: 'var(--text-muted)' };
           return (
-            <div key={s} className="ss-animate-in rounded-xl p-3 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', animationDelay: `${i * 50}ms` }}>
-              <p className="text-lg font-bold" style={{ color: cfg.text }}><CountUp value={count} delay={i * 50} /></p>
+            <div key={s} className="ss-animate-in rounded-xl p-3 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: `${i * 50}ms` }}>
+              <p className="text-lg font-bold tabular-nums" style={{ color: cfg.text }}><CountUp value={count} delay={i * 50} /></p>
               <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{STATUS_LABELS[s]}</p>
             </div>
           );
         })}
-        <div className="ss-animate-in rounded-xl p-3 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', animationDelay: '350ms' }}>
-          <p className="text-lg font-bold" style={{ color: 'var(--gold)' }}><CountUp value={allVariations.length} delay={350} /></p>
+        <div className="ss-animate-in rounded-xl p-3 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '350ms' }}>
+          <p className="text-lg font-bold tabular-nums" style={{ color: 'var(--gold)' }}><CountUp value={allVariations.length} delay={350} /></p>
           <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Total</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="ss-animate-in rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', animationDelay: '400ms' }}>
+        <div className="ss-animate-in rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '400ms' }}>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Approved Value</p>
-          <p className="text-xl font-bold mt-1" style={{ color: '#4ade80' }}>{formatCurrency(approvedTotal)}</p>
+          <p className="text-xl font-bold mt-1 tabular-nums" style={{ color: '#4ade80' }}>{formatCurrency(approvedTotal)}</p>
           <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Agreed &amp; commercially approved</p>
         </div>
         {(() => {
@@ -805,7 +806,7 @@ function CommercialSummary({
           return (
             <div className="ss-animate-in rounded-xl p-4" style={{ backgroundColor: hasOutstanding ? 'rgba(234,179,8,0.06)' : 'var(--bg-surface)', border: hasOutstanding ? '1px solid rgba(234,179,8,0.25)' : '1px solid var(--border)', animationDelay: '450ms' }}>
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Approved, Not Yet in PA</p>
-              <p className="text-xl font-bold mt-1" style={{ color: hasOutstanding ? '#facc15' : '#4ade80' }}>
+              <p className="text-xl font-bold mt-1 tabular-nums" style={{ color: hasOutstanding ? '#facc15' : '#4ade80' }}>
                 <CountUp value={notIncluded.length} delay={450} />
               </p>
               {hasOutstanding ? (
@@ -818,9 +819,9 @@ function CommercialSummary({
             </div>
           );
         })()}
-        <div className="ss-animate-in rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', animationDelay: '500ms' }}>
+        <div className="ss-animate-in rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '500ms' }}>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>In Progress Value</p>
-          <p className="text-xl font-bold mt-1" style={{ color: '#facc15' }}>{formatCurrency(inProgressTotal)}</p>
+          <p className="text-xl font-bold mt-1 tabular-nums" style={{ color: '#facc15' }}>{formatCurrency(inProgressTotal)}</p>
           <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Submitted through to assessed</p>
         </div>
       </div>
@@ -898,12 +899,15 @@ export default function ProjectVariationsPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Variations</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-[1.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>Variations</h1>
+            <PageTourButton tourKey="page-variations" label="Take a tour of this page" />
+          </div>
           <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Contract variations and change orders</p>
         </div>
         {canWrite && (
-          <button onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90"
+          <button data-tour="variations-new" onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 active:scale-[0.98]"
             style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
             <Plus size={15} />
             New Variation
@@ -911,26 +915,26 @@ export default function ProjectVariationsPage() {
         )}
       </div>
 
-      {!isLoading && <CommercialSummary allVariations={allVariations} formatCurrency={formatCurrency} />}
+      {!isLoading && <div data-tour="variations-summary"><CommercialSummary allVariations={allVariations} formatCurrency={formatCurrency} /></div>}
       {!isLoading && <ProgrammeImpactBanner variations={allVariations} />}
 
       {/* Filters */}
-      <div className="flex gap-3 flex-wrap">
+      <div className="flex gap-3 flex-wrap" data-tour="variations-filters">
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search variations…"
             className="pl-9 pr-4 py-2 rounded-lg text-sm outline-none"
-            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)', minWidth: '220px' }} />
+            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)', minWidth: '220px', boxShadow: 'var(--shadow-card)' }} />
         </div>
-        <div className="flex flex-wrap gap-1 p-1 rounded-lg" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+        <div className="flex flex-wrap gap-1 p-1 rounded-full" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
           <button onClick={() => setStatusFilter('all')}
-            className="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+            className="px-3 py-1.5 rounded-full text-xs font-medium transition-all active:scale-[0.97]"
             style={statusFilter === 'all' ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' } : { color: 'var(--text-secondary)' }}>
             All
           </button>
           {FILTER_STATUSES.map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
-              className="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+              className="px-3 py-1.5 rounded-full text-xs font-medium transition-all active:scale-[0.97]"
               style={statusFilter === s ? { backgroundColor: STATUS_COLORS[s].bg, color: STATUS_COLORS[s].text, border: `1px solid ${STATUS_COLORS[s].text}40` } : { color: 'var(--text-secondary)' }}>
               {STATUS_LABELS[s]}
             </button>
@@ -939,7 +943,7 @@ export default function ProjectVariationsPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl overflow-x-auto" style={{ border: '1px solid var(--border)' }}>
+      <div className="rounded-2xl overflow-x-auto" data-tour="variations-table" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
         <table className="w-full min-w-[860px] text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
@@ -990,7 +994,7 @@ export default function ProjectVariationsPage() {
                     <td className="px-2 py-3">
                       <ChevronRight size={13} style={{ color: 'var(--text-muted)', transform: isExpanded ? 'rotate(90deg)' : 'none', transition: '0.15s' }} />
                     </td>
-                    <td className="px-4 py-3 font-mono font-semibold" style={{ color: 'var(--gold)' }}>
+                    <td className="px-4 py-3 font-mono text-[11px] font-semibold" style={{ color: 'var(--gold)' }}>
                       #{v.variation_number}
                     </td>
                     <td className="px-4 py-3 font-medium max-w-[160px]" style={{ color: 'var(--text-primary)' }}>
@@ -1010,10 +1014,10 @@ export default function ProjectVariationsPage() {
                         {STATUS_LABELS[v.status] ?? v.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    <td className="px-4 py-3 text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>
                       {v.quoted_amount ? formatCurrency(v.quoted_amount) : '—'}
                     </td>
-                    <td className="px-4 py-3 text-xs font-medium" style={{ color: v.agreed_amount ? '#4ade80' : 'var(--text-muted)' }}>
+                    <td className="px-4 py-3 text-xs font-medium tabular-nums" style={{ color: v.agreed_amount ? '#4ade80' : 'var(--text-muted)' }}>
                       {v.agreed_amount ? formatCurrency(v.agreed_amount) : '—'}
                     </td>
                     <td className="px-4 py-3 text-xs">

@@ -122,11 +122,11 @@ function CreateCaseModal({ projectId, onClose }: { projectId: string; onClose: (
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+      <div className="w-full max-w-2xl rounded-2xl overflow-hidden ss-animate-in" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'rgba(185,149,102,0.15)' }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--gold-15)' }}>
               <Scale size={15} style={{ color: 'var(--gold)' }} />
             </div>
             <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>New Adjudication Case</h2>
@@ -260,7 +260,7 @@ function CreateCaseModal({ projectId, onClose }: { projectId: string; onClose: (
               Cancel
             </button>
             <button type="submit" disabled={mutation.isPending}
-              className="px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-60"
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-60 active:scale-[0.98]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
               {mutation.isPending ? 'Creating…' : 'Create Case'}
             </button>
@@ -353,7 +353,7 @@ export default function ProjectAdjudicationPage() {
         {canWrite && (
           <button
             onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.98]"
             style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
           >
             <Plus size={15} />
@@ -369,10 +369,10 @@ export default function ProjectAdjudicationPage() {
           { label: 'Active',        value: activeCount,  color: '#60a5fa' },
           { label: 'Closed',        value: closedCount,  color: '#4ade80' },
           { label: 'Overdue',       value: overdueCount, color: '#f87171' },
-        ].map(({ label, value, color }) => (
-          <div key={label} className="rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+        ].map(({ label, value, color }, i) => (
+          <div key={label} className="rounded-xl p-4 ss-animate-in" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: `${Math.min(i * 45, 360)}ms` }}>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}</p>
-            <p className="text-xl font-bold mt-1" style={{ color }}>{value}</p>
+            <p className="text-xl font-bold mt-1 tabular-nums" style={{ color }}>{value}</p>
           </div>
         ))}
       </div>
@@ -420,7 +420,7 @@ export default function ProjectAdjudicationPage() {
             <div key={i} className="h-24 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-surface)' }} />
           ))
         ) : cases.length === 0 ? (
-          <div className="rounded-2xl p-14 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          <div className="rounded-2xl p-14 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
             <Scale size={36} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
             <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>No adjudication cases</p>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
@@ -429,34 +429,34 @@ export default function ProjectAdjudicationPage() {
             {canWrite && allCases.length === 0 && (
               <button
                 onClick={() => setShowCreate(true)}
-                className="mt-4 px-4 py-2 rounded-lg text-xs font-medium"
+                className="mt-4 px-4 py-2 rounded-lg text-xs font-medium active:scale-[0.98]"
                 style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
               >
                 Create First Case
               </button>
             )}
           </div>
-        ) : cases.map((c: any) => {
+        ) : cases.map((c: any, i: number) => {
           const statusBadge = STATUS_COLORS[c.status] ?? { bg: 'var(--bg-elevated)', text: 'var(--text-muted)' };
           const nextDl = nextDeadlineBadge(c.deadlines ?? []);
 
           return (
             <div
               key={c.id}
-              className="p-4 rounded-xl transition-colors cursor-pointer"
-              style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+              className="p-4 rounded-xl transition-colors cursor-pointer ss-animate-in"
+              style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: `${Math.min(i * 45, 360)}ms` }}
               onClick={() => router.push(`/app/projects/${id}/adjudication/${c.id}`)}
             >
               <div className="flex items-start justify-between gap-4">
                 {/* Left: identity */}
                 <div className="flex items-start gap-3 flex-1 min-w-0">
                   <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
-                    style={{ backgroundColor: 'rgba(185,149,102,0.1)' }}>
+                    style={{ backgroundColor: 'var(--gold-15)' }}>
                     <Scale size={15} style={{ color: 'var(--gold)' }} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>{c.case_number}</span>
+                      <span className="text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>{c.case_number}</span>
                       <span className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{c.title}</span>
                     </div>
                     <div className="flex items-center gap-3 mt-1 flex-wrap">
@@ -467,7 +467,7 @@ export default function ProjectAdjudicationPage() {
                         {c.claimant_name} <span style={{ color: 'var(--text-muted)' }}>vs</span> {c.respondent_name}
                       </span>
                       {c.claim_amount && (
-                        <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                        <span className="text-xs font-medium tabular-nums" style={{ color: 'var(--text-secondary)' }}>
                           {c.currency} {Number(c.claim_amount).toLocaleString()}
                         </span>
                       )}
@@ -528,7 +528,7 @@ export default function ProjectAdjudicationPage() {
                       </button>
                     )}
                   </div>
-                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  <span className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
                     {c.created_at ? formatDate(c.created_at) : ''}
                   </span>
                 </div>

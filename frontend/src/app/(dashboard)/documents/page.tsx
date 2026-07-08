@@ -85,13 +85,13 @@ function FolderCard({ icon, title, subtitle, meta, fileCount, onClick }: {
     <button onClick={onClick}
       className="w-full text-left rounded-xl group transition-all duration-150"
       style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
-      onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'rgba(185,149,102,0.5)'; el.style.boxShadow = '0 4px 12px rgba(185,149,102,0.1)'; el.style.transform = 'translateY(-1px)'; }}
+      onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--gold-50)'; el.style.boxShadow = '0 4px 12px var(--gold-15)'; el.style.transform = 'translateY(-1px)'; }}
       onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border)'; el.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)'; el.style.transform = 'translateY(0)'; }}
     >
       <div className="p-4">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: 'rgba(185,149,102,0.1)', border: '1px solid rgba(185,149,102,0.2)' }}>
+            style={{ backgroundColor: 'var(--gold-15)', border: '1px solid var(--gold-15)' }}>
             {icon ?? <Folder size={20} style={{ color: 'var(--gold)' }} />}
           </div>
           <div className="flex-1 min-w-0">
@@ -104,7 +104,7 @@ function FolderCard({ icon, title, subtitle, meta, fileCount, onClick }: {
           <div className="mt-3 pt-3 flex items-center gap-3" style={{ borderTop: '1px solid var(--border)' }}>
             {fileCount !== undefined && (
               <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                style={{ backgroundColor: fileCount > 0 ? 'rgba(185,149,102,0.1)' : 'var(--bg-elevated)', color: fileCount > 0 ? 'var(--gold)' : 'var(--text-muted)' }}>
+                style={{ backgroundColor: fileCount > 0 ? 'var(--gold-15)' : 'var(--bg-elevated)', color: fileCount > 0 ? 'var(--gold)' : 'var(--text-muted)' }}>
                 <FileText size={9} />{fileCount} file{fileCount !== 1 ? 's' : ''}
               </span>
             )}

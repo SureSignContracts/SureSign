@@ -7,6 +7,7 @@ import { useAuthStore } from '@/store/authStore';
 import AdminSidebar from '@/components/layout/AdminSidebar';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import SureSignLoader from '@/components/ui/SureSignLoader';
+import ForcePasswordChangeGate from '@/components/auth/ForcePasswordChangeGate';
 
 const MIN_SPLASH_MS = 1800;
 
@@ -39,6 +40,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (!isSystemUser) {
     return null;
+  }
+
+  if (user.must_change_password) {
+    return <ForcePasswordChangeGate />;
   }
 
   return (

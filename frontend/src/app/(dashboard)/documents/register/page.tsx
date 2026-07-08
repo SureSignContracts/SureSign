@@ -128,10 +128,10 @@ export default function DocumentRegisterPage() {
               />
             </div>
 
-            <div className="flex flex-wrap gap-1 p-1 rounded-lg" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+            <div className="flex flex-wrap gap-1 p-1 rounded-full" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
               {['all', ...Object.keys(DOCUMENT_TYPE_LABELS)].map(t => (
                 <button key={t} onClick={() => { setTypeFilter(t); setPage(1); }}
-                  className="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+                  className="px-3 py-1.5 rounded-full text-xs font-medium transition-all active:scale-[0.97]"
                   style={typeFilter === t
                     ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
                     : { color: 'var(--text-secondary)' }}>

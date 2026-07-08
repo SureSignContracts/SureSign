@@ -79,7 +79,7 @@ export default function AdminCompanyDetailPage() {
     return (
       <div className="p-8 max-w-6xl mx-auto space-y-4">
         <div className="h-32 rounded-2xl animate-pulse" style={{ backgroundColor: 'var(--bg-surface)' }} />
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(3)].map((_, i) => (
             <div key={i} className="h-20 rounded-2xl animate-pulse" style={{ backgroundColor: 'var(--bg-surface)' }} />
           ))}
@@ -112,11 +112,11 @@ export default function AdminCompanyDetailPage() {
       </Link>
 
       {/* Company header */}
-      <div className="rounded-2xl p-6" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+      <div className="rounded-2xl p-6" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
         <div className="flex items-start gap-5">
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-bold flex-shrink-0 overflow-hidden"
-            style={org.logo_url ? { border: '1px solid var(--border)' } : { backgroundColor: 'rgba(185,149,102,0.15)', color: 'var(--gold)' }}
+            style={org.logo_url ? { border: '1px solid var(--border)' } : { backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}
           >
             {org.logo_url
               ? <img src={org.logo_url} alt={org.name} className="w-full h-full object-contain p-1" />
@@ -200,21 +200,21 @@ export default function AdminCompanyDetailPage() {
 
       {/* Stats row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+        <div className="ss-animate-in rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '0ms' }}>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Total Projects</p>
-          <p className="text-2xl font-bold mt-1" style={{ color: 'var(--gold)' }}>{allProjects.length}</p>
+          <p className="text-2xl font-bold mt-1 tabular-nums" style={{ color: 'var(--gold)' }}>{allProjects.length}</p>
         </div>
-        <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+        <div className="ss-animate-in rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '50ms' }}>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Active</p>
-          <p className="text-2xl font-bold mt-1" style={{ color: '#4ade80' }}>{activeCount}</p>
+          <p className="text-2xl font-bold mt-1 tabular-nums" style={{ color: '#4ade80' }}>{activeCount}</p>
         </div>
-        <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+        <div className="ss-animate-in rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '100ms' }}>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Completed</p>
-          <p className="text-2xl font-bold mt-1" style={{ color: '#60a5fa' }}>{completedCount}</p>
+          <p className="text-2xl font-bold mt-1 tabular-nums" style={{ color: '#60a5fa' }}>{completedCount}</p>
         </div>
-        <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+        <div className="ss-animate-in rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '150ms' }}>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Total Contract Value</p>
-          <p className="text-lg font-bold mt-1" style={{ color: 'var(--text-primary)' }}>{formatCurrency(totalValue)}</p>
+          <p className="text-lg font-bold mt-1 tabular-nums" style={{ color: 'var(--text-primary)' }}>{formatCurrency(totalValue)}</p>
         </div>
       </div>
 
@@ -225,18 +225,18 @@ export default function AdminCompanyDetailPage() {
           <div className="flex items-center gap-3 flex-wrap">
             <button
               onClick={() => { setForm(EMPTY_FORM); setFormErrors({}); setShowModal(true); }}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-opacity hover:opacity-80 active:scale-[0.98]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
             >
               <Plus size={13} /> New Project
             </button>
             {/* Status filter */}
-            <div className="flex gap-1 p-1 rounded-lg" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+            <div className="flex gap-1 p-1 rounded-full" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
               {['all', 'active', 'on_hold', 'completed', 'cancelled'].map(s => (
                 <button
                   key={s}
                   onClick={() => setStatusFilter(s)}
-                  className="px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-all"
+                  className="px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-all active:scale-[0.97]"
                   style={statusFilter === s
                     ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
                     : { color: 'var(--text-secondary)' }
@@ -267,20 +267,20 @@ export default function AdminCompanyDetailPage() {
             ))}
           </div>
         ) : projects.length === 0 ? (
-          <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
             <FolderKanban size={28} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No projects found for this company</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {projects.map((p: any) => {
+            {projects.map((p: any, i: number) => {
               const badge = STATUS_COLORS[p.status] ?? { bg: 'var(--bg-elevated)', text: 'var(--text-muted)' };
               return (
                 <Link
                   key={p.id}
                   href={`/app/projects/${p.id}/overview`}
-                  className="group block rounded-2xl p-5 transition-all hover:scale-[1.01] hover:shadow-lg"
-                  style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+                  className="group block rounded-2xl p-5 hover:-translate-y-0.5 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-pop)] transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ss-animate-in"
+                  style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', animationDelay: `${Math.min(i * 45, 360)}ms` }}
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div
@@ -299,18 +299,18 @@ export default function AdminCompanyDetailPage() {
 
                   <p className="font-semibold text-sm leading-snug" style={{ color: 'var(--text-primary)' }}>{p.name}</p>
                   {p.code && (
-                    <p className="text-xs mt-0.5 font-mono" style={{ color: 'var(--text-muted)' }}>{p.code}</p>
+                    <p className="text-[11px] mt-0.5 font-mono" style={{ color: 'var(--text-muted)' }}>{p.code}</p>
                   )}
 
                   <div className="mt-3 space-y-1">
                     {p.contract_value && (
-                      <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                      <div className="flex items-center gap-1.5 text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>
                         <DollarSign size={11} />
                         {formatCurrency(p.contract_value)}
                       </div>
                     )}
                     {p.end_date && (
-                      <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                      <div className="flex items-center gap-1.5 text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>
                         <Calendar size={11} />
                         Due {formatDate(p.end_date)}
                       </div>
@@ -318,7 +318,7 @@ export default function AdminCompanyDetailPage() {
                   </div>
 
                   <div className="mt-3 pt-3 flex items-center justify-between" style={{ borderTop: '1px solid var(--border)' }}>
-                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    <span className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
                       {p.users_count ?? 0} members
                     </span>
                     <ChevronRight size={13} className="opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--text-muted)' }} />
@@ -332,8 +332,8 @@ export default function AdminCompanyDetailPage() {
 
       {/* ── Create Project Modal ── */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-          <div className="w-full max-w-lg rounded-2xl shadow-2xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+          <div className="w-full max-w-lg rounded-2xl shadow-2xl ss-animate-in" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
               <div>
@@ -476,7 +476,7 @@ export default function AdminCompanyDetailPage() {
               <button
                 onClick={() => createMutation.mutate(form)}
                 disabled={!form.name.trim() || createMutation.isPending}
-                className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium transition-opacity disabled:opacity-50"
+                className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium transition-opacity disabled:opacity-50 active:scale-[0.98]"
                 style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
               >
                 <Plus size={14} />

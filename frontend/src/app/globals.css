@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "driver.js/dist/driver.css";
 
 :root {
   --gold: #0a0a0a;        /* Accent = black in light mode */
@@ -17,6 +18,15 @@
   --text-secondary: #525252;
   --text-muted: #8a8a8a;
   --text-gold: #B99566;
+  /* Accent tints — derive from --gold so per-org branding propagates automatically */
+  --gold-8:  color-mix(in srgb, var(--gold) 8%, transparent);
+  --gold-15: color-mix(in srgb, var(--gold) 15%, transparent);
+  --gold-30: color-mix(in srgb, var(--gold) 30%, transparent);
+  --gold-50: color-mix(in srgb, var(--gold) 50%, transparent);
+  --gold-80: color-mix(in srgb, var(--gold) 80%, transparent);
+  /* Single light source, top — soft ambient + tighter contact shadow */
+  --shadow-card: 0 1px 2px rgba(18,18,18,0.04), 0 4px 12px rgba(18,18,18,0.05);
+  --shadow-pop:  0 4px 10px rgba(18,18,18,0.08), 0 14px 36px rgba(18,18,18,0.12);
 }
 
 [data-theme="dark"] {
@@ -36,6 +46,8 @@
   --text-secondary: #9a9490;
   --text-muted: #5a5652;
   --text-gold: #f0f0f0;
+  --shadow-card: 0 1px 2px rgba(0,0,0,0.45), 0 4px 14px rgba(0,0,0,0.35);
+  --shadow-pop:  0 6px 16px rgba(0,0,0,0.5), 0 18px 44px rgba(0,0,0,0.45);
 }
 
 @theme inline {
@@ -49,6 +61,8 @@
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-muted);
+  --font-sans: var(--font-sans), system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, monospace;
 }
 
 * { box-sizing: border-box; }
@@ -56,18 +70,47 @@
 html {
   /* Scale site to equivalent of 125% browser zoom */
   font-size: 20px;
+  scroll-behavior: smooth;
 }
 
 html, body {
   background-color: var(--bg-base);
   color: var(--text-primary);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Smooth hover transitions for all interactive elements */
+/* Display text: tighter tracking gives headings weight without size inflation */
+h1, h2, h3 { text-wrap: balance; letter-spacing: -0.02em; }
+p { text-wrap: pretty; }
+
+/* Digits align to a fixed width wherever figures sit in a column or animate (stat cards, tables). */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Reference codes, amounts, and dates in dense tables read better in mono. */
+.font-mono {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Smooth hover transitions for all interactive elements — weighted spring-like curve */
 a, button {
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition:
+    background-color 0.2s cubic-bezier(0.32, 0.72, 0, 1),
+    color 0.2s cubic-bezier(0.32, 0.72, 0, 1),
+    border-color 0.2s cubic-bezier(0.32, 0.72, 0, 1),
+    transform 0.2s cubic-bezier(0.32, 0.72, 0, 1),
+    box-shadow 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Accessible focus ring — tinted to the active accent colour, not a random blue. */
+a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible,
+select:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -75,7 +118,7 @@ a, button {
 ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--gold-dark); }
 
-::selection { background: rgba(185, 149, 102, 0.3); color: var(--text-primary); }
+::selection { background: var(--gold-30); color: var(--text-primary); }
 
 /* ── Entrance animations ─────────────────────────────────────────────────── */
 @keyframes ss-fade-in-up {
@@ -93,5 +136,111 @@ a, button {
   .ss-animate-in {
     opacity: 1;
     animation: none;
+  }
+}
+
+/* ── Guided tour (driver.js) — restyled to match app design tokens ────────── */
+
+/* Overlay: soft dim + gentle blur on the *background* only — driver.js cuts
+   an actual hole in this SVG for the highlighted element, so the blur never
+   touches the target itself, only the dimmed area around it. Kept subtle
+   (3px) so surrounding content stays legible, not "frosted glass". */
+.driver-overlay {
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  transition: opacity 0.25s ease;
+}
+
+/* Highlighted element: a soft brand-coloured halo instead of a hard outline
+   box. box-shadow follows the element's own border-radius automatically, so
+   pills stay pills and cards stay cards — no rectangular box slapped over a
+   rounded/irregular shape. !important is needed since most cards/tables in
+   this app already set their own inline boxShadow (var(--shadow-card)).
+   A slight lift (translateY + scale) makes the target feel picked up off
+   the page rather than merely boxed — transforms don't affect layout flow,
+   so this can't cause reflow/layout shift on any surrounding content. */
+.driver-active-element {
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--gold) 24%, transparent),
+    0 14px 32px rgba(0, 0, 0, 0.2) !important;
+  transform: translateY(-2px);
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+  animation: ss-tour-target-settle 0.35s ease-out;
+}
+
+@keyframes ss-tour-target-settle {
+  from { transform: translateY(-2px) scale(0.985); }
+  to   { transform: translateY(-2px) scale(1); }
+}
+
+/* Visually threads the popover back to its target: a soft gold-tinted glow
+   behind the connecting arrow, rather than the arrow reading as a disconnected
+   little triangle. */
+.ss-tour-popover .driver-popover-arrow {
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--gold) 35%, transparent));
+}
+
+.ss-tour-popover.driver-popover {
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-pop);
+  padding: 18px 20px;
+  max-width: 320px;
+}
+.ss-tour-popover .driver-popover-title {
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.ss-tour-popover .driver-popover-description {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+.ss-tour-popover .driver-popover-progress-text {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+.ss-tour-popover .driver-popover-close-btn {
+  color: var(--text-muted);
+  transition: color 0.15s ease;
+}
+.ss-tour-popover .driver-popover-close-btn:hover {
+  color: var(--text-primary);
+}
+.ss-tour-popover .driver-popover-footer-btn {
+  background-color: var(--bg-elevated);
+  color: var(--text-secondary);
+  text-shadow: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+.ss-tour-popover .driver-popover-footer-btn:hover {
+  opacity: 0.85;
+}
+.ss-tour-popover .driver-popover-footer-btn:active {
+  transform: scale(0.97);
+}
+.ss-tour-popover .driver-popover-footer-btn.driver-popover-next-btn,
+.ss-tour-popover .driver-popover-footer-btn.driver-popover-done-btn {
+  background-color: var(--gold);
+  color: var(--accent-fg);
+  border-color: transparent;
+}
+.ss-tour-popover .driver-popover-arrow-side-top { border-top-color: var(--bg-surface); }
+.ss-tour-popover .driver-popover-arrow-side-bottom { border-bottom-color: var(--bg-surface); }
+.ss-tour-popover .driver-popover-arrow-side-left { border-left-color: var(--bg-surface); }
+.ss-tour-popover .driver-popover-arrow-side-right { border-right-color: var(--bg-surface); }
+
+@media (prefers-reduced-motion: reduce) {
+  .driver-overlay,
+  .driver-active-element,
+  .ss-tour-popover.driver-popover {
+    transition: none !important;
+    animation: none !important;
   }
 }

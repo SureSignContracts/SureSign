@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-    <title>Payment Notice — Application #{{ $paymentNotice->paymentApplication?->application_number ?? '—' }}</title>
+    <title>Payment Notice: Application #{{ $paymentNotice->paymentApplication?->application_number ?? 'Unreferenced' }}</title>
     <style>
         @page { size: A4; margin: 12mm; }
 
@@ -99,9 +99,9 @@
             padding: 2mm;
             vertical-align: top;
         }
-        .notification-label-cell { width: 45%; }
+        .notification-label-cell { width: 40%; }
         .notification-value-cell { width: 30%; }
-        .notification-date-cell  { width: 25%; }
+        .notification-date-cell  { width: 15%; }
 
         /* ── BODY TEXT ── */
         .notice-paragraph {
@@ -221,6 +221,10 @@
     $finalDate   = $pa?->final_date_for_payment
         ? \Carbon\Carbon::parse($pa->final_date_for_payment)->format('d/m/Y')
         : '—';
+    $pnDeadline  = $pa?->payment_notice_deadline
+        ? \Carbon\Carbon::parse($pa->payment_notice_deadline)->format('d/m/Y')
+        : '—';
+    $pnOverdue   = (bool) $paymentNotice->is_late;
 
     // Issuer (right column)
     $orgName   = $branding->company_display_name ?? $org?->name ?? '';
@@ -274,7 +278,7 @@
     $signatoryTitle = $issuedBy?->role ?? 'Quantity Surveyor';
 
     $docRef = 'Application #' . ($pa?->application_number ?? '—')
-        . ($paymentNotice->reference ? ' — Ref: ' . $paymentNotice->reference : '');
+        . ($paymentNotice->reference ? ' (Ref: ' . $paymentNotice->reference . ')' : '');
 
     $fmt = fn($v) => $cur . ' ' . number_format((float) $v, 2);
     $neg = fn($v) => $cur . ' (' . number_format(abs((float) $v), 2) . ')';
@@ -292,7 +296,7 @@
                     <span class="recipient-email">E-mail: {{ $recipEmail }}</span><br><br>
                 @endif
                 @if($recipContact)
-                    <span class="recipient-attention">For the Attention of — {{ $recipContact }}</span><br>
+                    <span class="recipient-attention">For the Attention of: {{ $recipContact }}</span><br>
                 @endif
                 @if($recipName && $recipName !== '—')
                     <span class="recipient-address">{{ $recipName }}</span><br>
@@ -352,6 +356,13 @@
             <td class="notification-date-cell">
                 Final Date for Payment:<br>
                 {{ $finalDate }}
+            </td>
+            <td class="notification-date-cell">
+                Payment Notice Deadline:<br>
+                {{ $pnDeadline }}
+                @if($pnOverdue)
+                    <br><span style="color:#CC5500; font-weight:bold;">(issued after deadline)</span>
+                @endif
             </td>
         </tr>
     </table>

@@ -66,6 +66,7 @@ function PromptCard({
   onEdit,
   onDelete,
   isSuperAdmin,
+  index = 0,
 }: {
   template: PromptTemplate;
   onCopy: (t: PromptTemplate) => void;
@@ -74,13 +75,14 @@ function PromptCard({
   onEdit: (t: PromptTemplate) => void;
   onDelete: (t: PromptTemplate) => void;
   isSuperAdmin: boolean;
+  index?: number;
 }) {
   const preview = template.prompt_text.slice(0, 140).trim() + (template.prompt_text.length > 140 ? '…' : '');
 
   return (
     <div
-      className="rounded-2xl p-5 flex flex-col gap-3 transition-all hover:shadow-md"
-      style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+      className="rounded-2xl p-5 flex flex-col gap-3 transition-all shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-pop)] ss-animate-in"
+      style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', animationDelay: `${Math.min(index * 45, 360)}ms` }}
     >
       {/* Header row */}
       <div className="flex items-start justify-between gap-3">
@@ -89,7 +91,7 @@ function PromptCard({
             {template.is_featured && (
               <span
                 className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                style={{ backgroundColor: 'rgba(185,149,102,0.15)', color: 'var(--gold)' }}
+                style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}
               >
                 <Star size={9} /> Featured
               </span>
@@ -152,7 +154,7 @@ function PromptCard({
 
       {/* Footer row */}
       <div className="flex items-center justify-between pt-1">
-        <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+        <span className="text-[11px] tabular-nums" style={{ color: 'var(--text-muted)' }}>
           {template.copied_count > 0 ? `Copied ${template.copied_count}×` : ''}
         </span>
 
@@ -184,7 +186,7 @@ function PromptCard({
           </button>
           <button
             onClick={() => onCopy(template)}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium transition-opacity hover:opacity-90"
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium transition-opacity hover:opacity-90 active:scale-[0.98]"
             style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
           >
             <Copy size={12} />
@@ -260,8 +262,8 @@ function PromptFormModal({
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
-        className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl overflow-hidden"
-        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+        className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl overflow-hidden ss-animate-in"
+        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}
       >
         <div className="flex items-center justify-between p-5" style={{ borderBottom: '1px solid var(--border)' }}>
           <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
@@ -394,7 +396,7 @@ function PromptFormModal({
           <button
             onClick={handleSubmit as any}
             disabled={saving}
-            className="px-4 py-2 text-sm rounded-lg font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="px-4 py-2 text-sm rounded-lg font-medium transition-opacity hover:opacity-90 disabled:opacity-50 active:scale-[0.98]"
             style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
           >
             {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Prompt'}
@@ -568,7 +570,7 @@ export default function AdminPromptsPage() {
               featuredOnly ? 'font-medium' : 'hover:bg-[var(--bg-hover)]'
             }`}
             style={featuredOnly
-              ? { backgroundColor: 'rgba(185,149,102,0.15)', color: 'var(--gold)' }
+              ? { backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }
               : { color: 'var(--text-secondary)' }
             }
           >
@@ -638,7 +640,7 @@ export default function AdminPromptsPage() {
           {isSuperAdmin && (
             <button
               onClick={() => setEditTemplate(null)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.98]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
             >
               <Plus size={15} />
@@ -699,7 +701,7 @@ export default function AdminPromptsPage() {
           ) : displayedTemplates.length === 0 ? (
             <div
               className="rounded-2xl p-16 text-center"
-              style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+              style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}
             >
               <BookOpen size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
               <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>No prompts found</p>
@@ -709,9 +711,10 @@ export default function AdminPromptsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {displayedTemplates.map(t => (
+              {displayedTemplates.map((t, i) => (
                 <PromptCard
                   key={t.id}
+                  index={i}
                   template={copiedId === t.id ? { ...t, title: t.title } : t}
                   onCopy={handleCopy}
                   onFavorite={handleFavorite}

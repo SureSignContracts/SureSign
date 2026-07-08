@@ -163,10 +163,10 @@ function TemplateModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
       style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}>
-      <div className="w-full max-w-lg rounded-2xl shadow-2xl"
-        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+      <div className="w-full max-w-lg rounded-2xl shadow-2xl ss-animate-in"
+        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
           <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
             {isEdit ? 'Edit Template' : 'New Template'}
@@ -270,7 +270,7 @@ function TemplateModal({
                     onClick={() => setScope(s)}
                     className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors"
                     style={{
-                      backgroundColor: scope === s ? 'rgba(185,149,102,0.12)' : 'var(--bg-elevated)',
+                      backgroundColor: scope === s ? 'var(--gold-15)' : 'var(--bg-elevated)',
                       border: `1px solid ${scope === s ? 'var(--gold)' : 'var(--border)'}`,
                       color: scope === s ? 'var(--gold)' : 'var(--text-secondary)',
                     }}>
@@ -321,7 +321,7 @@ function TemplateModal({
               Cancel
             </button>
             <button type="submit" disabled={saving}
-              className="px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 disabled:opacity-60"
+              className="px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 disabled:opacity-60 active:scale-[0.98]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
               {saving ? 'Saving…' : <><Check size={14} /> {isEdit ? 'Save Changes' : 'Create Template'}</>}
             </button>
@@ -340,9 +340,9 @@ function DeleteModal({ template, onClose, onDeleted }: { template: Template; onC
     finally { setDeleting(false); }
   }
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}>
-      <div className="w-full max-w-sm rounded-2xl shadow-2xl p-6 space-y-4"
-        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}>
+      <div className="w-full max-w-sm rounded-2xl shadow-2xl p-6 space-y-4 ss-animate-in"
+        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
         <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Delete Template</h2>
         <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
           Are you sure you want to delete <strong>{template.name}</strong>? This cannot be undone.
@@ -489,7 +489,7 @@ function CompanyGroup({
   };
 
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+    <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
       {/* Group header */}
       <button
         onClick={toggle}
@@ -498,13 +498,13 @@ function CompanyGroup({
       >
         <div className="flex items-center gap-2.5">
           <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: isGlobal ? 'rgba(185,149,102,0.15)' : 'rgba(99,102,241,0.12)' }}>
+            style={{ backgroundColor: isGlobal ? 'var(--gold-15)' : 'rgba(99,102,241,0.12)' }}>
             {isGlobal
               ? <Globe size={12} style={{ color: 'var(--gold)' }} />
               : <Building2 size={12} style={{ color: '#6366f1' }} />}
           </div>
           <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{name}</span>
-          <span className="text-xs px-1.5 py-0.5 rounded-md"
+          <span className="text-xs px-1.5 py-0.5 rounded-md tabular-nums"
             style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
             {templates.length}
           </span>
@@ -631,7 +631,7 @@ export default function AdminTemplatesPage() {
         </div>
         <button
           onClick={() => setNewModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.98]"
           style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
         >
           <Plus size={15} /> New Template
@@ -650,11 +650,11 @@ export default function AdminTemplatesPage() {
             style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)', minWidth: '220px' }}
           />
         </div>
-        <div className="flex gap-1 p-1 rounded-lg flex-wrap" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+        <div className="flex gap-1 p-1 rounded-full flex-wrap" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
           {FILTER_TABS.map(tab => (
             <button key={tab}
               onClick={() => { setCategoryFilter(tab); setPage(1); }}
-              className="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+              className="px-3 py-1.5 rounded-full text-xs font-medium transition-all active:scale-[0.97]"
               style={categoryFilter === tab
                 ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
                 : { color: 'var(--text-secondary)' }}>
@@ -663,7 +663,7 @@ export default function AdminTemplatesPage() {
           ))}
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{total} template{total !== 1 ? 's' : ''}</span>
+          <span className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>{total} template{total !== 1 ? 's' : ''}</span>
         </div>
       </div>
 
@@ -676,7 +676,7 @@ export default function AdminTemplatesPage() {
         </div>
       ) : templates.length === 0 ? (
         <div className="rounded-2xl p-14 text-center"
-          style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
           <FileText size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
           <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
             {hasFilters ? 'No templates match your filters.' : 'No templates yet.'}
@@ -686,7 +686,7 @@ export default function AdminTemplatesPage() {
           </p>
           {!hasFilters && (
             <button onClick={() => setNewModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
               <Plus size={14} /> New Template
             </button>

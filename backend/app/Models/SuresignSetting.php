@@ -23,6 +23,7 @@ class SuresignSetting extends Model
         'email_header_path',
         'email_footer_path',
         'email_reply_to',
+        'admin_email',
         'email_sender_email',
         'email_sender_name',
         'email_subject_line',
@@ -40,6 +41,8 @@ class SuresignSetting extends Model
         'ai_enabled'            => 'boolean',
         'prompts_enabled'       => 'boolean',
         'notification_settings' => 'array',
+        'brevo_api_key'         => 'encrypted',
+        'anthropic_api_key'     => 'encrypted',
     ];
 
     // ─── Accessors — return public URLs ──────────────────────────────────────

@@ -21,14 +21,16 @@ export default function AdminBillingPage() {
       {/* Plans */}
       <section>
         <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-secondary)' }}>Subscription Plans</h2>
-        <div className="grid grid-cols-3 gap-4">
-          {PLANS.map(plan => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          {PLANS.map((plan, i) => (
             <div
               key={plan.name}
-              className="rounded-2xl p-5 flex flex-col gap-4 relative"
+              className="rounded-2xl p-5 flex flex-col gap-4 relative ss-animate-in"
               style={{
                 backgroundColor: 'var(--bg-surface)',
-                border: plan.recommended ? '1px solid rgba(185,149,102,0.5)' : '1px solid var(--border)',
+                border: plan.recommended ? '1px solid var(--gold-50)' : '1px solid var(--border)',
+                boxShadow: 'var(--shadow-card)',
+                animationDelay: `${Math.min(i * 45, 360)}ms`,
               }}
             >
               {plan.recommended && (
@@ -41,7 +43,7 @@ export default function AdminBillingPage() {
               )}
               <div>
                 <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>{plan.name}</h3>
-                <p className="text-2xl font-bold mt-1" style={{ color: 'var(--gold)' }}>{plan.price}</p>
+                <p className="text-2xl font-bold mt-1 tabular-nums" style={{ color: 'var(--gold)' }}>{plan.price}</p>
               </div>
               <ul className="space-y-2">
                 {[
@@ -56,7 +58,7 @@ export default function AdminBillingPage() {
                 ))}
               </ul>
               <button
-                className="w-full py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-80"
+                className="w-full py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-80 active:scale-[0.98]"
                 style={plan.recommended
                   ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
                   : { backgroundColor: 'var(--bg-elevated)', color: 'var(--text-primary)' }
@@ -74,7 +76,7 @@ export default function AdminBillingPage() {
         <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-secondary)' }}>Active Subscriptions</h2>
         <div
           className="rounded-2xl overflow-hidden"
-          style={{ border: '1px solid var(--border)' }}
+          style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}
         >
           <div
             className="grid grid-cols-5 px-5 py-3 text-xs font-medium uppercase tracking-wider"
