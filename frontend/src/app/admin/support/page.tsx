@@ -1,9 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { LifeBuoy, Search, Clock, CheckCircle2, AlertCircle, MessageSquare } from 'lucide-react';
+import { LifeBuoy, Search, Clock, CheckCircle2, AlertCircle, MessageSquare, X } from 'lucide-react';
+
+interface SupportTicket {
+  id: number;
+  subject: string;
+  message: string;
+  status: 'open' | 'in_progress' | 'resolved' | 'closed';
+  company: { id: number; name: string } | null;
+  submitted_by: string | null;
+  created_at: string;
+}
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   open:        { bg: 'rgba(234,179,8,0.12)',  text: '#facc15' },
@@ -12,15 +22,80 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   closed:      { bg: 'rgba(90,86,82,0.2)',    text: '#9a9490' },
 };
 
+const STATUS_OPTIONS = ['open', 'in_progress', 'resolved', 'closed'] as const;
+
+function TicketModal({ ticket, onClose, onUpdateStatus, saving }: {
+  ticket: SupportTicket;
+  onClose: () => void;
+  onUpdateStatus: (status: string) => void;
+  saving: boolean;
+}) {
+  const badge = STATUS_COLORS[ticket.status] || STATUS_COLORS.closed;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm p-4" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }} onClick={onClose}>
+      <div
+        className="w-full max-w-lg rounded-2xl p-6 ss-animate-in max-h-[85vh] overflow-y-auto"
+        style={{ backgroundColor: 'var(--bg-panel)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>#{ticket.id}</p>
+            <h2 className="text-base font-semibold mt-0.5" style={{ color: 'var(--text-primary)' }}>{ticket.subject}</h2>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+              {ticket.company?.name ?? 'Unknown company'} · {ticket.submitted_by ?? 'Unknown user'}
+            </p>
+          </div>
+          <button onClick={onClose}><X size={16} style={{ color: 'var(--text-muted)' }} /></button>
+        </div>
+
+        <div className="rounded-xl p-4 mb-4 text-sm whitespace-pre-wrap" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+          {ticket.message}
+        </div>
+
+        <div className="flex items-center justify-between">
+          <span className="px-2 py-0.5 rounded-full text-xs font-medium capitalize" style={{ backgroundColor: badge.bg, color: badge.text }}>
+            {ticket.status.replace(/_/g, ' ')}
+          </span>
+          <div className="flex gap-1.5">
+            {STATUS_OPTIONS.filter(s => s !== ticket.status).map(s => (
+              <button
+                key={s}
+                onClick={() => onUpdateStatus(s)}
+                disabled={saving}
+                className="px-2.5 py-1 rounded-lg text-xs font-medium capitalize transition-opacity disabled:opacity-50 hover:opacity-80"
+                style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+              >
+                Mark {s.replace(/_/g, ' ')}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminSupportPage() {
   const [search, setSearch] = useState('');
+  const [openTicket, setOpenTicket] = useState<SupportTicket | null>(null);
+  const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['admin-support'],
-    queryFn: () => api.get('/admin/support').then(r => r.data).catch(() => ({ data: [] })),
+    queryKey: ['admin-support-tickets'],
+    queryFn: () => api.get('/admin/support-tickets').then(r => r.data).catch(() => ({ data: [] })),
   });
 
-  const tickets = (data?.data ?? []).filter((t: any) =>
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: string }) =>
+      api.put(`/admin/support-tickets/${id}`, { status }).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-support-tickets'] });
+      setOpenTicket(null);
+    },
+  });
+
+  const tickets: SupportTicket[] = (data?.data ?? []).filter((t: SupportTicket) =>
     t.subject?.toLowerCase().includes(search.toLowerCase()) ||
     t.company?.name?.toLowerCase().includes(search.toLowerCase())
   );
@@ -30,7 +105,7 @@ export default function AdminSupportPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Support</h1>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Support tickets across all tenant companies</p>
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Support tickets submitted from across all organizations</p>
         </div>
       </div>
 
@@ -98,10 +173,15 @@ export default function AdminSupportPage() {
                   <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No support tickets</p>
                 </td>
               </tr>
-            ) : tickets.map((t: any) => {
+            ) : tickets.map((t) => {
               const badge = STATUS_COLORS[t.status] || STATUS_COLORS.closed;
               return (
-                <tr key={t.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                <tr
+                  key={t.id}
+                  onClick={() => setOpenTicket(t)}
+                  className="cursor-pointer transition-colors hover:bg-[var(--bg-hover)]"
+                  style={{ borderBottom: '1px solid var(--border)' }}
+                >
                   <td className="px-5 py-3 font-mono text-[11px]" style={{ color: 'var(--text-muted)' }}>#{t.id}</td>
                   <td className="px-5 py-3 font-medium" style={{ color: 'var(--text-primary)' }}>{t.subject}</td>
                   <td className="px-5 py-3" style={{ color: 'var(--text-secondary)' }}>{t.company?.name ?? '–'}</td>
@@ -118,6 +198,15 @@ export default function AdminSupportPage() {
           </tbody>
         </table>
       </div>
+
+      {openTicket && (
+        <TicketModal
+          ticket={openTicket}
+          onClose={() => setOpenTicket(null)}
+          saving={updateStatusMutation.isPending}
+          onUpdateStatus={status => updateStatusMutation.mutate({ id: openTicket.id, status })}
+        />
+      )}
     </div>
   );
 }

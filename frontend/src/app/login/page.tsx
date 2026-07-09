@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { Eye, EyeOff, Shield, ArrowRight } from 'lucide-react';
+import api from '@/lib/api';
 
 const EASE = 'cubic-bezier(0.32, 0.72, 0, 1)';
 
@@ -31,10 +32,17 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPw,   setShowPw]   = useState(false);
   const [error,    setError]    = useState('');
+  const [supportEmail, setSupportEmail] = useState('tech@suresigncontracts.com');
   // Start hidden — we reveal only once we've confirmed the user is NOT authenticated.
   // This avoids SSR/client hydration mismatch (window is undefined on server so we
   // cannot check localStorage until after mount).
   const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    api.get('/guest-settings')
+      .then(r => { if (r.data?.data?.support_email) setSupportEmail(r.data.data.support_email); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     // Check both localStorage keys in case they diverged
@@ -68,6 +76,8 @@ export default function LoginPage() {
       const user = useAuthStore.getState().user;
       if (user?.roles?.includes('Super Admin') || user?.roles?.includes('Admin')) {
         router.push('/admin');
+      } else if (user?.organization && !user.organization.is_onboarded) {
+        router.push('/app/onboarding');
       } else {
         router.push('/app');
       }
@@ -263,7 +273,7 @@ export default function LoginPage() {
                 <label className="block text-xs font-medium" style={{ color: '#525252' }}>
                   Password
                 </label>
-                <a href="mailto:admin@suresign.app" className="text-xs transition-opacity hover:opacity-60" style={{ color: '#737373' }}>
+                <a href="/forgot-password" className="text-xs transition-opacity hover:opacity-60" style={{ color: '#737373' }}>
                   Forgot password?
                 </a>
               </div>
@@ -323,7 +333,7 @@ export default function LoginPage() {
 
           <p className="text-xs text-center ss-animate-in" style={{ animationDelay: '220ms', color: '#a3a3a3' }}>
             Need access?{' '}
-            <a href="mailto:admin@suresign.app" className="font-medium hover:underline" style={{ color: '#0f0f0f' }}>
+            <a href={`mailto:${supportEmail}`} className="font-medium hover:underline" style={{ color: '#0f0f0f' }}>
               Contact your administrator
             </a>
           </p>

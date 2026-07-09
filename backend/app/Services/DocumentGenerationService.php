@@ -5,11 +5,11 @@ namespace App\Services;
 use App\Models\Document;
 use App\Models\Organization;
 use App\Models\Project;
+use App\Models\SuresignSetting;
 use App\Models\TradePackage;
 use App\Models\User;
 use App\Services\BrandingService;
 use App\Services\CurrencyService;
-use App\Services\LocalDocumentMirrorService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
@@ -47,6 +47,8 @@ class DocumentGenerationService
         bool $skipCanvas = false,
         ?TradePackage $tradePackage = null
     ): Document {
+        abort_unless(SuresignSetting::instance()->feature_document_generation, 403, 'Document generation is currently disabled.');
+
         // Load branding for the organisation
         $branding = BrandingService::forOrganization($project->organization_id);
         $viewData['branding']          = $branding;
@@ -117,9 +119,6 @@ class DocumentGenerationService
             'documentable_id'   => $relatedModel ? $relatedModel->id : null,
             'trade_package_id'  => $tradePackage?->id,
         ]);
-
-        // Mirror generated PDF to local mirror path if enabled
-        LocalDocumentMirrorService::mirrorDocument($doc, $project);
 
         return $doc;
     }

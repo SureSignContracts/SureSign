@@ -100,6 +100,50 @@ class EmailNotificationService
         }
     }
 
+    /**
+     * Send a one-off transactional email to a single, explicit recipient —
+     * for account-level flows (password reset, email verification) that
+     * aren't tied to an organization event or the notification_settings
+     * toggle list that send() gates on.
+     */
+    public static function sendDirect(string $toEmail, string $subject, string $bodyText): void
+    {
+        try {
+            $settings = SuresignSetting::instance();
+
+            if (empty($settings->brevo_api_key)) {
+                Log::warning("EmailNotificationService::sendDirect: no Brevo API key configured — skipping '{$subject}' to {$toEmail}");
+                return;
+            }
+
+            $bodyHtml = nl2br(e($bodyText));
+            $html     = self::buildHtml($settings, $subject, $bodyHtml);
+
+            $response = Http::withHeaders([
+                'api-key'      => $settings->brevo_api_key,
+                'Content-Type' => 'application/json',
+                'Accept'       => 'application/json',
+            ])->post('https://api.brevo.com/v3/smtp/email', [
+                'sender'      => [
+                    'name'  => $settings->email_sender_name ?: 'SureSign Contracts',
+                    'email' => $settings->email_sender_email ?: ($settings->email_reply_to ?: 'noreply@suresign.io'),
+                ],
+                'to'          => [['email' => trim($toEmail)]],
+                'replyTo'     => ['email' => $settings->email_reply_to ?: ($settings->email_sender_email ?: 'noreply@suresign.io')],
+                'subject'     => $subject,
+                'htmlContent' => $html,
+            ]);
+
+            if (!$response->successful()) {
+                Log::warning("EmailNotificationService::sendDirect: Brevo returned {$response->status()} for '{$subject}' to {$toEmail}", [
+                    'body' => $response->body(),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning("EmailNotificationService::sendDirect: exception sending '{$subject}' to {$toEmail}: " . $e->getMessage());
+        }
+    }
+
     private static function buildHtml(SuresignSetting $settings, string $subject, string $bodyHtml): string
     {
         $senderName = e($settings->email_sender_name ?: 'SureSign Contracts');

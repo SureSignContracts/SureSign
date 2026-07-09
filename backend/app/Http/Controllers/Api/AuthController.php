@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\User;
+use App\Services\EmailVerificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password as PasswordBroker;
 use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
@@ -107,6 +109,72 @@ class AuthController extends Controller
         ]);
 
         return response()->json(['message' => 'Password updated.', 'user' => $this->userResource($user->fresh())]);
+    }
+
+    // Always returns the same generic message regardless of whether the
+    // email exists or the request was throttled — avoids leaking which
+    // emails are registered.
+    public function forgotPassword(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+
+        PasswordBroker::sendResetLink($request->only('email'));
+
+        return response()->json([
+            'message' => 'If an account exists for that email, a password reset link has been sent.',
+        ]);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'token'    => 'required|string',
+            'email'    => 'required|email',
+            'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
+        ]);
+
+        $status = PasswordBroker::reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function (User $user, string $password) {
+                $user->update([
+                    'password'             => Hash::make($password),
+                    'must_change_password' => false,
+                ]);
+            }
+        );
+
+        if ($status !== PasswordBroker::PASSWORD_RESET) {
+            return response()->json(['message' => 'This password reset link is invalid or has expired.'], 422);
+        }
+
+        return response()->json(['message' => 'Password reset successfully.']);
+    }
+
+    public function sendEmailVerification(Request $request)
+    {
+        $user = $request->user();
+
+        if ($user->email_verified_at) {
+            return response()->json(['message' => 'Email already verified.']);
+        }
+
+        EmailVerificationService::sendVerificationLink($user);
+
+        return response()->json(['message' => 'Verification email sent.']);
+    }
+
+    public function verifyEmailLink(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'token' => 'required|string',
+        ]);
+
+        if (! EmailVerificationService::verify($request->email, $request->token)) {
+            return response()->json(['message' => 'This verification link is invalid or has expired.'], 422);
+        }
+
+        return response()->json(['message' => 'Email verified successfully.']);
     }
 
     private function userResource(User $user): array

@@ -97,6 +97,15 @@ function StatusBadges({ u }: { u: AdminUser }) {
   );
 }
 
+// ── Section header — small uppercase label used to divide the modal ───────────
+function SectionHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-[10px] uppercase tracking-widest font-semibold mb-2.5" style={{ color: 'var(--text-muted)' }}>
+      {children}
+    </p>
+  );
+}
+
 // ── Status row: label + description + toggle pill ─────────────────────────────
 function StatusRow({
   label,
@@ -224,7 +233,7 @@ function ManageUserModal({
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-start justify-between mb-5">
+        <div className="flex items-start justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
                  style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}>
@@ -238,20 +247,49 @@ function ManageUserModal({
           <button onClick={onClose}><X size={16} style={{ color: 'var(--text-muted)' }} /></button>
         </div>
 
-        {/* Rename */}
-        <div className="mb-4">
-          <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Name</label>
-          <input
-            value={name}
-            onChange={e => setName(e.target.value)}
-            className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none"
-            style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-          />
-        </div>
+        {/* ── Account Information ── */}
+        <section className="mb-6">
+          <SectionHeader>Account Information</SectionHeader>
 
-        {/* Role pills */}
-        <div className="mb-4">
-          <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Role</label>
+          <div className="mb-3">
+            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Name</label>
+            <input
+              value={name}
+              onChange={e => setName(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none"
+              style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 mb-1">
+            <div className="rounded-xl px-3.5 py-2.5" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+              <p className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>Joined</p>
+              <p className="text-sm mt-0.5 tabular-nums" style={{ color: 'var(--text-primary)' }}>
+                {user.created_at ? formatDate(user.created_at) : '—'}
+              </p>
+            </div>
+            <div className="rounded-xl px-3.5 py-2.5" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+              <p className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>Last Active</p>
+              <p className="text-sm mt-0.5 tabular-nums" style={{ color: 'var(--text-primary)' }}>
+                {user.last_login_at ? formatDate(user.last_login_at) : 'Never'}
+              </p>
+            </div>
+          </div>
+
+          <StatusRow
+            label="Active"
+            description="Deactivated users cannot log in."
+            checked={user.is_active}
+            onChange={onToggleActive}
+            disabled={actionLoading}
+          />
+        </section>
+
+        <div style={{ borderTop: '1px solid var(--border)', margin: '0 0 20px' }} />
+
+        {/* ── Permissions ── */}
+        <section className="mb-6">
+          <SectionHeader>Permissions</SectionHeader>
           <div className="flex gap-2 flex-wrap">
             {ALL_ROLES.map(r => (
               <button
@@ -270,103 +308,111 @@ function ManageUserModal({
               </button>
             ))}
           </div>
-        </div>
 
-        {(nameDirty || roleDirty) && (
-          <button
-            onClick={() => onSave({ ...(nameDirty ? { name: name.trim() } : {}), ...(roleDirty ? { role } : {}) })}
-            disabled={saving}
-            className="w-full mb-5 py-2.5 rounded-xl text-sm font-medium disabled:opacity-60 transition-opacity hover:opacity-90 active:scale-[0.98]"
-            style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
-          >
-            {saving ? 'Saving…' : 'Save Changes'}
-          </button>
-        )}
+          {(nameDirty || roleDirty) && (
+            <button
+              onClick={() => onSave({ ...(nameDirty ? { name: name.trim() } : {}), ...(roleDirty ? { role } : {}) })}
+              disabled={saving}
+              className="w-full mt-3 py-2.5 rounded-xl text-sm font-medium disabled:opacity-60 transition-opacity hover:opacity-90 active:scale-[0.98]"
+              style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
+            >
+              {saving ? 'Saving…' : 'Save Changes'}
+            </button>
+          )}
+        </section>
 
-        <div style={{ borderTop: '1px solid var(--border)' }} />
+        <div style={{ borderTop: '1px solid var(--border)', margin: '0 0 20px' }} />
 
-        {/* Status pills */}
-        <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
-          <StatusRow
-            label="Active"
-            description="Deactivated users cannot log in."
-            checked={user.is_active}
-            onChange={onToggleActive}
-            disabled={actionLoading}
-          />
-          <StatusRow
-            label="Email Verified"
-            description="Marks this user's email address as confirmed."
-            checked={!!user.email_verified_at}
-            onChange={onToggleVerify}
-            disabled={actionLoading}
-          />
-          <div className="py-2.5">
-            <div className="flex items-center justify-between gap-4">
-              <div className="min-w-0">
-                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Banned</p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                  {user.banned_at ? `Reason: ${user.banned_reason}` : 'Banned users are signed out everywhere and cannot log in.'}
-                </p>
-              </div>
-              <Toggle
-                checked={!!user.banned_at}
-                disabled={actionLoading}
-                onChange={(checked) => {
-                  if (checked) {
-                    setBanReasonOpen(true);
-                  } else {
-                    onUnban();
-                  }
-                }}
-              />
-            </div>
-            {banReasonOpen && (
-              <div className="mt-2.5 space-y-2">
-                <textarea
-                  value={banReason}
-                  onChange={e => setBanReason(e.target.value)}
-                  placeholder="Reason for ban…"
-                  rows={2}
-                  className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none resize-none"
-                  style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-                />
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => { setBanReasonOpen(false); setBanReason(''); }}
-                    className="flex-1 py-2 rounded-lg text-xs font-medium"
-                    style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => { onBan(banReason.trim()); setBanReasonOpen(false); setBanReason(''); }}
-                    disabled={!banReason.trim() || actionLoading}
-                    className="flex-1 py-2 rounded-lg text-xs font-medium disabled:opacity-60"
-                    style={{ backgroundColor: '#ef4444', color: '#fff' }}
-                  >
-                    Confirm Ban
-                  </button>
+        {/* ── Security ── */}
+        <section className="mb-6">
+          <SectionHeader>Security</SectionHeader>
+
+          <div className="divide-y mb-3" style={{ borderColor: 'var(--border)' }}>
+            <StatusRow
+              label="Email Verified"
+              description="Marks this user's email address as confirmed."
+              checked={!!user.email_verified_at}
+              onChange={onToggleVerify}
+              disabled={actionLoading}
+            />
+            <div className="py-2.5">
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Banned</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                    {user.banned_at ? `Reason: ${user.banned_reason}` : 'Banned users are signed out everywhere and cannot log in.'}
+                  </p>
                 </div>
+                <Toggle
+                  checked={!!user.banned_at}
+                  disabled={actionLoading}
+                  onChange={(checked) => {
+                    if (checked) {
+                      setBanReasonOpen(true);
+                    } else {
+                      onUnban();
+                    }
+                  }}
+                />
               </div>
-            )}
+              {banReasonOpen && (
+                <div className="mt-2.5 space-y-2">
+                  <textarea
+                    value={banReason}
+                    onChange={e => setBanReason(e.target.value)}
+                    placeholder="Reason for ban…"
+                    rows={2}
+                    className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none resize-none"
+                    style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { setBanReasonOpen(false); setBanReason(''); }}
+                      className="flex-1 py-2 rounded-lg text-xs font-medium"
+                      style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => { onBan(banReason.trim()); setBanReasonOpen(false); setBanReason(''); }}
+                      disabled={!banReason.trim() || actionLoading}
+                      className="flex-1 py-2 rounded-lg text-xs font-medium disabled:opacity-60"
+                      style={{ backgroundColor: '#ef4444', color: '#fff' }}
+                    >
+                      Confirm Ban
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
 
-        <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0 16px' }} />
+          <div className="space-y-2">
+            <ConfirmButton label="Force Password Reset" icon={<RotateCcw size={13} />} onConfirm={onForcePasswordReset} loading={actionLoading} />
+            <button
+              onClick={onSetPassword}
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-left transition-colors hover:bg-[var(--bg-hover)]"
+              style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+            >
+              <KeyRound size={13} />
+              Set Temporary Password
+            </button>
+          </div>
+        </section>
 
-        {/* Security actions */}
-        <div className="space-y-2 mb-5">
-          <ConfirmButton label="Force Password Reset" icon={<RotateCcw size={13} />} onConfirm={onForcePasswordReset} loading={actionLoading} />
-          <button
-            onClick={onSetPassword}
-            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-left transition-colors hover:bg-[var(--bg-hover)]"
-            style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
-          >
-            <KeyRound size={13} />
-            Set Temporary Password
-          </button>
+        <div style={{ borderTop: '1px solid var(--border)', margin: '0 0 20px' }} />
+
+        {/* ── Sessions ── */}
+        <section className="mb-6">
+          <SectionHeader>Sessions</SectionHeader>
           <ConfirmButton label="Revoke Active Sessions" icon={<LogOut size={13} />} onConfirm={onRevokeTokens} loading={actionLoading} />
+        </section>
+
+        <div style={{ borderTop: '1px solid var(--border)', margin: '0 0 20px' }} />
+
+        {/* ── Onboarding ── */}
+        <section className="mb-6">
+          <SectionHeader>Onboarding</SectionHeader>
           <button
             onClick={onResetTours}
             className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-left transition-colors hover:bg-[var(--bg-hover)]"
@@ -375,12 +421,20 @@ function ManageUserModal({
             <Compass size={13} />
             Reset Onboarding Tours
           </button>
-        </div>
+          {user.tours_reset_at && (
+            <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
+              Last reset {formatDate(user.tours_reset_at)}
+            </p>
+          )}
+        </section>
 
-        <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0 16px' }} />
+        <div style={{ borderTop: '1px solid var(--border)', margin: '0 0 20px' }} />
 
-        {/* Danger zone */}
-        <ConfirmButton label="Remove User" icon={<Trash2 size={13} />} onConfirm={onRemove} loading={actionLoading} danger />
+        {/* ── Danger Zone ── */}
+        <section>
+          <SectionHeader>Danger Zone</SectionHeader>
+          <ConfirmButton label="Remove User" icon={<Trash2 size={13} />} onConfirm={onRemove} loading={actionLoading} danger />
+        </section>
       </div>
     </div>
   );

@@ -34,15 +34,24 @@ class SuresignSetting extends Model
         'date_format',
         'timezone',
         'hidden_pages',
+        'platform_name',
+        'support_email',
+        'max_upload_mb',
+        'feature_document_generation',
+        'feature_white_label',
+        'feature_self_registration',
     ];
 
     protected $casts = [
-        'hidden_pages'          => 'array',
-        'ai_enabled'            => 'boolean',
-        'prompts_enabled'       => 'boolean',
-        'notification_settings' => 'array',
-        'brevo_api_key'         => 'encrypted',
-        'anthropic_api_key'     => 'encrypted',
+        'hidden_pages'                 => 'array',
+        'ai_enabled'                   => 'boolean',
+        'prompts_enabled'              => 'boolean',
+        'notification_settings'        => 'array',
+        'brevo_api_key'                => 'encrypted',
+        'anthropic_api_key'            => 'encrypted',
+        'feature_document_generation'  => 'boolean',
+        'feature_white_label'          => 'boolean',
+        'feature_self_registration'    => 'boolean',
     ];
 
     // ─── Accessors — return public URLs ──────────────────────────────────────
@@ -109,5 +118,14 @@ class SuresignSetting extends Model
             'timezone'         => 'Europe/London',
             'prompts_enabled'  => true,
         ]);
+    }
+
+    /**
+     * Configured max upload size in KB, for use with Laravel's `max:` file
+     * validation rule (which is expressed in KB, not MB).
+     */
+    public static function maxUploadKb(): int
+    {
+        return (self::instance()->max_upload_mb ?: 50) * 1024;
     }
 }

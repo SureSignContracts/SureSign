@@ -12,6 +12,7 @@ use App\Models\Organization;
 use App\Models\Project;
 use App\Models\ProjectActivity;
 use App\Models\SuresignNotification;
+use App\Models\SuresignSetting;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -240,20 +241,6 @@ class AdminController extends Controller
         ]);
     }
 
-    public function support(Request $request)
-    {
-        // Placeholder — extend with a support_tickets table as needed
-        return response()->json([
-            'stats' => [
-                'open'        => 0,
-                'in_progress' => 0,
-                'resolved'    => 0,
-                'total'       => 0,
-            ],
-            'tickets' => [],
-        ]);
-    }
-
     public function systemLogs(Request $request)
     {
         $logPath = storage_path('logs/laravel.log');
@@ -281,22 +268,40 @@ class AdminController extends Controller
 
     public function settings(Request $request)
     {
+        $settings = SuresignSetting::instance();
+
         return response()->json([
-            'platform_name'   => config('app.name', 'SureSign'),
-            'support_email'   => config('mail.from.address', ''),
-            'max_upload_mb'   => (int) ini_get('upload_max_filesize'),
-            'features'        => [
-                'ai_enabled'        => true,
-                'billing_enabled'   => false,
-                'storage_quotas'    => false,
-            ],
+            'platform_name' => $settings->platform_name ?: config('app.name', 'SureSign'),
+            'support_email' => $settings->support_email ?: '',
+            'max_upload_mb' => $settings->max_upload_mb,
+            'doc_gen_enabled'         => $settings->feature_document_generation,
+            'white_label_enabled'     => $settings->feature_white_label,
+            'self_register_enabled'   => $settings->feature_self_registration,
         ]);
     }
 
     public function updateSettings(Request $request)
     {
-        // In production, persist to a settings table or .env override
-        return response()->json(['message' => 'Settings updated']);
+        $validated = $request->validate([
+            'platform_name'          => 'nullable|string|max:255',
+            'support_email'          => 'nullable|email|max:255',
+            'max_upload_mb'          => 'nullable|integer|min:1|max:2048',
+            'doc_gen_enabled'        => 'sometimes|boolean',
+            'white_label_enabled'    => 'sometimes|boolean',
+            'self_register_enabled'  => 'sometimes|boolean',
+        ]);
+
+        $settings = SuresignSetting::instance();
+        $settings->update([
+            'platform_name'                 => $validated['platform_name'] ?? $settings->platform_name,
+            'support_email'                 => $validated['support_email'] ?? $settings->support_email,
+            'max_upload_mb'                 => $validated['max_upload_mb'] ?? $settings->max_upload_mb,
+            'feature_document_generation'   => $validated['doc_gen_enabled'] ?? $settings->feature_document_generation,
+            'feature_white_label'           => $validated['white_label_enabled'] ?? $settings->feature_white_label,
+            'feature_self_registration'     => $validated['self_register_enabled'] ?? $settings->feature_self_registration,
+        ]);
+
+        return response()->json(['message' => 'Settings updated.']);
     }
 
     // ── Document Explorer ─────────────────────────────────────────────
@@ -593,8 +598,18 @@ class AdminController extends Controller
 
     public function auditLog(Request $request)
     {
+        $user = $request->user();
+
         $query = ActivityLog::with('user:id,name,email')
             ->latest();
+
+        // Both Super Admin and Admin are platform-wide roles that manage every
+        // organization's projects — client-role users never reach this
+        // middleware-gated endpoint at all, so there's no tenant to scope to
+        // here. Optional organization_id filter is just a convenience filter.
+        if ($request->filled('organization_id')) {
+            $query->where('organization_id', $request->organization_id);
+        }
 
         if ($request->filled('action')) {
             $query->where('action', $request->action);

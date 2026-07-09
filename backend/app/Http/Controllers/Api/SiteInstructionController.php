@@ -9,8 +9,21 @@ use Illuminate\Http\Request;
 
 class SiteInstructionController extends Controller
 {
+    /**
+     * Tenant isolation — mirrors FinalAccountController::authorizeProject.
+     * Super Admin / Admin can cross organisations; everyone else must match.
+     */
+    private function authorize(Request $request, Project|SiteInstruction $subject): void
+    {
+        $user = $request->user();
+        if ($user->hasRole('Super Admin') || $user->hasRole('Admin')) return;
+        if ($user->organization_id !== $subject->organization_id) abort(403, 'Access denied.');
+    }
+
     public function index(Request $request, Project $project)
     {
+        $this->authorize($request, $project);
+
         $instructions = SiteInstruction::where('project_id', $project->id)
             ->with('creator:id,name')
             ->latest('issued_date')
@@ -21,6 +34,8 @@ class SiteInstructionController extends Controller
 
     public function store(Request $request, Project $project)
     {
+        $this->authorize($request, $project);
+
         $validated = $request->validate([
             'instruction_number' => 'nullable|integer',
             'title'              => 'required|string|max:255',
@@ -43,13 +58,17 @@ class SiteInstructionController extends Controller
         return response()->json($instruction, 201);
     }
 
-    public function show(SiteInstruction $siteInstruction)
+    public function show(Request $request, SiteInstruction $siteInstruction)
     {
+        $this->authorize($request, $siteInstruction);
+
         return response()->json($siteInstruction->load('creator:id,name'));
     }
 
     public function update(Request $request, SiteInstruction $siteInstruction)
     {
+        $this->authorize($request, $siteInstruction);
+
         $validated = $request->validate([
             'title'       => 'sometimes|string|max:255',
             'issued_date' => 'sometimes|date',
@@ -63,8 +82,10 @@ class SiteInstructionController extends Controller
         return response()->json($siteInstruction);
     }
 
-    public function destroy(SiteInstruction $siteInstruction)
+    public function destroy(Request $request, SiteInstruction $siteInstruction)
     {
+        $this->authorize($request, $siteInstruction);
+
         $siteInstruction->delete();
         return response()->json(null, 204);
     }

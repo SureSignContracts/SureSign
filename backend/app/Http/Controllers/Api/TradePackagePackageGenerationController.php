@@ -9,7 +9,6 @@ use App\Models\FileUpload;
 use App\Models\TradePackage;
 use App\Services\DocxToPdfService;
 use App\Services\DocumentNumberService;
-use App\Services\LocalDocumentMirrorService;
 use App\Services\NotificationService;
 use App\Services\ProjectActivityService;
 use App\Services\ProjectStorageService;
@@ -227,7 +226,6 @@ class TradePackagePackageGenerationController extends Controller
         // Pre-generate PDF preview in the background (best-effort — don't fail generation if PDF fails)
         $this->generatePdfPreview($upload, $document);
 
-        LocalDocumentMirrorService::mirrorFileUpload($upload, $project);
         ProjectActivityService::record($project, $user, 'document_generated', "Generated master package: {$filename}", 'contracts', $document);
         NotificationService::send(
             $user,
@@ -326,8 +324,6 @@ class TradePackagePackageGenerationController extends Controller
 
             // Pre-generate PDF preview (best-effort)
             $this->generatePdfPreview($upload, $document);
-
-            LocalDocumentMirrorService::mirrorFileUpload($upload, $project);
 
             $generatedFiles[] = [
                 'name'           => $filename,

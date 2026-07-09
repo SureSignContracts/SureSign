@@ -13,26 +13,13 @@ services:
     volumes:
       - ./backend:/var/www/html
       - /var/www/html/vendor
-      # ── Local Document Mirror (optional) ──────────────────────────────────
-      # To mirror SureSign files to your PC's Documents folder, uncomment and
-      # edit ONE of the lines below to match your OS, then set:
-      #   SURESIGN_LOCAL_MIRROR_PATH=/var/www/html/storage/app/local-mirror/SureSign
-      # as an environment variable below.
-      #
-      # Windows:
-      #   - "C:/Users/Admin/Documents/SureSign:/var/www/html/storage/app/local-mirror/SureSign"
-      # Mac:
-      #   - "/Users/admin/Documents/SureSign:/var/www/html/storage/app/local-mirror/SureSign"
-      # Linux:
-      #   - "/home/admin/Documents/SureSign:/var/www/html/storage/app/local-mirror/SureSign"
-      # ─────────────────────────────────────────────────────────────────────
     environment: &backend_env
       - APP_NAME=SureSign
-      - APP_ENV=${APP_ENV:-local}
+      - APP_ENV=${APP_ENV:-production}
       - APP_KEY=${APP_KEY}
-      - APP_DEBUG=${APP_DEBUG:-true}
-      - APP_URL=${APP_URL:-http://localhost:8000}
-      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - APP_DEBUG=${APP_DEBUG:-false}
+      - APP_URL=${APP_URL:-https://suresigncontracts.app}
+      - FRONTEND_URL=${FRONTEND_URL:-https://suresigncontracts.app}
       - APP_LOCALE=en
       - APP_FALLBACK_LOCALE=en
       - APP_FAKER_LOCALE=en_US
@@ -41,7 +28,7 @@ services:
       - LOG_CHANNEL=stack
       - LOG_STACK=single
       - LOG_DEPRECATIONS_CHANNEL=null
-      - LOG_LEVEL=debug
+      - LOG_LEVEL=${LOG_LEVEL:-error}
       - DB_CONNECTION=mysql
       - DB_HOST=mysql
       - DB_PORT=3306
@@ -79,8 +66,6 @@ services:
       - AI_MAX_TOKENS=4096
       - VITE_APP_NAME=SureSign
       - COMPANIES_HOUSE_API_KEY=${COMPANIES_HOUSE_API_KEY:-}
-      - SURESIGN_LOCAL_MIRROR_ENABLED=${SURESIGN_LOCAL_MIRROR_ENABLED:-false}
-      - SURESIGN_LOCAL_MIRROR_PATH=${SURESIGN_LOCAL_MIRROR_PATH:-}
     depends_on:
       mysql:
         condition: service_healthy
@@ -93,7 +78,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://suresigncontracts.app/api}
     container_name: suresign_frontend
     restart: unless-stopped
     ports:
@@ -144,7 +129,27 @@ services:
       dockerfile: Dockerfile
     container_name: suresign_queue
     restart: unless-stopped
-    command: php artisan queue:work --tries=1 --timeout=480 --sleep=3
+    command: ["queue"]
+    volumes:
+      - ./backend:/var/www/html
+      - /var/www/html/vendor
+    environment: *backend_env
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - suresign
+
+  # Laravel scheduler (deadline reminders, calendar sync)
+  scheduler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: suresign_scheduler
+    restart: unless-stopped
+    command: ["scheduler"]
     volumes:
       - ./backend:/var/www/html
       - /var/www/html/vendor

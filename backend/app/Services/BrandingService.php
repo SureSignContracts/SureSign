@@ -4,15 +4,24 @@ namespace App\Services;
 
 use App\Models\BrandingSetting;
 use App\Models\Organization;
+use App\Models\SuresignSetting;
 use Illuminate\Support\Facades\Storage;
 
 class BrandingService
 {
     /**
-     * Load branding for the given organization ID.
+     * Load branding for the given organization ID — unless white-label
+     * branding is disabled platform-wide, in which case every organization
+     * falls back to SureSign's own default branding (accent colour, name,
+     * logo) via the null-coalescing defaults already used by every helper
+     * below.
      */
     public static function forOrganization(int $organizationId): ?BrandingSetting
     {
+        if (! SuresignSetting::instance()->feature_white_label) {
+            return null;
+        }
+
         return Organization::with('branding')->find($organizationId)?->branding;
     }
 

@@ -46,6 +46,7 @@ use App\Http\Controllers\Api\PaymentNoticeController;
 use App\Http\Controllers\Api\RetentionReleaseController;
 use App\Http\Controllers\Api\CalendarController;
 use App\Http\Controllers\Api\FinalAccountController;
+use App\Http\Controllers\Api\SupportTicketController;
 use App\Models\FileUpload;
 use Illuminate\Support\Facades\Route;
 
@@ -58,7 +59,12 @@ use Illuminate\Support\Facades\Route;
 // Public auth routes
 Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+    Route::post('/email/verify', [AuthController::class, 'verifyEmailLink']);
 });
+
+Route::get('/guest-settings', [SuresignSettingController::class, 'guestShow']);
 
 // Authenticated routes
 Route::middleware('auth:sanctum')->group(function () {
@@ -69,10 +75,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
         Route::put('/password', [AuthController::class, 'updatePassword']);
         Route::put('/force-password-change', [AuthController::class, 'forcePasswordChange']);
+        Route::post('/email/verification-notification', [AuthController::class, 'sendEmailVerification']);
     });
 
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index']);
+
+    // Support tickets — any authenticated user can submit one for their org
+    Route::post('/support-tickets', [SupportTicketController::class, 'store']);
 
     // Cross-project reports
     Route::get('/reports/summary', [ReportController::class, 'summary']);
@@ -361,7 +371,8 @@ Route::middleware('auth:sanctum')->group(function () {
             // Document Templates CRUD
             Route::apiResource('templates', DocumentTemplateController::class);
             Route::get('/templates/{template}/preview', [DocumentTemplateController::class, 'preview']);
-            Route::get('/support', [AdminController::class, 'support']);
+            Route::get('/support-tickets', [SupportTicketController::class, 'index']);
+            Route::put('/support-tickets/{id}', [SupportTicketController::class, 'updateStatus']);
             Route::get('/system-logs', [AdminController::class, 'systemLogs']);
             Route::get('/audit-log', [AdminController::class, 'auditLog']);
             Route::get('/settings', [AdminController::class, 'settings']);
@@ -395,7 +406,6 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::delete('/suresign-settings/email-footer',         [SuresignSettingController::class, 'removeEmailFooter']);
             Route::post('/suresign-settings/test-pdf',               [SuresignSettingController::class, 'testPdf']);
             Route::post('/suresign-settings/test-email',             [SuresignSettingController::class, 'testEmail']);
-            Route::post('/suresign-settings/sync-from-mirror',       [SuresignSettingController::class, 'syncFromMirror']);
             Route::put('/suresign-settings/ai',                      [SuresignSettingController::class, 'updateAi']);
             Route::put('/suresign-settings/notifications',           [SuresignSettingController::class, 'updateNotifications']);
 

@@ -5,8 +5,6 @@ namespace App\Services;
 use App\Models\Organization;
 use App\Models\Project;
 use App\Models\SuresignSetting;
-use App\Services\LocalDocumentMirrorService;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -14,7 +12,6 @@ use Illuminate\Support\Str;
  * Manages the SureSign filesystem folder structure.
  *
  * Primary storage:  storage/app/suresign/{org_slug}/{project_slug}/
- * Optional mirror:  {local_export_path}/{org_name}/{project_name}/  (if enabled in settings)
  *
  * Standard project folder layout:
  *   01_Contracts/
@@ -146,7 +143,6 @@ class ProjectStorageService
 
     /**
      * Create the full standard folder structure for a project in storage/app.
-     * Also creates mirror folders if local mirror is enabled.
      * Stores a .gitkeep placeholder in each folder so git tracks empty dirs.
      */
     public static function createProjectFolders(Project $project): void
@@ -159,9 +155,6 @@ class ProjectStorageService
                 Storage::disk('local')->put($path, '');
             }
         }
-
-        // Create matching local mirror folders if enabled
-        LocalDocumentMirrorService::createProjectFolders($project);
     }
 
     // ── File storage ─────────────────────────────────────────────────────────
@@ -180,64 +173,6 @@ class ProjectStorageService
         $folder = self::modulePath($project, $moduleKey, $contractDocType);
         $uuid   = \Illuminate\Support\Str::uuid();
         return "{$folder}/{$uuid}.{$extension}";
-    }
-
-    // ── Mirror / export ──────────────────────────────────────────────────────
-
-    /**
-     * @deprecated  Kept for backward compatibility only.
-     *              New code should call LocalDocumentMirrorService::mirrorFileUpload()
-     *              directly after creating the FileUpload record.
-     *
-     * If local mirror is enabled, copy a stored file to the configured path.
-     * Safe to call — silently skips on any error.
-     *
-     * @param  Project  $project
-     * @param  string   $storagePath   Path in local disk (e.g. 'suresign/acme/proj/01_Contracts/…')
-     * @param  string   $originalName  User-visible filename to write as
-     */
-    public static function mirrorToLocalExport(
-        Project $project,
-        string  $storagePath,
-        string  $originalName
-    ): void {
-        try {
-            if (!LocalDocumentMirrorService::isEnabled()) {
-                return;
-            }
-
-            $mirrorRoot = LocalDocumentMirrorService::getMirrorPath();
-            if (empty($mirrorRoot)) {
-                return;
-            }
-
-            $org         = $project->organization ?? Organization::find($project->organization_id);
-            $orgName     = $org ? $org->name : "org-{$project->organization_id}";
-            $projectName = $project->name;
-
-            // Derive subfolder from storage path: remove suresign/{org}/{project}/ prefix
-            $root     = self::projectRoot($project);
-            $relative = ltrim(str_replace($root, '', $storagePath), '/');
-            $dirPart  = dirname($relative);
-
-            $mirrorDir  = rtrim($mirrorRoot, '/\\') . DIRECTORY_SEPARATOR
-                . $orgName . DIRECTORY_SEPARATOR
-                . $projectName . DIRECTORY_SEPARATOR
-                . str_replace('/', DIRECTORY_SEPARATOR, $dirPart);
-
-            $mirrorPath = $mirrorDir . DIRECTORY_SEPARATOR . $originalName;
-
-            if (!is_dir($mirrorDir)) {
-                mkdir($mirrorDir, 0755, true);
-            }
-
-            $contents = Storage::disk('local')->get($storagePath);
-            if ($contents !== null) {
-                file_put_contents($mirrorPath, $contents);
-            }
-        } catch (\Throwable $e) {
-            Log::warning('[Mirror] mirrorToLocalExport failed: ' . $e->getMessage());
-        }
     }
 
     // ── Read helpers ─────────────────────────────────────────────────────────

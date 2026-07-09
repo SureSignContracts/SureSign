@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\FileUpload;
 use App\Models\Project;
+use App\Models\SuresignSetting;
 use App\Models\TradePackage;
-use App\Services\LocalDocumentMirrorService;
 use App\Services\ProjectStorageService;
 use App\Services\TradePackages\TradePackageActivityService;
 use Illuminate\Http\Request;
@@ -259,7 +259,7 @@ class TradePackageController extends Controller
         ];
 
         $data = $request->validate([
-            'file'          => 'required|file|max:51200',
+            'file'          => 'required|file|max:' . SuresignSetting::maxUploadKb(),
             'title'         => 'nullable|string|max:255',
             'document_type' => 'nullable|string|in:' . implode(',', $allowedTypes),
             'status'        => 'nullable|string|in:active,archived',
@@ -289,8 +289,6 @@ class TradePackageController extends Controller
             'status'           => $data['status'] ?? 'active',
             'disk'             => 'local',
         ]);
-
-        LocalDocumentMirrorService::mirrorFileUpload($upload, $project);
 
         return response()->json($upload->load('uploader:id,name'), 201);
     }

@@ -109,7 +109,7 @@ export default function AdminSystemLogsPage() {
                   gap: '16px',
                 }}
               >
-                <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>{log.datetime ?? log.created_at ?? '–'}</span>
+                <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>{log.timestamp ?? '–'}</span>
                 <span>
                   <Badge tone={tone}>{log.level}</Badge>
                 </span>

@@ -7,6 +7,7 @@ use App\Models\ActivityLog;
 use App\Models\Contract;
 use App\Models\FileUpload;
 use App\Models\Project;
+use App\Models\SuresignSetting;
 use App\Services\ProjectActivityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -68,7 +69,7 @@ class ContractController extends Controller
             'completion_date'          => 'nullable|date',
             'status'                   => 'nullable|in:draft,active,expired,complete,terminated',
             'notes'                    => 'nullable|string',
-            'contract_file'            => 'required|file|max:51200|mimes:pdf,doc,docx,txt',
+            'contract_file'            => 'required|file|max:' . SuresignSetting::maxUploadKb() . '|mimes:pdf,doc,docx,txt',
         ]);
 
         $contract = Contract::create(array_merge(
@@ -200,7 +201,7 @@ class ContractController extends Controller
         $this->authorizeProject($request, $project);
 
         $request->validate([
-            'contract_file' => 'required|file|max:51200|mimes:pdf,doc,docx,txt',
+            'contract_file' => 'required|file|max:' . SuresignSetting::maxUploadKb() . '|mimes:pdf,doc,docx,txt',
         ]);
 
         $file       = $request->file('contract_file');

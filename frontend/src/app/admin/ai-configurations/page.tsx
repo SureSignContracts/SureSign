@@ -1,94 +1,189 @@
 'use client';
 
-import { Brain, Zap, Settings, ToggleLeft, ToggleRight } from 'lucide-react';
-import { Card } from '@/components/ui/Card';
-
-const AI_MODELS = [
-  { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI', use: 'Document drafting, summarisation', status: 'active' },
-  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', use: 'Lightweight tasks, quick responses', status: 'active' },
-  { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic', use: 'Complex reasoning, analysis', status: 'inactive' },
-];
-
-const AI_FEATURES = [
-  { id: 'meeting_minutes', label: 'Meeting Minute Generation', description: 'Auto-generate structured meeting minutes from transcripts' },
-  { id: 'doc_summary', label: 'Document Summarisation', description: 'Summarise uploaded documents and contracts' },
-  { id: 'variation_extraction', label: 'Variation Extraction', description: 'Identify potential variations from correspondence' },
-  { id: 'email_parsing', label: 'Email Parsing', description: 'Parse emails to extract action items and notices' },
-  { id: 'smart_reminders', label: 'Smart Reminders', description: 'AI-driven deadline and action reminders' },
-];
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import api from '@/lib/api';
+import { Save, Sparkles, Eye, EyeOff } from 'lucide-react';
+import Toggle from '@/components/ui/Toggle';
+import Button from '@/components/ui/Button';
+import { Card, CardBody } from '@/components/ui/Card';
 
 export default function AdminAiConfigPage() {
+  const qc = useQueryClient();
+
+  const [aiEnabled, setAiEnabled]           = useState<boolean | null>(null);
+  const [promptsEnabled, setPromptsEnabled] = useState<boolean | null>(null);
+  const [aiModel, setAiModel]               = useState<string | null>(null);
+  const [anthropicKey, setAnthropicKey]     = useState('');
+  const [showAiKey, setShowAiKey]           = useState(false);
+  const [aiSaved, setAiSaved]               = useState(false);
+
+  const { data: suresignData } = useQuery({
+    queryKey: ['admin-suresign-settings'],
+    queryFn: () => api.get('/admin/suresign-settings').then(r => r.data?.data ?? {}),
+  });
+
+  useEffect(() => {
+    if (!suresignData) return;
+    if (aiEnabled === null)      setAiEnabled(!!(suresignData as any).ai_enabled);
+    if (promptsEnabled === null) setPromptsEnabled((suresignData as any).prompts_enabled ?? true);
+    if (aiModel === null)        setAiModel((suresignData as any).ai_model ?? 'claude-3-5-sonnet-latest');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [suresignData]);
+
+  const aiMutation = useMutation({
+    mutationFn: (payload: any) => api.put('/admin/suresign-settings/ai', payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-suresign-settings'] });
+      setAnthropicKey('');
+      setAiSaved(true);
+      setTimeout(() => setAiSaved(false), 2500);
+    },
+  });
+
+  const currentAiEnabled      = aiEnabled ?? !!(suresignData as any)?.ai_enabled;
+  const currentPromptsEnabled = promptsEnabled ?? ((suresignData as any)?.prompts_enabled ?? true);
+  const currentAiModel        = aiModel !== null ? aiModel : ((suresignData as any)?.ai_model ?? 'claude-3-5-sonnet-latest');
+  const hasAnthropicKey       = !!(suresignData as any)?.has_anthropic_key;
+
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-8">
+    <div className="p-6 max-w-3xl mx-auto space-y-8">
       <div>
         <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>AI Configurations</h1>
         <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-          Manage AI models and features available across the platform
+          Configure the AI model and features available across the platform
         </p>
       </div>
 
-      {/* Models */}
-      <section>
-        <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>AI Models</h2>
-        <div className="space-y-3">
-          {AI_MODELS.map((model, i) => (
-            <div
-              key={model.id}
-              className="flex items-center justify-between p-4 rounded-xl ss-animate-in"
-              style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: `${Math.min(i * 45, 360)}ms` }}
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(139,92,246,0.1)' }}>
-                  <Brain size={16} style={{ color: '#8b5cf6' }} />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{model.name}</p>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{model.provider} · {model.use}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <span
-                  className="text-xs px-2 py-0.5 rounded-full"
-                  style={model.status === 'active'
-                    ? { backgroundColor: 'rgba(34,197,94,0.1)', color: '#4ade80' }
-                    : { backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)' }
-                  }
-                >
-                  {model.status}
-                </span>
-                <button className="p-1.5 rounded-lg hover:bg-[var(--bg-hover)] transition-colors">
-                  <Settings size={14} style={{ color: 'var(--text-muted)' }} />
-                </button>
-              </div>
-            </div>
-          ))}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-sm font-semibold flex items-center gap-1.5" style={{ color: 'var(--text-secondary)' }}>
+            <Sparkles size={13} />
+            AI Assistant
+          </h2>
+          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+            Enable AI-assisted contract analysis and the Prompt Library. API keys are stored encrypted and never exposed to the frontend.
+          </p>
         </div>
+
+        <Card>
+        <CardBody className="space-y-5">
+
+          {/* Enable AI toggle */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Enable AI Analysis</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                Show &ldquo;Analyse Contract&rdquo; button when a contract file is uploaded. Used by Contract AI Analysis.
+              </p>
+            </div>
+            <Toggle checked={currentAiEnabled} onChange={setAiEnabled} />
+          </div>
+
+          {/* Enable Prompt Library toggle */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Enable Prompt Library</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                Show prompt buttons on variations, RFIs, and other records for the copy/paste prompt workflow.
+              </p>
+            </div>
+            <Toggle checked={currentPromptsEnabled} onChange={setPromptsEnabled} />
+          </div>
+
+          {/* Provider (currently only Anthropic) */}
+          <div>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+              Provider
+            </label>
+            <input
+              type="text"
+              value="Anthropic (Claude)"
+              readOnly
+              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none opacity-60 cursor-not-allowed"
+              style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+            />
+            <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>
+              Anthropic is the only supported provider for Contract AI Analysis.
+            </p>
+          </div>
+
+          {/* Model */}
+          <div>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+              Model
+            </label>
+            <select
+              value={currentAiModel}
+              onChange={e => setAiModel(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+              style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+            >
+              <option value="claude-sonnet-4-6">claude-sonnet-4-6 (recommended)</option>
+              <option value="claude-haiku-4-5-20251001">claude-haiku-4-5-20251001 (faster / lower cost)</option>
+              <option value="claude-opus-4-8">claude-opus-4-8 (most capable)</option>
+            </select>
+          </div>
+
+          {/* Anthropic API Key */}
+          <div>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+              Anthropic API Key
+            </label>
+            <div className="relative">
+              <input
+                type={showAiKey ? 'text' : 'password'}
+                value={anthropicKey}
+                onChange={e => setAnthropicKey(e.target.value)}
+                placeholder={hasAnthropicKey ? '••••••••  (key saved — enter new key to replace)' : 'sk-ant-…'}
+                autoComplete="new-password"
+                className="w-full px-3 py-2.5 pr-10 rounded-lg text-sm outline-none font-mono"
+                style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowAiKey(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 opacity-50 hover:opacity-80"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                {showAiKey ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </div>
+            <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>
+              API keys are stored encrypted and never sent to the browser.
+              {hasAnthropicKey && <span className="ml-1 text-green-600">A key is currently saved.</span>}
+            </p>
+          </div>
+
+          <div className="flex justify-end pt-1">
+            <Button
+              type="button"
+              onClick={() =>
+                aiMutation.mutate({
+                  ai_enabled: currentAiEnabled,
+                  prompts_enabled: currentPromptsEnabled,
+                  ai_model: currentAiModel,
+                  ...(anthropicKey ? { anthropic_api_key: anthropicKey } : {}),
+                })
+              }
+              disabled={aiMutation.isPending}
+              size="sm"
+            >
+              <Save size={12} />
+              {aiSaved ? 'Saved!' : aiMutation.isPending ? 'Saving…' : 'Save AI Settings'}
+            </Button>
+          </div>
+        </CardBody>
+        </Card>
       </section>
 
-      {/* Features */}
-      <section>
-        <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>AI Features</h2>
-        <Card className="overflow-hidden">
-          {AI_FEATURES.map((feature, i) => (
-            <div
-              key={feature.id}
-              className="flex items-center justify-between px-5 py-4"
-              style={{
-                backgroundColor: 'var(--bg-surface)',
-                borderBottom: i < AI_FEATURES.length - 1 ? '1px solid var(--border)' : 'none',
-              }}
-            >
-              <div className="flex items-center gap-3">
-                <Zap size={15} style={{ color: '#f59e0b' }} />
-                <div>
-                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{feature.label}</p>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{feature.description}</p>
-                </div>
-              </div>
-              <ToggleRight size={22} style={{ color: '#4ade80', cursor: 'pointer' }} />
-            </div>
-          ))}
-        </Card>
+      {/* Where AI is used today */}
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Where this is used</h2>
+        <div className="rounded-2xl p-5 text-sm space-y-2" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+          <p><strong style={{ color: 'var(--text-primary)' }}>Contract AI Analysis</strong> — extracts payment terms, key dates, parties, and programme milestones from an uploaded contract, for an admin to confirm before it&rsquo;s used in payment date calculations.</p>
+          <p><strong style={{ color: 'var(--text-primary)' }}>Prompt Library</strong> — a manual copy/paste workflow. Users copy an admin-managed prompt template with project context filled in, and paste it into an external AI tool. This makes no direct API calls of its own.</p>
+        </div>
       </section>
     </div>
   );

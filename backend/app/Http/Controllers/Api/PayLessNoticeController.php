@@ -9,8 +9,21 @@ use Illuminate\Http\Request;
 
 class PayLessNoticeController extends Controller
 {
+    /**
+     * Tenant isolation — mirrors FinalAccountController::authorizeProject.
+     * Super Admin / Admin can cross organisations; everyone else must match.
+     */
+    private function authorize(Request $request, Project|PayLessNotice $subject): void
+    {
+        $user = $request->user();
+        if ($user->hasRole('Super Admin') || $user->hasRole('Admin')) return;
+        if ($user->organization_id !== $subject->organization_id) abort(403, 'Access denied.');
+    }
+
     public function index(Request $request, Project $project)
     {
+        $this->authorize($request, $project);
+
         $notices = PayLessNotice::where('project_id', $project->id)
             ->with([
                 'creator:id,name',
@@ -28,6 +41,8 @@ class PayLessNoticeController extends Controller
 
     public function store(Request $request, Project $project)
     {
+        $this->authorize($request, $project);
+
         $validated = $request->validate([
             'notice_date'    => 'required|date',
             'amount'         => 'required|numeric|min:0',
@@ -46,13 +61,17 @@ class PayLessNoticeController extends Controller
         return response()->json($notice, 201);
     }
 
-    public function show(PayLessNotice $payLessNotice)
+    public function show(Request $request, PayLessNotice $payLessNotice)
     {
+        $this->authorize($request, $payLessNotice);
+
         return response()->json($payLessNotice->load('creator:id,name'));
     }
 
     public function update(Request $request, PayLessNotice $payLessNotice)
     {
+        $this->authorize($request, $payLessNotice);
+
         $validated = $request->validate([
             'notice_date' => 'sometimes|date',
             'amount'      => 'sometimes|numeric|min:0',
@@ -66,8 +85,10 @@ class PayLessNoticeController extends Controller
         return response()->json($payLessNotice);
     }
 
-    public function destroy(PayLessNotice $payLessNotice)
+    public function destroy(Request $request, PayLessNotice $payLessNotice)
     {
+        $this->authorize($request, $payLessNotice);
+
         $payLessNotice->delete();
         return response()->json(null, 204);
     }

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\EmailNotificationService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -39,6 +40,25 @@ class User extends Authenticatable
     public function isBanned(): bool
     {
         return $this->banned_at !== null;
+    }
+
+    /**
+     * Override the default mail-driven notification (MAIL_MAILER=log would
+     * silently swallow it) so password resets go out through the same
+     * Brevo pipeline as every other transactional email in the app.
+     */
+    public function sendPasswordResetNotification(string $token): void
+    {
+        $frontendUrl = rtrim(env('FRONTEND_URL', 'http://localhost:3000'), '/');
+        $resetUrl    = "{$frontendUrl}/reset-password?token={$token}&email=" . urlencode($this->email);
+
+        EmailNotificationService::sendDirect(
+            $this->email,
+            'Reset your SureSign password',
+            "We received a request to reset your SureSign password.\n\n"
+                . "Reset it here: {$resetUrl}\n\n"
+                . "This link expires in 60 minutes. If you didn't request this, you can safely ignore this email."
+        );
     }
 
     public function organization() { return $this->belongsTo(Organization::class); }

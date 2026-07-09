@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\Document;
 use App\Models\PaymentApplication;
 use App\Services\BrandingService;
-use App\Services\LocalDocumentMirrorService;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
@@ -106,8 +105,6 @@ class ExcelGenerationService
             'documentable_type' => PaymentApplication::class,
             'documentable_id'   => $pa->id,
         ]);
-
-        LocalDocumentMirrorService::mirrorDocument($doc, $project);
 
         return $doc;
     }

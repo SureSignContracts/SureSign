@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AdjudicationCase;
 use App\Models\AdjudicationDocument;
 use App\Models\Project;
-use App\Services\LocalDocumentMirrorService;
+use App\Models\SuresignSetting;
 use App\Services\ProjectActivityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -39,7 +39,7 @@ class AdjudicationDocumentController extends Controller
             'mime_type'     => 'nullable|string|max:100',
             'file_size'     => 'nullable|integer',
             'document_id'   => 'nullable|integer|exists:documents,id',
-            'file'          => 'nullable|file|max:51200',
+            'file'          => 'nullable|file|max:' . SuresignSetting::maxUploadKb(),
         ]);
 
         $fileData = [];
@@ -64,11 +64,6 @@ class AdjudicationDocumentController extends Controller
         ]));
 
         $project = $adjudicationCase->project;
-
-        // Mirror to local export path if enabled and a file was attached
-        if (!empty($fileData['file_path'])) {
-            LocalDocumentMirrorService::mirrorAdjudicationDocument($document, $project);
-        }
 
         ProjectActivityService::record(
             $project,

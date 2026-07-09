@@ -13,6 +13,19 @@ use Illuminate\Support\Facades\Storage;
 
 class SuresignSettingController extends Controller
 {
+    // ─── GET /guest-settings (public — no auth, for the login/signup screens) ─
+
+    public function guestShow()
+    {
+        $settings = SuresignSetting::instance();
+        return response()->json([
+            'data' => [
+                'platform_name' => $settings->platform_name ?: config('app.name', 'SureSign'),
+                'support_email' => $settings->support_email ?: '',
+            ],
+        ]);
+    }
+
     // ─── GET /settings (public — all authenticated users) ────────────────────
 
     public function publicShow()
@@ -510,27 +523,5 @@ class SuresignSettingController extends Controller
 </body>
 </html>
 HTML;
-    }
-
-    /**
-     * POST /api/admin/suresign-settings/sync-from-mirror
-     * Trigger sync from local Windows Documents mirror to SureSign.
-     * Runs the import command and returns the summary.
-     */
-    public function syncFromMirror(Request $request)
-    {
-        try {
-            $exitCode = \Artisan::call('suresign:import-from-mirror');
-            
-            return response()->json([
-                'message' => 'Files synced successfully from Windows Documents.',
-                'exit_code' => $exitCode,
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('Sync from mirror failed: ' . $e->getMessage());
-            return response()->json([
-                'message' => 'Failed to sync files: ' . $e->getMessage(),
-            ], 500);
-        }
     }
 }

@@ -25,8 +25,21 @@ class AdjudicationCaseController extends Controller
         ['key' => 'enforcement',             'title' => 'Enforcement',               'description' => 'Generate enforcement and payment demand documents, record enforcement deadline.',    'sort' => 8],
     ];
 
+    /**
+     * Tenant isolation — mirrors FinalAccountController::authorizeProject.
+     * Super Admin / Admin can cross organisations; everyone else must match.
+     */
+    private function authorize(Request $request, Project|AdjudicationCase $subject): void
+    {
+        $user = $request->user();
+        if ($user->hasRole('Super Admin') || $user->hasRole('Admin')) return;
+        if ($user->organization_id !== $subject->organization_id) abort(403, 'Access denied.');
+    }
+
     public function index(Request $request, Project $project)
     {
+        $this->authorize($request, $project);
+
         $query = AdjudicationCase::where('project_id', $project->id)
             ->with(['creator:id,name', 'deadlines'])
             ->withCount('steps');
@@ -46,6 +59,8 @@ class AdjudicationCaseController extends Controller
 
     public function store(Request $request, Project $project)
     {
+        $this->authorize($request, $project);
+
         $validated = $request->validate([
             'title'                        => 'required|string|max:255',
             'dispute_type'                 => 'required|in:payment_dispute,variation_dispute,delay_dispute,defect_dispute,contract_interpretation,non_payment,other',
@@ -125,8 +140,10 @@ class AdjudicationCaseController extends Controller
         return response()->json($case->load(['creator:id,name', 'steps']), 201);
     }
 
-    public function show(Project $project, AdjudicationCase $adjudicationCase)
+    public function show(Request $request, Project $project, AdjudicationCase $adjudicationCase)
     {
+        $this->authorize($request, $adjudicationCase);
+
         return response()->json(
             $adjudicationCase->load([
                 'creator:id,name',
@@ -142,6 +159,8 @@ class AdjudicationCaseController extends Controller
 
     public function update(Request $request, Project $project, AdjudicationCase $adjudicationCase)
     {
+        $this->authorize($request, $adjudicationCase);
+
         $validated = $request->validate([
             'title'                        => 'sometimes|string|max:255',
             'dispute_type'                 => 'sometimes|in:payment_dispute,variation_dispute,delay_dispute,defect_dispute,contract_interpretation,non_payment,other',
@@ -174,6 +193,8 @@ class AdjudicationCaseController extends Controller
 
     public function destroy(Request $request, Project $project, AdjudicationCase $adjudicationCase)
     {
+        $this->authorize($request, $adjudicationCase);
+
         $project = $adjudicationCase->project;
         $adjudicationCase->delete();
 
@@ -191,6 +212,8 @@ class AdjudicationCaseController extends Controller
 
     public function advanceStep(Request $request, Project $project, AdjudicationCase $adjudicationCase)
     {
+        $this->authorize($request, $adjudicationCase);
+
         $stepKeys = array_keys(AdjudicationCase::STEPS);
         $currentIndex = array_search($adjudicationCase->current_step, $stepKeys);
 
@@ -238,6 +261,8 @@ class AdjudicationCaseController extends Controller
 
     public function archive(Request $request, Project $project, AdjudicationCase $adjudicationCase)
     {
+        $this->authorize($request, $adjudicationCase);
+
         $adjudicationCase->update([
             'status'      => 'archived',
             'archived_at' => now(),
@@ -281,6 +306,8 @@ class AdjudicationCaseController extends Controller
 
     public function updateStatus(Request $request, Project $project, AdjudicationCase $adjudicationCase)
     {
+        $this->authorize($request, $adjudicationCase);
+
         $validated = $request->validate([
             'status' => 'required|in:draft,active,awaiting_response,decision_pending,notice_of_dispute,notice_of_adjudication,adjudicator_appointment,referral_submission,response_analysis,further_submissions,decision_analysis,enforcement,closed,archived',
         ]);

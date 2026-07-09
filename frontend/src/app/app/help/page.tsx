@@ -1,14 +1,17 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Search, ChevronDown, RotateCcw, CheckCircle2, HelpCircle,
   Rocket, FolderKanban, FileText, Package, Sparkles, DollarSign,
   MessageSquare, Users2, Clock, FolderOpen, FileStack, CheckSquare,
-  Bell, Settings,
+  Bell, Settings, LifeBuoy, Send,
 } from 'lucide-react';
 import { useTour } from '@/lib/tours/useTour';
 import { TOURS } from '@/lib/tours/registry';
+import api from '@/lib/api';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 interface FaqItem {
   q: string;
@@ -168,6 +171,73 @@ function AccordionItem({ item }: { item: FaqItem }) {
   );
 }
 
+function ContactSupportCard() {
+  const [subject, setSubject] = useState('');
+  const [message, setMessage] = useState('');
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
+
+  const mutation = useMutation({
+    mutationFn: () => api.post('/support-tickets', { subject, message }),
+    onSuccess: () => {
+      setSent(true);
+      setSubject('');
+      setMessage('');
+    },
+    onError: (err) => setError(getErrorMessage(err, 'Could not submit your request. Please try again.')),
+  });
+
+  return (
+    <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+      <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
+        <h2 className="text-sm font-semibold flex items-center gap-1.5" style={{ color: 'var(--text-primary)' }}>
+          <LifeBuoy size={14} />
+          Contact Support
+        </h2>
+        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Can&apos;t find an answer above? Send your question to the SureSign team.</p>
+      </div>
+      <div className="p-5 space-y-3">
+        {sent ? (
+          <div className="flex items-center gap-2 text-sm" style={{ color: '#4ade80' }}>
+            <CheckCircle2 size={15} />
+            Your request has been submitted. We&apos;ll get back to you by email.
+          </div>
+        ) : (
+          <>
+            {error && <p className="text-xs" style={{ color: '#f87171' }}>{error}</p>}
+            <input
+              value={subject}
+              onChange={e => setSubject(e.target.value)}
+              placeholder="Subject"
+              className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none"
+              style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+            />
+            <textarea
+              value={message}
+              onChange={e => setMessage(e.target.value)}
+              placeholder="Describe your question or issue…"
+              rows={4}
+              className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none resize-none"
+              style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+            />
+            <div className="flex justify-end">
+              <button
+                onClick={() => mutation.mutate()}
+                disabled={!subject.trim() || !message.trim() || mutation.isPending}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-opacity disabled:opacity-50 active:scale-[0.98]"
+                style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
+              >
+                <Send size={12} />
+                {mutation.isPending ? 'Sending…' : 'Send Request'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function HelpCentrePage() {
   const [search, setSearch] = useState('');
   const { startTour, isTourCompleted } = useTour();
@@ -237,6 +307,8 @@ export default function HelpCentrePage() {
           })}
         </div>
       </div>
+
+      <ContactSupportCard />
 
       {/* FAQ search */}
       <div className="relative">

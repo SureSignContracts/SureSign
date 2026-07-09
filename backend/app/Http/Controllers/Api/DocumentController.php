@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Document;
 use App\Models\FileUpload;
 use App\Models\Project;
+use App\Models\SuresignSetting;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -46,7 +47,7 @@ class DocumentController extends Controller
             'category'         => 'nullable|string|max:100',
             'status'           => 'nullable|in:draft,pending_approval,approved,issued,superseded,archived',
             'reference_number' => 'nullable|string|max:100',
-            'file'             => 'nullable|file|max:51200',
+            'file'             => 'nullable|file|max:' . SuresignSetting::maxUploadKb(),
         ]);
 
         $data = [
@@ -213,7 +214,7 @@ class DocumentController extends Controller
         $this->authorizeProject($request, $project);
 
         $request->validate([
-            'file'          => 'required|file|max:51200',
+            'file'          => 'required|file|max:' . SuresignSetting::maxUploadKb(),
             'folder_path'   => 'nullable|string|max:255',
             'module_key'    => 'nullable|string|max:100',
             'folder_key'    => 'nullable|string|max:255',

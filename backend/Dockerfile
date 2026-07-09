@@ -28,9 +28,11 @@ RUN mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions 
     && chmod -R 775 bootstrap/cache storage
 
 COPY docker/php.ini /usr/local/etc/php/conf.d/suresign-uploads.ini
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 RUN composer install --optimize-autoloader --no-interaction \
     && php artisan package:discover --ansi
 
 EXPOSE 8000
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

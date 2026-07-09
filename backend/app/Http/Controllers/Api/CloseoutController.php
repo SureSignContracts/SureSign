@@ -12,10 +12,23 @@ use Illuminate\Http\Request;
 class CloseoutController extends Controller
 {
     /**
+     * Tenant isolation — mirrors FinalAccountController::authorizeProject.
+     * Super Admin / Admin can cross organisations; everyone else must match.
+     */
+    private function authorize(Request $request, Project $subject): void
+    {
+        $user = $request->user();
+        if ($user->hasRole('Super Admin') || $user->hasRole('Admin')) return;
+        if ($user->organization_id !== $subject->organization_id) abort(403, 'Access denied.');
+    }
+
+    /**
      * Get or auto-create the closeout record for a project, with its items.
      */
     public function show(Request $request, Project $project)
     {
+        $this->authorize($request, $project);
+
         $closeout = Closeout::where('project_id', $project->id)
             ->with('items')
             ->first();
@@ -32,6 +45,8 @@ class CloseoutController extends Controller
      */
     public function update(Request $request, Project $project)
     {
+        $this->authorize($request, $project);
+
         $closeout = Closeout::where('project_id', $project->id)->firstOrFail();
 
         $validated = $request->validate([
@@ -63,6 +78,12 @@ class CloseoutController extends Controller
      */
     public function updateItem(Request $request, Project $project, CloseoutItem $item)
     {
+        $this->authorize($request, $project);
+
+        if ($item->closeout->project_id !== $project->id) {
+            return response()->json(['message' => 'Item does not belong to this project.'], 422);
+        }
+
         $validated = $request->validate([
             'status'   => 'sometimes|in:pending,in_progress,completed,approved',
             'notes'    => 'nullable|string',
@@ -98,6 +119,8 @@ class CloseoutController extends Controller
      */
     public function addItem(Request $request, Project $project)
     {
+        $this->authorize($request, $project);
+
         $closeout = Closeout::where('project_id', $project->id)->firstOrFail();
 
         $validated = $request->validate([

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\User;
+use App\Services\EmailVerificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -61,6 +62,8 @@ class UserController extends Controller
 
         $role = Role::firstOrCreate(['name' => $validated['role'], 'guard_name' => 'web']);
         $user->assignRole($role);
+
+        EmailVerificationService::sendVerificationLink($user);
 
         return response()->json([
             'message' => 'User created successfully.',

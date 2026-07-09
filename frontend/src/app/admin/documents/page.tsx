@@ -9,7 +9,7 @@ import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
 import {
   FileText, Search, Building2, FolderOpen, Download, Eye,
-  ChevronRight, Folder, LayoutList, LayoutGrid, Home, RefreshCw, Wand2, Box,
+  ChevronRight, Folder, LayoutList, LayoutGrid, Home, Wand2, Box,
   MoreVertical, Trash2, ClipboardList, MoreHorizontal,
 } from 'lucide-react';
 import GeneratePackageModal from '@/components/documents/GeneratePackageModal';
@@ -237,8 +237,7 @@ function DeleteConfirmModal({ fileName, onClose, onConfirm, deleting }: {
 
 // ── More dropdown for secondary toolbar actions ────────────────────────────
 
-function MoreMenu({ onSync, syncing, viewMode, onViewMode, totalLabel }: {
-  onSync: () => void; syncing: boolean;
+function MoreMenu({ viewMode, onViewMode, totalLabel }: {
   viewMode: 'folder' | 'list'; onViewMode: (m: 'folder' | 'list') => void;
   totalLabel: string;
 }) {
@@ -314,12 +313,6 @@ function MoreMenu({ onSync, syncing, viewMode, onViewMode, totalLabel }: {
 
           {/* Actions */}
           <div className="py-1.5">
-            <button onClick={() => { onSync(); setOpen(false); }} disabled={syncing}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-40"
-              style={{ color: 'var(--text-secondary)' }}>
-              <RefreshCw size={13} className={syncing ? 'animate-spin' : ''} style={{ color: 'var(--text-muted)' }} />
-              {syncing ? 'Syncing…' : 'Sync files'}
-            </button>
             <Link href="/admin/documents/register" onClick={() => setOpen(false)}
               className="flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-[var(--bg-hover)]"
               style={{ color: 'var(--text-secondary)' }}>
@@ -429,21 +422,6 @@ export default function AdminDocumentsPage() {
 
   // ── Mutations ──
 
-  const syncMutation = useMutation({
-    mutationFn: () => api.post('/admin/suresign-settings/sync-from-mirror').then(r => r.data),
-    onSuccess: (data) => {
-      toast.success(data.message || 'Files synced successfully!');
-      queryClient.invalidateQueries({ queryKey: ['admin-doc-explorer-companies'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-documents'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-doc-explorer-projects'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-doc-explorer-modules'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-doc-explorer-files'] });
-    },
-    onError: (error: { response?: { data?: { message?: string } } }) => {
-      toast.error(error.response?.data?.message || 'Failed to sync files');
-    },
-  });
-
   const deleteMutation = useMutation({
     mutationFn: (fileId: number) => api.delete(`/file-uploads/${fileId}`).then(r => r.data),
     onSuccess: () => {
@@ -547,8 +525,6 @@ export default function AdminDocumentsPage() {
           )}
 
           <MoreMenu
-            onSync={() => syncMutation.mutate()}
-            syncing={syncMutation.isPending}
             viewMode={viewMode}
             onViewMode={setViewMode}
             totalLabel={totalLabel}

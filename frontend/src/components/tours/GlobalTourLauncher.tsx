@@ -30,15 +30,24 @@ export default function GlobalTourLauncher() {
     if (isTourCompleted(GLOBAL_TOUR_KEY)) return;
 
     // Small delay so the dashboard/sidebar have finished their first render
-    // before driver.js measures target elements.
-    const t = setTimeout(() => startTour(GLOBAL_TOUR_KEY), 800);
+    // before driver.js measures target elements. Re-check the pathname and
+    // onboarding state at fire time, not just at effect-setup time — a
+    // fresh account is briefly on this same route before the onboarding
+    // guard (AppLayout) redirects it away, and without this re-check the
+    // tour would still fire 800ms later on the onboarding page itself.
+    const t = setTimeout(() => {
+      if (window.location.pathname === '/app/onboarding') return;
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser?.organization && !currentUser.organization.is_onboarded) return;
+      startTour(GLOBAL_TOUR_KEY);
+    }, 800);
     return () => clearTimeout(t);
-    // Deliberately only re-evaluated when the user changes — this component
-    // stays mounted across every /app navigation, and re-running on each
-    // pathname change would re-launch the tour mid-navigation before it's
-    // been marked complete.
+    // Deliberately re-evaluated only on user change or the onboarded flag
+    // flipping true (finishing onboarding, client-side, with no page
+    // reload) — NOT on every pathname change, which would re-launch the
+    // tour mid-navigation before it's been marked complete.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [user?.id, user?.organization?.is_onboarded]);
 
   return null;
 }
