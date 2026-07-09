@@ -205,13 +205,51 @@ class OrganizationController extends Controller
 
     public function getBranding(Request $request)
     {
-        $org      = $request->user()->organization;
+        $user = $request->user();
+
+        // Super Admin operates at the platform level, not as a member of any
+        // single organization — never resolve or apply a specific org's
+        // branding for this role, whatever organization_id happens to hold
+        // on the account. Otherwise the accent colour (applied directly onto
+        // document.documentElement, which persists across client-side
+        // navigation) can end up "inherited" from whichever org's project
+        // the Super Admin last viewed.
+        if ($user->hasRole('Super Admin')) {
+            return response()->json(['data' => $this->defaultBrandingResource()]);
+        }
+
+        $org      = $user->organization;
         $branding = BrandingSetting::firstOrCreate(
             ['organization_id' => $org->id],
             ['primary_color' => '#0a0a0a', 'company_display_name' => $org->name]
         );
 
         return response()->json(['data' => $this->brandingResource($org, $branding)]);
+    }
+
+    private function defaultBrandingResource(): array
+    {
+        return [
+            'company_name'   => 'SureSign',
+            'description'    => '',
+            'tagline'        => '',
+            'primary_color'  => '#0a0a0a',
+            'accent_color'   => null,
+            'email_footer'   => '',
+            'logo_url'       => null,
+            'cover_url'      => null,
+            'header_url'     => null,
+            'footer_url'     => null,
+            'contact_email'  => '',
+            'contact_phone'  => '',
+            'website'        => '',
+            'address'        => '',
+            'city'           => '',
+            'state'          => '',
+            'postcode'       => '',
+            'country'        => '',
+            'vat_number'     => '',
+        ];
     }
 
     public function updateBranding(Request $request)

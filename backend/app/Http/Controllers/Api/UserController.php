@@ -9,6 +9,7 @@ use App\Services\EmailVerificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Spatie\Permission\Models\Role;
 
@@ -47,18 +48,38 @@ class UserController extends Controller
     public function invite(Request $request)
     {
         $validated = $request->validate([
-            'email' => 'required|email|max:255|unique:users,email',
+            // A removed user is soft-deleted, not purged — the `email` column
+            // still has a real unique constraint at the DB level, so exclude
+            // trashed rows here or a re-invite would wrongly 422 as "taken".
+            'email' => ['required', 'email', 'max:255', Rule::unique('users')->whereNull('deleted_at')],
             'role'  => 'required|string|in:' . implode(',', self::ALLOWED_ROLES),
         ]);
 
         $tempPassword = $this->generateTempPassword();
 
-        $user = User::create([
-            'name'      => explode('@', $validated['email'])[0],
-            'email'     => $validated['email'],
-            'password'  => Hash::make($tempPassword),
-            'is_active' => true,
-        ]);
+        // Reuse the soft-deleted record for this email instead of colliding
+        // with the DB-level unique constraint that a fresh insert would hit.
+        $user = User::onlyTrashed()->where('email', $validated['email'])->first();
+
+        if ($user) {
+            $user->restore();
+            $user->update([
+                'name'                 => explode('@', $validated['email'])[0],
+                'password'             => Hash::make($tempPassword),
+                'is_active'            => true,
+                'must_change_password' => false,
+                'banned_at'            => null,
+                'banned_reason'        => null,
+            ]);
+            $user->syncRoles([]);
+        } else {
+            $user = User::create([
+                'name'      => explode('@', $validated['email'])[0],
+                'email'     => $validated['email'],
+                'password'  => Hash::make($tempPassword),
+                'is_active' => true,
+            ]);
+        }
 
         $role = Role::firstOrCreate(['name' => $validated['role'], 'guard_name' => 'web']);
         $user->assignRole($role);

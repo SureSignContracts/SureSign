@@ -253,6 +253,7 @@ function ProfilePopover({
   onClose,
   onToggleTheme,
   onLogout,
+  portalRef,
 }: {
   open: boolean;
   collapsed: boolean;
@@ -263,9 +264,11 @@ function ProfilePopover({
   onClose: () => void;
   onToggleTheme: () => void;
   onLogout: () => void;
+  portalRef: React.RefObject<HTMLDivElement | null>;
 }) {
-  return (
+  const content = (
     <div
+      ref={collapsed ? portalRef : undefined}
       className={cn(
         'overflow-hidden rounded-xl transition-all duration-200 ease-out',
         collapsed ? 'fixed z-[200] w-52' : 'absolute bottom-full left-3 right-3 z-[200] mb-1',
@@ -343,6 +346,19 @@ function ProfilePopover({
       </div>
     </div>
   );
+
+  // Collapsed uses `fixed` positioning meant to float over the main content,
+  // outside the narrow icon rail — but the sidebar's own transform (for its
+  // mobile slide animation) creates a containing block that traps `fixed`
+  // descendants, and its overflow-y-hidden then clips most of the popover.
+  // Portal straight to <body> to escape that, matching how SidebarTooltip
+  // already does it above. The expanded case stays in place — it's an
+  // `absolute` dropdown anchored to its own (non-transformed) footer parent,
+  // which portaling would break.
+  if (collapsed) {
+    return typeof document !== 'undefined' ? createPortal(content, document.body) : null;
+  }
+  return content;
 }
 
 // ─── Collapsed footer ─────────────────────────────────────────────────────────
@@ -409,6 +425,11 @@ export default function AppSidebar({
   const [profileOpen, setProfileOpen] = useState(false);
   const [collapsed, setCollapsed]     = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
+  // ProfilePopover is portaled to document.body when collapsed (see below) so
+  // it isn't clipped by the sidebar's own transform/overflow — but that means
+  // it's no longer a DOM descendant of popoverRef, so the outside-click
+  // handler needs its own ref to still recognise clicks inside the popover.
+  const portalPopoverRef = useRef<HTMLDivElement>(null);
 
   // On mobile the sidebar is a full drawer — never the icon-only collapsed view.
   const showCollapsed = collapsed && !isMobile;
@@ -435,7 +456,10 @@ export default function AppSidebar({
   useEffect(() => {
     if (!profileOpen) return;
     function handle(e: MouseEvent) {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const insidePopover = popoverRef.current?.contains(target);
+      const insidePortal = portalPopoverRef.current?.contains(target);
+      if (!insidePopover && !insidePortal) {
         setProfileOpen(false);
       }
     }
@@ -594,6 +618,7 @@ export default function AppSidebar({
           onClose={() => setProfileOpen(false)}
           onToggleTheme={toggle}
           onLogout={() => logout().then(() => (window.location.href = '/login'))}
+          portalRef={portalPopoverRef}
         />
 
         {showCollapsed && (

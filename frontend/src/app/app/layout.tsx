@@ -39,7 +39,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch branding to apply client-specific accent colour
-  const { data: branding } = useQuery({
+  const { data: branding, isFetched: brandingFetched } = useQuery({
     queryKey: ['branding'],
     queryFn: () => api.get('/organization/branding').then(r => r.data?.data ?? r.data),
     enabled: !!token,
@@ -88,7 +88,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [_hasHydrated, token, user, pathname, router]);
 
-  if (!_hasHydrated || !token || !user || !splashDone) {
+  // Wait for the branding fetch to settle before first paint of the real UI —
+  // otherwise --gold briefly renders at its CSS default (SureSign's own
+  // colour) before the org's custom accent colour effect gets a chance to
+  // run, flashing on every hard reload for orgs with custom branding.
+  if (!_hasHydrated || !token || !user || !splashDone || !brandingFetched) {
     return <SureSignLoader />;
   }
 

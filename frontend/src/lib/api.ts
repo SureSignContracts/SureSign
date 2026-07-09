@@ -31,7 +31,15 @@ api.interceptors.response.use(
     const url: string = err.config?.url || '';
     const isExemptAuthEndpoint = AUTH_ENDPOINTS_EXEMPT_FROM_SESSION_REDIRECT.some((p) => url.includes(p));
     if (err.response?.status === 401 && !isExemptAuthEndpoint && typeof window !== 'undefined') {
+      // Clear both copies of the session — the raw key this interceptor reads,
+      // and the Zustand-persisted blob. Leaving the latter behind resurrects
+      // the just-invalidated token on the next page load (its onRehydrateStorage
+      // reconciliation rewrites `suresign_token` from the stale `suresign-auth`
+      // value), which sends the login page straight back into the app, back
+      // into another 401, forever — a redirect loop that a server-side unban
+      // can't stop, since it's caused entirely by stale client storage.
       localStorage.removeItem('suresign_token');
+      localStorage.removeItem('suresign-auth');
       window.location.href = '/login';
     }
     return Promise.reject(err);
