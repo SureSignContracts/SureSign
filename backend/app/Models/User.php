@@ -47,7 +47,7 @@ class User extends Authenticatable
      * silently swallow it) so password resets go out through the same
      * Brevo pipeline as every other transactional email in the app.
      */
-    public function sendPasswordResetNotification(string $token): void
+    public function sendPasswordResetNotification($token)
     {
         $frontendUrl = rtrim(env('FRONTEND_URL', 'http://localhost:3000'), '/');
         $resetUrl    = "{$frontendUrl}/reset-password?token={$token}&email=" . urlencode($this->email);
