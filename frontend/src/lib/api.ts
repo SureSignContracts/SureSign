@@ -24,13 +24,25 @@ api.interceptors.request.use((config) => {
 // infinite loop, especially if autofill resubmitted the same bad password.
 const AUTH_ENDPOINTS_EXEMPT_FROM_SESSION_REDIRECT = ['/auth/login', '/auth/register'];
 
-// Handle 401 globally
+// Backend code for "this account is deactivated/banned" (EnsureAccountIsActive
+// middleware) — distinct from the generic tenant-isolation 403s the app
+// already relies on elsewhere, which must NOT trigger a logout.
+const ACCOUNT_UNAVAILABLE_CODE = 'account_unavailable';
+
+// Handle 401 (expired/invalid token) and the account-unavailable 403 globally.
+// Deliberately does NOT special-case the password_change_required 403 here:
+// the frontend's ForcePasswordChangeGate (driven by user.must_change_password,
+// already known from the login/me response) blocks normal navigation before
+// any such request would ever fire — treating that 403 as a logout here would
+// undo that gate's whole point of keeping the user authenticated while they
+// complete the required change.
 api.interceptors.response.use(
   (res) => res,
   (err) => {
     const url: string = err.config?.url || '';
     const isExemptAuthEndpoint = AUTH_ENDPOINTS_EXEMPT_FROM_SESSION_REDIRECT.some((p) => url.includes(p));
-    if (err.response?.status === 401 && !isExemptAuthEndpoint && typeof window !== 'undefined') {
+    const isAccountUnavailable = err.response?.status === 403 && err.response?.data?.code === ACCOUNT_UNAVAILABLE_CODE;
+    if ((err.response?.status === 401 || isAccountUnavailable) && !isExemptAuthEndpoint && typeof window !== 'undefined') {
       // Clear both copies of the session — the raw key this interceptor reads,
       // and the Zustand-persisted blob. Leaving the latter behind resurrects
       // the just-invalidated token on the next page load (its onRehydrateStorage

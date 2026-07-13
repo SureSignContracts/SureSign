@@ -24,6 +24,20 @@ class User extends Authenticatable
 
     protected $hidden = ['password', 'remember_token'];
 
+    // Mirrors the DB-level column defaults (see the users table migrations)
+    // in the in-memory model — without this, a freshly `create()`d instance
+    // reflects these attributes as `null` in PHP until the row is re-fetched
+    // from the database (Eloquent doesn't read back column defaults after
+    // INSERT), even though the actual stored row already has `is_active = 1`
+    // / `must_change_password = 0`. That mismatch was previously invisible
+    // since nothing checked these per-request; EnsureAccountIsActive now
+    // does, so an in-memory `null` (falsy for is_active's `!$user->is_active`
+    // check) would otherwise look identical to a genuinely deactivated user.
+    protected $attributes = [
+        'is_active'            => true,
+        'must_change_password' => false,
+    ];
+
     protected function casts(): array
     {
         return [

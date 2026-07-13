@@ -12,6 +12,7 @@ import {
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface PlatformSettings {
   logo_url:               string | null;
+  favicon_url:            string | null;
   letterhead_header_url:  string | null;
   letterhead_footer_url:  string | null;
   letterhead_pdf_url:     string | null;
@@ -236,7 +237,7 @@ export default function AdminSureSignPage() {
     queryKey: ['admin-suresign-settings'],
     queryFn: () =>
       api.get('/admin/suresign-settings').then(r => r.data?.data ?? r.data).catch(() => ({
-        logo_url: null, letterhead_header_url: null, letterhead_footer_url: null,
+        logo_url: null, favicon_url: null, letterhead_header_url: null, letterhead_footer_url: null,
         letterhead_pdf_url: null, email_header_url: null, email_footer_url: null,
         email_subject_line: '', email_body_template: '', email_reply_to: '',
         email_sender_email: '', email_sender_name: 'SureSign Contracts', admin_email: '',
@@ -442,9 +443,18 @@ export default function AdminSureSignPage() {
             onUpload={f => uploadFile('logo', '/admin/suresign-settings/logo', 'logo', f, 'branding')}
             onRemove={() => removeFile('/admin/suresign-settings/logo', 'branding')}
           />
+          <UploadTile
+            label="Site favicon"
+            hint="Browser tab icon · square PNG, SVG, or ICO · min 32 × 32 px"
+            accept="image/png,image/svg+xml,image/x-icon,.ico"
+            currentUrl={data?.favicon_url ?? null}
+            uploading={!!uploading.favicon}
+            onUpload={f => uploadFile('favicon', '/admin/suresign-settings/favicon', 'favicon', f, 'branding')}
+            onRemove={() => removeFile('/admin/suresign-settings/favicon', 'branding')}
+          />
           {savedTab === 'branding' && (
             <p className="flex items-center gap-1.5 text-xs" style={{ color: '#10b981' }}>
-              <Check size={12} /> Logo saved successfully.
+              <Check size={12} /> Branding saved successfully.
             </p>
           )}
         </div>
@@ -805,6 +815,57 @@ export default function AdminSureSignPage() {
                         hidden_pages: hidden
                           ? p.hidden_pages.filter(k => k !== (key as string))
                           : [...p.hidden_pages, key as string],
+                      }));
+                    }}
+                    className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-sm transition-all"
+                    style={{
+                      backgroundColor: hidden ? 'var(--bg-elevated)' : 'var(--gold-8)',
+                      border: `1px solid ${hidden ? 'var(--border)' : 'var(--gold-30)'}`,
+                      color: hidden ? 'var(--text-muted)' : 'var(--text-primary)',
+                    }}
+                  >
+                    <span className="font-medium text-xs">{label}</span>
+                    <span
+                      className="text-xs px-1.5 py-0.5 rounded-md font-medium"
+                      style={{
+                        backgroundColor: hidden ? 'rgba(90,86,82,0.15)' : 'var(--gold-15)',
+                        color: hidden ? 'var(--text-muted)' : 'var(--gold)',
+                      }}
+                    >
+                      {hidden ? 'Hidden' : 'Visible'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <Divider />
+
+          {/* Client App Module Visibility */}
+          <div className="space-y-3">
+            <div>
+              <SubLabel>Client App Module Visibility</SubLabel>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                Toggle which modules appear in the project workspace sidebar for Admin and Client users. Hidden modules are still accessible via direct URL.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                { key: 'adjudication', label: 'Adjudication' },
+              ] as { key: string; label: string }[])
+              .map(({ key, label }) => {
+                const hidden = siteForm.hidden_pages.includes(key);
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => {
+                      setSiteForm(p => ({
+                        ...p,
+                        hidden_pages: hidden
+                          ? p.hidden_pages.filter(k => k !== key)
+                          : [...p.hidden_pages, key],
                       }));
                     }}
                     className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-sm transition-all"

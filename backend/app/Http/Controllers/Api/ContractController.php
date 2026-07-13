@@ -8,6 +8,7 @@ use App\Models\Contract;
 use App\Models\FileUpload;
 use App\Models\Project;
 use App\Models\SuresignSetting;
+use App\Services\FileSecurityService;
 use App\Services\ProjectActivityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -84,7 +85,8 @@ class ContractController extends Controller
 
         if ($request->hasFile('contract_file')) {
             $file       = $request->file('contract_file');
-            $storedName = Str::uuid() . '.' . $file->getClientOriginalExtension();
+            FileSecurityService::assertSafe($file, FileSecurityService::DOCUMENTS);
+            $storedName = FileSecurityService::randomStorageName($file);
             $path       = "projects/{$project->id}/contracts/{$storedName}";
 
             Storage::disk('local')->put($path, file_get_contents($file->getRealPath()));
@@ -103,7 +105,7 @@ class ContractController extends Controller
                 'uploaded_by'     => $request->user()->id,
                 'attachable_type' => Contract::class,
                 'attachable_id'   => $contract->id,
-                'original_name'   => $file->getClientOriginalName(),
+                'original_name'   => FileSecurityService::sanitizeDisplayName($file->getClientOriginalName()),
                 'stored_name'     => $storedName,
                 'file_path'       => $path,
                 'mime_type'       => $file->getMimeType(),
@@ -205,7 +207,8 @@ class ContractController extends Controller
         ]);
 
         $file       = $request->file('contract_file');
-        $storedName = Str::uuid() . '.' . $file->getClientOriginalExtension();
+        FileSecurityService::assertSafe($file, FileSecurityService::DOCUMENTS);
+        $storedName = FileSecurityService::randomStorageName($file);
         $path       = "projects/{$project->id}/contracts/{$storedName}";
 
         Storage::disk('local')->put($path, file_get_contents($file->getRealPath()));
@@ -224,7 +227,7 @@ class ContractController extends Controller
             'uploaded_by'     => $request->user()->id,
             'attachable_type' => Contract::class,
             'attachable_id'   => $contract->id,
-            'original_name'   => $file->getClientOriginalName(),
+            'original_name'   => FileSecurityService::sanitizeDisplayName($file->getClientOriginalName()),
             'stored_name'     => $storedName,
             'file_path'       => $path,
             'mime_type'       => $file->getMimeType(),

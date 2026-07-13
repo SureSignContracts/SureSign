@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\SuresignSetting;
+use App\Services\FileSecurityService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -22,6 +24,7 @@ class SuresignSettingController extends Controller
             'data' => [
                 'platform_name' => $settings->platform_name ?: config('app.name', 'SureSign'),
                 'support_email' => $settings->support_email ?: '',
+                'favicon_url'   => $settings->favicon_url,
             ],
         ]);
     }
@@ -101,6 +104,7 @@ class SuresignSettingController extends Controller
             'prompts_enabled'   => 'nullable|boolean',
             'ai_provider'       => 'nullable|string|in:anthropic',
             'ai_model'          => 'nullable|string|max:100',
+            'ai_effort'         => 'nullable|string|in:low,medium,high,xhigh,max',
             'anthropic_api_key' => 'nullable|string|max:500',
         ]);
 
@@ -193,18 +197,34 @@ class SuresignSettingController extends Controller
 
     public function uploadLogo(Request $request)
     {
-        $request->validate(['logo' => 'required|image|max:5120']);
-        $path = $request->file('logo')->store('suresign/branding', 'public');
+        $request->validate(['logo' => 'required|file|max:5120']);
+        $file = $request->file('logo');
+        $path = strtolower($file->getClientOriginalExtension()) === 'svg'
+            ? $this->storeSanitizedSvg($file, 'suresign/branding')
+            : $this->storeValidatedFile($file, FileSecurityService::IMAGES, 'suresign/branding');
         $settings = SuresignSetting::instance();
         $this->deleteOld($settings->logo_path);
         $settings->update(['logo_path' => $path]);
         return response()->json(['data' => ['logo_url' => Storage::disk('public')->url($path)]]);
     }
 
+    public function uploadFavicon(Request $request)
+    {
+        $request->validate(['favicon' => 'required|file|max:2048']);
+        $file = $request->file('favicon');
+        $path = strtolower($file->getClientOriginalExtension()) === 'svg'
+            ? $this->storeSanitizedSvg($file, 'suresign/branding')
+            : $this->storeValidatedFile($file, FileSecurityService::FAVICON, 'suresign/branding');
+        $settings = SuresignSetting::instance();
+        $this->deleteOld($settings->favicon_path);
+        $settings->update(['favicon_path' => $path]);
+        return response()->json(['data' => ['favicon_url' => Storage::disk('public')->url($path)]]);
+    }
+
     public function uploadLetterheadHeader(Request $request)
     {
-        $request->validate(['header' => 'required|image|max:10240']);
-        $path = $request->file('header')->store('suresign/letterhead', 'public');
+        $request->validate(['header' => 'required|file|max:10240']);
+        $path = $this->storeValidatedFile($request->file('header'), FileSecurityService::IMAGES, 'suresign/letterhead');
         $settings = SuresignSetting::instance();
         $this->deleteOld($settings->letterhead_header_path);
         $settings->update(['letterhead_header_path' => $path]);
@@ -213,8 +233,8 @@ class SuresignSettingController extends Controller
 
     public function uploadLetterheadFooter(Request $request)
     {
-        $request->validate(['footer' => 'required|image|max:10240']);
-        $path = $request->file('footer')->store('suresign/letterhead', 'public');
+        $request->validate(['footer' => 'required|file|max:10240']);
+        $path = $this->storeValidatedFile($request->file('footer'), FileSecurityService::IMAGES, 'suresign/letterhead');
         $settings = SuresignSetting::instance();
         $this->deleteOld($settings->letterhead_footer_path);
         $settings->update(['letterhead_footer_path' => $path]);
@@ -224,7 +244,7 @@ class SuresignSettingController extends Controller
     public function uploadLetterheadPdf(Request $request)
     {
         $request->validate(['pdf' => 'required|mimes:pdf|max:10240']);
-        $path = $request->file('pdf')->store('suresign/letterhead', 'public');
+        $path = $this->storeValidatedFile($request->file('pdf'), ['pdf'], 'suresign/letterhead');
         $settings = SuresignSetting::instance();
         $this->deleteOld($settings->letterhead_pdf_path);
         $settings->update(['letterhead_pdf_path' => $path]);
@@ -233,8 +253,8 @@ class SuresignSettingController extends Controller
 
     public function uploadEmailHeader(Request $request)
     {
-        $request->validate(['header' => 'required|image|max:5120']);
-        $path = $request->file('header')->store('suresign/email', 'public');
+        $request->validate(['header' => 'required|file|max:5120']);
+        $path = $this->storeValidatedFile($request->file('header'), FileSecurityService::IMAGES, 'suresign/email');
         $settings = SuresignSetting::instance();
         $this->deleteOld($settings->email_header_path);
         $settings->update(['email_header_path' => $path]);
@@ -243,8 +263,8 @@ class SuresignSettingController extends Controller
 
     public function uploadEmailFooter(Request $request)
     {
-        $request->validate(['footer' => 'required|image|max:5120']);
-        $path = $request->file('footer')->store('suresign/email', 'public');
+        $request->validate(['footer' => 'required|file|max:5120']);
+        $path = $this->storeValidatedFile($request->file('footer'), FileSecurityService::IMAGES, 'suresign/email');
         $settings = SuresignSetting::instance();
         $this->deleteOld($settings->email_footer_path);
         $settings->update(['email_footer_path' => $path]);
@@ -259,6 +279,14 @@ class SuresignSettingController extends Controller
         $this->deleteOld($settings->logo_path);
         $settings->update(['logo_path' => null]);
         return response()->json(['data' => ['logo_url' => null]]);
+    }
+
+    public function removeFavicon()
+    {
+        $settings = SuresignSetting::instance();
+        $this->deleteOld($settings->favicon_path);
+        $settings->update(['favicon_path' => null]);
+        return response()->json(['data' => ['favicon_url' => null]]);
     }
 
     public function removeLetterheadHeader()
@@ -419,15 +447,21 @@ class SuresignSettingController extends Controller
             } elseif ($status === 404 || $brevoCode === 'not_found') {
                 $userMsg = 'Brevo API key not found. Please check the key is correct and active.';
             } elseif ($status === 400) {
-                $userMsg = 'Brevo rejected the request: ' . ($brevoBody['message'] ?? 'Bad request');
+                // Brevo's own message text for a 400 varies too much (and is
+                // provider-controlled) to surface directly — the real body is
+                // already logged above via Log::warning('Brevo test email failed', ...).
+                $userMsg = 'Brevo rejected the test email request. Please check your email configuration.';
             } else {
-                $userMsg = 'Brevo error (' . $status . '): ' . ($brevoBody['message'] ?? $response->body());
+                $userMsg = 'Brevo returned an error while sending the test email.';
             }
 
             return response()->json(['message' => $userMsg], 422);
         } catch (\Exception $e) {
-            Log::error('Brevo test email exception', ['error' => $e->getMessage()]);
-            return response()->json(['message' => 'Failed to send email: ' . $e->getMessage()], 500);
+            Log::error('Brevo test email exception', [
+                'user_id'   => $request->user()?->id,
+                'exception' => $e,
+            ]);
+            return response()->json(['message' => 'The test email could not be sent.'], 500);
         }
     }
 
@@ -490,6 +524,28 @@ class SuresignSettingController extends Controller
         if ($path && Storage::disk('public')->exists($path)) {
             Storage::disk('public')->delete($path);
         }
+    }
+
+    /**
+     * Validate (extension + MIME + magic bytes) and store a branding asset
+     * with a random filename — never the client-supplied original name.
+     */
+    private function storeValidatedFile(UploadedFile $file, array $allowedExtensions, string $directory): string
+    {
+        FileSecurityService::assertSafe($file, $allowedExtensions);
+        $storedName = FileSecurityService::randomStorageName($file);
+
+        return $file->storeAs($directory, $storedName, 'public');
+    }
+
+    /**
+     * Sanitise and store an SVG upload (logo/favicon only). Rejects anything
+     * that isn't confidently parseable SVG — see FileSecurityService and
+     * SvgSanitizer.
+     */
+    private function storeSanitizedSvg(UploadedFile $file, string $directory): string
+    {
+        return FileSecurityService::storeSanitizedSvg($file, $directory);
     }
 
     private function buildEmailHtml(SuresignSetting $settings, string $subject, string $bodyHtml): string

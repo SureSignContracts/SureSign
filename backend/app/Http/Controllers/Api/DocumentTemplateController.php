@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\DocumentTemplate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use App\Services\FileSecurityService;
 use App\Services\NotificationService;
 use Illuminate\Support\Str;
 
@@ -75,7 +76,8 @@ class DocumentTemplateController extends Controller
         $filePath = null;
         if ($request->hasFile('file')) {
             $file     = $request->file('file');
-            $filename = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '_' . time() . '.' . $file->getClientOriginalExtension();
+            FileSecurityService::assertSafe($file, FileSecurityService::TEMPLATE);
+            $filename = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '_' . Str::uuid() . '.' . strtolower($file->getClientOriginalExtension());
             $filePath = $file->storeAs('templates', $filename, 'local');
         }
 
@@ -138,7 +140,8 @@ class DocumentTemplateController extends Controller
                 Storage::disk('local')->delete($template->file_path);
             }
             $file     = $request->file('file');
-            $filename = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '_' . time() . '.' . $file->getClientOriginalExtension();
+            FileSecurityService::assertSafe($file, FileSecurityService::TEMPLATE);
+            $filename = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '_' . Str::uuid() . '.' . strtolower($file->getClientOriginalExtension());
             $data['file_path'] = $file->storeAs('templates', $filename, 'local');
             $data['type']      = $data['type'] ?? 'docx';
         }
@@ -180,7 +183,13 @@ class DocumentTemplateController extends Controller
             }
         }
 
-        return response()->file($fullPath, ['Content-Type' => $mimeType]);
+        $safeInlineMimes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+        $headers = ['Content-Type' => $mimeType, 'X-Content-Type-Options' => 'nosniff'];
+        if (!in_array($mimeType, $safeInlineMimes, true)) {
+            $headers['Content-Disposition'] = 'attachment';
+        }
+
+        return response()->file($fullPath, $headers);
     }
 
     public function destroy(DocumentTemplate $template)

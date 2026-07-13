@@ -2,7 +2,6 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -11,14 +10,18 @@ return new class extends Migration
     {
         // A risk belongs to a Contract OR a Trade Package, never neither —
         // validated in the controller, not enforced by the DB. Mirrors the
-        // delay_events / payment_applications nullable-FK pattern.
-        DB::statement('ALTER TABLE contract_risks DROP FOREIGN KEY contract_risks_contract_id_foreign');
-        DB::statement('ALTER TABLE contract_risks MODIFY contract_id BIGINT UNSIGNED NULL');
-        DB::statement('ALTER TABLE contract_risks ADD CONSTRAINT contract_risks_contract_id_foreign FOREIGN KEY (contract_id) REFERENCES contracts(id) ON DELETE CASCADE');
+        // delay_events / payment_applications nullable-FK pattern. Schema
+        // builder methods (not raw MySQL-only DDL) so this runs correctly
+        // on both MySQL and the SQLite test database.
+        Schema::table('contract_risks', function (Blueprint $table) {
+            $table->dropForeign(['contract_id']);
+            $table->unsignedBigInteger('contract_id')->nullable()->change();
+            $table->foreign('contract_id')->references('id')->on('contracts')->cascadeOnDelete();
 
-        DB::statement('ALTER TABLE contract_risks ADD COLUMN trade_package_id BIGINT UNSIGNED NULL AFTER contract_id');
-        DB::statement('ALTER TABLE contract_risks ADD CONSTRAINT contract_risks_trade_package_id_foreign FOREIGN KEY (trade_package_id) REFERENCES trade_packages(id) ON DELETE SET NULL');
-        DB::statement('ALTER TABLE contract_risks ADD INDEX contract_risks_trade_package_id_index (trade_package_id)');
+            $table->foreignId('trade_package_id')->nullable()->after('contract_id')
+                ->constrained('trade_packages')->nullOnDelete();
+            $table->index('trade_package_id');
+        });
 
         Schema::table('contract_risks', function (Blueprint $table) {
             // Genuinely missing fields only — severity/urgency/risk_owner/
@@ -36,12 +39,14 @@ return new class extends Migration
             $table->dropColumn(['probability', 'mitigation', 'review_date']);
         });
 
-        DB::statement('ALTER TABLE contract_risks DROP FOREIGN KEY contract_risks_trade_package_id_foreign');
-        DB::statement('ALTER TABLE contract_risks DROP INDEX contract_risks_trade_package_id_index');
-        DB::statement('ALTER TABLE contract_risks DROP COLUMN trade_package_id');
+        Schema::table('contract_risks', function (Blueprint $table) {
+            $table->dropForeign(['trade_package_id']);
+            $table->dropIndex(['trade_package_id']);
+            $table->dropColumn('trade_package_id');
 
-        DB::statement('ALTER TABLE contract_risks DROP FOREIGN KEY contract_risks_contract_id_foreign');
-        DB::statement('ALTER TABLE contract_risks MODIFY contract_id BIGINT UNSIGNED NOT NULL');
-        DB::statement('ALTER TABLE contract_risks ADD CONSTRAINT contract_risks_contract_id_foreign FOREIGN KEY (contract_id) REFERENCES contracts(id) ON DELETE CASCADE');
+            $table->dropForeign(['contract_id']);
+            $table->unsignedBigInteger('contract_id')->nullable(false)->change();
+            $table->foreign('contract_id')->references('id')->on('contracts')->cascadeOnDelete();
+        });
     }
 };

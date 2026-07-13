@@ -10,6 +10,23 @@ class DocxToPdfService
     // Candidate binary names, checked in order
     private const BINARIES = ['soffice', 'libreoffice'];
 
+    // Hard ceiling on a single conversion — a crafted/corrupt DOCX must not
+    // be able to hang a request or a queue worker indefinitely.
+    private const CONVERSION_TIMEOUT_SECONDS = 60;
+
+    // Address-space (RLIMIT_AS) ceiling for the LibreOffice process, applied
+    // via the shell's `ulimit -v` — no systemd, no root, works in any plain
+    // Linux container. Ordinary LibreOffice headless conversions of
+    // business documents (multi-page contracts, embedded images/tables)
+    // typically use well under 500MB RSS; 2GB gives generous headroom for
+    // legitimate documents while still bounding the worst case if a
+    // maliciously crafted document (e.g. one that survives the ZIP-bomb
+    // pre-check but still triggers pathological memory use during
+    // rendering) tries to consume unbounded RAM. The kernel kills the
+    // process on breach (malloc/mmap failure) well before it can exhaust
+    // container/host memory.
+    private const CONVERSION_MEMORY_LIMIT_KB = 2 * 1024 * 1024; // 2GB
+
     /**
      * Convert a stored DOCX to PDF, cache the result in preview_pdf_path, and return
      * the storage-relative PDF path.
@@ -70,15 +87,40 @@ class DocxToPdfService
             $tmpDocx = $tmpDir . '/' . basename($fullPath);
             copy($fullPath, $tmpDocx);
 
-            $cmd = implode(' ', [
+            // LibreOffice otherwise defaults its user profile to
+            // $HOME/.config/libreoffice — under a non-root runtime user
+            // (www-data), $HOME (/var/www) isn't writable, so every
+            // conversion would fail with no writable profile location.
+            // Pointing it at a subdirectory of the per-job temp dir we
+            // already create (random name, 0700, cleaned up below) means
+            // every conversion gets its own isolated, writable profile with
+            // no dependency on the calling user's home directory at all.
+            $profileDir = $tmpDir . '/loprofile';
+
+            // `timeout` (coreutils) hard-kills the whole process group if
+            // conversion hangs — see CONVERSION_TIMEOUT_SECONDS above.
+            $innerCmd = implode(' ', [
+                'timeout', '--kill-after=5', (string) self::CONVERSION_TIMEOUT_SECONDS,
                 escapeshellcmd($binary),
                 '--headless',
                 '--norestore',
+                escapeshellarg('-env:UserInstallation=file://' . $profileDir),
                 '--convert-to', 'pdf',
                 '--outdir', escapeshellarg($tmpDir),
                 escapeshellarg($tmpDocx),
-                '2>&1',
             ]);
+
+            // `ulimit -v` is a shell builtin (bash/sh), not a separate binary —
+            // no new dependency, no root required. It's set in the same shell
+            // that then `exec`s into `timeout`/soffice, so the limit is
+            // inherited by the whole process tree via standard rlimit
+            // inheritance across fork/exec. Wrapping the already-escaped
+            // inner command in a single escapeshellarg() for `bash -c` nests
+            // safely — each inner token was already shell-escaped in its own
+            // right.
+            $cmd = 'bash -c ' . escapeshellarg(
+                'ulimit -v ' . self::CONVERSION_MEMORY_LIMIT_KB . '; exec ' . $innerCmd
+            ) . ' 2>&1';
 
             $output   = [];
             $exitCode = 0;

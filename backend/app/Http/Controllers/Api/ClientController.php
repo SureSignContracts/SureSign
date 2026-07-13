@@ -10,7 +10,15 @@ class ClientController extends Controller
 {
     public function index(Request $request)
     {
-        $org = $request->user()->organization;
+        $user = $request->user();
+
+        // Super Admin / Admin are platform-wide, not a member of any single
+        // organization — there is no "own org" client list to show them here.
+        if ($user->hasRole('Super Admin') || $user->hasRole('Admin')) {
+            return response()->json(['data' => []]);
+        }
+
+        $org = $user->organization;
 
         $clients = Client::where('organization_id', $org->id)
             ->withCount('projects')
@@ -32,7 +40,13 @@ class ClientController extends Controller
             'status'        => 'nullable|in:active,inactive',
         ]);
 
-        $org = $request->user()->organization;
+        $user = $request->user();
+
+        if ($user->hasRole('Super Admin') || $user->hasRole('Admin')) {
+            return response()->json(['message' => 'Platform administrators have no organization to create a client under.'], 422);
+        }
+
+        $org = $user->organization;
         $client = Client::create(array_merge($data, ['organization_id' => $org->id]));
 
         return response()->json(['data' => $client->loadCount('projects')], 201);

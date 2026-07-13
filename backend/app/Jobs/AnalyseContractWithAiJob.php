@@ -107,11 +107,28 @@ class AnalyseContractWithAiJob implements ShouldQueue
                 );
             }
         } catch (\Throwable $e) {
-            Log::error("AnalyseContractWithAiJob failed for analysis {$this->analysisId}: " . $e->getMessage());
+            Log::error('AnalyseContractWithAiJob failed', [
+                'analysis_id' => $this->analysisId,
+                'contract_id' => $analysis->contract_id,
+                'user_id'     => $this->requestingUserId,
+                'exception'   => $e,
+            ]);
+
+            // RuntimeException is this AI pipeline's own convention for an
+            // already-curated, safe-to-display message (missing file,
+            // unsupported type, provider unavailable, etc — see
+            // ContractAnalysisService/ClaudeAiProvider). Anything else is an
+            // unexpected failure (DB, memory, type error, ...) and must not
+            // have its raw message persisted to error_message, since that
+            // column is returned as-is to the client via showAnalysis/
+            // getLatestAnalysis.
+            $safeMessage = $e instanceof \RuntimeException
+                ? $e->getMessage()
+                : 'The AI analysis could not be completed.';
 
             $analysis->update([
                 'status'        => 'failed',
-                'error_message' => $e->getMessage(),
+                'error_message' => $safeMessage,
                 'completed_at'  => now(),
             ]);
 
@@ -120,7 +137,7 @@ class AnalyseContractWithAiJob implements ShouldQueue
                     $user,
                     NotificationService::AI_ANALYSIS_COMPLETED,
                     'Contract analysis failed',
-                    "AI analysis failed for contract: {$analysis->contract->title}. {$e->getMessage()}",
+                    "AI analysis failed for contract: {$analysis->contract->title}. {$safeMessage}",
                     ['analysis_id' => $analysis->id, 'contract_id' => $analysis->contract_id]
                 );
             }

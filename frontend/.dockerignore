@@ -1,0 +1,43 @@
+# Version control
+.git
+.github
+
+# Environment files — build-time config is passed via --build-arg / compose env
+.env
+.env.*
+
+# Next.js build output — rebuilt fresh in the builder stage
+.next
+
+# Dependencies — installed fresh inside the image
+node_modules
+
+# Test / coverage output
+coverage
+**/__tests__/**
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+
+# IDE / editor
+.idea
+.vscode
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Local dev-only docker files
+docker-compose*.yml
+docker-compose*.yaml
+docker-compose*.override.yml
+
+# Build caches
+tsconfig.tsbuildinfo
+
+# OS cruft
+.DS_Store
+Thumbs.db

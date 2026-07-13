@@ -10,7 +10,8 @@ import { Card, CardBody } from '@/components/ui/Card';
 
 export default function AdminSettingsPage() {
   const qc = useQueryClient();
-  const [saved, setSaved] = useState(false);
+  const [generalSaved, setGeneralSaved] = useState(false);
+  const [flagsSaved, setFlagsSaved] = useState(false);
 
   // ── General + feature flags state ──
   const [platformName, setPlatformName]   = useState<string | null>(null);
@@ -26,9 +27,10 @@ export default function AdminSettingsPage() {
   const [notifSeeded, setNotifSeeded]               = useState(false);
   const [notifSaved, setNotifSaved]                 = useState(false);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['admin-settings'],
-    queryFn: () => api.get('/admin/settings').then(r => r.data).catch(() => ({})),
+    queryFn: () => api.get('/admin/settings').then(r => r.data),
+    retry: false,
   });
 
   const { data: suresignData } = useQuery({
@@ -55,12 +57,21 @@ export default function AdminSettingsPage() {
     }
   }, [suresignData]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const saveMutation = useMutation({
+  const generalMutation = useMutation({
     mutationFn: (payload: any) => api.put('/admin/settings', payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-settings'] });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
+      setGeneralSaved(true);
+      setTimeout(() => setGeneralSaved(false), 2500);
+    },
+  });
+
+  const flagsMutation = useMutation({
+    mutationFn: (payload: any) => api.put('/admin/settings', payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-settings'] });
+      setFlagsSaved(true);
+      setTimeout(() => setFlagsSaved(false), 2500);
     },
   });
 
@@ -97,6 +108,12 @@ export default function AdminSettingsPage() {
           Platform-wide configuration and feature flags
         </p>
       </div>
+
+      {isError && (
+        <p className="text-sm px-4 py-3 rounded-lg" style={{ color: '#b91c1c', backgroundColor: 'rgba(220,38,38,0.08)' }}>
+          Could not load the current settings. The fields below do not reflect what&rsquo;s actually saved — saving now would overwrite it. Reload the page and try again.
+        </p>
+      )}
 
       {/* General */}
       <section className="space-y-4">
@@ -152,6 +169,20 @@ export default function AdminSettingsPage() {
           </div>
         </CardBody>
         </Card>
+        <div className="flex justify-end">
+          <Button
+            onClick={() => generalMutation.mutate({
+              platform_name: platformName,
+              support_email: supportEmail,
+              max_upload_mb: maxUploadMb,
+            })}
+            disabled={generalMutation.isPending || isError}
+            size="lg"
+          >
+            <Save size={15} />
+            {generalSaved ? 'Saved!' : generalMutation.isPending ? 'Saving…' : 'Save General Settings'}
+          </Button>
+        </div>
       </section>
 
       {/* Feature flags */}
@@ -185,25 +216,21 @@ export default function AdminSettingsPage() {
             </p>
           </div>
         </div>
+        <div className="flex justify-end">
+          <Button
+            onClick={() => flagsMutation.mutate({
+              doc_gen_enabled: docGenEnabled,
+              white_label_enabled: whiteLabelEnabled,
+              self_register_enabled: selfRegisterEnabled,
+            })}
+            disabled={flagsMutation.isPending || isError}
+            size="lg"
+          >
+            <Save size={15} />
+            {flagsSaved ? 'Saved!' : flagsMutation.isPending ? 'Saving…' : 'Save Feature Flags'}
+          </Button>
+        </div>
       </section>
-
-      <div className="flex justify-end">
-        <Button
-          onClick={() => saveMutation.mutate({
-            platform_name: platformName,
-            support_email: supportEmail,
-            max_upload_mb: maxUploadMb,
-            doc_gen_enabled: docGenEnabled,
-            white_label_enabled: whiteLabelEnabled,
-            self_register_enabled: selfRegisterEnabled,
-          })}
-          disabled={saveMutation.isPending}
-          size="lg"
-        >
-          <Save size={15} />
-          {saved ? 'Saved!' : saveMutation.isPending ? 'Saving…' : 'Save Settings'}
-        </Button>
-      </div>
 
       {/* ── Notifications ── */}
       <section className="space-y-4">

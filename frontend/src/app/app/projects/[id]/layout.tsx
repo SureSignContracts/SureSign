@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, notFound } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import ProjectSidebar from '@/components/layout/ProjectSidebar';
@@ -12,12 +12,24 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
   const projectId = params.id as string;
   const [navOpen, setNavOpen] = useState(false);
 
-  const { data: project, isLoading } = useQuery({
+  const { data: project, isLoading, isError, error } = useQuery({
     queryKey: ['project', projectId],
     queryFn: () => api.get(`/projects/${projectId}`).then(r => r.data?.data ?? r.data),
     enabled: !!projectId,
     staleTime: 5 * 60 * 1000,
+    retry: false,
   });
+
+  // A project that exists but belongs to another organization (403) must
+  // look identical to one that doesn't exist (404) to a non-admin user —
+  // otherwise the URL bar becomes a way to probe which project IDs belong
+  // to other companies.
+  if (isError) {
+    const status = (error as { response?: { status?: number } })?.response?.status;
+    if (status === 403 || status === 404) {
+      notFound();
+    }
+  }
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--bg-base)' }}>

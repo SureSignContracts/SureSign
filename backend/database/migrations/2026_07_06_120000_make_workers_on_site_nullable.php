@@ -1,7 +1,8 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -17,11 +18,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement('ALTER TABLE site_diaries MODIFY workers_on_site INT NULL DEFAULT NULL');
+        // Schema builder change() (not a raw MySQL-only MODIFY statement) so
+        // this runs on both MySQL and the SQLite test database.
+        Schema::table('site_diaries', function (Blueprint $table) {
+            $table->integer('workers_on_site')->nullable()->default(null)->change();
+        });
     }
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE site_diaries MODIFY workers_on_site INT NOT NULL DEFAULT 0');
+        Schema::table('site_diaries', function (Blueprint $table) {
+            $table->integer('workers_on_site')->nullable(false)->default(0)->change();
+        });
     }
 };

@@ -996,8 +996,12 @@ class PaymentApplicationController extends Controller
                 $request->user()
             );
         } catch (\Throwable $e) {
-            \Log::error("Excel generation failed: " . $e->getMessage() . "\n" . $e->getTraceAsString());
-            return response()->json(['message' => 'Excel generation failed: ' . $e->getMessage()], 500);
+            \Log::error('Payment application Excel generation failed', [
+                'user_id'                => $request->user()?->id,
+                'payment_application_id' => $paymentApplication->id,
+                'exception'              => $e,
+            ]);
+            return response()->json(['message' => 'The Excel workbook could not be generated.'], 500);
         }
 
         ProjectActivityService::record(

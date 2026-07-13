@@ -307,8 +307,13 @@ class AiController extends Controller
                 $contract
             );
         } catch (\Throwable $e) {
-            \Log::error("Contract Intelligence Brief generation failed: " . $e->getMessage());
-            return response()->json(['message' => 'PDF generation failed: ' . $e->getMessage()], 500);
+            \Log::error('Contract Intelligence Brief generation failed', [
+                'user_id'     => $user->id,
+                'analysis_id' => $analysis->id,
+                'contract_id' => $contract->id,
+                'exception'   => $e,
+            ]);
+            return response()->json(['message' => 'The document could not be generated.'], 500);
         }
 
         ActivityLog::record(

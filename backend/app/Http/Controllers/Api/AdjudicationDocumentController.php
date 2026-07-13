@@ -7,14 +7,27 @@ use App\Models\AdjudicationCase;
 use App\Models\AdjudicationDocument;
 use App\Models\Project;
 use App\Models\SuresignSetting;
+use App\Services\FileSecurityService;
 use App\Services\ProjectActivityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class AdjudicationDocumentController extends Controller
 {
-    public function index(Project $project, AdjudicationCase $adjudicationCase)
+    /**
+     * Super Admin / Admin can cross organisations; everyone else must match.
+     */
+    private function authorize(Request $request, Project|AdjudicationCase|AdjudicationDocument $subject): void
     {
+        $user = $request->user();
+        if ($user->hasRole('Super Admin') || $user->hasRole('Admin')) return;
+        if ($user->organization_id !== $subject->organization_id) abort(403, 'Access denied.');
+    }
+
+    public function index(Request $request, Project $project, AdjudicationCase $adjudicationCase)
+    {
+        $this->authorize($request, $adjudicationCase);
+
         return response()->json(
             $adjudicationCase->documents()
                 ->with('uploadedBy:id,name')
@@ -25,6 +38,8 @@ class AdjudicationDocumentController extends Controller
 
     public function store(Request $request, Project $project, AdjudicationCase $adjudicationCase)
     {
+        $this->authorize($request, $adjudicationCase);
+
         $validated = $request->validate([
             'title'         => 'required|string|max:255',
             'document_type' => 'required|in:notice_of_dispute,notice_of_adjudication,adjudicator_application,referral_submission,response,further_submission,decision,enforcement_letter,evidence,supporting_document,other',
@@ -34,21 +49,23 @@ class AdjudicationDocumentController extends Controller
             'source_step'   => 'nullable|string',
             'status'        => 'nullable|in:draft,pending_review,approved,issued,archived',
             'ai_generated'  => 'nullable|boolean',
-            'file_name'     => 'nullable|string|max:255',
-            'file_path'     => 'nullable|string|max:1000',
-            'mime_type'     => 'nullable|string|max:100',
-            'file_size'     => 'nullable|integer',
             'document_id'   => 'nullable|integer|exists:documents,id',
             'file'          => 'nullable|file|max:' . SuresignSetting::maxUploadKb(),
         ]);
 
+        // file_path/file_name/mime_type/file_size are never trusted from the
+        // request — they are only ever derived from an actual uploaded file
+        // below, or (for the document_id linking flow) left null and
+        // resolved from the linked Document record elsewhere.
         $fileData = [];
         if ($request->hasFile('file')) {
             $file = $request->file('file');
-            $path = $file->store("adjudication/{$adjudicationCase->id}", 'local');
+            FileSecurityService::assertSafe($file, FileSecurityService::DOCUMENTS);
+            $storedName = FileSecurityService::randomStorageName($file);
+            $path = $file->storeAs("adjudication/{$adjudicationCase->id}", $storedName, 'local');
             $fileData = [
                 'file_path'  => $path,
-                'file_name'  => $file->getClientOriginalName(),
+                'file_name'  => FileSecurityService::sanitizeDisplayName($file->getClientOriginalName()),
                 'mime_type'  => $file->getMimeType(),
                 'file_size'  => $file->getSize(),
             ];
@@ -77,8 +94,10 @@ class AdjudicationDocumentController extends Controller
         return response()->json($document->load('uploadedBy:id,name'), 201);
     }
 
-    public function destroy(Project $project, AdjudicationDocument $adjudicationDocument)
+    public function destroy(Request $request, Project $project, AdjudicationDocument $adjudicationDocument)
     {
+        $this->authorize($request, $adjudicationDocument);
+
         $adjudicationDocument->delete();
         return response()->json(null, 204);
     }

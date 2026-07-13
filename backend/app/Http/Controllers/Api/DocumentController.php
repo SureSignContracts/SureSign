@@ -7,6 +7,7 @@ use App\Models\Document;
 use App\Models\FileUpload;
 use App\Models\Project;
 use App\Models\SuresignSetting;
+use App\Services\FileSecurityService;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -63,9 +64,11 @@ class DocumentController extends Controller
 
         if ($request->hasFile('file')) {
             $file = $request->file('file');
-            $path = $file->store("documents/{$project->id}", 'local');
+            FileSecurityService::assertSafe($file, FileSecurityService::DOCUMENTS);
+            $storedName = FileSecurityService::randomStorageName($file);
+            $path = $file->storeAs("documents/{$project->id}", $storedName, 'local');
             $data['file_path']  = $path;
-            $data['file_name']  = $file->getClientOriginalName();
+            $data['file_name']  = FileSecurityService::sanitizeDisplayName($file->getClientOriginalName());
             $data['mime_type']  = $file->getMimeType();
             $data['file_size']  = $file->getSize();
         }
@@ -131,7 +134,11 @@ class DocumentController extends Controller
             abort(404, 'File not found.');
         }
 
-        return Storage::disk('local')->download($document->file_path, $document->file_name);
+        return Storage::disk('local')->download(
+            $document->file_path,
+            $document->file_name,
+            ['X-Content-Type-Options' => 'nosniff']
+        );
     }
 
     // GET /documents/{document}/preview
@@ -153,7 +160,7 @@ class DocumentController extends Controller
 
         return response()->file(
             Storage::disk('local')->path($document->file_path),
-            ['Content-Type' => $mimeType]
+            self::safeInlineHeaders($mimeType)
         );
     }
 
@@ -223,10 +230,15 @@ class DocumentController extends Controller
         ]);
 
         $file       = $request->file('file');
+        FileSecurityService::assertSafe($file, FileSecurityService::DOCUMENTS);
+
         $moduleKey  = $request->input('module_key', 'general');
         $folderKey  = $request->input('folder_key') ?: $moduleKey;
-        $folderPath = $request->input('folder_path', $moduleKey);
-        $storedName = Str::uuid() . '.' . $file->getClientOriginalExtension();
+        // folder_path is client-supplied — strip traversal sequences and
+        // anything outside a safe path-segment charset before it is ever
+        // interpolated into a storage path.
+        $folderPath = self::sanitizeFolderPath($request->input('folder_path', $moduleKey));
+        $storedName = FileSecurityService::randomStorageName($file);
         $path       = "projects/{$project->id}/{$folderPath}/{$storedName}";
 
         Storage::disk('local')->put($path, file_get_contents($file->getRealPath()));
@@ -235,7 +247,7 @@ class DocumentController extends Controller
             'project_id'      => $project->id,
             'organization_id' => $project->organization_id,
             'uploaded_by'     => $request->user()->id,
-            'original_name'   => $request->input('title') ?: $file->getClientOriginalName(),
+            'original_name'   => $request->input('title') ?: FileSecurityService::sanitizeDisplayName($file->getClientOriginalName()),
             'stored_name'     => $storedName,
             'file_path'       => $path,
             'mime_type'       => $file->getMimeType(),
@@ -252,10 +264,30 @@ class DocumentController extends Controller
             $request->user(),
             NotificationService::FILE_UPLOADED,
             'File Uploaded',
-            $file->getClientOriginalName() . ' uploaded successfully.'
+            FileSecurityService::sanitizeDisplayName($file->getClientOriginalName()) . ' uploaded successfully.'
         );
 
         return response()->json($upload->load('uploader:id,name'), 201);
+    }
+
+    /**
+     * Reduce a client-supplied folder path to safe, traversal-free segments
+     * before it is interpolated into a storage path. Only letters, numbers,
+     * spaces, dashes, underscores and single forward slashes survive.
+     */
+    private static function sanitizeFolderPath(string $folderPath): string
+    {
+        $segments = array_filter(array_map('trim', explode('/', $folderPath)), function ($segment) {
+            return $segment !== '' && $segment !== '.' && $segment !== '..';
+        });
+
+        $safeSegments = array_map(function ($segment) {
+            return preg_replace('/[^A-Za-z0-9 _-]/', '', $segment);
+        }, $segments);
+
+        $safeSegments = array_filter($safeSegments, fn ($segment) => $segment !== '');
+
+        return $safeSegments !== [] ? implode('/', $safeSegments) : 'general';
     }
 
     public function downloadFile(Request $request, FileUpload $fileUpload)
@@ -270,7 +302,11 @@ class DocumentController extends Controller
             abort(404, 'File not found.');
         }
 
-        return Storage::disk('local')->download($fileUpload->file_path, $fileUpload->original_name);
+        return Storage::disk('local')->download(
+            $fileUpload->file_path,
+            $fileUpload->original_name,
+            ['X-Content-Type-Options' => 'nosniff']
+        );
     }
 
     // GET /file-uploads/{fileUpload}/preview
@@ -295,8 +331,30 @@ class DocumentController extends Controller
 
         return response()->file(
             Storage::disk('local')->path($fileUpload->file_path),
-            ['Content-Type' => $mimeType]
+            self::safeInlineHeaders($mimeType)
         );
+    }
+
+    /**
+     * Headers for `response()->file()` (inline) previews. Never render
+     * uploaded HTML/SVG/XML/JS as active content — anything outside the
+     * small set of formats known to be safe for inline display falls back
+     * to a forced download instead of inline rendering.
+     */
+    private static function safeInlineHeaders(string $mimeType): array
+    {
+        $safeInlineMimes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+
+        $headers = [
+            'Content-Type'           => $mimeType,
+            'X-Content-Type-Options' => 'nosniff',
+        ];
+
+        if (!in_array($mimeType, $safeInlineMimes, true)) {
+            $headers['Content-Disposition'] = 'attachment';
+        }
+
+        return $headers;
     }
 
     public function destroyFile(Request $request, FileUpload $fileUpload)

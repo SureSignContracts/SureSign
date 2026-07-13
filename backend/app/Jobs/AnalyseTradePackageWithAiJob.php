@@ -101,11 +101,24 @@ class AnalyseTradePackageWithAiJob implements ShouldQueue
                 );
             }
         } catch (\Throwable $e) {
-            Log::error("AnalyseTradePackageWithAiJob failed for analysis {$this->analysisId}: " . $e->getMessage());
+            Log::error('AnalyseTradePackageWithAiJob failed', [
+                'analysis_id'      => $this->analysisId,
+                'trade_package_id' => $analysis->trade_package_id,
+                'user_id'          => $this->requestingUserId,
+                'exception'        => $e,
+            ]);
+
+            // See AnalyseContractWithAiJob for why RuntimeException is treated
+            // as already-safe (this AI pipeline's convention for a curated,
+            // user-facing message) while any other Throwable is genericized
+            // before being persisted to error_message / shown in-app.
+            $safeMessage = $e instanceof \RuntimeException
+                ? $e->getMessage()
+                : 'The AI analysis could not be completed.';
 
             $analysis->update([
                 'status'        => 'failed',
-                'error_message' => $e->getMessage(),
+                'error_message' => $safeMessage,
                 'completed_at'  => now(),
             ]);
 
@@ -114,7 +127,7 @@ class AnalyseTradePackageWithAiJob implements ShouldQueue
                     $user,
                     NotificationService::AI_ANALYSIS_COMPLETED,
                     'Subcontract analysis failed',
-                    "AI analysis failed for trade package: {$analysis->tradePackage->name}. {$e->getMessage()}",
+                    "AI analysis failed for trade package: {$analysis->tradePackage->name}. {$safeMessage}",
                     ['analysis_id' => $analysis->id, 'trade_package_id' => $analysis->trade_package_id]
                 );
             }

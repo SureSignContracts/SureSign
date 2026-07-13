@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\BrandingSetting;
 use App\Models\Organization;
+use App\Services\FileSecurityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
@@ -185,7 +186,15 @@ class OrganizationController extends Controller
 
     public function update(Request $request)
     {
-        $org = $request->user()->organization;
+        $user = $request->user();
+
+        // Super Admin / Admin are platform-wide, not a member of any single
+        // organization — there is no "own org" for them to update here.
+        if ($user->hasRole('Super Admin') || $user->hasRole('Admin')) {
+            return response()->json(['message' => 'Platform administrators have no organization to update here.'], 422);
+        }
+
+        $org = $user->organization;
         $validated = $request->validate([
             'email'        => 'nullable|email|max:255',
             'phone'        => 'nullable|string|max:50',
@@ -207,14 +216,15 @@ class OrganizationController extends Controller
     {
         $user = $request->user();
 
-        // Super Admin operates at the platform level, not as a member of any
-        // single organization — never resolve or apply a specific org's
-        // branding for this role, whatever organization_id happens to hold
-        // on the account. Otherwise the accent colour (applied directly onto
-        // document.documentElement, which persists across client-side
-        // navigation) can end up "inherited" from whichever org's project
-        // the Super Admin last viewed.
-        if ($user->hasRole('Super Admin')) {
+        // Super Admin and Admin both operate at the platform level, not as a
+        // member of any single organization (per this app's role model —
+        // only Client is org-scoped) — never resolve or apply a specific
+        // org's branding for either role, whatever organization_id happens
+        // to hold on the account. Otherwise the accent colour (applied
+        // directly onto document.documentElement, which persists across
+        // client-side navigation) can end up "inherited" from whichever
+        // org's project was last viewed.
+        if ($user->hasRole('Super Admin') || $user->hasRole('Admin')) {
             return response()->json(['data' => $this->defaultBrandingResource()]);
         }
 
@@ -254,6 +264,14 @@ class OrganizationController extends Controller
 
     public function updateBranding(Request $request)
     {
+        $user = $request->user();
+
+        // Super Admin / Admin are platform-wide, not a member of any single
+        // organization — there is no "own org" branding for them to update.
+        if ($user->hasRole('Super Admin') || $user->hasRole('Admin')) {
+            return response()->json(['message' => 'Platform administrators have no organization branding to update.'], 422);
+        }
+
         $validated = $request->validate([
             'company_name'  => 'nullable|string|max:255',
             'description'   => 'nullable|string|max:2000',
@@ -263,7 +281,7 @@ class OrganizationController extends Controller
             'email_footer'  => 'nullable|string|max:5000',
         ]);
 
-        $org      = $request->user()->organization;
+        $org      = $user->organization;
         $branding = BrandingSetting::updateOrCreate(
             ['organization_id' => $org->id],
             array_filter([
@@ -283,11 +301,15 @@ class OrganizationController extends Controller
 
     public function uploadLogo(Request $request)
     {
-        $request->validate(['logo' => 'required|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048']);
+        $request->validate(['logo' => 'required|file|max:2048']);
         $branding = $this->getOrCreateBranding($request);
+        $file = $request->file('logo');
+
+        $path = strtolower($file->getClientOriginalExtension()) === 'svg'
+            ? $this->storeSanitizedSvg($file, 'logos/' . $request->user()->organization_id)
+            : $this->storeValidatedImage($file, 'logos/' . $request->user()->organization_id);
 
         if ($branding->logo_path) \Storage::disk('public')->delete($branding->logo_path);
-        $path = $request->file('logo')->store('logos/' . $request->user()->organization_id, 'public');
         $branding->update(['logo_path' => $path]);
 
         return response()->json(['logo_url' => url('storage/' . $path)]);
@@ -295,11 +317,12 @@ class OrganizationController extends Controller
 
     public function uploadCover(Request $request)
     {
-        $request->validate(['cover' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120']);
+        $request->validate(['cover' => 'required|file|max:5120']);
         $branding = $this->getOrCreateBranding($request);
 
+        $path = $this->storeValidatedImage($request->file('cover'), 'covers/' . $request->user()->organization_id);
+
         if ($branding->cover_image_path) \Storage::disk('public')->delete($branding->cover_image_path);
-        $path = $request->file('cover')->store('covers/' . $request->user()->organization_id, 'public');
         $branding->update(['cover_image_path' => $path]);
 
         return response()->json(['cover_url' => url('storage/' . $path)]);
@@ -307,11 +330,12 @@ class OrganizationController extends Controller
 
     public function uploadLetterheadHeader(Request $request)
     {
-        $request->validate(['image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120']);
+        $request->validate(['image' => 'required|file|max:5120']);
         $branding = $this->getOrCreateBranding($request);
 
+        $path = $this->storeValidatedImage($request->file('image'), 'letterheads/' . $request->user()->organization_id);
+
         if ($branding->header_template_path) \Storage::disk('public')->delete($branding->header_template_path);
-        $path = $request->file('image')->store('letterheads/' . $request->user()->organization_id, 'public');
         $branding->update(['header_template_path' => $path]);
 
         return response()->json(['header_url' => url('storage/' . $path)]);
@@ -319,21 +343,53 @@ class OrganizationController extends Controller
 
     public function uploadLetterheadFooter(Request $request)
     {
-        $request->validate(['image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120']);
+        $request->validate(['image' => 'required|file|max:5120']);
         $branding = $this->getOrCreateBranding($request);
 
+        $path = $this->storeValidatedImage($request->file('image'), 'letterheads/' . $request->user()->organization_id);
+
         if ($branding->footer_template_path) \Storage::disk('public')->delete($branding->footer_template_path);
-        $path = $request->file('image')->store('letterheads/' . $request->user()->organization_id, 'public');
         $branding->update(['footer_template_path' => $path]);
 
         return response()->json(['footer_url' => url('storage/' . $path)]);
+    }
+
+    /**
+     * Validate (extension + MIME + magic bytes) and store a raster image
+     * upload with a random filename. Shared by every branding image field.
+     */
+    private function storeValidatedImage(\Illuminate\Http\UploadedFile $file, string $directory): string
+    {
+        FileSecurityService::assertSafe($file, FileSecurityService::IMAGES);
+        $storedName = FileSecurityService::randomStorageName($file);
+
+        return $file->storeAs($directory, $storedName, 'public');
+    }
+
+    /**
+     * Sanitise and store an SVG upload. Rejects anything that isn't
+     * confidently parseable SVG rather than passing it through — see
+     * FileSecurityService and SvgSanitizer for exactly what is stripped.
+     */
+    private function storeSanitizedSvg(\Illuminate\Http\UploadedFile $file, string $directory): string
+    {
+        return FileSecurityService::storeSanitizedSvg($file, $directory);
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
     private function getOrCreateBranding(Request $request): BrandingSetting
     {
-        $org = $request->user()->organization;
+        $user = $request->user();
+
+        // Super Admin / Admin are platform-wide, not a member of any single
+        // organization — there is no "own org" logo/letterhead for them to
+        // manage through this endpoint.
+        if ($user->hasRole('Super Admin') || $user->hasRole('Admin')) {
+            abort(422, 'Platform administrators have no organization branding assets to manage here.');
+        }
+
+        $org = $user->organization;
         return BrandingSetting::firstOrCreate(
             ['organization_id' => $org->id],
             ['primary_color' => '#000000', 'company_display_name' => $org->name]

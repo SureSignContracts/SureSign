@@ -2,8 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\BrandingSetting;
-use App\Models\Organization;
+use App\Models\SuresignSetting;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -57,28 +56,9 @@ class DatabaseSeeder extends Seeder
             'view documents', 'view reports',
         ]);
 
-        // Default organization
-        $org = Organization::firstOrCreate(
-            ['slug' => 'suresign'],
-            [
-                'name'      => 'SureSign Admin',
-                'email'     => 'admin@suresign.app',
-                'country'   => 'AU',
-                'is_active' => true,
-            ]
-        );
-
-        // Default branding
-        BrandingSetting::firstOrCreate(
-            ['organization_id' => $org->id],
-            [
-                'primary_color'        => '#B99566',
-                'secondary_color'      => '#1a1a1a',
-                'accent_color'         => '#B99566',
-                'font_family'          => 'Inter',
-                'company_display_name' => 'SureSign',
-            ]
-        );
+        // Super Admin and Admin are platform-wide (per this app's role model —
+        // only Client is org-scoped), so neither is assigned to an
+        // organization. No dummy org/branding row is created for them.
 
         // Super Admin user — password from env, or a generated temporary one
         // that the account is forced to change on first login.
@@ -89,7 +69,7 @@ class DatabaseSeeder extends Seeder
         $admin = User::firstOrCreate(
             ['email' => $superAdminEmail],
             [
-                'organization_id'       => $org->id,
+                'organization_id'       => null,
                 'name'                  => 'Super Admin',
                 'password'              => Hash::make($superAdminPassword),
                 'is_active'             => true,
@@ -99,7 +79,7 @@ class DatabaseSeeder extends Seeder
         );
         $admin->assignRole($superAdmin);
 
-        // Graham — org admin
+        // Graham — platform Admin
         $grahamEmail      = env('SEED_GRAHAM_EMAIL', 'graham@suresigncontracts.com');
         $grahamGenerated  = empty(env('SEED_GRAHAM_PASSWORD'));
         $grahamPassword   = env('SEED_GRAHAM_PASSWORD') ?: Str::random(20);
@@ -107,7 +87,7 @@ class DatabaseSeeder extends Seeder
         $graham = User::firstOrCreate(
             ['email' => $grahamEmail],
             [
-                'organization_id'       => $org->id,
+                'organization_id'       => null,
                 'name'                  => 'Graham',
                 'password'              => Hash::make($grahamPassword),
                 'is_active'             => true,
@@ -117,7 +97,7 @@ class DatabaseSeeder extends Seeder
         );
         $graham->assignRole($adminRole);
 
-        $this->command->info('✓ Seeded: roles, permissions, default org, super admin');
+        $this->command->info('✓ Seeded: roles, permissions, super admin');
 
         // Only ever print a password once, right after the account is first
         // created — never on subsequent (idempotent) seed runs.
@@ -131,6 +111,20 @@ class DatabaseSeeder extends Seeder
                 "  Created {$grahamEmail}" . ($grahamGenerated ? " with a temporary password: {$grahamPassword}" : ' (password set from SEED_GRAHAM_PASSWORD).')
             );
         }
+
+        // Default platform email configuration. Idempotent — only fills in
+        // fields that are still empty, so it never overwrites values an
+        // admin has already configured via Settings → General/Email.
+        $settings = SuresignSetting::instance();
+        $settings->fill([
+            'support_email'      => $settings->support_email      ?: env('SEED_SUPPORT_EMAIL', 'tech@suresigncontracts.com'),
+            'email_sender_email' => $settings->email_sender_email  ?: env('SEED_EMAIL_SENDER_EMAIL', 'noreply@suresigncontracts.app'),
+            'email_sender_name'  => $settings->email_sender_name   ?: env('SEED_EMAIL_SENDER_NAME', 'SureSign'),
+            'email_reply_to'     => $settings->email_reply_to      ?: env('SEED_EMAIL_REPLY_TO', 'tech@suresigncontracts.com'),
+            'admin_email'        => $settings->admin_email         ?: env('SEED_ADMIN_EMAIL', 'tech@suresigncontracts.com'),
+            'email_subject_line' => $settings->email_subject_line  ?: env('SEED_EMAIL_SUBJECT_LINE', 'You have a new document from SureSign'),
+        ]);
+        $settings->save();
 
         $this->call([
             PromptCategorySeeder::class,

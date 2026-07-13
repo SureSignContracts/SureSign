@@ -27,9 +27,10 @@ class ContractAnalysisService
 
         // Prefer DB-stored key; fall back to env
         $apiKey = $settings->anthropic_api_key ?? config('ai.anthropic.api_key', '');
-        $model  = $settings->ai_model ?? config('ai.anthropic.model', 'claude-3-5-sonnet-latest');
+        $model  = $settings->ai_model ?? config('ai.anthropic.model', 'claude-sonnet-5');
+        $effort = $settings->ai_effort ?: 'high';
 
-        return new ClaudeAiProvider($apiKey, $model);
+        return new ClaudeAiProvider($apiKey, $model, $effort);
     }
 
     /**

@@ -1,10 +1,55 @@
-storage/app/private
-storage/app/public
+# Version control
+.git
+.github
+
+# Environment files — secrets are injected via container env vars, never baked in
+.env
+.env.*
+
+# Tests — not needed at runtime
+tests
+phpunit.xml
+.phpunit.result.cache
+
+# IDE / editor
+.idea
+.vscode
+*.swp
+*.swo
+
+# Logs
+*.log
 storage/logs
+
+# Local Docker overrides (dev-only compose files, if present in this context)
+docker-compose*.yml
+docker-compose*.yaml
+docker-compose*.override.yml
+
+# Node tooling — never needed in the backend image
+node_modules
+
+# Composer — vendor is installed fresh inside the image
+vendor
+
+# Runtime-generated / cache / upload directories — the *contents* here are
+# local dev cruft (or, in production, real uploaded files) that must never
+# be baked into the image. The Dockerfile explicitly `mkdir -p`s all of
+# these paths fresh, so excluding whatever's on the host is safe — EXCEPT
+# storage/app/private and storage/app/public still need to exist (empty) in
+# the image, since the production `backend_storage` named volume seeds
+# itself from whatever's at that path in the image on first mount.
+storage/app/private/*
+storage/app/public/*
+storage/app/templates/*
 storage/framework/cache
 storage/framework/sessions
 storage/framework/views
 bootstrap/cache
-vendor
-node_modules
-.env
+
+# Stray local sqlite artifacts — production runs on MySQL only
+database/*.sqlite
+
+# OS cruft
+.DS_Store
+Thumbs.db

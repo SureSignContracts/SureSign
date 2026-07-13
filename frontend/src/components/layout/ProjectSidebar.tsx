@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
+import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, FileText, DollarSign, MessageSquare, GitBranch,
@@ -27,6 +28,7 @@ interface NavItem {
   href: string;
   label: string;
   icon: React.ElementType;
+  pageKey?: string;
 }
 
 interface NavGroup {
@@ -78,7 +80,7 @@ const groups = (id: string): NavGroup[] => [
     label: 'Disputes',
     icon: Scale,
     items: [
-      { href: `/app/projects/${id}/adjudication`, label: 'Adjudication', icon: Scale },
+      { href: `/app/projects/${id}/adjudication`, label: 'Adjudication', icon: Scale, pageKey: 'adjudication' },
     ],
   },
 ];
@@ -277,6 +279,15 @@ export default function ProjectSidebar({
 }: ProjectSidebarProps) {
   const pathname = usePathname();
   const { user } = useAuthStore();
+  const { data: siteSettings, isSettingsReady } = useSiteSettings();
+  const hiddenPages: string[] = useMemo(() => siteSettings?.hidden_pages ?? [], [siteSettings]);
+  const isVisible = useCallback(
+    (item: { pageKey?: string }) => !item.pageKey || !hiddenPages.includes(item.pageKey),
+    [hiddenPages],
+  );
+  const visibleGroups = groups(projectId)
+    .map(g => ({ ...g, items: g.items.filter(isVisible) }))
+    .filter(g => g.items.length > 0);
 
   const [groupOpen, setGroupOpen] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
@@ -400,32 +411,48 @@ export default function ProjectSidebar({
 
         {/* Scrollable nav — space-y-4 between sections matches AppSidebar */}
         <nav className="flex-1 overflow-y-auto py-3 space-y-4" style={{ overflowX: 'visible' }}>
-          {/* Standalone: Overview */}
-          <div className="px-3 space-y-0.5">
-            {standalone(projectId).map(item => (
-              <NavLink key={item.href} {...item} pathname={pathname} />
-            ))}
-          </div>
+          {!isSettingsReady ? (
+            // Hold rendering until hidden-module settings resolve, so a hidden
+            // module (e.g. Adjudication) never paints even for one frame.
+            <div className="px-3 space-y-1">
+              {[...Array(6)].map((_, i) => (
+                <div
+                  key={i}
+                  className="h-9 rounded-xl animate-pulse"
+                  style={{ backgroundColor: 'var(--bg-elevated)', opacity: 1 - i * 0.09 }}
+                />
+              ))}
+            </div>
+          ) : (
+            <>
+              {/* Standalone: Overview */}
+              <div className="px-3 space-y-0.5">
+                {standalone(projectId).map(item => (
+                  <NavLink key={item.href} {...item} pathname={pathname} />
+                ))}
+              </div>
 
-          {/* Grouped sections */}
-          <div className="px-3 space-y-1">
-            {groups(projectId).map(group => (
-              <NavGroupSection
-                key={group.label}
-                group={group}
-                pathname={pathname}
-                open={!!groupOpen[group.label]}
-                onToggle={() => toggleGroup(group.label)}
-              />
-            ))}
-          </div>
+              {/* Grouped sections */}
+              <div className="px-3 space-y-1">
+                {visibleGroups.map(group => (
+                  <NavGroupSection
+                    key={group.label}
+                    group={group}
+                    pathname={pathname}
+                    open={!!groupOpen[group.label]}
+                    onToggle={() => toggleGroup(group.label)}
+                  />
+                ))}
+              </div>
 
-          {/* Utility: Documents + Calendar */}
-          <div className="px-3 space-y-0.5 pt-0" style={{ borderTop: '1px solid var(--border)', paddingTop: '12px', marginTop: '0' }}>
-            {utility(projectId).map(item => (
-              <NavLink key={item.href} {...item} pathname={pathname} />
-            ))}
-          </div>
+              {/* Utility: Documents + Calendar */}
+              <div className="px-3 space-y-0.5 pt-0" style={{ borderTop: '1px solid var(--border)', paddingTop: '12px', marginTop: '0' }}>
+                {utility(projectId).map(item => (
+                  <NavLink key={item.href} {...item} pathname={pathname} />
+                ))}
+              </div>
+            </>
+          )}
         </nav>
       </aside>
     </>

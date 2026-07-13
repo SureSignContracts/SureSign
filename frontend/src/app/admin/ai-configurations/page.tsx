@@ -14,6 +14,7 @@ export default function AdminAiConfigPage() {
   const [aiEnabled, setAiEnabled]           = useState<boolean | null>(null);
   const [promptsEnabled, setPromptsEnabled] = useState<boolean | null>(null);
   const [aiModel, setAiModel]               = useState<string | null>(null);
+  const [aiEffort, setAiEffort]             = useState<string | null>(null);
   const [anthropicKey, setAnthropicKey]     = useState('');
   const [showAiKey, setShowAiKey]           = useState(false);
   const [aiSaved, setAiSaved]               = useState(false);
@@ -27,7 +28,8 @@ export default function AdminAiConfigPage() {
     if (!suresignData) return;
     if (aiEnabled === null)      setAiEnabled(!!(suresignData as any).ai_enabled);
     if (promptsEnabled === null) setPromptsEnabled((suresignData as any).prompts_enabled ?? true);
-    if (aiModel === null)        setAiModel((suresignData as any).ai_model ?? 'claude-3-5-sonnet-latest');
+    if (aiModel === null)        setAiModel((suresignData as any).ai_model ?? 'claude-sonnet-5');
+    if (aiEffort === null)       setAiEffort((suresignData as any).ai_effort ?? 'high');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [suresignData]);
 
@@ -43,7 +45,8 @@ export default function AdminAiConfigPage() {
 
   const currentAiEnabled      = aiEnabled ?? !!(suresignData as any)?.ai_enabled;
   const currentPromptsEnabled = promptsEnabled ?? ((suresignData as any)?.prompts_enabled ?? true);
-  const currentAiModel        = aiModel !== null ? aiModel : ((suresignData as any)?.ai_model ?? 'claude-3-5-sonnet-latest');
+  const currentAiModel        = aiModel !== null ? aiModel : ((suresignData as any)?.ai_model ?? 'claude-sonnet-5');
+  const currentAiEffort       = aiEffort !== null ? aiEffort : ((suresignData as any)?.ai_effort ?? 'high');
   const hasAnthropicKey       = !!(suresignData as any)?.has_anthropic_key;
 
   return (
@@ -119,10 +122,33 @@ export default function AdminAiConfigPage() {
               className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
               style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
             >
-              <option value="claude-sonnet-4-6">claude-sonnet-4-6 (recommended)</option>
+              <option value="claude-sonnet-5">claude-sonnet-5 (recommended)</option>
+              <option value="claude-sonnet-4-6">claude-sonnet-4-6 (previous generation)</option>
               <option value="claude-haiku-4-5-20251001">claude-haiku-4-5-20251001 (faster / lower cost)</option>
               <option value="claude-opus-4-8">claude-opus-4-8 (most capable)</option>
             </select>
+          </div>
+
+          {/* Effort */}
+          <div>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+              Effort
+            </label>
+            <select
+              value={currentAiEffort}
+              onChange={e => setAiEffort(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+              style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+            >
+              <option value="low">Low (fastest, cheapest)</option>
+              <option value="medium">Medium</option>
+              <option value="high">High (recommended)</option>
+              <option value="xhigh">X-High (deeper analysis, slower)</option>
+              <option value="max">Max (most thorough, slowest / most expensive)</option>
+            </select>
+            <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>
+              Controls how much the model reasons before answering. Higher effort can improve accuracy on complex contracts but costs more and takes longer.
+            </p>
           </div>
 
           {/* Anthropic API Key */}
@@ -163,6 +189,7 @@ export default function AdminAiConfigPage() {
                   ai_enabled: currentAiEnabled,
                   prompts_enabled: currentPromptsEnabled,
                   ai_model: currentAiModel,
+                  ai_effort: currentAiEffort,
                   ...(anthropicKey ? { anthropic_api_key: anthropicKey } : {}),
                 })
               }

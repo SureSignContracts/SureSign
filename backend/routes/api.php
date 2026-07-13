@@ -56,26 +56,35 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-// Public auth routes
+// Public auth routes — each carries its own named limiter (defined in
+// AppServiceProvider::configureRateLimiters) on top of the general `api`
+// group throttle, since brute-force/enumeration/abuse risk differs per
+// endpoint and a single shared bucket would either be too loose for login
+// or too tight for normal dashboard traffic.
 Route::prefix('auth')->group(function () {
-    Route::post('/login', [AuthController::class, 'login']);
-    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
-    Route::post('/reset-password', [AuthController::class, 'resetPassword']);
-    Route::post('/email/verify', [AuthController::class, 'verifyEmailLink']);
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:forgot-password');
+    Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:reset-password');
+    Route::post('/email/verify', [AuthController::class, 'verifyEmailLink'])->middleware('throttle:email-verify-link');
 });
 
 Route::get('/guest-settings', [SuresignSettingController::class, 'guestShow']);
 
-// Authenticated routes
-Route::middleware('auth:sanctum')->group(function () {
+// Authenticated routes — account.status re-checks is_active/banned_at on
+// every request (auth:sanctum only proves the token was valid at issuance,
+// not that the account is still allowed to use it); password.current blocks
+// everything except the handful of routes named below while a forced
+// password change is pending. Order matters: an inactive/banned account is
+// blocked before the password-change gate is even considered.
+Route::middleware(['auth:sanctum', 'account.status', 'password.current'])->group(function () {
 
     // Auth
     Route::prefix('auth')->group(function () {
-        Route::post('/logout', [AuthController::class, 'logout']);
-        Route::get('/me', [AuthController::class, 'me']);
-        Route::put('/password', [AuthController::class, 'updatePassword']);
-        Route::put('/force-password-change', [AuthController::class, 'forcePasswordChange']);
-        Route::post('/email/verification-notification', [AuthController::class, 'sendEmailVerification']);
+        Route::post('/logout', [AuthController::class, 'logout'])->name('auth.logout');
+        Route::get('/me', [AuthController::class, 'me'])->name('auth.me');
+        Route::put('/password', [AuthController::class, 'updatePassword'])->middleware('throttle:password-change');
+        Route::put('/force-password-change', [AuthController::class, 'forcePasswordChange'])->middleware('throttle:force-password-change')->name('auth.force-password-change');
+        Route::post('/email/verification-notification', [AuthController::class, 'sendEmailVerification'])->middleware('throttle:email-verification-resend');
     });
 
     // Dashboard
@@ -281,7 +290,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/trade-packages/{tradePackage}/upload', [TradePackageController::class, 'uploadFile']);
 
     // Trade Package AI onboarding (Sprint 6B Stage 1)
-    Route::post('/trade-packages/{tradePackage}/ai-analysis',  [TradePackageAiController::class, 'startAnalysis']);
+    Route::post('/trade-packages/{tradePackage}/ai-analysis',  [TradePackageAiController::class, 'startAnalysis'])->middleware('throttle:ai-analysis');
     Route::get('/trade-packages/{tradePackage}/ai-analysis',   [TradePackageAiController::class, 'getLatestAnalysis']);
     Route::get('/trade-packages/{tradePackage}/ai-analyses',   [TradePackageAiController::class, 'listAnalyses']);
     Route::get('/trade-package-ai-analyses/{analysis}',        [TradePackageAiController::class, 'showAnalysis']);
@@ -313,7 +322,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Contract AI analysis (contract-scoped)
-    Route::post('/contracts/{contract}/ai-analysis',   [AiController::class, 'startAnalysis']);
+    Route::post('/contracts/{contract}/ai-analysis',   [AiController::class, 'startAnalysis'])->middleware('throttle:ai-analysis');
     Route::get('/contracts/{contract}/ai-analysis',    [AiController::class, 'getLatestAnalysis']);
     Route::get('/contracts/{contract}/ai-analyses',    [AiController::class, 'listAnalyses']);
     Route::get('/projects/{project}/ai-analyses',      [AiController::class, 'listForProject']);
@@ -393,12 +402,14 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::put('/suresign-settings/email',                   [SuresignSettingController::class, 'updateEmail']);
             Route::put('/suresign-settings/site',                    [SuresignSettingController::class, 'updateSite']);
             Route::post('/suresign-settings/logo',                   [SuresignSettingController::class, 'uploadLogo']);
+            Route::post('/suresign-settings/favicon',                [SuresignSettingController::class, 'uploadFavicon']);
             Route::post('/suresign-settings/letterhead-header',      [SuresignSettingController::class, 'uploadLetterheadHeader']);
             Route::post('/suresign-settings/letterhead-footer',      [SuresignSettingController::class, 'uploadLetterheadFooter']);
             Route::post('/suresign-settings/letterhead-pdf',         [SuresignSettingController::class, 'uploadLetterheadPdf']);
             Route::post('/suresign-settings/email-header',           [SuresignSettingController::class, 'uploadEmailHeader']);
             Route::post('/suresign-settings/email-footer',           [SuresignSettingController::class, 'uploadEmailFooter']);
             Route::delete('/suresign-settings/logo',                 [SuresignSettingController::class, 'removeLogo']);
+            Route::delete('/suresign-settings/favicon',              [SuresignSettingController::class, 'removeFavicon']);
             Route::delete('/suresign-settings/letterhead-header',    [SuresignSettingController::class, 'removeLetterheadHeader']);
             Route::delete('/suresign-settings/letterhead-footer',    [SuresignSettingController::class, 'removeLetterheadFooter']);
             Route::delete('/suresign-settings/letterhead-pdf',       [SuresignSettingController::class, 'removeLetterheadPdf']);

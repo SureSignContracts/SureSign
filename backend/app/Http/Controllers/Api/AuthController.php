@@ -78,7 +78,19 @@ class AuthController extends Controller
             ],
         ]);
 
-        $request->user()->update(['password' => Hash::make($request->password)]);
+        $user = $request->user();
+        $currentTokenId = $user->currentAccessToken()?->id;
+
+        $user->update(['password' => Hash::make($request->password)]);
+
+        // Policy: revoke every other session, keep the one actively making
+        // this change alive — a stolen/old token elsewhere is logged out
+        // immediately, without forcing the user to re-authenticate on the
+        // device they just proved they control (they supplied
+        // current_password moments ago). Mirrors the same choice made for
+        // forcePasswordChange() below.
+        self::revokeOtherTokens($user, $currentTokenId);
+
         return response()->json(['message' => 'Password updated.']);
     }
 
@@ -103,12 +115,31 @@ class AuthController extends Controller
             ],
         ]);
 
+        $currentTokenId = $user->currentAccessToken()?->id;
+
         $user->update([
             'password'              => Hash::make($request->password),
             'must_change_password'  => false,
         ]);
 
+        // Same policy as updatePassword() above: revoke every other session
+        // (e.g. a stale session opened under the old/temporary password on
+        // another device), keep the current one — the frontend's
+        // ForcePasswordChangeGate immediately calls GET /auth/me with this
+        // same token afterward and expects to land in the app, not be
+        // logged out.
+        self::revokeOtherTokens($user, $currentTokenId);
+
         return response()->json(['message' => 'Password updated.', 'user' => $this->userResource($user->fresh())]);
+    }
+
+    private static function revokeOtherTokens(User $user, ?int $currentTokenId): void
+    {
+        if ($currentTokenId !== null) {
+            $user->tokens()->where('id', '!=', $currentTokenId)->delete();
+        } else {
+            $user->tokens()->delete();
+        }
     }
 
     // Always returns the same generic message regardless of whether the

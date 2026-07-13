@@ -7,6 +7,7 @@ use App\Models\FileUpload;
 use App\Models\Project;
 use App\Models\SuresignSetting;
 use App\Models\TradePackage;
+use App\Services\FileSecurityService;
 use App\Services\ProjectStorageService;
 use App\Services\TradePackages\TradePackageActivityService;
 use Illuminate\Http\Request;
@@ -267,15 +268,16 @@ class TradePackageController extends Controller
         ]);
 
         $file = $request->file('file');
+        FileSecurityService::assertSafe($file, FileSecurityService::DOCUMENTS);
 
-        $storagePath = ProjectStorageService::buildFilePath($project, 'contracts', $file->getClientOriginalExtension());
+        $storagePath = ProjectStorageService::buildFilePath($project, 'contracts', strtolower($file->getClientOriginalExtension()));
         Storage::disk('local')->put($storagePath, file_get_contents($file->getRealPath()));
 
         $upload = FileUpload::create([
             'project_id'       => $project->id,
             'organization_id'  => $project->organization_id,
             'uploaded_by'      => $request->user()->id,
-            'original_name'    => $file->getClientOriginalName(),
+            'original_name'    => FileSecurityService::sanitizeDisplayName($file->getClientOriginalName()),
             'title'            => $data['title'] ?? null,
             'stored_name'      => basename($storagePath),
             'file_path'        => $storagePath,

@@ -157,6 +157,22 @@ class UserController extends Controller
                 Auth::user(),
                 $user,
             );
+
+            // Only revoke on the true -> false transition, not merely because
+            // is_active was present in the request (e.g. re-submitting the
+            // same value, or reactivating someone) — reactivation must not
+            // hand back a working session either; a fresh login is required
+            // (see UserController::unban for the same rule on bans).
+            if ($before['is_active'] === true && $user->is_active === false) {
+                $user->tokens()->delete();
+
+                ActivityLog::record(
+                    'user.tokens_revoked',
+                    "Revoked all active session(s) for {$user->email} due to deactivation",
+                    Auth::user(),
+                    $user,
+                );
+            }
         }
 
         return response()->json(['data' => $this->formatUser($user->fresh('roles'))]);
@@ -244,7 +260,18 @@ class UserController extends Controller
         $user = User::findOrFail($id);
         $user->update(['must_change_password' => true]);
 
-        ActivityLog::record('user.password_reset_forced', "Required {$user->email} to change password on next login", Auth::user(), $user);
+        // Forcing a password change is meaningless as a security action if
+        // the user's existing session(s) keep working with the old
+        // password's token — revoke them so the only way back in is a fresh
+        // login (which the must_change_password flag then gates).
+        $user->tokens()->delete();
+
+        ActivityLog::record(
+            'user.password_reset_forced',
+            "Required {$user->email} to change password on next login and revoked all active sessions",
+            Auth::user(),
+            $user,
+        );
 
         return response()->json(['data' => $this->formatUser($user->fresh('roles'))]);
     }
@@ -263,7 +290,19 @@ class UserController extends Controller
             'must_change_password' => $validated['require_change'] ?? true,
         ]);
 
-        ActivityLog::record('user.password_set', "Set a new password for {$user->email}", Auth::user(), $user);
+        // Unconditional, regardless of require_change: an admin setting a new
+        // password for someone must invalidate any session opened under the
+        // OLD password — that's the whole point of the action, and it's the
+        // exact scenario ("this account may be compromised") where leaving
+        // the old session alive would be the worst possible outcome.
+        $user->tokens()->delete();
+
+        ActivityLog::record(
+            'user.password_set',
+            "Set a new password for {$user->email} and revoked all active sessions",
+            Auth::user(),
+            $user,
+        );
 
         return response()->json(['data' => $this->formatUser($user->fresh('roles'))]);
     }

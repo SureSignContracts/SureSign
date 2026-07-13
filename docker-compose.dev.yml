@@ -14,6 +14,28 @@
 
 services:
   backend:
+    build:
+      args:
+        # Prod builds default to --no-dev (see backend/Dockerfile). Local dev
+        # needs phpunit/mockery/faker/pint available inside the image, since
+        # the bind mount below only shadows source files — vendor/ is kept
+        # from the image via the anonymous volume trick. --optimize-autoloader
+        # isn't part of this flag set any more — the Dockerfile's separate
+        # `composer dump-autoload --optimize` step applies it unconditionally
+        # after the full source is copied, in both prod and dev builds.
+        COMPOSER_INSTALL_FLAGS: "--no-interaction --prefer-dist"
+    # The prod image now runs as www-data (see backend/Dockerfile) — but the
+    # bind mount below is the host's ./backend directory, owned by whatever
+    # UID the host developer account is (not necessarily 33), so www-data
+    # couldn't write logs/cache/sessions into it. Local dev stays root, which
+    # is how it already behaved before this change — this override exists
+    # only so a future Dockerfile-level USER doesn't silently break it.
+    user: root
+    # !override replaces (not appends to) prod's `backend_storage` volume —
+    # dev wants the host directory fully live, not the prod-only named volume.
+    volumes: !override
+      - ./backend:/var/www/html
+      - /var/www/html/vendor
     environment: &local_backend_env
       - APP_NAME=SureSign
       - APP_ENV=local
@@ -35,7 +57,7 @@ services:
       - DB_PORT=3306
       - DB_DATABASE=suresign
       - DB_USERNAME=suresign
-      - DB_PASSWORD=local_dev_password
+      - DB_PASSWORD=SureSign@2024!
       - SESSION_DRIVER=file
       - SESSION_LIFETIME=120
       - SESSION_ENCRYPT=false
@@ -54,22 +76,44 @@ services:
       - MAIL_FROM_NAME=SureSign
 
   queue:
+    user: root
+    volumes: !override
+      - ./backend:/var/www/html
+      - /var/www/html/vendor
     environment: *local_backend_env
 
   scheduler:
+    user: root
+    volumes: !override
+      - ./backend:/var/www/html
+      - /var/www/html/vendor
     environment: *local_backend_env
 
   mysql:
+    # Prod no longer host-maps this port (removed for network-exposure
+    # hardening); local dev previously inherited host access to MySQL from
+    # that mapping, so it's declared explicitly here instead to keep the
+    # local workflow (e.g. connecting a GUI client to localhost:3307)
+    # unchanged.
+    ports:
+      - "3307:3306"
     environment:
       MYSQL_ROOT_PASSWORD: local_dev_root_password
       MYSQL_DATABASE: suresign
       MYSQL_USER: suresign
-      MYSQL_PASSWORD: local_dev_password
+      MYSQL_PASSWORD: SureSign@2024!
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-usuresign", "-plocal_dev_password"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-usuresign", "-pSureSign@2024!"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  redis:
+    # Same rationale as mysql above — prod removed this host mapping, so it's
+    # restated here to keep local Redis host access (e.g. redis-cli -p 6379)
+    # working as before.
+    ports:
+      - "6379:6379"
 
   frontend:
     image: node:20-alpine
@@ -77,12 +121,15 @@ services:
     working_dir: /app
     command: sh -c "npm install && npm run dev"
     build: !reset null
+    ports: !override
+      - "3000:3000"
     volumes:
       - ./frontend:/app
       - frontend_node_modules:/app/node_modules
       - frontend_next:/app/.next
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000/api
+      - BACKEND_INTERNAL_URL=http://backend:8000/api
       - NODE_ENV=development
 
 volumes:

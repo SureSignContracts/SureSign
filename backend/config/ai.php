@@ -15,7 +15,7 @@ return [
 
     'anthropic' => [
         'api_key' => env('ANTHROPIC_API_KEY', ''),
-        'model'   => env('ANTHROPIC_MODEL', 'claude-sonnet-4-6'),
+        'model'   => env('ANTHROPIC_MODEL', 'claude-sonnet-5'),
         'base_url' => 'https://api.anthropic.com/v1',
         'timeout'  => 420, // HTTP read timeout. Must be < job timeout (480s) < queue retry_after (600s).
         // Output token ceiling. 8096 was too low and truncated detailed contracts mid-JSON,
