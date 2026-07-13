@@ -42,6 +42,14 @@ vendor
 storage/app/private/*
 storage/app/public/*
 storage/app/templates/*
+
+# A local dev machine may already have run `artisan storage:link`, leaving a
+# real symlink at this path. It must never be baked into the image — a fresh
+# clone (e.g. on the actual deploy server) has no such symlink, and the
+# entrypoint's own `storage:link` call is what's meant to create it at
+# runtime; shipping a stale, locally-created one would just mask whether that
+# runtime step actually works.
+public/storage
 storage/framework/cache
 storage/framework/sessions
 storage/framework/views

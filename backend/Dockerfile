@@ -85,7 +85,7 @@ RUN composer dump-autoload --optimize \
 # operator debugging (`docker exec ... php artisan tinker`), not for any
 # of the actual long-running processes, but it's a one-line, single
 # (non-recursive) directory fix so it's worth doing.
-RUN chown -R www-data:www-data bootstrap/cache storage \
+RUN chown -R www-data:www-data bootstrap/cache storage public \
     && chown www-data:www-data /var/www
 
 EXPOSE 8000
