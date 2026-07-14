@@ -174,37 +174,3 @@
 .md-typeset .grid.cards > ul > li > p:first-child {
   font-weight: 600;
 }
-
-/*
- * App-shell layout — pin the primary nav sidebar flush against the left
- * edge of the viewport, like SureSign's own fixed AppSidebar, instead of
- * Material's default centered-column layout (where the sidebar floats
- * inside a max-width container with empty gutters on either side).
- *
- * Scoped to Material's own desktop breakpoint (76.25em) so the mobile/
- * tablet slide-in drawer behaviour below that is left completely
- * untouched — only the wide-screen layout changes.
- */
-@media screen and (min-width: 76.25em) {
-  .md-header__inner.md-grid,
-  .md-main__inner.md-grid {
-    max-width: 100%;
-  }
-
-  .md-sidebar--primary {
-    position: fixed !important;
-    left: 0 !important;
-    top: 2.4rem !important;
-    height: auto !important;
-    max-height: calc(100vh - 2.4rem) !important;
-    overflow-y: auto !important;
-    width: 13rem !important;
-    padding: 1rem 0 !important;
-    background-color: var(--md-default-bg-color);
-    border-right: 1px solid var(--md-default-fg-color--lightest);
-  }
-
-  .md-main__inner.md-grid {
-    margin-left: 13rem;
-  }
-}
