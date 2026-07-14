@@ -4,24 +4,27 @@ docs_dir: docs
 
 theme:
   name: material
+  logo: assets/images/logo.png
+  favicon: assets/images/favicon.ico
+  font:
+    text: Geist
+    code: Geist Mono
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: amber
-      accent: amber
+      primary: black
+      accent: black
       toggle:
-        icon: material/brightness-7
+        icon: material/weather-night
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: amber
-      accent: amber
+      primary: black
+      accent: black
       toggle:
-        icon: material/brightness-4
+        icon: material/weather-sunny
         name: Switch to light mode
   features:
-    - navigation.tabs
-    - navigation.sections
     - navigation.top
     - navigation.footer
     - navigation.indexes
@@ -30,8 +33,16 @@ theme:
     - search.highlight
     - content.code.copy: false
 
+extra_css:
+  - stylesheets/extra.css
+
+extra:
+  generator: false
+
 markdown_extensions:
   - admonition
+  - attr_list
+  - md_in_html
   - pymdownx.details
   - pymdownx.superfences:
       custom_fences:

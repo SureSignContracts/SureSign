@@ -1,0 +1,210 @@
+/*
+ * Brand override for MkDocs Material — mirrors the design tokens in
+ * frontend/src/app/globals.css exactly, so the docs site matches the
+ * SureSign app's own light/dark themes.
+ */
+
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #0a0a0a;
+  --md-primary-fg-color--light: #333333;
+  --md-primary-fg-color--dark: #000000;
+  --md-primary-bg-color: #ffffff;
+  --md-accent-fg-color: #0a0a0a;
+  --md-accent-fg-color--transparent: rgba(10, 10, 10, 0.1);
+
+  --md-default-bg-color: #f1f1f1;
+  --md-default-fg-color: #0a0a0a;
+  --md-default-fg-color--light: #525252;
+  --md-default-fg-color--lighter: #8a8a8a;
+  --md-default-fg-color--lightest: #e4e4e4;
+
+  --md-typeset-color: #0a0a0a;
+  --md-typeset-a-color: #0a0a0a;
+
+  --md-code-bg-color: #f4f4f4;
+  --md-code-fg-color: #0a0a0a;
+
+  --md-footer-bg-color: #0a0a0a;
+  --md-footer-bg-color--dark: #000000;
+  --md-footer-fg-color: #ffffff;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #141414;
+  --md-primary-fg-color--light: #1a1a1a;
+  --md-primary-fg-color--dark: #0d0d0d;
+  --md-primary-bg-color: #f0f0f0;
+  --md-accent-fg-color: #f0f0f0;
+  --md-accent-fg-color--transparent: rgba(240, 240, 240, 0.1);
+
+  --md-default-bg-color: #0d0d0d;
+  --md-default-fg-color: #f0ece6;
+  --md-default-fg-color--light: #9a9490;
+  --md-default-fg-color--lighter: #5a5652;
+  --md-default-fg-color--lightest: #2a2a2a;
+
+  --md-typeset-color: #f0ece6;
+  --md-typeset-a-color: #f0f0f0;
+
+  --md-code-bg-color: #1a1a1a;
+  --md-code-fg-color: #f0ece6;
+
+  --md-footer-bg-color: #0d0d0d;
+  --md-footer-bg-color--dark: #000000;
+  --md-footer-fg-color: #f0ece6;
+}
+
+/* Slightly shrink the header logo mark so it sits well next to the title */
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+  height: 1.4rem;
+  width: auto;
+}
+
+/*
+ * Material colours admonitions per-type by default (note=blue, tip=green,
+ * warning=orange, danger=red, ...), independent of the primary/accent
+ * palette above. The brand is monochrome, so flatten every admonition type
+ * to the same neutral grayscale treatment instead.
+ */
+.md-typeset .admonition,
+.md-typeset details {
+  border-color: var(--md-default-fg-color--lightest) !important;
+}
+
+.md-typeset .admonition-title,
+.md-typeset summary.admonition-title {
+  background-color: var(--md-default-fg-color--lightest) !important;
+}
+
+.md-typeset .admonition-title::before,
+.md-typeset summary.admonition-title::before {
+  background-color: var(--md-default-fg-color) !important;
+}
+
+/* Neutralise Material's residual blue --md-hue (225deg) so scrollbars,
+   focus rings, and search highlights don't carry a blue cast either. */
+:root {
+  --md-hue: 0deg;
+}
+
+::selection {
+  background-color: var(--md-accent-fg-color--transparent);
+}
+
+/*
+ * Typography polish — Material's defaults are fine but a little flat at
+ * this content density. Tighten heading rhythm, loosen body line-height
+ * for readability, and give links/lists more visual structure.
+ */
+
+.md-typeset {
+  font-size: 0.76rem;
+  line-height: 1.7;
+}
+
+.md-typeset h1 {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-bottom: 1.25em;
+}
+
+.md-typeset h2 {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-top: 1.8em;
+  padding-top: 0.4em;
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+}
+
+.md-typeset h3 {
+  font-weight: 600;
+  margin-top: 1.4em;
+}
+
+.md-typeset h4 {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--md-default-fg-color--light);
+}
+
+.md-typeset p {
+  margin-bottom: 1em;
+}
+
+.md-typeset li {
+  margin-bottom: 0.5em;
+}
+
+.md-typeset a {
+  text-decoration: none;
+  font-weight: 500;
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+  transition: border-color 0.15s;
+}
+
+.md-typeset a:hover {
+  border-bottom-color: var(--md-typeset-a-color);
+}
+
+.md-typeset table:not([class]) {
+  font-size: 0.7rem;
+}
+
+.md-typeset table:not([class]) th {
+  font-weight: 600;
+  background-color: var(--md-default-fg-color--lightest);
+}
+
+/* Home page nav cards — Material's `grid cards` block, given a slightly
+   heavier border and hover lift so it reads as a real navigation surface. */
+.md-typeset .grid.cards > ul > li {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 0.25rem;
+  transition: transform 0.15s, border-color 0.15s;
+}
+
+.md-typeset .grid.cards > ul > li:hover {
+  transform: translateY(-2px);
+  border-color: var(--md-default-fg-color--light);
+}
+
+.md-typeset .grid.cards > ul > li > p:first-child {
+  font-weight: 600;
+}
+
+/*
+ * App-shell layout — pin the primary nav sidebar flush against the left
+ * edge of the viewport, like SureSign's own fixed AppSidebar, instead of
+ * Material's default centered-column layout (where the sidebar floats
+ * inside a max-width container with empty gutters on either side).
+ *
+ * Scoped to Material's own desktop breakpoint (76.25em) so the mobile/
+ * tablet slide-in drawer behaviour below that is left completely
+ * untouched — only the wide-screen layout changes.
+ */
+@media screen and (min-width: 76.25em) {
+  .md-header__inner.md-grid,
+  .md-main__inner.md-grid {
+    max-width: 100%;
+  }
+
+  .md-sidebar--primary {
+    position: fixed !important;
+    left: 0 !important;
+    top: 2.4rem !important;
+    height: auto !important;
+    max-height: calc(100vh - 2.4rem) !important;
+    overflow-y: auto !important;
+    width: 13rem !important;
+    padding: 1rem 0 !important;
+    background-color: var(--md-default-bg-color);
+    border-right: 1px solid var(--md-default-fg-color--lightest);
+  }
+
+  .md-main__inner.md-grid {
+    margin-left: 13rem;
+  }
+}
