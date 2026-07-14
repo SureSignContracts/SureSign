@@ -1,0 +1,189 @@
+site_name: SureSign User Guide
+site_description: The official SureSign user manual and help centre.
+docs_dir: docs
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: amber
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: amber
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - navigation.indexes
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy: false
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - tables
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - getting-started/overview.md
+      - getting-started/signing-in.md
+      - getting-started/temporary-password.md
+      - getting-started/navigation.md
+      - getting-started/first-day-checklist.md
+  - Roles:
+      - roles/overview.md
+      - roles/client.md
+      - roles/comparison.md
+  - Dashboard:
+      - dashboard/overview.md
+  - Projects:
+      - projects/overview.md
+      - projects/creating-a-project.md
+      - projects/project-navigation.md
+      - projects/project-settings.md
+  - Contracts:
+      - contracts/overview.md
+      - contracts/creating-a-contract.md
+      - contracts/uploading-a-contract.md
+      - contracts/ai-analysis.md
+      - contracts/reviewing-ai-results.md
+      - contracts/confirming-analysis.md
+      - contracts/analysis-history.md
+  - Trade Packages:
+      - trade-packages/overview.md
+      - trade-packages/creating-a-trade-package.md
+      - trade-packages/subcontract-onboarding.md
+      - trade-packages/workspace.md
+  - Commercial:
+      - commercial/overview.md
+      - commercial/payment-applications.md
+      - commercial/application-valuations.md
+      - commercial/payment-notices.md
+      - commercial/pay-less-notices.md
+      - commercial/retention.md
+      - commercial/final-account.md
+      - commercial/generated-documents.md
+  - AI in SureSign:
+      - ai/overview.md
+      - ai/contract-analysis.md
+      - ai/subcontract-analysis.md
+      - ai/reviewing-results.md
+      - ai/limitations.md
+      - ai/failed-analysis.md
+  - Programme:
+      - programme/overview.md
+      - programme/milestones.md
+  - Variations:
+      - variations/overview.md
+      - variations/creating-a-variation.md
+      - variations/status-and-assessment.md
+  - Delay and Extension of Time:
+      - delay-and-eot/overview.md
+      - delay-and-eot/delay-events.md
+      - delay-and-eot/extension-of-time.md
+  - RFIs:
+      - rfis/overview.md
+      - rfis/creating-an-rfi.md
+      - rfis/responding-and-closing.md
+  - Meetings:
+      - meetings/overview.md
+      - meetings/creating-meetings.md
+      - meetings/minutes-and-actions.md
+  - Site Reports:
+      - site-reports/overview.md
+      - site-reports/creating-and-editing.md
+      - site-reports/statuses-and-filters.md
+  - Quality:
+      - quality/qa-reports.md
+      - quality/inspections.md
+  - Snagging:
+      - snagging/overview.md
+      - snagging/creating-and-closing-snags.md
+  - Risks:
+      - risks/overview.md
+      - risks/project-risks.md
+      - risks/trade-package-risks.md
+      - risks/ai-and-manual-risks.md
+  - Delivery Documents:
+      - delivery-documents/overview.md
+      - delivery-documents/project-delivery-documents.md
+      - delivery-documents/trade-package-delivery-documents.md
+  - Adjudication:
+      - adjudication/overview.md
+  - Closeout:
+      - closeout/overview.md
+  - Documents:
+      - documents/overview.md
+      - documents/uploading.md
+      - documents/folders.md
+      - documents/previewing.md
+      - documents/downloading.md
+      - documents/generated-documents.md
+      - documents/file-restrictions.md
+  - Notifications and Activity:
+      - notifications/overview.md
+      - notifications/notification-bell.md
+      - notifications/email-notifications.md
+      - notifications/activity-history.md
+  - Calendar:
+      - calendar/overview.md
+      - calendar/deadlines.md
+      - calendar/upcoming-actions.md
+  - Settings and Branding:
+      - settings/overview.md
+      - settings/company-branding.md
+  - Workflows:
+      - workflows/index.md
+      - workflows/new-project.md
+      - workflows/contract-onboarding.md
+      - workflows/trade-package-onboarding.md
+      - workflows/payment-application-process.md
+      - workflows/payment-notice-process.md
+      - workflows/pay-less-notice-process.md
+      - workflows/variation-process.md
+      - workflows/delay-and-eot-process.md
+      - workflows/rfi-process.md
+      - workflows/meeting-process.md
+      - workflows/site-report-process.md
+      - workflows/risk-process.md
+      - workflows/delivery-document-process.md
+      - workflows/document-management-process.md
+      - workflows/forced-password-change.md
+  - Troubleshooting:
+      - troubleshooting/index.md
+      - troubleshooting/sign-in.md
+      - troubleshooting/permissions.md
+      - troubleshooting/uploads.md
+      - troubleshooting/previews.md
+      - troubleshooting/document-generation.md
+      - troubleshooting/ai-analysis.md
+      - troubleshooting/notifications.md
+      - troubleshooting/settings.md
+  - Reference:
+      - reference/statuses.md
+      - reference/buttons-and-actions.md
+      - reference/glossary.md
+      - reference/faq.md

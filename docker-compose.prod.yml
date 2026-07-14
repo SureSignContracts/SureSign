@@ -320,6 +320,30 @@ services:
     networks:
       - suresign
 
+  # Public SureSign User Guide (docs.suresigncontracts.app) — fully static,
+  # built from docs/ + mkdocs.yml at repo root. Independent of the main app's
+  # `nginx` reverse proxy above; wire docs.suresigncontracts.app to this
+  # service's port directly in Dokploy (or your reverse proxy of choice).
+  docs:
+    build:
+      context: .
+      dockerfile: docker/docs/Dockerfile
+    image: suresign-docs:latest
+    container_name: suresign_docs
+    restart: unless-stopped
+    ports:
+      - "8082:80"
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/docs-health"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - suresign
+
 networks:
   suresign:
     driver: bridge

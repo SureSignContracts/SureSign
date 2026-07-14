@@ -35,6 +35,8 @@ frontend/.env*.local
 backend/.phpunit.result.cache
 frontend/.next/
 frontend/tsconfig.tsbuildinfo
+site/
+.docsvenv/
 
 # ──────────────────────────────────────────
 # OS / editor
