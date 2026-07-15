@@ -37,6 +37,7 @@ use App\Http\Controllers\Api\AdjudicationDeadlineController;
 use App\Http\Controllers\Api\ProgrammeMilestoneController;
 use App\Http\Controllers\Api\PromptController;
 use App\Http\Controllers\Api\CompaniesHouseController;
+use App\Http\Controllers\Api\DemoRequestController;
 use App\Http\Controllers\Api\GenerateTradePackageFoldersController;
 use App\Http\Controllers\Api\TradePackageCatalogueController;
 use App\Http\Controllers\Api\TradePackageAiController;
@@ -69,6 +70,9 @@ Route::prefix('auth')->group(function () {
 });
 
 Route::get('/guest-settings', [SuresignSettingController::class, 'guestShow']);
+
+// Public marketing-site lead capture (suresigncontracts.app/book-a-demo) — no auth.
+Route::post('/demo-requests', [DemoRequestController::class, 'store'])->middleware('throttle:demo-request');
 
 // Authenticated routes — account.status re-checks is_active/banned_at on
 // every request (auth:sanctum only proves the token was valid at issuance,

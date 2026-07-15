@@ -1,0 +1,198 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens ported from frontend/src/app/globals.css so the marketing
+ * site reads as the same product, not a bolted-on brochure. Keep in sync if
+ * the app's tokens change (see docs/ sync note for the same convention).
+ */
+:root {
+  --accent: #0a0a0a;
+  --accent-fg: #ffffff;
+  --bg-base: #ffffff;
+  --bg-surface: #F1F1F1;
+  --bg-elevated: #f4f4f4;
+  --border: #e4e4e4;
+  --border-light: #d4d4d4;
+  --text-primary: #0a0a0a;
+  --text-secondary: #525252;
+  --text-muted: #8a8a8a;
+  --shadow-card: 0 1px 2px rgba(18,18,18,0.04), 0 4px 12px rgba(18,18,18,0.05);
+  --shadow-pop: 0 4px 10px rgba(18,18,18,0.08), 0 14px 36px rgba(18,18,18,0.12);
+  --shadow-deep: 0 2px 4px rgba(18,18,18,0.05), 0 12px 24px rgba(18,18,18,0.06), 0 32px 64px rgba(18,18,18,0.08);
+  --spotlight: rgba(10,10,10,0.05);
+  /* The hero blueprint photo is a pale ivory scan — at light-mode opacity it
+     just reads as a dark grey wash over a near-black page, so dark mode
+     dims it drastically instead of matching light mode's strength. */
+  --hero-photo-opacity: 0.75;
+}
+
+[data-theme="dark"] {
+  --accent: #f0f0f0;
+  --accent-fg: #0a0a0a;
+  --bg-base: #0d0d0d;
+  --bg-surface: #141414;
+  --bg-elevated: #1a1a1a;
+  --border: #2a2a2a;
+  --border-light: #333333;
+  --text-primary: #f0ece6;
+  --text-secondary: #9a9490;
+  --text-muted: #5a5652;
+  --shadow-card: 0 1px 2px rgba(0,0,0,0.45), 0 4px 14px rgba(0,0,0,0.35);
+  --shadow-pop: 0 6px 16px rgba(0,0,0,0.5), 0 18px 44px rgba(0,0,0,0.45);
+  --shadow-deep: 0 2px 4px rgba(0,0,0,0.4), 0 16px 32px rgba(0,0,0,0.35), 0 40px 80px rgba(0,0,0,0.3);
+  --spotlight: rgba(240,240,240,0.06);
+  --hero-photo-opacity: 0.12;
+}
+
+@theme inline {
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-bg-base: var(--bg-base);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-border: var(--border);
+  --color-border-light: var(--border-light);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --font-sans: var(--font-sans), system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html {
+  /* Scale the site to the equivalent of 110% browser zoom — all rem-based
+     spacing/typography scales uniformly from this base, same convention as
+     the main app's globals.css (which scales to 125%). */
+  font-size: 17.6px;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html::-webkit-scrollbar {
+  display: none;
+}
+
+html, body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * Ambient, barely-there background treatment — a faint grid plus a soft
+ * radial spotlight. The visitor should feel these, not see them (per the
+ * visual design pass brief) — no new colours, just tonal depth using the
+ * existing neutral tokens.
+ */
+.bg-atmosphere {
+  position: relative;
+  isolation: isolate;
+}
+
+.bg-atmosphere::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 64px 64px;
+  opacity: 0.35;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 0%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 0%, transparent 70%);
+}
+
+.bg-atmosphere::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(ellipse 60% 50% at 50% 0%, var(--spotlight), transparent 70%);
+}
+
+/*
+ * Lighter cousin of .bg-atmosphere for ordinary sections — a corner-anchored
+ * hint of drafting-grid lines, not a full spotlight moment. Kept subtle
+ * enough to feel rather than notice, per the design brief.
+ */
+.bg-draft {
+  position: relative;
+  isolation: isolate;
+}
+
+.bg-draft::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 56px 56px;
+  opacity: 0.2;
+  mask-image: linear-gradient(to bottom, black, transparent 85%);
+  -webkit-mask-image: linear-gradient(to bottom, black, transparent 85%);
+}
+
+/*
+ * Briefly enabled by ThemeToggle around the moment data-theme flips, then
+ * removed — scoped and temporary, so it never competes with any component's
+ * own transition-* utility classes (stacking multiple Tailwind transition-*
+ * utilities on one element doesn't merge; this plain CSS rule sidesteps
+ * that entirely by living outside the utility system).
+ */
+.theme-transitioning,
+.theme-transitioning * {
+  transition: background-color 300ms ease, border-color 300ms ease, color 300ms ease, fill 300ms ease, stroke 300ms ease !important;
+}
+
+/* Tonal section shift — alternates the canvas without introducing colour. */
+.tone-surface {
+  background-color: var(--bg-surface);
+}
+
+:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* SVG <g> focus rings render inconsistently across browsers — force a
+   visible ring on the node's own circle instead of relying on the group's
+   outline (used by the Connected Platform diagram's interactive nodes). */
+g[tabindex]:focus-visible circle:first-of-type {
+  stroke: var(--text-primary) !important;
+  stroke-width: 2.5px !important;
+}
+
+@keyframes fade-slide-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Trust bar marquee — the track is two identical copies of the list side by
+   side, sliding left by exactly one copy's width for a seamless loop. */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

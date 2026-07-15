@@ -105,6 +105,13 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinutes(15, 3)->by($request->user()?->id ?: $request->ip());
         });
 
+        // Demo request (public marketing site form, no auth) — keyed per-IP
+        // only, since there's no authenticated user or email-enumeration risk
+        // to protect, just a public form that shouldn't be spammable.
+        RateLimiter::for('demo-request', function (Request $request) {
+            return Limit::perMinutes(15, 5)->by($request->ip());
+        });
+
         // Forced password change — authenticated-only endpoint, so the risk is
         // limited to a compromised session hammering the endpoint rather than
         // credential guessing. A loose per-user limit avoids nuisance-blocking

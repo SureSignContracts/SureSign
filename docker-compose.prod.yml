@@ -344,6 +344,30 @@ services:
     networks:
       - suresign
 
+  # Public marketing site (intended for suresigncontracts.app once the app
+  # itself is migrated to app.suresigncontracts.app — that domain cutover is
+  # a separate, deliberate step and is NOT done by this service definition).
+  # Independent of the main app's `nginx` reverse proxy, same pattern as
+  # `frontend`/`docs` above. Wire the target domain to this service's port
+  # directly in Dokploy once the cutover is ready.
+  marketing:
+    build:
+      context: ./marketing
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${MARKETING_NEXT_PUBLIC_API_URL:-https://app.suresigncontracts.app/api}
+    image: suresign-marketing:latest
+    container_name: suresign_marketing
+    restart: unless-stopped
+    ports:
+      - "3002:3000"
+    environment:
+      - HOSTNAME=0.0.0.0
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - suresign
+
 networks:
   suresign:
     driver: bridge
