@@ -51,7 +51,7 @@ class NotificationController extends Controller
                              SuresignNotification::CATEGORY_PAYMENT, SuresignNotification::CATEGORY_VARIATION,
                              SuresignNotification::CATEGORY_RETENTION, SuresignNotification::CATEGORY_DELIVERABLE,
                              SuresignNotification::CATEGORY_NOTICE, SuresignNotification::CATEGORY_RISK,
-                             SuresignNotification::CATEGORY_GENERAL];
+                             SuresignNotification::CATEGORY_COMMUNICATION, SuresignNotification::CATEGORY_GENERAL];
 
         if (in_array($filter, $priorityValues)) {
             $query->where('priority', $filter)

@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Models\SuresignSetting;
 use App\Services\FileSecurityService;
 use App\Services\NotificationService;
+use App\Services\TradePackages\WorkspaceNavigationResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -260,11 +261,18 @@ class DocumentController extends Controller
             'disk'            => 'local',
         ]);
 
-        NotificationService::send(
-            $request->user(),
+        // Routine, synchronous event — actor already saw the upload succeed;
+        // other Client users on the project's org are the ones who need telling.
+        NotificationService::sendToOrganization(
+            $project->organization,
             NotificationService::FILE_UPLOADED,
             'File Uploaded',
-            FileSecurityService::sanitizeDisplayName($file->getClientOriginalName()) . ' uploaded successfully.'
+            FileSecurityService::sanitizeDisplayName($file->getClientOriginalName()) . ' was uploaded to ' . $project->name . '.',
+            [],
+            ['project_id' => $project->id, 'organization_id' => $project->organization_id,
+             'source_type' => 'file_upload', 'source_id' => $upload->id,
+             'action_url' => WorkspaceNavigationResolver::actionUrl($project->id, 'file_upload', $upload->id, $upload->trade_package_id)],
+            $request->user(),
         );
 
         return response()->json($upload->load('uploader:id,name'), 201);
@@ -385,11 +393,20 @@ class DocumentController extends Controller
             );
         }
 
-        NotificationService::send(
-            $request->user(),
+        NotificationService::sendToOrganization(
+            $fileUpload->organization,
             NotificationService::FILE_DELETED,
             'Document Deleted',
-            'Document removed from active documents.'
+            "{$fileName} was removed from active documents.",
+            [],
+            [
+                'project_id' => $project?->id, 'organization_id' => $fileUpload->organization_id,
+                'source_type' => 'file_upload', 'source_id' => $fileUpload->id,
+                'action_url' => $project
+                    ? WorkspaceNavigationResolver::actionUrl($project->id, 'file_upload', $fileUpload->id, $fileUpload->trade_package_id)
+                    : null,
+            ],
+            $user,
         );
 
         return response()->json([

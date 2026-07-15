@@ -188,7 +188,7 @@ export default function NotificationsPage() {
     'notifications', activeFilter, priorityFilter, categoryFilter, page, perPage,
   ];
 
-  const { data, isLoading } = useQuery<NotificationsResponse>({
+  const { data, isLoading, error } = useQuery<NotificationsResponse>({
     queryKey: effectiveQueryKey,
     queryFn: async () => {
       const params = new URLSearchParams(buildQueryParams());
@@ -334,7 +334,12 @@ export default function NotificationsPage() {
       {/* Table */}
       <div className="rounded-xl overflow-x-auto"
         style={{ border: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)', boxShadow: 'var(--shadow-card)' }}>
-        {isLoading ? (
+        {error ? (
+          <div className="p-12 text-center flex flex-col items-center gap-3">
+            <AlertTriangle size={40} style={{ color: '#f87171' }} />
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Couldn&apos;t load notifications. Try again shortly.</p>
+          </div>
+        ) : isLoading ? (
           <div className="p-12 text-center" style={{ color: 'var(--text-muted)' }}>Loading notifications…</div>
         ) : rows.length === 0 ? (
           <div className="p-12 text-center flex flex-col items-center gap-3">
@@ -385,7 +390,7 @@ export default function NotificationsPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 cursor-pointer" onClick={() => isUnread && markReadMutation.mutate(n.id)}>
+                    <td className="px-4 py-3 cursor-pointer" onClick={() => handleOpen(n)}>
                       <div className="flex items-center gap-2 mb-0.5">
                         {isUnread && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-blue-500" />}
                         <span className="text-sm" style={{ color: 'var(--text-primary)', fontWeight: isUnread ? 600 : 400 }}>

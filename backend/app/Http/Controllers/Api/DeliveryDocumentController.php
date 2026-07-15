@@ -7,7 +7,9 @@ use App\Models\CalendarEvent;
 use App\Models\DeliveryDocument;
 use App\Models\Document;
 use App\Models\Project;
+use App\Models\SuresignNotification;
 use App\Models\TradePackage;
+use App\Services\NotificationService;
 use App\Services\ProjectActivityService;
 use App\Services\TradePackages\WorkspaceNavigationResolver;
 use Illuminate\Http\Request;
@@ -93,6 +95,8 @@ class DeliveryDocumentController extends Controller
             $doc
         );
 
+        $this->notifyDeliveryDocument($request, $project, $doc, 'created', "Required for {$tradePackage->name}.");
+
         return response()->json($doc, 201);
     }
 
@@ -150,6 +154,8 @@ class DeliveryDocumentController extends Controller
             $doc
         );
 
+        $this->notifyDeliveryDocument($request, $project, $doc, 'created', "Added to the delivery documents register.");
+
         return response()->json($doc, 201);
     }
 
@@ -169,23 +175,64 @@ class DeliveryDocumentController extends Controller
         return response()->json($documents);
     }
 
-    public function update(Request $request, DeliveryDocument $deliveryDocument)
+    // Not shallow (api/projects/{project}/delivery-documents/{deliveryDocument})
+    // — both segments are typed model bindings, so Project $project must be
+    // declared even though unused here, matching the same fix already
+    // applied to MeetingMinutesController/SiteDiaryController/etc. Without
+    // it, Laravel passed the {project} segment positionally into the
+    // $deliveryDocument argument slot, causing a TypeError (500) on every
+    // call — this route previously had zero test coverage.
+    public function update(Request $request, Project $project, DeliveryDocument $deliveryDocument)
     {
         $this->authorize($request, $deliveryDocument);
 
         $validated = $request->validate(array_merge(self::RULES, ['title' => 'sometimes|string|max:255']));
 
+        $hadNoDocument = $deliveryDocument->document_id === null;
         $deliveryDocument->update($validated);
+
+        // "Upload/link" per the approved channel policy = a document being
+        // attached where none was before — not every field edit on the
+        // requirement record.
+        if ($hadNoDocument && $deliveryDocument->document_id !== null) {
+            $docProject = $deliveryDocument->project;
+            if ($docProject) {
+                $this->notifyDeliveryDocument(
+                    $request, $docProject, $deliveryDocument, 'linked',
+                    "A file has been attached to this requirement."
+                );
+            }
+        }
 
         return response()->json($deliveryDocument->fresh());
     }
 
-    public function destroy(Request $request, DeliveryDocument $deliveryDocument)
+    public function destroy(Request $request, Project $project, DeliveryDocument $deliveryDocument)
     {
         $this->authorize($request, $deliveryDocument);
 
         $deliveryDocument->delete();
 
         return response()->json(null, 204);
+    }
+
+    private function notifyDeliveryDocument(Request $request, Project $project, DeliveryDocument $doc, string $kind, string $message): void
+    {
+        $title = $kind === 'created' ? "Delivery Document Raised: {$doc->title}" : "Delivery Document Linked: {$doc->title}";
+
+        NotificationService::sendToOrganization(
+            $project->organization,
+            'delivery_document_' . $kind,
+            $title,
+            $message,
+            [],
+            [
+                'project_id' => $project->id, 'organization_id' => $project->organization_id,
+                'category' => SuresignNotification::CATEGORY_COMPLIANCE, 'priority' => SuresignNotification::PRIORITY_INFO,
+                'source_type' => 'delivery_document', 'source_id' => $doc->id, 'source_field' => $kind,
+                'action_url' => WorkspaceNavigationResolver::actionUrl($project->id, CalendarEvent::SOURCE_DELIVERY_DOCUMENT, $doc->id, $doc->trade_package_id),
+            ],
+            $request->user(),
+        );
     }
 }

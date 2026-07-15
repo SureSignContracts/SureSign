@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\MeetingMinutes;
 use App\Models\Project;
+use App\Models\SuresignNotification;
+use App\Services\NotificationService;
 use App\Services\ProjectActivityService;
+use App\Services\TradePackages\WorkspaceNavigationResolver;
 use Illuminate\Http\Request;
 
 class MeetingMinutesController extends Controller
@@ -80,6 +83,8 @@ class MeetingMinutesController extends Controller
             $meeting
         );
 
+        $this->notifyMeeting($request, $project, $meeting, 'created', 'created', $meeting->title);
+
         return response()->json($meeting, 201);
     }
 
@@ -118,7 +123,33 @@ class MeetingMinutesController extends Controller
             'status'       => 'sometimes|in:draft,issued,approved',
         ]);
 
+        $previousDate   = $meeting->meeting_date;
+        $previousStatus = $meeting->status;
         $meeting->update($validated);
+
+        // "Meaningful" per the approved channel policy = a reschedule (date
+        // changed) or a lifecycle milestone (issued = minutes published,
+        // approved = signed off). Editing location/agenda/attendees/action
+        // items alone stays silent.
+        $rescheduled  = isset($validated['meeting_date']) && (string) $meeting->meeting_date !== (string) $previousDate;
+        $statusMoved  = isset($validated['status']) && $validated['status'] !== $previousStatus;
+
+        if ($rescheduled) {
+            $this->notifyMeeting(
+                $request, $project, $meeting, 'rescheduled',
+                'rescheduled_' . $meeting->updated_at->timestamp,
+                'Now on ' . \Carbon\Carbon::parse($meeting->meeting_date)->format('d M Y') . '.'
+            );
+        }
+
+        if ($statusMoved) {
+            $label = $meeting->status === 'issued' ? 'Minutes published.' : ucfirst("{$meeting->status}.");
+            $this->notifyMeeting(
+                $request, $project, $meeting, 'status_changed',
+                "from_{$previousStatus}_to_{$meeting->status}_" . $meeting->updated_at->timestamp,
+                $label
+            );
+        }
 
         return response()->json($meeting);
     }
@@ -129,5 +160,31 @@ class MeetingMinutesController extends Controller
 
         $meeting->delete();
         return response()->json(null, 204);
+    }
+
+    private function notifyMeeting(Request $request, Project $project, MeetingMinutes $meeting, string $kind, string $sourceField, string $message): void
+    {
+        $title = match (true) {
+            $kind === 'created'                                => "Meeting #{$meeting->meeting_number} Scheduled",
+            $kind === 'rescheduled'                             => "Meeting #{$meeting->meeting_number} Rescheduled",
+            $kind === 'status_changed' && $meeting->status === 'issued'   => "Meeting #{$meeting->meeting_number} Minutes Published",
+            $kind === 'status_changed' && $meeting->status === 'approved' => "Meeting #{$meeting->meeting_number} Approved",
+            default                                             => "Meeting #{$meeting->meeting_number} Reopened as Draft",
+        };
+
+        NotificationService::sendToOrganization(
+            $project->organization,
+            'meeting_' . $kind,
+            $title,
+            $message,
+            [],
+            [
+                'project_id' => $project->id, 'organization_id' => $project->organization_id,
+                'category' => SuresignNotification::CATEGORY_COMMUNICATION, 'priority' => SuresignNotification::PRIORITY_INFO,
+                'source_type' => 'meeting', 'source_id' => $meeting->id, 'source_field' => $sourceField,
+                'action_url' => WorkspaceNavigationResolver::actionUrl($project->id, 'meeting', $meeting->id),
+            ],
+            $request->user(),
+        );
     }
 }

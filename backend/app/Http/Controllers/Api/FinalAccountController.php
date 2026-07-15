@@ -9,9 +9,13 @@ use App\Models\FinalAccount;
 use App\Models\FinalAccountItem;
 use App\Models\Project;
 use App\Models\TradePackage;
+use App\Models\SuresignNotification;
 use App\Services\DocumentGenerationService;
+use App\Services\EmailNotificationService;
 use App\Services\FinalAccountService;
+use App\Services\NotificationService;
 use App\Services\ProjectActivityService;
+use App\Services\TradePackages\WorkspaceNavigationResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -241,6 +245,14 @@ class FinalAccountController extends Controller
             "Final Certificate issued for {$finalAccount->reference}",
             null,
             $finalAccount
+        );
+
+        $this->notifyLifecycleEvent(
+            $finalAccount, $request->user(), 'final_certificate_issued',
+            "Final Certificate Issued — {$finalAccount->reference}",
+            '28-day dispute window now open.',
+            SuresignNotification::PRIORITY_WARNING,
+            'final_account.final_certificate_issued',
         );
 
         return response()->json($this->buildResponse($finalAccount->fresh()->load('items')));
@@ -500,7 +512,63 @@ class FinalAccountController extends Controller
             $fa
         );
 
+        // Only the events explicitly approved for notification — startReview/
+        // revise/agree are internal review-state transitions, not stakeholder
+        // milestones, and stay silent to avoid low-value notification spam.
+        match ($toStatus) {
+            FinalAccount::STATUS_SUBMITTED => $this->notifyLifecycleEvent(
+                $fa, $request->user(), 'submitted',
+                "Final Account Submitted — {$fa->reference}",
+                'Ready for review.',
+                SuresignNotification::PRIORITY_REMINDER,
+            ),
+            FinalAccount::STATUS_SIGNED => $this->notifyLifecycleEvent(
+                $fa, $request->user(), 'signed',
+                "Final Account Signed — {$fa->reference}",
+                'Signed by both parties.',
+                SuresignNotification::PRIORITY_WARNING,
+                'final_account.signed',
+            ),
+            FinalAccount::STATUS_COMMERCIALLY_CLOSED => $this->notifyLifecycleEvent(
+                $fa, $request->user(), 'closed',
+                "Final Account Closed — {$fa->reference}",
+                'Commercially closed — no further changes expected.',
+                SuresignNotification::PRIORITY_INFO,
+                'final_account.closed',
+            ),
+            default => null,
+        };
+
         return response()->json($this->buildResponse($fa->fresh()->load('items')));
+    }
+
+    /**
+     * In-app fan-out (+ optional email, per the approved channel policy) for
+     * a Final Account lifecycle milestone. Actor excluded — these are all
+     * synchronous, user-initiated transitions.
+     */
+    private function notifyLifecycleEvent(
+        FinalAccount $fa, $actor, string $sourceField, string $title, string $message,
+        string $priority, ?string $emailEvent = null,
+    ): void {
+        NotificationService::sendToOrganization(
+            $fa->organization,
+            'final_account_' . $sourceField,
+            $title,
+            $message,
+            [],
+            [
+                'project_id' => $fa->project_id, 'organization_id' => $fa->organization_id,
+                'category' => SuresignNotification::CATEGORY_COMMERCIAL, 'priority' => $priority,
+                'source_type' => 'final_account', 'source_id' => $fa->id, 'source_field' => $sourceField,
+                'action_url' => WorkspaceNavigationResolver::actionUrl($fa->project_id, 'final_account', $fa->id, $fa->trade_package_id),
+            ],
+            $actor,
+        );
+
+        if ($emailEvent) {
+            EmailNotificationService::send($emailEvent, $title, $message, [], $fa->organization);
+        }
     }
 
     private function authorizeProject(Request $request, Project $project): void

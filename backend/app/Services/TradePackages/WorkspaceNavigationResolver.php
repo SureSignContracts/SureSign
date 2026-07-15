@@ -28,10 +28,20 @@ class WorkspaceNavigationResolver
         'contract_risk'          => ['tab' => 'compliance', 'subtab' => 'risks'],
         'delivery_document'      => ['tab' => 'compliance', 'subtab' => 'delivery-documents'],
         'trade_package'          => ['tab' => 'overview'],
-        // RFIs have no trade_package_id column — this tab/subtab entry is only
-        // exercised if that ever changes; today target() just needs a non-null
-        // match so actionUrl() falls through to PROJECT_FALLBACK below.
+        // RFIs, meetings, site diaries and QA reports have no trade_package_id
+        // column — these entries are only exercised if that ever changes;
+        // today target() just needs a non-null match so actionUrl() falls
+        // through to PROJECT_FALLBACK below.
         'rfi'                     => ['tab' => 'communication', 'subtab' => 'rfis'],
+        'meeting'                 => ['tab' => 'communication', 'subtab' => 'meetings'],
+        'site_diary'              => ['tab' => 'compliance', 'subtab' => 'site-reports'],
+        'qa_report'               => ['tab' => 'compliance', 'subtab' => 'qa'],
+        // Contract AI analyses belong to a main Contract, never a trade
+        // package (subcontract AI uses the separate 'trade_package_ai_analysis'
+        // source_type) — this entry exists only so target() returns non-null;
+        // the trade-package branch of actionUrl() is never actually reached.
+        'contract_ai_analysis'    => ['tab' => 'contracts'],
+        'file_upload'             => ['tab' => 'documents'],
     ];
 
     /**
@@ -39,15 +49,36 @@ class WorkspaceNavigationResolver
      * to when the record belongs to a main contract rather than a package.
      */
     private const PROJECT_FALLBACK = [
-        'payment_application' => '/commercial?tab=applications',
-        'retention_release'   => '/commercial?tab=applications',
-        'programme_milestone' => '/programme',
-        // No dedicated project-level risk register page exists yet — the
-        // Overview page's Risk Summary widget is the only place a
-        // main-contract risk is actually visible today.
-        'contract_risk'       => '/overview',
-        'delivery_document'   => '/delivery-documents',
-        'rfi'                 => '/rfis',
+        'payment_application'    => '/commercial?tab=applications',
+        'retention_release'      => '/commercial?tab=applications',
+        'payment_notice'         => '/commercial?tab=notices',
+        'pay_less_notice'        => '/commercial?tab=notices',
+        'programme_milestone'    => '/programme',
+        'delay_event'            => '/delay-eot?tab=delay-events',
+        'eot_request'            => '/delay-eot?tab=eot',
+        'loss_and_expense_claim' => '/delay-eot?tab=loss-and-expense',
+        // A dedicated /risks page now exists (no id deep-link support yet,
+        // same as rfi/variation below).
+        'contract_risk'          => '/risks',
+        'delivery_document'      => '/delivery-documents',
+        'rfi'                    => '/rfis',
+        'variation'              => '/variations',
+        'meeting'                => '/meetings',
+        'site_diary'             => '/site-reports',
+        'qa_report'              => '/qa',
+        // No dedicated AI review/history or Contract Intelligence route
+        // exists yet — the AI analysis review UI is embedded directly in the
+        // Contracts list page (confirmed: no per-contract detail route and
+        // no query-param deep-link support there today). This matches the
+        // existing convention for contract_deadline/contract_notice in
+        // NotificationEngineService's own URL_MAP, which already deep-links
+        // to the same page for the same reason.
+        'contract_ai_analysis'   => '/contracts',
+        // Project-level Documents Explorer exists (/documents) but has no
+        // folder/id deep-link support today — landing on the page itself is
+        // still a genuine, correct destination (same precedent as risks,
+        // rfis, meetings, site diaries, qa reports above).
+        'file_upload'            => '/documents',
     ];
 
     /**

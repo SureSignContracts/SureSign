@@ -84,12 +84,23 @@ class AnalyseTradePackageWithAiJob implements ShouldQueue
             ]);
 
             if ($user) {
-                NotificationService::send(
-                    $user,
+                $tradePackage = $analysis->tradePackage;
+
+                NotificationService::sendToOrganization(
+                    $user->organization,
                     NotificationService::AI_ANALYSIS_COMPLETED,
                     'Subcontract analysis completed',
-                    "AI analysis is ready for trade package: {$analysis->tradePackage->name}.",
-                    ['analysis_id' => $analysis->id, 'trade_package_id' => $analysis->trade_package_id]
+                    "AI analysis is ready for trade package: {$tradePackage->name}.",
+                    ['analysis_id' => $analysis->id, 'trade_package_id' => $analysis->trade_package_id],
+                    [
+                        'organization_id' => $user->organization_id, 'project_id' => $tradePackage->project_id,
+                        'source_type' => 'trade_package_ai_analysis', 'source_id' => $analysis->id, 'source_field' => 'completed',
+                        'action_url' => \App\Services\TradePackages\WorkspaceNavigationResolver::actionUrl(
+                            $tradePackage->project_id, 'trade_package', $tradePackage->id, $tradePackage->id
+                        ),
+                    ],
+                    $user,
+                    includeActor: true,
                 );
 
                 EmailNotificationService::send(
@@ -123,12 +134,32 @@ class AnalyseTradePackageWithAiJob implements ShouldQueue
             ]);
 
             if ($user) {
-                NotificationService::send(
-                    $user,
+                $tradePackage = $analysis->tradePackage;
+
+                NotificationService::sendToOrganization(
+                    $user->organization,
                     NotificationService::AI_ANALYSIS_COMPLETED,
                     'Subcontract analysis failed',
-                    "AI analysis failed for trade package: {$analysis->tradePackage->name}. {$safeMessage}",
-                    ['analysis_id' => $analysis->id, 'trade_package_id' => $analysis->trade_package_id]
+                    "AI analysis failed for trade package: {$tradePackage->name}. {$safeMessage}",
+                    ['analysis_id' => $analysis->id, 'trade_package_id' => $analysis->trade_package_id],
+                    [
+                        'organization_id' => $user->organization_id, 'project_id' => $tradePackage->project_id,
+                        'priority' => \App\Models\SuresignNotification::PRIORITY_WARNING,
+                        'source_type' => 'trade_package_ai_analysis', 'source_id' => $analysis->id, 'source_field' => 'failed',
+                        'action_url' => \App\Services\TradePackages\WorkspaceNavigationResolver::actionUrl(
+                            $tradePackage->project_id, 'trade_package', $tradePackage->id, $tradePackage->id
+                        ),
+                    ],
+                    $user,
+                    includeActor: true,
+                );
+
+                EmailNotificationService::send(
+                    'ai_analysis.failed',
+                    'Subcontract Analysis Failed',
+                    "AI analysis failed for trade package: {$tradePackage->name}. {$safeMessage}",
+                    [],
+                    $user->organization
                 );
             }
         }

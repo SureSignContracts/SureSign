@@ -227,11 +227,18 @@ class TradePackagePackageGenerationController extends Controller
         $this->generatePdfPreview($upload, $document);
 
         ProjectActivityService::record($project, $user, 'document_generated', "Generated master package: {$filename}", 'contracts', $document);
-        NotificationService::send(
-            $user,
+        NotificationService::sendToOrganization(
+            $project->organization,
             NotificationService::TRADE_PACKAGE_GENERATED,
             'Documents Generated',
-            '1 subcontract document generated for ' . $tradePackage->name . ' package.'
+            '1 subcontract document generated for ' . $tradePackage->name . ' package.',
+            [],
+            [
+                'project_id' => $project->id, 'organization_id' => $project->organization_id,
+                'source_type' => 'trade_package', 'source_id' => $tradePackage->id, 'source_field' => 'master_package_generated',
+                'action_url' => \App\Services\TradePackages\WorkspaceNavigationResolver::actionUrl($project->id, 'trade_package', $tradePackage->id, $tradePackage->id),
+            ],
+            $user,
         );
 
         return response()->json([
@@ -345,11 +352,18 @@ class TradePackagePackageGenerationController extends Controller
             "Generated {$count} separate subcontract document(s) for {$tradePackage->name}",
             'contracts'
         );
-        NotificationService::send(
-            $user,
+        NotificationService::sendToOrganization(
+            $project->organization,
             NotificationService::TRADE_PACKAGE_GENERATED,
             'Documents Generated',
-            count($generatedFiles) . ' subcontract document(s) generated for ' . $tradePackage->name . ' package.'
+            count($generatedFiles) . ' subcontract document(s) generated for ' . $tradePackage->name . ' package.',
+            [],
+            [
+                'project_id' => $project->id, 'organization_id' => $project->organization_id,
+                'source_type' => 'trade_package', 'source_id' => $tradePackage->id, 'source_field' => 'separate_documents_generated',
+                'action_url' => \App\Services\TradePackages\WorkspaceNavigationResolver::actionUrl($project->id, 'trade_package', $tradePackage->id, $tradePackage->id),
+            ],
+            $user,
         );
 
         return response()->json([

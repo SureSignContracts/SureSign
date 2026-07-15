@@ -192,12 +192,25 @@ class NotificationEngineService
 
     /**
      * Mark resolved: notifications for actions no longer in the current intelligence output.
+     *
+     * Restricted to type LIKE 'operational_%' — this engine's own creation
+     * convention (see upsertNotification()) — because event-driven
+     * notifications from controllers (payment applications, variations,
+     * delay events, risks, etc — see NotificationService::sendToOrganization())
+     * reuse several of the same source_type strings this engine tracks
+     * (payment_application, delay_event, eot_request, contract_risk,
+     * programme_milestone, final_account) but with entirely different
+     * source_field conventions. Without this filter, every one of those
+     * event-driven notifications would never appear in activeKeys (which is
+     * built purely from this engine's own upcoming-actions output) and would
+     * be silently marked resolved the next time this job ran for the project.
      */
     private function resolveStaleNotifications(int $userId, int $projectId, Collection $activeKeys, array &$stats): void
     {
         SuresignNotification::where('user_id', $userId)
             ->where('project_id', $projectId)
             ->whereNotNull('source_type')
+            ->where('type', 'like', 'operational_%')
             ->whereNotIn('status', [
                 SuresignNotification::STATUS_DISMISSED,
                 SuresignNotification::STATUS_RESOLVED,

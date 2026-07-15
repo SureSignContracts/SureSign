@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\SiteDiary;
 use App\Models\Project;
+use App\Models\SuresignNotification;
+use App\Services\NotificationService;
 use App\Services\ProjectActivityService;
+use App\Services\TradePackages\WorkspaceNavigationResolver;
 use Illuminate\Http\Request;
 
 class SiteDiaryController extends Controller
@@ -76,6 +79,11 @@ class SiteDiaryController extends Controller
             $diary
         );
 
+        $this->notifySiteDiary(
+            $request, $project, $diary, 'created', 'created',
+            "Added to the project's site diary."
+        );
+
         return response()->json($diary, 201);
     }
 
@@ -111,14 +119,26 @@ class SiteDiaryController extends Controller
         $siteDiary->update($validated);
 
         if (isset($validated['status']) && $validated['status'] !== $oldStatus) {
+            $diaryProject = $siteDiary->project;
+
             ProjectActivityService::record(
-                $siteDiary->project,
+                $diaryProject,
                 $request->user(),
                 'site_diary_updated',
                 "Site diary for " . \Carbon\Carbon::parse($siteDiary->diary_date)->format('d M Y') . " status changed to {$validated['status']}",
                 null,
                 $siteDiary
             );
+
+            // "Meaningful" per the approved channel policy = submitted or
+            // approved — draft is a routine, not-yet-visible working state.
+            if (in_array($validated['status'], ['submitted', 'approved'], true)) {
+                $this->notifySiteDiary(
+                    $request, $diaryProject, $siteDiary, 'status_changed',
+                    "from_{$oldStatus}_to_{$siteDiary->status}_" . $siteDiary->updated_at->timestamp,
+                    'Status changed from ' . str_replace('_', ' ', $oldStatus) . " to {$siteDiary->status}."
+                );
+            }
         }
 
         return response()->json($siteDiary->fresh());
@@ -130,5 +150,28 @@ class SiteDiaryController extends Controller
 
         $siteDiary->delete();
         return response()->json(null, 204);
+    }
+
+    private function notifySiteDiary(Request $request, Project $project, SiteDiary $siteDiary, string $kind, string $sourceField, string $message): void
+    {
+        $dateLabel = \Carbon\Carbon::parse($siteDiary->diary_date)->format('d M Y');
+        $title = $kind === 'created'
+            ? "Site Diary Added: {$dateLabel}"
+            : 'Site Diary ' . ucfirst($siteDiary->status) . ": {$dateLabel}";
+
+        NotificationService::sendToOrganization(
+            $project->organization,
+            'site_diary_' . $kind,
+            $title,
+            $message,
+            [],
+            [
+                'project_id' => $project->id, 'organization_id' => $project->organization_id,
+                'category' => SuresignNotification::CATEGORY_GENERAL, 'priority' => SuresignNotification::PRIORITY_INFO,
+                'source_type' => 'site_diary', 'source_id' => $siteDiary->id, 'source_field' => $sourceField,
+                'action_url' => WorkspaceNavigationResolver::actionUrl($project->id, 'site_diary', $siteDiary->id),
+            ],
+            $request->user(),
+        );
     }
 }

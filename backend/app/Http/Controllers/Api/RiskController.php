@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\CalendarEvent;
 use App\Models\ContractRisk;
 use App\Models\Project;
+use App\Models\SuresignNotification;
 use App\Models\TradePackage;
+use App\Services\NotificationService;
 use App\Services\ProjectActivityService;
 use App\Services\TradePackages\WorkspaceNavigationResolver;
 use Illuminate\Http\Request;
@@ -142,6 +144,8 @@ class RiskController extends Controller
             $risk
         );
 
+        $this->notifyRisk($request, $project, $risk, 'created', "Added to the risk register for {$project->name}.");
+
         return response()->json($risk, 201);
     }
 
@@ -191,6 +195,8 @@ class RiskController extends Controller
             $risk
         );
 
+        $this->notifyRisk($request, $project, $risk, 'created', "Added to the risk register for {$tradePackage->name}.");
+
         return response()->json($risk, 201);
     }
 
@@ -200,9 +206,52 @@ class RiskController extends Controller
 
         $validated = $request->validate(array_merge(self::RULES, ['title' => 'sometimes|string|max:255']));
 
+        $previousStatus   = $risk->status;
+        $previousSeverity = $risk->severity;
         $risk->update($validated);
 
+        // "Materially updated" per the approved channel policy = a status or
+        // severity change — the risk register's two stakeholder-relevant
+        // signals. Editing description/mitigation/notes alone stays silent.
+        if ($risk->status !== $previousStatus || $risk->severity !== $previousSeverity) {
+            $severityChanged = $risk->severity !== $previousSeverity;
+            $statusChanged   = $risk->status !== $previousStatus;
+
+            $title = match (true) {
+                $severityChanged && $statusChanged => "Risk Severity & Status Changed: {$risk->title}",
+                $severityChanged                    => "Risk Severity Changed: {$risk->title}",
+                default                              => "Risk Status Changed: {$risk->title}",
+            };
+
+            $this->notifyRisk(
+                $request, $project, $risk,
+                "from_{$previousStatus}_{$previousSeverity}_to_{$risk->status}_{$risk->severity}_" . $risk->updated_at->timestamp,
+                "Status: " . str_replace('_', ' ', $risk->status) . ", severity: {$risk->severity}.",
+                $title,
+            );
+        }
+
         return response()->json($risk->fresh());
+    }
+
+    private function notifyRisk(Request $request, Project $project, ContractRisk $risk, string $sourceField, string $message, ?string $title = null): void
+    {
+        $isCreated = $sourceField === 'created';
+
+        NotificationService::sendToOrganization(
+            $project->organization,
+            'contract_risk_' . ($isCreated ? 'created' : 'updated'),
+            $title ?? ($isCreated ? "Risk Raised: {$risk->title}" : "Risk Status Changed: {$risk->title}"),
+            $message,
+            [],
+            [
+                'project_id' => $project->id, 'organization_id' => $project->organization_id,
+                'category' => SuresignNotification::CATEGORY_RISK, 'priority' => SuresignNotification::PRIORITY_INFO,
+                'source_type' => 'contract_risk', 'source_id' => $risk->id, 'source_field' => $sourceField,
+                'action_url' => WorkspaceNavigationResolver::actionUrl($project->id, CalendarEvent::SOURCE_CONTRACT_RISK, $risk->id, $risk->trade_package_id),
+            ],
+            $request->user(),
+        );
     }
 
     public function destroy(Request $request, Project $project, ContractRisk $risk)

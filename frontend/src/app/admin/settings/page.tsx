@@ -88,9 +88,17 @@ export default function AdminSettingsPage() {
   const NOTIFICATION_EVENTS: { key: string; label: string }[] = [
     { key: 'payment_application.submitted', label: 'New payment application submitted' },
     { key: 'payment_application.certified', label: 'Payment application certified' },
+    { key: 'payment_notice.issued',         label: 'Payment Notice issued' },
     { key: 'pay_less_notice.issued',        label: 'Pay Less Notice issued' },
     { key: 'variation.approved',            label: 'Variation approved' },
     { key: 'variation.rejected',            label: 'Variation rejected' },
+    { key: 'final_account.signed',                    label: 'Final Account signed' },
+    { key: 'final_account.final_certificate_issued',  label: 'Final Account certificate issued' },
+    { key: 'final_account.closed',                    label: 'Final Account commercially closed' },
+    { key: 'eot.decided',                   label: 'EOT decision recorded (granted or refused)' },
+    { key: 'loss_and_expense.decided',      label: 'Loss & Expense decision recorded (agreed or rejected)' },
+    { key: 'ai_analysis.completed',          label: 'AI analysis completed (contract or trade package)' },
+    { key: 'ai_analysis.failed',             label: 'AI analysis failed (contract or trade package)' },
     { key: 'deadline.reminder',             label: 'Payment deadline approaching (3 days before)' },
   ];
 

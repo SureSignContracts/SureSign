@@ -5,6 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\PayLessNotice;
 use App\Models\Project;
+use App\Models\SuresignNotification;
+use App\Services\EmailNotificationService;
+use App\Services\NotificationService;
+use App\Services\TradePackages\WorkspaceNavigationResolver;
 use Illuminate\Http\Request;
 
 class PayLessNoticeController extends Controller
@@ -58,6 +62,10 @@ class PayLessNoticeController extends Controller
             'status'         => $validated['status'] ?? 'draft',
         ]));
 
+        if ($notice->status === 'issued') {
+            $this->notifyIssued($request, $project, $notice);
+        }
+
         return response()->json($notice, 201);
     }
 
@@ -92,9 +100,41 @@ class PayLessNoticeController extends Controller
             'status'      => 'nullable|in:draft,issued',
         ]);
 
+        $wasIssued = $payLessNotice->status === 'issued';
+
         $payLessNotice->update($validated);
 
+        if (!$wasIssued && $payLessNotice->status === 'issued') {
+            $this->notifyIssued($request, $project, $payLessNotice);
+        }
+
         return response()->json($payLessNotice);
+    }
+
+    private function notifyIssued(Request $request, Project $project, PayLessNotice $notice): void
+    {
+        NotificationService::sendToOrganization(
+            $project->organization,
+            'pay_less_notice_issued',
+            'Pay Less Notice Issued',
+            "A Pay Less Notice has been issued for project: {$project->name}.",
+            [],
+            [
+                'project_id' => $project->id, 'organization_id' => $project->organization_id,
+                'category' => SuresignNotification::CATEGORY_NOTICE, 'priority' => SuresignNotification::PRIORITY_WARNING,
+                'source_type' => 'pay_less_notice', 'source_id' => $notice->id, 'source_field' => 'issued',
+                'action_url' => WorkspaceNavigationResolver::actionUrl($project->id, 'pay_less_notice', $notice->id),
+            ],
+            $request->user(),
+        );
+
+        EmailNotificationService::send(
+            'pay_less_notice.issued',
+            'Pay Less Notice Issued',
+            "A Pay Less Notice has been issued for project: {$project->name}.",
+            [],
+            $project->organization
+        );
     }
 
     public function destroy(Request $request, Project $project, PayLessNotice $payLessNotice)

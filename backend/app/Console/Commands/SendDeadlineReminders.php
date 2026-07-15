@@ -4,14 +4,26 @@ namespace App\Console\Commands;
 
 use App\Models\PaymentApplication;
 use App\Services\EmailNotificationService;
-use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
+/**
+ * Email-only. In-app deadline reminders for these same four fields
+ * (payment_notice_deadline, pay_less_notice_deadline, due_date,
+ * final_date_for_payment) are already generated — idempotently, with
+ * org-wide fan-out, priority escalation, and auto-resolution — by
+ * NotificationEngineService via the hourly calendar:sync schedule. This
+ * command used to also call NotificationService::send() with no
+ * source_type/source_id, so it had no idempotency and created a fresh
+ * duplicate in-app notification (to the PA creator only) every day a
+ * deadline was approaching. That call has been removed; this command's
+ * only remaining, non-duplicated responsibility is the 'deadline.reminder'
+ * email, which NotificationEngineService does not send.
+ */
 class SendDeadlineReminders extends Command
 {
     protected $signature   = 'suresign:send-deadline-reminders';
-    protected $description = 'Send email and in-app reminders for upcoming payment deadlines';
+    protected $description = 'Send email reminders for upcoming payment deadlines (in-app reminders are owned by NotificationEngineService)';
 
     public function handle(): int
     {
@@ -50,7 +62,7 @@ class SendDeadlineReminders extends Command
 
                 $apps = PaymentApplication::whereDate($field, $targetDate)
                     ->whereNotIn('status', $excludedStatuses)
-                    ->with('contract.project', 'createdBy', 'organization')
+                    ->with('contract.project', 'organization')
                     ->get();
 
                 foreach ($apps as $app) {
@@ -62,26 +74,8 @@ class SendDeadlineReminders extends Command
                     $emailSubject = "{$label} {$daysText} — {$appRef}";
                     $emailBody    = "{$label} for {$appRef} ({$contractTitle}) is due {$daysText} on {$targetDate}.";
 
-                    // Email reminder
+                    // Email reminder — in-app is handled separately by NotificationEngineService.
                     EmailNotificationService::send('deadline.reminder', $emailSubject, $emailBody, [], $app->organization);
-
-                    // In-app notification for the PA creator (if resolved)
-                    $user = $app->createdBy ?? null;
-                    if ($user) {
-                        NotificationService::send(
-                            $user,
-                            NotificationService::PAYMENT_DEADLINE_APPROACHING,
-                            $emailSubject,
-                            $emailBody,
-                            [
-                                'payment_application_id' => $app->id,
-                                'contract_id'            => $app->contract_id,
-                                'field'                  => $field,
-                                'deadline_date'          => $targetDate,
-                                'days_ahead'             => $daysAhead,
-                            ]
-                        );
-                    }
 
                     $sent++;
                 }

@@ -62,7 +62,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   commercial: 'Commercial', contract: 'Contract', programme: 'Programme',
   compliance: 'Compliance', payment: 'Payment', variation: 'Variation',
   retention: 'Retention', deliverable: 'Deliverable', notice: 'Notice',
-  risk: 'Risk', general: 'General',
+  risk: 'Risk', communication: 'Communication', general: 'General',
 };
 
 // ── NotifIcon ─────────────────────────────────────────────────────────────────
@@ -149,9 +149,13 @@ function NotifRow({
 
   return (
     <div
-      className="group relative flex items-start gap-3 px-4 py-3 transition-colors hover:bg-[var(--bg-hover)] cursor-pointer"
+      className="group relative flex items-start gap-3 px-4 py-3 transition-colors hover:bg-[var(--bg-hover)] focus-visible:bg-[var(--bg-hover)] cursor-pointer outline-none"
       style={{ borderBottom: '1px solid var(--border)' }}
+      role="button"
+      tabIndex={0}
+      aria-label={n.title}
       onClick={() => onRead(n)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onRead(n); } }}
     >
       {/* Unread dot */}
       <div className="flex-shrink-0 pt-1 w-2">
@@ -236,7 +240,7 @@ export default function NotificationBell({ basePath = '/admin/notifications' }: 
 
   const { count } = useUnreadCount();
   // Fetch active notifications only — server excludes resolved/expired by default
-  const { notifications } = useNotifications('active');
+  const { notifications, isLoading, error } = useNotifications('active');
 
   const all = notifications ?? [];
 
@@ -274,16 +278,16 @@ export default function NotificationBell({ basePath = '/admin/notifications' }: 
   }
 
   async function handleRead(n: SuresignNotification) {
-    if (n.status !== 'unread') {
-      // Still navigate if there's an action URL
-      if (n.action_url) { setOpen(false); router.push(n.action_url); }
-      return;
+    if (n.status === 'unread') {
+      try {
+        await api.patch(`/notifications/${n.id}/read`);
+        invalidate();
+      } catch {
+        // Navigation must not be blocked by a failed read-state update — the
+        // next poll/refetch will reconcile the status once the API recovers.
+      }
     }
-    try {
-      await api.patch(`/notifications/${n.id}/read`);
-      invalidate();
-      if (n.action_url) { setOpen(false); router.push(n.action_url); }
-    } catch {}
+    if (n.action_url) { setOpen(false); router.push(n.action_url); }
   }
 
   async function handleDismiss(n: SuresignNotification, e: React.MouseEvent) {
@@ -340,7 +344,7 @@ export default function NotificationBell({ basePath = '/admin/notifications' }: 
       {/* Dropdown */}
       {open && (
         <div
-          className="absolute right-0 mt-2 w-[380px] rounded-xl overflow-hidden z-50"
+          className="absolute right-0 mt-2 w-[380px] max-w-[calc(100vw-2rem)] rounded-xl overflow-hidden z-50"
           style={{
             backgroundColor: 'var(--bg-surface)',
             border: '1px solid var(--border)',
@@ -371,7 +375,16 @@ export default function NotificationBell({ basePath = '/admin/notifications' }: 
 
           {/* Body */}
           <div className="max-h-[480px] overflow-y-auto">
-            {isEmpty ? (
+            {error ? (
+              <div className="py-12 text-center">
+                <AlertTriangle size={28} className="mx-auto mb-2" style={{ color: '#f87171' }} />
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Couldn&apos;t load notifications. Try again shortly.</p>
+              </div>
+            ) : isLoading ? (
+              <div className="py-12 text-center">
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Loading…</p>
+              </div>
+            ) : isEmpty ? (
               <div className="py-12 text-center">
                 <Bell size={28} className="mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
                 <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No notifications.</p>

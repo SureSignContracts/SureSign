@@ -6,7 +6,7 @@ export type NotificationPriority = 'critical' | 'warning' | 'reminder' | 'info';
 export type NotificationCategory =
   | 'commercial' | 'contract' | 'programme' | 'compliance'
   | 'payment' | 'variation' | 'retention' | 'deliverable'
-  | 'notice' | 'risk' | 'general';
+  | 'notice' | 'risk' | 'communication' | 'general';
 
 export interface SuresignNotification {
   id: number;
@@ -41,7 +41,7 @@ export type NotificationFilter =
   | 'active' | 'all' | 'unread' | 'read' | 'dismissed' | 'resolved' | 'expired'
   | 'critical' | 'warning' | 'reminder' | 'info'
   | 'commercial' | 'contract' | 'payment' | 'variation' | 'risk' | 'deliverable'
-  | 'programme' | 'compliance' | 'notice' | 'retention' | 'general';
+  | 'programme' | 'compliance' | 'notice' | 'retention' | 'communication' | 'general';
 
 export function useNotifications(filter?: NotificationFilter, type?: string) {
   const { data, isLoading, error, refetch } = useQuery<NotificationsResponse>({

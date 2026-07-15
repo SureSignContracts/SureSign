@@ -6,9 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\DelayEvent;
 use App\Models\EotRequest;
 use App\Models\Project;
+use App\Models\SuresignNotification;
 use App\Models\TradePackage;
 use App\Services\DocumentGenerationService;
+use App\Services\NotificationService;
 use App\Services\ProjectActivityService;
+use App\Services\TradePackages\WorkspaceNavigationResolver;
 use Illuminate\Http\Request;
 
 class DelayEventController extends Controller
@@ -109,6 +112,8 @@ class DelayEventController extends Controller
             $delayEvent
         );
 
+        $this->notifyDelayEvent($request, $project, $delayEvent, 'raised', 'raised', $delayEvent->title);
+
         return response()->json($delayEvent, 201);
     }
 
@@ -139,6 +144,8 @@ class DelayEventController extends Controller
             $delayEvent
         );
 
+        $this->notifyDelayEvent($request, $project, $delayEvent, 'raised', 'raised', "{$delayEvent->title} ({$tradePackage->name}).");
+
         return response()->json($delayEvent, 201);
     }
 
@@ -165,7 +172,20 @@ class DelayEventController extends Controller
 
         $validated = $request->validate(array_merge(self::RULES, ['title' => 'sometimes|string|max:255', 'date_occurred' => 'sometimes|date']));
 
+        $previousStatus = $delayEvent->status;
         $delayEvent->update($validated);
+
+        // "Materially updated" per the approved channel policy = a status
+        // change (open -> under_assessment -> closed/rejected). Editing
+        // notes/dates alone stays silent to avoid notification spam.
+        if (isset($validated['status']) && $validated['status'] !== $previousStatus) {
+            $statusLabel = str_replace('_', ' ', $delayEvent->status);
+            $this->notifyDelayEvent(
+                $request, $project, $delayEvent, 'status_changed',
+                "from_{$previousStatus}_to_{$delayEvent->status}_" . $delayEvent->updated_at->timestamp,
+                "Now {$statusLabel}."
+            );
+        }
 
         return response()->json($delayEvent->fresh());
     }
@@ -176,6 +196,29 @@ class DelayEventController extends Controller
 
         $delayEvent->delete();
         return response()->json(null, 204);
+    }
+
+    private function notifyDelayEvent(Request $request, Project $project, DelayEvent $delayEvent, string $kind, string $sourceField, string $message): void
+    {
+        $title = $kind === 'raised'
+            ? "Delay Event #{$delayEvent->event_number} Raised"
+            : "Delay Event #{$delayEvent->event_number} " . ucfirst(str_replace('_', ' ', $delayEvent->status));
+
+        NotificationService::sendToOrganization(
+            $project->organization,
+            'delay_event_' . $kind,
+            $title,
+            $message,
+            [],
+            [
+                'project_id' => $project->id, 'organization_id' => $project->organization_id,
+                'category' => SuresignNotification::CATEGORY_PROGRAMME, 'priority' => SuresignNotification::PRIORITY_INFO,
+                'source_type' => 'delay_event', 'source_id' => $delayEvent->id,
+                'source_field' => $sourceField,
+                'action_url' => WorkspaceNavigationResolver::actionUrl($project->id, 'delay_event', $delayEvent->id, $delayEvent->trade_package_id),
+            ],
+            $request->user(),
+        );
     }
 
     /**

@@ -90,12 +90,23 @@ class AnalyseContractWithAiJob implements ShouldQueue
             ]);
 
             if ($user) {
-                NotificationService::send(
-                    $user,
+                // Asynchronous outcome — the requesting user wasn't watching when
+                // this finished, so they're included alongside the rest of the org.
+                NotificationService::sendToOrganization(
+                    $user->organization,
                     NotificationService::AI_ANALYSIS_COMPLETED,
                     'Contract analysis completed',
                     "AI analysis is ready for contract: {$analysis->contract->title}.",
-                    ['analysis_id' => $analysis->id, 'contract_id' => $analysis->contract_id]
+                    ['analysis_id' => $analysis->id, 'contract_id' => $analysis->contract_id],
+                    [
+                        'organization_id' => $user->organization_id,
+                        'source_type' => 'contract_ai_analysis', 'source_id' => $analysis->id, 'source_field' => 'completed',
+                        'action_url' => \App\Services\TradePackages\WorkspaceNavigationResolver::actionUrl(
+                            $analysis->contract->project_id, 'contract_ai_analysis', $analysis->id
+                        ),
+                    ],
+                    $user,
+                    includeActor: true,
                 );
 
                 EmailNotificationService::send(
@@ -133,12 +144,30 @@ class AnalyseContractWithAiJob implements ShouldQueue
             ]);
 
             if ($user) {
-                NotificationService::send(
-                    $user,
+                NotificationService::sendToOrganization(
+                    $user->organization,
                     NotificationService::AI_ANALYSIS_COMPLETED,
                     'Contract analysis failed',
                     "AI analysis failed for contract: {$analysis->contract->title}. {$safeMessage}",
-                    ['analysis_id' => $analysis->id, 'contract_id' => $analysis->contract_id]
+                    ['analysis_id' => $analysis->id, 'contract_id' => $analysis->contract_id],
+                    [
+                        'organization_id' => $user->organization_id,
+                        'priority' => \App\Models\SuresignNotification::PRIORITY_WARNING,
+                        'source_type' => 'contract_ai_analysis', 'source_id' => $analysis->id, 'source_field' => 'failed',
+                        'action_url' => \App\Services\TradePackages\WorkspaceNavigationResolver::actionUrl(
+                            $analysis->contract->project_id, 'contract_ai_analysis', $analysis->id
+                        ),
+                    ],
+                    $user,
+                    includeActor: true,
+                );
+
+                EmailNotificationService::send(
+                    'ai_analysis.failed',
+                    'Contract Analysis Failed',
+                    "AI analysis failed for contract: {$analysis->contract->title}. {$safeMessage}",
+                    [],
+                    $user->organization
                 );
             }
         }

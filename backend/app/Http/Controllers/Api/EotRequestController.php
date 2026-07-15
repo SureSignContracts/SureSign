@@ -6,9 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Contract;
 use App\Models\EotRequest;
 use App\Models\Project;
+use App\Models\SuresignNotification;
 use App\Models\TradePackage;
 use App\Services\DocumentGenerationService;
+use App\Services\EmailNotificationService;
+use App\Services\NotificationService;
 use App\Services\ProjectActivityService;
+use App\Services\TradePackages\WorkspaceNavigationResolver;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -107,6 +111,10 @@ class EotRequestController extends Controller
             $eot
         );
 
+        if ($eot->status === 'submitted') {
+            $this->notifyEot($request, $project, $eot, 'submitted', 'submitted', $eot->title);
+        }
+
         return response()->json($eot, 201);
     }
 
@@ -135,6 +143,10 @@ class EotRequestController extends Controller
             null,
             $eot
         );
+
+        if ($eot->status === 'submitted') {
+            $this->notifyEot($request, $project, $eot, 'submitted', 'submitted', "{$eot->title} ({$tradePackage->name}).");
+        }
 
         return response()->json($eot, 201);
     }
@@ -198,18 +210,62 @@ class EotRequestController extends Controller
             : null;
         $eotRequest->save();
 
+        $decisionMessage = $validated['status'] === 'granted'
+            ? "EOT #{$eotRequest->eot_number} granted — {$eotRequest->days_granted} days"
+            : "EOT #{$eotRequest->eot_number} refused";
+        $notifyMessage = $validated['status'] === 'granted'
+            ? "Granted — {$eotRequest->days_granted} day" . ($eotRequest->days_granted !== 1 ? 's' : '') . '.'
+            : 'Refused.';
+
         ProjectActivityService::record(
             $eotRequest->project,
             $request->user(),
             'eot_decided',
-            $validated['status'] === 'granted'
-                ? "EOT #{$eotRequest->eot_number} granted — {$eotRequest->days_granted} days"
-                : "EOT #{$eotRequest->eot_number} refused",
+            $decisionMessage,
             null,
             $eotRequest
         );
 
+        // decided_at (just set above) makes the key unique per decision
+        // instance — decide() has no guard against re-deciding an EOT (e.g.
+        // amending days_granted later), and a from_X_to_Y string alone
+        // wouldn't distinguish a genuine second "granted" decision from a
+        // duplicate report of the first one.
+        $this->notifyEot(
+            $request, $project, $eotRequest, 'decided',
+            "decided_{$validated['status']}_" . $eotRequest->decided_at->timestamp, $notifyMessage,
+            SuresignNotification::PRIORITY_WARNING, 'eot.decided',
+        );
+
         return response()->json($eotRequest->fresh());
+    }
+
+    private function notifyEot(
+        Request $request, Project $project, EotRequest $eot, string $kind, string $sourceField, string $message,
+        string $priority = SuresignNotification::PRIORITY_INFO, ?string $emailEvent = null,
+    ): void {
+        $title = $kind === 'submitted'
+            ? "EOT #{$eot->eot_number} Submitted"
+            : "EOT #{$eot->eot_number} " . ($eot->status === 'granted' ? 'Granted' : 'Refused');
+
+        NotificationService::sendToOrganization(
+            $project->organization,
+            'eot_' . $kind,
+            $title,
+            $message,
+            [],
+            [
+                'project_id' => $project->id, 'organization_id' => $project->organization_id,
+                'category' => SuresignNotification::CATEGORY_PROGRAMME, 'priority' => $priority,
+                'source_type' => 'eot_request', 'source_id' => $eot->id, 'source_field' => $sourceField,
+                'action_url' => WorkspaceNavigationResolver::actionUrl($project->id, 'eot_request', $eot->id, $eot->trade_package_id),
+            ],
+            $request->user(),
+        );
+
+        if ($emailEvent) {
+            EmailNotificationService::send($emailEvent, "EOT #{$eot->eot_number}", $message, [], $project->organization);
+        }
     }
 
     private function computeRevisedCompletionDate(EotRequest $eotRequest): ?string

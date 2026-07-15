@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\QaReport;
+use App\Models\SuresignNotification;
+use App\Services\NotificationService;
 use App\Services\ProjectActivityService;
+use App\Services\TradePackages\WorkspaceNavigationResolver;
 use Illuminate\Http\Request;
 
 class QaReportController extends Controller
@@ -77,6 +80,8 @@ class QaReportController extends Controller
             $report
         );
 
+        $this->notifyQaReport($request, $project, $report, 'created', 'created', $report->title);
+
         return response()->json($report->load(['creator:id,name', 'inspector:id,name']), 201);
     }
 
@@ -127,6 +132,17 @@ class QaReportController extends Controller
                 null,
                 $qaReport
             );
+
+            // "Important transitions only" per the approved channel policy —
+            // failed/passed/closed are inspection outcomes stakeholders act
+            // on; draft -> open is routine workflow initiation.
+            if (in_array($validated['status'], ['failed', 'passed', 'closed'], true)) {
+                $this->notifyQaReport(
+                    $request, $project, $qaReport, 'status_changed',
+                    "from_{$oldStatus}_to_{$qaReport->status}_" . $qaReport->updated_at->timestamp,
+                    ucfirst("{$qaReport->status}.")
+                );
+            }
         }
 
         return response()->json($qaReport->fresh()->load(['creator:id,name', 'inspector:id,name']));
@@ -138,5 +154,31 @@ class QaReportController extends Controller
 
         $qaReport->delete();
         return response()->json(null, 204);
+    }
+
+    private function notifyQaReport(Request $request, Project $project, QaReport $qaReport, string $kind, string $sourceField, string $message): void
+    {
+        $title = match (true) {
+            $kind === 'created'                          => "QA Report #{$qaReport->report_number} Logged",
+            $qaReport->status === 'failed'                => "QA Report #{$qaReport->report_number} Failed",
+            $qaReport->status === 'passed'                => "QA Report #{$qaReport->report_number} Passed",
+            $qaReport->status === 'closed'                => "QA Report #{$qaReport->report_number} Closed",
+            default                                        => "QA Report #{$qaReport->report_number} Status Changed",
+        };
+
+        NotificationService::sendToOrganization(
+            $project->organization,
+            'qa_report_' . $kind,
+            $title,
+            $message,
+            [],
+            [
+                'project_id' => $project->id, 'organization_id' => $project->organization_id,
+                'category' => SuresignNotification::CATEGORY_COMPLIANCE, 'priority' => SuresignNotification::PRIORITY_INFO,
+                'source_type' => 'qa_report', 'source_id' => $qaReport->id, 'source_field' => $sourceField,
+                'action_url' => WorkspaceNavigationResolver::actionUrl($project->id, 'qa_report', $qaReport->id),
+            ],
+            $request->user(),
+        );
     }
 }

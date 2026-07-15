@@ -556,8 +556,35 @@ class VariationController extends Controller
 
     private function notify($user, string $type, string $title, string $message, string $emailEvent, ?Variation $variation = null): void
     {
-        NotificationService::send($user, $type, $title, $message);
-        EmailNotificationService::send($emailEvent, $title, $message, [], $variation?->organization);
+        // Synchronous workflow transition — the actor already knows they just
+        // did this; the other org stakeholders are who need telling.
+        if ($variation && $variation->organization) {
+            NotificationService::sendToOrganization(
+                $variation->organization,
+                $type,
+                $title,
+                $message,
+                [],
+                [
+                    'project_id' => $variation->project_id, 'organization_id' => $variation->organization_id,
+                    'category' => \App\Models\SuresignNotification::CATEGORY_VARIATION,
+                    'source_type' => 'variation', 'source_id' => $variation->id, 'source_field' => $type,
+                    'action_url' => \App\Services\TradePackages\WorkspaceNavigationResolver::actionUrl(
+                        $variation->project_id, 'variation', $variation->id, $variation->trade_package_id
+                    ),
+                ],
+                $user,
+            );
+        } else {
+            NotificationService::send($user, $type, $title, $message);
+        }
+
+        // Channel policy: only the approved/rejected decision points are
+        // important enough to email — the other five transitions (submitted,
+        // instructed, quoted, assessed, resubmitted) stay in-app only.
+        if (in_array($emailEvent, ['variation.approved', 'variation.rejected'], true)) {
+            EmailNotificationService::send($emailEvent, $title, $message, [], $variation?->organization);
+        }
     }
 
     private function formatDate($date): string

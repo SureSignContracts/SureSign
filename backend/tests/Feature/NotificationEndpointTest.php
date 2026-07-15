@@ -156,4 +156,28 @@ class NotificationEndpointTest extends TestCase
         $response->assertStatus(200);
         $response->assertJson(['count' => 1]);
     }
+
+    /**
+     * Batch 4 fix: ?filter=communication previously fell through to the
+     * 'active' default because CATEGORY_COMMUNICATION was missing from
+     * NotificationController::index()'s $categoryValues array — RFI/Meeting/
+     * Site Diary notifications (which use this category) could never be
+     * filtered to on their own via the frontend's category dropdown.
+     */
+    public function test_communication_category_filter_returns_only_communication_notifications(): void
+    {
+        $a = $this->makeOrgAndUser('a');
+
+        $this->makeNotification($a['user'], ['title' => 'RFI', 'category' => 'communication']);
+        $this->makeNotification($a['user'], ['title' => 'Payment', 'category' => 'commercial']);
+
+        Sanctum::actingAs($a['user']);
+
+        $response = $this->getJson('/api/notifications?filter=communication');
+        $response->assertStatus(200);
+
+        $titles = collect($response->json('data'))->pluck('title');
+        $this->assertTrue($titles->contains('RFI'));
+        $this->assertFalse($titles->contains('Payment'));
+    }
 }

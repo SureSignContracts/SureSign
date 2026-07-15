@@ -7,7 +7,10 @@ use App\Models\Contract;
 use App\Models\ContractAiAnalysis;
 use App\Models\ContractProgrammeMilestone;
 use App\Models\Project;
+use App\Models\SuresignNotification;
 use App\Models\TradePackage;
+use App\Services\NotificationService;
+use App\Services\TradePackages\WorkspaceNavigationResolver;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -151,9 +154,52 @@ class ProgrammeMilestoneController extends Controller
 
         $validated = $request->validate(array_merge(self::RULES, ['name' => 'sometimes|string|max:255']));
 
+        $previousStatus = $milestone->status;
         $milestone->update($validated);
 
+        // Only a status change is a "meaningful" update per the approved
+        // channel policy — editing dates/notes/sort_order alone is routine
+        // housekeeping the other stakeholders don't need pinging for.
+        if (isset($validated['status']) && $validated['status'] !== $previousStatus) {
+            $this->notifyStatusChange($request, $milestone, $previousStatus);
+        }
+
         return response()->json($milestone->fresh());
+    }
+
+    private function notifyStatusChange(Request $request, ContractProgrammeMilestone $milestone, string $previousStatus): void
+    {
+        $project = $milestone->project;
+        if (!$project) {
+            return;
+        }
+
+        $statusLabel = str_replace('_', ' ', $milestone->status);
+        $titleLabel  = ucfirst($statusLabel);
+
+        NotificationService::sendToOrganization(
+            $project->organization,
+            'programme_milestone_status_changed',
+            "Programme Milestone {$titleLabel}: {$milestone->name}",
+            "Milestone \"{$milestone->name}\" is now: {$statusLabel}.",
+            [],
+            [
+                'project_id' => $project->id, 'organization_id' => $project->organization_id,
+                'category' => SuresignNotification::CATEGORY_PROGRAMME, 'priority' => SuresignNotification::PRIORITY_INFO,
+                // Deterministic transition identity (from_X_to_Y) for
+                // readability, plus a timestamp suffix for safety — a
+                // milestone can legitimately repeat the exact same transition
+                // later (e.g. complete -> delayed, fixed, then complete ->
+                // delayed again), and the transition string alone can't tell
+                // those two real events apart. The timestamp is what actually
+                // guarantees each is notified; the transition text is there
+                // so the dedup key (and the notifications list) stays readable.
+                'source_type' => 'programme_milestone', 'source_id' => $milestone->id,
+                'source_field' => "from_{$previousStatus}_to_{$milestone->status}_" . $milestone->updated_at->timestamp,
+                'action_url' => WorkspaceNavigationResolver::actionUrl($project->id, 'programme_milestone', $milestone->id, $milestone->trade_package_id),
+            ],
+            $request->user(),
+        );
     }
 
     public function destroy(Request $request, ContractProgrammeMilestone $milestone)

@@ -13,11 +13,14 @@ use App\Models\Project;
 use App\Models\TradePackage;
 use App\Models\Variation;
 use App\Models\ContractAiAnalysis;
+use App\Models\SuresignNotification;
 use App\Services\DocumentGenerationService;
 use App\Services\EmailNotificationService;
 use App\Services\ExcelGenerationService;
+use App\Services\NotificationService;
 use App\Services\PaymentDateService;
 use App\Services\ProjectActivityService;
+use App\Services\TradePackages\WorkspaceNavigationResolver;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -526,6 +529,21 @@ class PaymentApplicationController extends Controller
             null, $paymentApplication
         );
 
+        NotificationService::sendToOrganization(
+            $project->organization,
+            'payment_application_submitted',
+            "Payment Application #{$paymentApplication->application_number} Submitted",
+            "Submitted for {$project->name}.",
+            [],
+            [
+                'project_id' => $project->id, 'organization_id' => $project->organization_id,
+                'category' => SuresignNotification::CATEGORY_COMMERCIAL, 'priority' => SuresignNotification::PRIORITY_REMINDER,
+                'source_type' => 'payment_application', 'source_id' => $paymentApplication->id, 'source_field' => 'submitted',
+                'action_url' => WorkspaceNavigationResolver::actionUrl($project->id, 'payment_application', $paymentApplication->id, $paymentApplication->trade_package_id),
+            ],
+            $request->user(),
+        );
+
         EmailNotificationService::send(
             'payment_application.submitted',
             'New Payment Application Submitted',
@@ -587,6 +605,21 @@ class PaymentApplicationController extends Controller
             $paymentApplication
         );
 
+        NotificationService::sendToOrganization(
+            $project->organization,
+            'payment_application_certified',
+            "Payment Application #{$paymentApplication->application_number} Certified",
+            "Certified amount: {$paymentApplication->certified_amount}.",
+            [],
+            [
+                'project_id' => $project->id, 'organization_id' => $project->organization_id,
+                'category' => SuresignNotification::CATEGORY_COMMERCIAL, 'priority' => SuresignNotification::PRIORITY_WARNING,
+                'source_type' => 'payment_application', 'source_id' => $paymentApplication->id, 'source_field' => 'certified',
+                'action_url' => WorkspaceNavigationResolver::actionUrl($project->id, 'payment_application', $paymentApplication->id, $paymentApplication->trade_package_id),
+            ],
+            $request->user(),
+        );
+
         EmailNotificationService::send(
             'payment_application.certified',
             'Payment Application Certified',
@@ -629,6 +662,22 @@ class PaymentApplicationController extends Controller
             "Paid amount: " . number_format($validated['paid_amount'], 2)
                 . (($validated['payment_reference'] ?? null) ? " — Ref: {$validated['payment_reference']}" : ''),
             $paymentApplication
+        );
+
+        // In-app only, per approved channel policy — no email exists for this event and none is being added.
+        NotificationService::sendToOrganization(
+            $project->organization,
+            'payment_application_paid',
+            "Payment Application #{$paymentApplication->application_number} Paid",
+            'Paid amount: ' . number_format($validated['paid_amount'], 2) . '.',
+            [],
+            [
+                'project_id' => $project->id, 'organization_id' => $project->organization_id,
+                'category' => SuresignNotification::CATEGORY_COMMERCIAL, 'priority' => SuresignNotification::PRIORITY_INFO,
+                'source_type' => 'payment_application', 'source_id' => $paymentApplication->id, 'source_field' => 'paid',
+                'action_url' => WorkspaceNavigationResolver::actionUrl($project->id, 'payment_application', $paymentApplication->id, $paymentApplication->trade_package_id),
+            ],
+            $request->user(),
         );
 
         return response()->json($paymentApplication->fresh());
@@ -837,6 +886,29 @@ class PaymentApplicationController extends Controller
             $notice
         );
 
+        NotificationService::sendToOrganization(
+            $project->organization,
+            'payment_notice_issued',
+            "Payment Notice Issued — Application #{$paymentApplication->application_number}",
+            'Notified sum: ' . number_format($validated['notified_sum'], 2) . '.',
+            [],
+            [
+                'project_id' => $project->id, 'organization_id' => $project->organization_id,
+                'category' => SuresignNotification::CATEGORY_NOTICE, 'priority' => SuresignNotification::PRIORITY_WARNING,
+                'source_type' => 'payment_notice', 'source_id' => $notice->id, 'source_field' => 'issued',
+                'action_url' => WorkspaceNavigationResolver::actionUrl($project->id, 'payment_notice', $notice->id, $paymentApplication->trade_package_id),
+            ],
+            $request->user(),
+        );
+
+        EmailNotificationService::send(
+            'payment_notice.issued',
+            'Payment Notice Issued',
+            "A Payment Notice has been issued for Payment Application #{$paymentApplication->application_number}.",
+            [],
+            $project->organization
+        );
+
         return response()->json([
             'notice'   => $notice,
             'document' => $generatedDocument,
@@ -913,6 +985,21 @@ class PaymentApplicationController extends Controller
             "Pay Less Notice issued on Application #{$paymentApplication->application_number}",
             "Revised payable amount: " . number_format($revisedAmountPayable, 2),
             $notice
+        );
+
+        NotificationService::sendToOrganization(
+            $project->organization,
+            'pay_less_notice_issued',
+            "Pay Less Notice Issued — Application #{$paymentApplication->application_number}",
+            'Revised payable amount: ' . number_format($revisedAmountPayable, 2) . '.',
+            [],
+            [
+                'project_id' => $project->id, 'organization_id' => $project->organization_id,
+                'category' => SuresignNotification::CATEGORY_NOTICE, 'priority' => SuresignNotification::PRIORITY_WARNING,
+                'source_type' => 'pay_less_notice', 'source_id' => $notice->id, 'source_field' => 'issued',
+                'action_url' => WorkspaceNavigationResolver::actionUrl($project->id, 'pay_less_notice', $notice->id, $paymentApplication->trade_package_id),
+            ],
+            $request->user(),
         );
 
         EmailNotificationService::send(

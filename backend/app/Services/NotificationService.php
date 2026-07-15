@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Jobs\GenerateProjectNotificationsJob;
+use App\Models\Organization;
 use App\Models\SuresignNotification;
 use App\Models\User;
 
@@ -61,6 +62,9 @@ class NotificationService
             'status'          => SuresignNotification::STATUS_UNREAD,
             'title'           => $title,
             'message'         => $message,
+            'source_type'     => $meta['source_type']     ?? null,
+            'source_id'       => $meta['source_id']        ?? null,
+            'source_field'    => $meta['source_field']    ?? null,
             'action_url'      => $meta['action_url']      ?? null,
             'data'            => $data,
             'is_read'         => false,
@@ -74,5 +78,73 @@ class NotificationService
     public static function generateFromOperationalIntelligence(int $projectId): void
     {
         GenerateProjectNotificationsJob::dispatch($projectId);
+    }
+
+    /**
+     * Fan out a manual notification to the relevant users of an organisation,
+     * instead of only the acting user.
+     *
+     * Default recipient set: active, non-banned users with the 'Client' role
+     * on $organization. Admin/Super Admin are platform operators and are
+     * deliberately excluded unless $recipientFilter widens the set for a
+     * platform-level event.
+     *
+     * $recipientFilter must be trusted, module-authored logic only — it
+     * receives and returns an Eloquent query builder scoped to $organization's
+     * users. It must never be built from request input.
+     *
+     * Idempotency: only applied when $meta carries 'source_type' + 'source_id'
+     * (the same shape NotificationEngineService keys its own upserts on) — a
+     * matching (user_id, type, source_type, source_id, source_field) row
+     * already existing means this exact event was already delivered to that
+     * user, so it's skipped rather than duplicated. Without source metadata,
+     * every call creates a fresh notification (e.g. a one-off system message).
+     */
+    public static function sendToOrganization(
+        Organization $organization,
+        string   $type,
+        string   $title,
+        string   $message,
+        array    $data = [],
+        array    $meta = [],
+        ?User    $actor = null,
+        bool     $includeActor = false,
+        ?callable $recipientFilter = null,
+    ): void {
+        $query = $organization->users()
+            ->where('is_active', true)
+            ->whereNull('banned_at')
+            ->whereHas('roles', fn ($q) => $q->where('name', 'Client'));
+
+        if ($recipientFilter) {
+            $query = $recipientFilter($query);
+        }
+
+        $recipients = $query->get()->unique('id');
+
+        if (!$includeActor && $actor) {
+            $recipients = $recipients->reject(fn (User $u) => $u->id === $actor->id);
+        }
+
+        $sourceType  = $meta['source_type']  ?? null;
+        $sourceId    = $meta['source_id']    ?? null;
+        $sourceField = $meta['source_field'] ?? null;
+
+        foreach ($recipients as $recipient) {
+            if ($sourceType !== null && $sourceId !== null) {
+                $alreadyNotified = SuresignNotification::where('user_id', $recipient->id)
+                    ->where('type', $type)
+                    ->where('source_type', $sourceType)
+                    ->where('source_id', $sourceId)
+                    ->where('source_field', $sourceField)
+                    ->exists();
+
+                if ($alreadyNotified) {
+                    continue;
+                }
+            }
+
+            self::send($recipient, $type, $title, $message, $data, $meta);
+        }
     }
 }

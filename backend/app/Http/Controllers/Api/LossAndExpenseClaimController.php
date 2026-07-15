@@ -7,8 +7,12 @@ use App\Models\FinalAccount;
 use App\Models\FinalAccountItem;
 use App\Models\LossAndExpenseClaim;
 use App\Models\Project;
+use App\Models\SuresignNotification;
 use App\Models\TradePackage;
+use App\Services\EmailNotificationService;
+use App\Services\NotificationService;
 use App\Services\ProjectActivityService;
+use App\Services\TradePackages\WorkspaceNavigationResolver;
 use Illuminate\Http\Request;
 
 class LossAndExpenseClaimController extends Controller
@@ -105,6 +109,10 @@ class LossAndExpenseClaimController extends Controller
             $claim
         );
 
+        if ($claim->status === 'submitted') {
+            $this->notifyClaim($request, $project, $claim, 'submitted', 'submitted', $claim->title);
+        }
+
         return response()->json($claim, 201);
     }
 
@@ -133,6 +141,10 @@ class LossAndExpenseClaimController extends Controller
             null,
             $claim
         );
+
+        if ($claim->status === 'submitted') {
+            $this->notifyClaim($request, $project, $claim, 'submitted', 'submitted', "{$claim->title} ({$tradePackage->name}).");
+        }
 
         return response()->json($claim, 201);
     }
@@ -191,18 +203,60 @@ class LossAndExpenseClaimController extends Controller
             $this->createFinalAccountItemIfPossible($lossAndExpenseClaim);
         }
 
+        $decisionMessage = $validated['status'] === 'agreed'
+            ? "L&E Claim #{$lossAndExpenseClaim->claim_number} agreed — £" . number_format((float) $lossAndExpenseClaim->amount_agreed, 2)
+            : "L&E Claim #{$lossAndExpenseClaim->claim_number} rejected";
+        $notifyMessage = $validated['status'] === 'agreed'
+            ? 'Agreed — £' . number_format((float) $lossAndExpenseClaim->amount_agreed, 2) . '.'
+            : 'Rejected.';
+
         ProjectActivityService::record(
             $lossAndExpenseClaim->project,
             $request->user(),
             'loss_and_expense_decided',
-            $validated['status'] === 'agreed'
-                ? "L&E Claim #{$lossAndExpenseClaim->claim_number} agreed — £" . number_format((float) $lossAndExpenseClaim->amount_agreed, 2)
-                : "L&E Claim #{$lossAndExpenseClaim->claim_number} rejected",
+            $decisionMessage,
             null,
             $lossAndExpenseClaim
         );
 
+        // No decided_at column on this model — updated_at (fresh after the
+        // save() above) is the next best instance discriminator, same
+        // reasoning as EotRequestController::decide().
+        $this->notifyClaim(
+            $request, $project, $lossAndExpenseClaim, 'decided',
+            "decided_{$validated['status']}_" . $lossAndExpenseClaim->updated_at->timestamp, $notifyMessage,
+            SuresignNotification::PRIORITY_WARNING, 'loss_and_expense.decided',
+        );
+
         return response()->json($lossAndExpenseClaim->fresh());
+    }
+
+    private function notifyClaim(
+        Request $request, Project $project, LossAndExpenseClaim $claim, string $kind, string $sourceField, string $message,
+        string $priority = SuresignNotification::PRIORITY_INFO, ?string $emailEvent = null,
+    ): void {
+        $title = $kind === 'submitted'
+            ? "L&E Claim #{$claim->claim_number} Submitted"
+            : "L&E Claim #{$claim->claim_number} " . ($claim->status === 'agreed' ? 'Agreed' : 'Rejected');
+
+        NotificationService::sendToOrganization(
+            $project->organization,
+            'loss_and_expense_' . $kind,
+            $title,
+            $message,
+            [],
+            [
+                'project_id' => $project->id, 'organization_id' => $project->organization_id,
+                'category' => SuresignNotification::CATEGORY_COMMERCIAL, 'priority' => $priority,
+                'source_type' => 'loss_and_expense_claim', 'source_id' => $claim->id, 'source_field' => $sourceField,
+                'action_url' => WorkspaceNavigationResolver::actionUrl($project->id, 'loss_and_expense_claim', $claim->id, $claim->trade_package_id),
+            ],
+            $request->user(),
+        );
+
+        if ($emailEvent) {
+            EmailNotificationService::send($emailEvent, "L&E Claim #{$claim->claim_number}", $message, [], $project->organization);
+        }
     }
 
     private function createFinalAccountItemIfPossible(LossAndExpenseClaim $claim): void

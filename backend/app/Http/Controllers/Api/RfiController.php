@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Jobs\GenerateProjectNotificationsJob;
 use App\Models\Project;
 use App\Models\Rfi;
+use App\Models\SuresignNotification;
+use App\Services\NotificationService;
 use App\Services\ProjectActivityService;
+use App\Services\TradePackages\WorkspaceNavigationResolver;
 use Illuminate\Http\Request;
 
 class RfiController extends Controller
@@ -68,6 +71,10 @@ class RfiController extends Controller
             $rfi
         );
 
+        if ($rfi->status !== 'draft') {
+            $this->notifyRfi($request, $project, $rfi, 'submitted', 'submitted', $rfi->subject);
+        }
+
         // A new RFI can immediately be operationally relevant (e.g. created
         // with a near-term response_due_date) — regenerate notifications now
         // rather than waiting for an unrelated AI-confirm/calendar-sync run to
@@ -123,6 +130,23 @@ class RfiController extends Controller
                 null,
                 $rfi
             );
+
+            // Per the approved channel policy, only "answered" and "closed"
+            // are meaningful enough to notify — the other status values
+            // (open <-> pending_response) are internal workflow bookkeeping.
+            if ($validated['status'] === 'responded') {
+                $this->notifyRfi(
+                    $request, $project, $rfi, 'answered',
+                    'answered_' . $rfi->updated_at->timestamp,
+                    $rfi->subject
+                );
+            } elseif ($validated['status'] === 'closed') {
+                $this->notifyRfi(
+                    $request, $project, $rfi, 'closed',
+                    'closed_' . $rfi->updated_at->timestamp,
+                    $rfi->subject
+                );
+            }
         }
 
         // Only the fields OperationalIntelligenceService::collectRfis() actually
@@ -150,5 +174,30 @@ class RfiController extends Controller
         GenerateProjectNotificationsJob::dispatch($projectId);
 
         return response()->json(null, 204);
+    }
+
+    private function notifyRfi(Request $request, Project $project, Rfi $rfi, string $kind, string $sourceField, string $message): void
+    {
+        $title = match ($kind) {
+            'submitted' => "RFI #{$rfi->rfi_number} Submitted",
+            'answered'  => "RFI #{$rfi->rfi_number} Answered",
+            'closed'    => "RFI #{$rfi->rfi_number} Closed",
+            default     => "RFI #{$rfi->rfi_number} Status Changed",
+        };
+
+        NotificationService::sendToOrganization(
+            $project->organization,
+            'rfi_' . $kind,
+            $title,
+            $message,
+            [],
+            [
+                'project_id' => $project->id, 'organization_id' => $project->organization_id,
+                'category' => SuresignNotification::CATEGORY_COMMUNICATION, 'priority' => SuresignNotification::PRIORITY_INFO,
+                'source_type' => 'rfi', 'source_id' => $rfi->id, 'source_field' => $sourceField,
+                'action_url' => WorkspaceNavigationResolver::actionUrl($project->id, 'rfi', $rfi->id),
+            ],
+            $request->user(),
+        );
     }
 }
