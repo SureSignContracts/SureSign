@@ -7,6 +7,7 @@ import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { Package, Plus, Search, AlertCircle, X } from 'lucide-react';
 import PageTourButton from '@/components/tours/PageTourButton';
+import Button from '@/components/ui/Button';
 
 const PRIORITY_COLORS: Record<string, { bg: string; text: string }> = {
   low:      { bg: 'rgba(90,86,82,0.2)',    text: '#9a9490' },
@@ -280,11 +281,9 @@ export default function ProjectSnaggingPage() {
           <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
             <Package size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No snag items found</p>
-            <button onClick={() => setModal({ open: true })}
-              className="mt-4 px-4 py-2 rounded-lg text-xs font-medium transition-all active:scale-[0.98]"
-              style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+            <Button onClick={() => setModal({ open: true })} variant="secondary" size="sm" className="mt-4">
               Add First Snag
-            </button>
+            </Button>
           </div>
         ) : items.map((s: any, i: number) => {
           const statusBadge   = STATUS_COLORS[s.status]    ?? { bg: 'var(--bg-elevated)', text: 'var(--text-muted)' };

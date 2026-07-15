@@ -2134,7 +2134,7 @@ export default function ProjectCommercialPage() {
   const formatCurrency = useCurrencyFormatter();
   const { id: projectId } = useParams<{ id: string }>();
   const id = projectId!;
-  const { canWrite } = useProjectPermissions();
+  const { canManagePaymentApplications: canWrite } = useProjectPermissions();
   const searchParams = useSearchParams();
 
   const VALID_TABS: CommercialTab[] = ['overview', 'applications', 'trade-packages', 'notices', 'retention', 'final-account'];

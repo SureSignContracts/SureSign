@@ -30,8 +30,18 @@ class NotificationController extends Controller
         $type    = $request->query('type');
         $perPage = min((int) $request->query('per_page', 25), 100);
 
+        // CASE, not MySQL's FIELD(), so this runs identically under the
+        // sqlite test driver as well as MySQL/Postgres in production.
         $query = SuresignNotification::where('user_id', $userId)
-            ->orderByRaw("FIELD(priority, 'critical', 'warning', 'reminder', 'info') ASC, created_at DESC");
+            ->orderByRaw("
+                CASE priority
+                    WHEN 'critical' THEN 0
+                    WHEN 'warning'  THEN 1
+                    WHEN 'reminder' THEN 2
+                    WHEN 'info'     THEN 3
+                    ELSE 4
+                END ASC, created_at DESC
+            ");
 
         // ── Status / priority / category filters ─────────────────────────────
         $priorityValues  = [SuresignNotification::PRIORITY_CRITICAL, SuresignNotification::PRIORITY_WARNING,

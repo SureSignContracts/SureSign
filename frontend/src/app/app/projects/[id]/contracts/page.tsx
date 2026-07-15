@@ -19,6 +19,7 @@ import { useAiAnalysisStore } from '@/store/aiAnalysisStore';
 import SharedSection from '@/components/ai/Section';
 import SharedAnalysisLoadingDisplay from '@/components/ai/AnalysisLoadingDisplay';
 import PageTourButton from '@/components/tours/PageTourButton';
+import Button from '@/components/ui/Button';
 
 const ANALYSIS_MESSAGES = [
   { at: 0,   text: 'Reading contract document…' },
@@ -2535,7 +2536,9 @@ function TpStatusBadge({ status }: { status?: string | null }) {
 export default function ProjectContractsPage() {
   const formatCurrency = useCurrencyFormatter();
   const { id } = useParams<{ id: string }>();
-  const { canWrite } = useProjectPermissions();
+  // Contracts + Trade Packages are both reviewed for Batch 2 — Client has
+  // full operational authority here, same as a platform operator.
+  const { canManageContracts: canWrite } = useProjectPermissions();
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editContract, setEditContract] = useState<(ProjectContract & Record<string, any>) | null>(null);
@@ -2690,9 +2693,9 @@ export default function ProjectContractsPage() {
         <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
           <FileText size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No contracts added yet</p>
-          <button onClick={() => setShowModal(true)} className="mt-4 px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+          <Button onClick={() => setShowModal(true)} variant="secondary" size="sm" className="mt-4">
             Add first contract
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="rounded-2xl overflow-visible" data-tour="contracts-table" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
@@ -2888,9 +2891,9 @@ export default function ProjectContractsPage() {
             <FileSignature size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No trade packages created yet</p>
             {canWrite && (
-              <button onClick={() => setShowCreatePackageModal(true)} className="mt-4 px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+              <Button onClick={() => setShowCreatePackageModal(true)} variant="secondary" size="sm" className="mt-4">
                 Create first trade package
-              </button>
+              </Button>
             )}
           </div>
         ) : (

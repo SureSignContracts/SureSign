@@ -9,6 +9,7 @@ import { ClipboardList, Plus, Search, X, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PageTourButton from '@/components/tours/PageTourButton';
+import Button from '@/components/ui/Button';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   draft:     { bg: 'rgba(90,86,82,0.2)',    text: '#9a9490' },
@@ -127,7 +128,7 @@ function SiteDiaryModal({ projectId, diary, readOnly, onClose }: { projectId: st
 
 export default function ProjectSiteReportsPage() {
   const { id } = useParams<{ id: string }>();
-  const { canWrite } = useProjectPermissions();
+  const { canManageSiteReports: canWrite } = useProjectPermissions();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'submitted' | 'approved'>('all');
   const [modalDiary, setModalDiary] = useState<any | 'new' | null>(null);
@@ -215,9 +216,9 @@ export default function ProjectSiteReportsPage() {
             <ClipboardList size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No site diaries{statusFilter !== 'all' ? ` with status "${statusFilter}"` : ''} yet</p>
             {canWrite && (
-            <button onClick={() => setModalDiary('new')} className="mt-3 px-3 py-1.5 rounded-lg text-xs font-medium transition-all active:scale-[0.98]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+            <Button onClick={() => setModalDiary('new')} variant="secondary" size="sm" className="mt-3">
               Add first diary
-            </button>
+            </Button>
             )}
           </div>
         ) : diaries.map((d: any, i: number) => {

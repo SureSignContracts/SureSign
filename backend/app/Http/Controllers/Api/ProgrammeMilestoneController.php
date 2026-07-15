@@ -34,8 +34,51 @@ class ProgrammeMilestoneController extends Controller
         'sort_order'       => 'nullable|integer',
     ];
 
-    public function index(Contract $contract)
+    private function authorizeProject(Request $request, Project $project): void
     {
+        $user = $request->user();
+        if ($user->hasRole('Super Admin') || $user->hasRole('Admin')) return;
+        if ($user->organization_id !== $project->organization_id) abort(403, 'Access denied.');
+    }
+
+    private function authorizeContract(Request $request, Contract $contract): void
+    {
+        $user = $request->user();
+        if ($user->hasRole('Super Admin') || $user->hasRole('Admin')) return;
+        if ($user->organization_id !== $contract->organization_id) abort(403, 'Access denied.');
+    }
+
+    /**
+     * Milestones have no organization_id column of their own — organisation
+     * is derived through the real parent (project, which every milestone
+     * always has). Every method below was previously missing this check
+     * entirely: any authenticated user of any organisation could view,
+     * create, update, or delete another organisation's programme
+     * milestones, and even trigger seedFromAnalysis against an arbitrary
+     * contract. Fixed for every role, not just Client.
+     */
+    private function authorizeMilestone(Request $request, ContractProgrammeMilestone $milestone): void
+    {
+        $user = $request->user();
+        if ($user->hasRole('Super Admin') || $user->hasRole('Admin')) return;
+        $project = $milestone->project;
+        if (!$project || $user->organization_id !== $project->organization_id) {
+            abort(403, 'Access denied.');
+        }
+    }
+
+    private function authorizeProjectPackage(Request $request, Project $project, TradePackage $tradePackage): void
+    {
+        $this->authorizeProject($request, $project);
+        if ($tradePackage->project_id !== $project->id) {
+            abort(404, 'Trade package not found for this project.');
+        }
+    }
+
+    public function index(Request $request, Contract $contract)
+    {
+        $this->authorizeContract($request, $contract);
+
         return response()->json(
             ContractProgrammeMilestone::where('contract_id', $contract->id)
                 ->orderBy('sort_order')
@@ -44,8 +87,10 @@ class ProgrammeMilestoneController extends Controller
         );
     }
 
-    public function indexByProject(Project $project)
+    public function indexByProject(Request $request, Project $project)
     {
+        $this->authorizeProject($request, $project);
+
         return response()->json(
             ContractProgrammeMilestone::where('project_id', $project->id)
                 ->with(['contract:id,title,reference_number', 'tradePackage:id,name'])
@@ -54,8 +99,10 @@ class ProgrammeMilestoneController extends Controller
         );
     }
 
-    public function indexByTradePackage(Project $project, TradePackage $tradePackage)
+    public function indexByTradePackage(Request $request, Project $project, TradePackage $tradePackage)
     {
+        $this->authorizeProjectPackage($request, $project, $tradePackage);
+
         return response()->json(
             ContractProgrammeMilestone::where('trade_package_id', $tradePackage->id)
                 ->orderBy('sort_order')
@@ -66,6 +113,8 @@ class ProgrammeMilestoneController extends Controller
 
     public function store(Request $request, Contract $contract)
     {
+        $this->authorizeContract($request, $contract);
+
         $validated = $request->validate(self::RULES);
 
         $milestone = ContractProgrammeMilestone::create(array_merge($validated, [
@@ -81,6 +130,8 @@ class ProgrammeMilestoneController extends Controller
 
     public function storeForTradePackage(Request $request, Project $project, TradePackage $tradePackage)
     {
+        $this->authorizeProjectPackage($request, $project, $tradePackage);
+
         $validated = $request->validate(self::RULES);
 
         $milestone = ContractProgrammeMilestone::create(array_merge($validated, [
@@ -96,6 +147,8 @@ class ProgrammeMilestoneController extends Controller
 
     public function update(Request $request, ContractProgrammeMilestone $milestone)
     {
+        $this->authorizeMilestone($request, $milestone);
+
         $validated = $request->validate(array_merge(self::RULES, ['name' => 'sometimes|string|max:255']));
 
         $milestone->update($validated);
@@ -103,8 +156,10 @@ class ProgrammeMilestoneController extends Controller
         return response()->json($milestone->fresh());
     }
 
-    public function destroy(ContractProgrammeMilestone $milestone)
+    public function destroy(Request $request, ContractProgrammeMilestone $milestone)
     {
+        $this->authorizeMilestone($request, $milestone);
+
         $milestone->delete();
         return response()->json(null, 204);
     }
@@ -114,6 +169,8 @@ class ProgrammeMilestoneController extends Controller
      */
     public function seedFromAnalysis(Request $request, Contract $contract)
     {
+        $this->authorizeContract($request, $contract);
+
         $analysis = ContractAiAnalysis::where('contract_id', $contract->id)
             ->where('status', 'confirmed')
             ->latest()

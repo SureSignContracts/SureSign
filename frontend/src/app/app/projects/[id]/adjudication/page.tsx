@@ -8,6 +8,7 @@ import { formatDate } from '@/lib/utils';
 import { Scale, Plus, Search, X, ChevronRight, AlertCircle, Clock, CheckCircle2 } from 'lucide-react';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
+import Button from '@/components/ui/Button';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -295,7 +296,7 @@ export default function ProjectAdjudicationPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const qc = useQueryClient();
-  const { canWrite } = useProjectPermissions();
+  const { canManageAdjudication: canWrite } = useProjectPermissions();
 
   const [search, setSearch]             = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -427,13 +428,9 @@ export default function ProjectAdjudicationPage() {
               {allCases.length > 0 ? 'No cases match your filters.' : 'Create a new case to begin tracking a construction dispute.'}
             </p>
             {canWrite && allCases.length === 0 && (
-              <button
-                onClick={() => setShowCreate(true)}
-                className="mt-4 px-4 py-2 rounded-lg text-xs font-medium active:scale-[0.98]"
-                style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
-              >
+              <Button onClick={() => setShowCreate(true)} variant="secondary" size="sm" className="mt-4">
                 Create First Case
-              </button>
+              </Button>
             )}
           </div>
         ) : cases.map((c: any, i: number) => {

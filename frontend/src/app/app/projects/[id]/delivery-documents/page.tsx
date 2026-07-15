@@ -9,6 +9,7 @@ import { Plus, X, Trash2, FileStack } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getErrorMessage, INPUT_STYLE, CATEGORY_LABELS, StatusBadge, Field } from '@/components/deliveryDocuments/deliveryDocumentShared';
 import PageTourButton from '@/components/tours/PageTourButton';
+import Button from '@/components/ui/Button';
 
 type DeliveryDoc = {
   id: number;
@@ -116,9 +117,9 @@ export default function DeliveryDocumentsPage() {
                     No delivery documents{filter !== 'all' ? ` with status "${filter}"` : ' recorded for this project yet'}.
                   </p>
                   {filter === 'all' && (
-                    <button onClick={() => setShowCreate(true)} className="mt-3 px-3 py-1.5 rounded-lg text-xs font-medium transition-all active:scale-[0.98]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+                    <Button onClick={() => setShowCreate(true)} variant="secondary" size="sm" className="mt-3">
                       Add first document
-                    </button>
+                    </Button>
                   )}
                 </td>
               </tr>

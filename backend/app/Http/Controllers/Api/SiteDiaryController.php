@@ -17,6 +17,19 @@ class SiteDiaryController extends Controller
         if ($user->organization_id !== $subject->organization_id) abort(403, 'Access denied.');
     }
 
+    /**
+     * Re-derives the site diary's REAL parent project so a same-organisation
+     * but mismatched project ID in the URL can't address a diary entry that
+     * actually belongs to a different project (see MeetingMinutesController).
+     */
+    private function authorizeProjectSiteDiary(Request $request, Project $project, SiteDiary $siteDiary): void
+    {
+        $this->authorize($request, $siteDiary);
+        if ($siteDiary->project_id !== $project->id) {
+            abort(404, 'Site diary not found for this project.');
+        }
+    }
+
     public function index(Request $request, Project $project)
     {
         $this->authorize($request, $project);
@@ -72,14 +85,14 @@ class SiteDiaryController extends Controller
     // applied to MeetingMinutesController/ProgrammeMilestoneController/etc.
     public function show(Request $request, Project $project, SiteDiary $siteDiary)
     {
-        $this->authorize($request, $siteDiary);
+        $this->authorizeProjectSiteDiary($request, $project, $siteDiary);
 
         return response()->json($siteDiary->load('creator:id,name'));
     }
 
     public function update(Request $request, Project $project, SiteDiary $siteDiary)
     {
-        $this->authorize($request, $siteDiary);
+        $this->authorizeProjectSiteDiary($request, $project, $siteDiary);
 
         $oldStatus = $siteDiary->status;
 
@@ -113,7 +126,7 @@ class SiteDiaryController extends Controller
 
     public function destroy(Request $request, Project $project, SiteDiary $siteDiary)
     {
-        $this->authorize($request, $siteDiary);
+        $this->authorizeProjectSiteDiary($request, $project, $siteDiary);
 
         $siteDiary->delete();
         return response()->json(null, 204);

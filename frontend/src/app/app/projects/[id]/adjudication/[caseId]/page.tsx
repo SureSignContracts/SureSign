@@ -14,6 +14,7 @@ import {
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import toast from 'react-hot-toast';
 import PromptActionButton from '@/components/prompts/PromptActionButton';
+import Button from '@/components/ui/Button';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -701,7 +702,7 @@ export default function AdjudicationCaseDetailPage() {
   const { id, caseId } = useParams<{ id: string; caseId: string }>();
   const router = useRouter();
   const qc = useQueryClient();
-  const { canWrite } = useProjectPermissions();
+  const { canManageAdjudication: canWrite } = useProjectPermissions();
 
   const [showAddDoc, setShowAddDoc]       = useState<{ open: boolean; docType?: string; step?: string }>({ open: false });
   const [showAddDeadline, setShowDeadline] = useState(false);
@@ -984,11 +985,9 @@ export default function AdjudicationCaseDetailPage() {
                   <FileText size={28} className="mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
                   <p className="text-xs" style={{ color: 'var(--text-muted)' }}>No documents yet</p>
                   {canWrite && (
-                    <button onClick={() => setShowAddDoc({ open: true })}
-                      className="mt-3 px-3 py-1.5 rounded-lg text-xs active:scale-[0.98]"
-                      style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+                    <Button onClick={() => setShowAddDoc({ open: true })} variant="secondary" size="sm" className="mt-3">
                       Add First Document
-                    </button>
+                    </Button>
                   )}
                 </div>
               ) : allDocs.map((doc: any) => {

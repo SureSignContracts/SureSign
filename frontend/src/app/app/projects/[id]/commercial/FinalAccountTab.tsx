@@ -1040,7 +1040,7 @@ export function FinalAccountTab({ contracts, tradePackages, projectId }: {
   tradePackages: TradePackageOption[];
   projectId: string;
 }) {
-  const { canWrite } = useProjectPermissions();
+  const { canManageFinalAccounts: canWrite } = useProjectPermissions();
   const searchParams = useSearchParams();
   const faParam = searchParams.get('fa');
   const autoExpandId = faParam ? parseInt(faParam, 10) : null;

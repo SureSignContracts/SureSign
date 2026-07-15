@@ -24,9 +24,27 @@ class AdjudicationDocumentController extends Controller
         if ($user->organization_id !== $subject->organization_id) abort(403, 'Access denied.');
     }
 
-    public function index(Request $request, Project $project, AdjudicationCase $adjudicationCase)
+    /** Re-derives the case's REAL parent project (see MeetingMinutesController). */
+    private function authorizeProjectCase(Request $request, Project $project, AdjudicationCase $adjudicationCase): void
     {
         $this->authorize($request, $adjudicationCase);
+        if ($adjudicationCase->project_id !== $project->id) {
+            abort(404, 'Adjudication case not found for this project.');
+        }
+    }
+
+    /** Re-derives the document's REAL parent project. */
+    private function authorizeProjectDocument(Request $request, Project $project, AdjudicationDocument $adjudicationDocument): void
+    {
+        $this->authorize($request, $adjudicationDocument);
+        if ($adjudicationDocument->project_id !== $project->id) {
+            abort(404, 'Adjudication document not found for this project.');
+        }
+    }
+
+    public function index(Request $request, Project $project, AdjudicationCase $adjudicationCase)
+    {
+        $this->authorizeProjectCase($request, $project, $adjudicationCase);
 
         return response()->json(
             $adjudicationCase->documents()
@@ -38,7 +56,7 @@ class AdjudicationDocumentController extends Controller
 
     public function store(Request $request, Project $project, AdjudicationCase $adjudicationCase)
     {
-        $this->authorize($request, $adjudicationCase);
+        $this->authorizeProjectCase($request, $project, $adjudicationCase);
 
         $validated = $request->validate([
             'title'         => 'required|string|max:255',
@@ -96,7 +114,7 @@ class AdjudicationDocumentController extends Controller
 
     public function destroy(Request $request, Project $project, AdjudicationDocument $adjudicationDocument)
     {
-        $this->authorize($request, $adjudicationDocument);
+        $this->authorizeProjectDocument($request, $project, $adjudicationDocument);
 
         $adjudicationDocument->delete();
         return response()->json(null, 204);

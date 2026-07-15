@@ -9,6 +9,7 @@ import { Bell, Plus, Search, Clock, AlertTriangle, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PageTourButton from '@/components/tours/PageTourButton';
+import Button from '@/components/ui/Button';
 
 type NoticeType = 'eot' | 'delay' | 'pay-less' | 'site-instruction';
 
@@ -192,8 +193,16 @@ function NewSiteInstructionModal({ projectId, onClose }: { projectId: string; on
 
 export default function ProjectNoticesPage() {
   const { id } = useParams<{ id: string }>();
-  const { canWrite } = useProjectPermissions();
+  // EOT/Delay are reviewed (Batch 3), Pay Less Notices reviewed (Batch 4) —
+  // each gets its own flag. Site Instructions hasn't been reviewed in any
+  // batch, so it stays on the legacy `canWrite` (Admin-only) unchanged.
+  const { canWrite, canManageEotRequests, canManagePayLessNotices } = useProjectPermissions();
   const [tab, setTab] = useState<NoticeType>('eot');
+  const canWriteForTab = tab === 'eot' || tab === 'delay'
+    ? canManageEotRequests
+    : tab === 'pay-less'
+      ? canManagePayLessNotices
+      : canWrite;
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
 
@@ -225,7 +234,7 @@ export default function ProjectNoticesPage() {
           </div>
           <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>EOT requests, delay notices, pay less notices and site instructions</p>
         </div>
-        {canWrite && (
+        {canWriteForTab && (
         <button
           data-tour="notices-new"
           onClick={() => setShowModal(true)}
@@ -267,10 +276,10 @@ export default function ProjectNoticesPage() {
           <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
             <Bell size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No {NOTICE_TABS.find(t => t.id === tab)?.label.toLowerCase()} yet</p>
-            {canWrite && (
-            <button onClick={() => setShowModal(true)} className="mt-3 px-3 py-1.5 rounded-lg text-xs font-medium active:scale-[0.98]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+            {canWriteForTab && (
+            <Button onClick={() => setShowModal(true)} variant="secondary" size="sm" className="mt-3">
               Create New
-            </button>
+            </Button>
             )}
           </div>
         ) : items.map((item: any, i: number) => {
@@ -302,10 +311,10 @@ export default function ProjectNoticesPage() {
         })}
       </div>
 
-      {canWrite && showModal && tab === 'eot'              && <NewEotModal projectId={id!} onClose={() => setShowModal(false)} />}
-      {canWrite && showModal && tab === 'delay'            && <NewEotModal projectId={id!} onClose={() => setShowModal(false)} />}
-      {canWrite && showModal && tab === 'pay-less'         && <NewPayLessModal projectId={id!} onClose={() => setShowModal(false)} />}
-      {canWrite && showModal && tab === 'site-instruction' && <NewSiteInstructionModal projectId={id!} onClose={() => setShowModal(false)} />}
+      {canManageEotRequests   && showModal && tab === 'eot'              && <NewEotModal projectId={id!} onClose={() => setShowModal(false)} />}
+      {canManageEotRequests   && showModal && tab === 'delay'            && <NewEotModal projectId={id!} onClose={() => setShowModal(false)} />}
+      {canManagePayLessNotices && showModal && tab === 'pay-less'        && <NewPayLessModal projectId={id!} onClose={() => setShowModal(false)} />}
+      {canWrite               && showModal && tab === 'site-instruction' && <NewSiteInstructionModal projectId={id!} onClose={() => setShowModal(false)} />}
     </div>
   );
 }

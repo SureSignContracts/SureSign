@@ -36,6 +36,24 @@ class LossAndExpenseClaimController extends Controller
         if ($user->organization_id !== $subject->organization_id) abort(403, 'Access denied.');
     }
 
+    /** Re-derives the claim's REAL parent project (see MeetingMinutesController). */
+    private function authorizeProjectClaim(Request $request, Project $project, LossAndExpenseClaim $lossAndExpenseClaim): void
+    {
+        $this->authorize($request, $lossAndExpenseClaim);
+        if ($lossAndExpenseClaim->project_id !== $project->id) {
+            abort(404, 'Loss & Expense claim not found for this project.');
+        }
+    }
+
+    /** Re-derives the trade package's REAL parent project (see TradePackageController::authorizeProjectPackage). */
+    private function authorizeProjectPackage(Request $request, Project $project, TradePackage $tradePackage): void
+    {
+        $this->authorize($request, $tradePackage);
+        if ($tradePackage->project_id !== $project->id) {
+            abort(404, 'Trade package not found for this project.');
+        }
+    }
+
     public function index(Request $request, Project $project)
     {
         $this->authorize($request, $project);
@@ -52,7 +70,7 @@ class LossAndExpenseClaimController extends Controller
 
     public function indexByTradePackage(Request $request, Project $project, TradePackage $tradePackage)
     {
-        $this->authorize($request, $tradePackage);
+        $this->authorizeProjectPackage($request, $project, $tradePackage);
 
         $claims = LossAndExpenseClaim::where('trade_package_id', $tradePackage->id)
             ->with(['creator:id,name'])
@@ -92,7 +110,7 @@ class LossAndExpenseClaimController extends Controller
 
     public function storeForTradePackage(Request $request, Project $project, TradePackage $tradePackage)
     {
-        $this->authorize($request, $tradePackage);
+        $this->authorizeProjectPackage($request, $project, $tradePackage);
 
         $validated = $request->validate(self::RULES);
 
@@ -125,7 +143,7 @@ class LossAndExpenseClaimController extends Controller
     // applied to MeetingMinutesController/SiteDiaryController/etc.
     public function show(Request $request, Project $project, LossAndExpenseClaim $lossAndExpenseClaim)
     {
-        $this->authorize($request, $lossAndExpenseClaim);
+        $this->authorizeProjectClaim($request, $project, $lossAndExpenseClaim);
 
         return response()->json(
             $lossAndExpenseClaim->load([
@@ -138,7 +156,7 @@ class LossAndExpenseClaimController extends Controller
 
     public function update(Request $request, Project $project, LossAndExpenseClaim $lossAndExpenseClaim)
     {
-        $this->authorize($request, $lossAndExpenseClaim);
+        $this->authorizeProjectClaim($request, $project, $lossAndExpenseClaim);
 
         $validated = $request->validate(array_merge(self::RULES, ['title' => 'sometimes|string|max:255']));
 
@@ -158,7 +176,7 @@ class LossAndExpenseClaimController extends Controller
      */
     public function decide(Request $request, Project $project, LossAndExpenseClaim $lossAndExpenseClaim)
     {
-        $this->authorize($request, $lossAndExpenseClaim);
+        $this->authorizeProjectClaim($request, $project, $lossAndExpenseClaim);
 
         $validated = $request->validate([
             'status'          => 'required|in:agreed,rejected',
@@ -217,7 +235,7 @@ class LossAndExpenseClaimController extends Controller
 
     public function destroy(Request $request, Project $project, LossAndExpenseClaim $lossAndExpenseClaim)
     {
-        $this->authorize($request, $lossAndExpenseClaim);
+        $this->authorizeProjectClaim($request, $project, $lossAndExpenseClaim);
 
         $lossAndExpenseClaim->delete();
         return response()->json(null, 204);

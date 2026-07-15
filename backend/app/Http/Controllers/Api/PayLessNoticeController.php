@@ -61,16 +61,28 @@ class PayLessNoticeController extends Controller
         return response()->json($notice, 201);
     }
 
-    public function show(Request $request, PayLessNotice $payLessNotice)
+    // Not shallow (api/projects/{project}/pay-less-notices/{pay_less_notice})
+    // — both segments are typed model bindings, so Project $project must be
+    // declared even though unused here, matching the same fix already
+    // applied to MeetingMinutesController/SiteDiaryController/etc. Without
+    // it, Laravel passed the {project} segment positionally into the
+    // $payLessNotice argument slot, causing a TypeError (500) on every call.
+    public function show(Request $request, Project $project, PayLessNotice $payLessNotice)
     {
         $this->authorize($request, $payLessNotice);
 
         return response()->json($payLessNotice->load('creator:id,name'));
     }
 
-    public function update(Request $request, PayLessNotice $payLessNotice)
+    public function update(Request $request, Project $project, PayLessNotice $payLessNotice)
     {
         $this->authorize($request, $payLessNotice);
+
+        // Once issued, a Pay Less Notice is a formal statutory notice — its
+        // amount/reason must not be editable after the fact.
+        if ($payLessNotice->status === 'issued') {
+            return response()->json(['message' => 'An issued Pay Less Notice cannot be edited.'], 422);
+        }
 
         $validated = $request->validate([
             'notice_date' => 'sometimes|date',
@@ -85,9 +97,13 @@ class PayLessNoticeController extends Controller
         return response()->json($payLessNotice);
     }
 
-    public function destroy(Request $request, PayLessNotice $payLessNotice)
+    public function destroy(Request $request, Project $project, PayLessNotice $payLessNotice)
     {
         $this->authorize($request, $payLessNotice);
+
+        if ($payLessNotice->status === 'issued') {
+            return response()->json(['message' => 'An issued Pay Less Notice cannot be deleted.'], 422);
+        }
 
         $payLessNotice->delete();
         return response()->json(null, 204);

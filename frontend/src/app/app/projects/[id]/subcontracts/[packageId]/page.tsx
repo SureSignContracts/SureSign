@@ -125,7 +125,15 @@ export default function TradePackageWorkspacePage() {
   const projectId = params.id as string;
   const packageId = params.packageId as string;
 
-  const { canWrite } = useProjectPermissions();
+  // Trade Package actions (AI analysis, document generation, edit) were
+  // reviewed in Batch 2. The embedded Programme/Delay & EOT/Compliance tabs
+  // below cover Batch 3 modules, each reviewed and now on its own
+  // canManageX flag rather than the legacy blanket canWrite.
+  const {
+    canManageTradePackages, canManageProgramme, canManageDelayEvents,
+    canManageEotRequests, canManageLossAndExpenseClaims,
+    canManageRisks, canManageDeliveryDocuments,
+  } = useProjectPermissions();
   const formatCurrency = useCurrencyFormatter();
   const queryClient = useQueryClient();
 
@@ -235,7 +243,7 @@ export default function TradePackageWorkspacePage() {
               </p>
             </div>
           </div>
-          {canWrite && (
+          {canManageTradePackages && (
             <div className="flex items-center gap-2" data-tour="tp-actions">
               <button
                 onClick={() => setShowAiOnboarding(true)}
@@ -291,9 +299,24 @@ export default function TradePackageWorkspacePage() {
 
       {tab === 'overview'    && <OverviewTab pkg={pkg} projectId={projectId} formatCurrency={formatCurrency} onNavigateTab={goToTab} onNavigateSource={navigateToSource} />}
       {tab === 'commercial'  && <CommercialTab summary={summary} apps={apps} formatCurrency={formatCurrency} pkg={pkg} projectId={projectId} />}
-      {tab === 'programme'   && <ProgrammeTab projectId={projectId} tradePackageId={pkg.id} canWrite={canWrite} />}
-      {tab === 'delay-eot'   && <DelayEotTab projectId={projectId} pkg={pkg} canWrite={canWrite} subTab={subTab} onSubTabChange={(s) => goToTab('delay-eot', s)} />}
-      {tab === 'compliance'  && <ComplianceTab projectId={projectId} pkg={pkg} canWrite={canWrite} subTab={subTab} onSubTabChange={(s) => goToTab('compliance', s)} />}
+      {tab === 'programme'   && <ProgrammeTab projectId={projectId} tradePackageId={pkg.id} canWrite={canManageProgramme} />}
+      {tab === 'delay-eot'   && (
+        <DelayEotTab
+          projectId={projectId} pkg={pkg}
+          canManageDelayEvents={canManageDelayEvents}
+          canManageEotRequests={canManageEotRequests}
+          canManageLossAndExpenseClaims={canManageLossAndExpenseClaims}
+          subTab={subTab} onSubTabChange={(s) => goToTab('delay-eot', s)}
+        />
+      )}
+      {tab === 'compliance'  && (
+        <ComplianceTab
+          projectId={projectId} pkg={pkg}
+          canManageRisks={canManageRisks}
+          canManageDeliveryDocuments={canManageDeliveryDocuments}
+          subTab={subTab} onSubTabChange={(s) => goToTab('compliance', s)}
+        />
+      )}
       {tab === 'documents'   && <DocumentsTab projectId={projectId} packageId={packageId} onNavigateSource={navigateToSource} />}
       {tab === 'ai-analysis' && <AiAnalysisTab projectId={projectId} pkg={pkg} onStartNew={() => setShowAiOnboarding(true)} />}
       {tab === 'activity'    && <ActivityTab projectId={projectId} packageId={packageId} onNavigateSource={navigateToSource} />}
@@ -730,8 +753,10 @@ function ProgrammeTab({ projectId, tradePackageId, canWrite }: { projectId: stri
 
 // ─── Delay & EOT ─────────────────────────────────────────────────────────────
 
-function DelayEotTab({ projectId, pkg, canWrite, subTab, onSubTabChange }: {
-  projectId: string; pkg: TradePackage; canWrite: boolean; subTab: DelaySubTab; onSubTabChange: (s: DelaySubTab) => void;
+function DelayEotTab({ projectId, pkg, canManageDelayEvents, canManageEotRequests, canManageLossAndExpenseClaims, subTab, onSubTabChange }: {
+  projectId: string; pkg: TradePackage;
+  canManageDelayEvents: boolean; canManageEotRequests: boolean; canManageLossAndExpenseClaims: boolean;
+  subTab: DelaySubTab; onSubTabChange: (s: DelaySubTab) => void;
 }) {
   const tpOption = { id: pkg.id, name: pkg.name, package_reference: pkg.package_reference };
 
@@ -751,9 +776,9 @@ function DelayEotTab({ projectId, pkg, canWrite, subTab, onSubTabChange }: {
           </button>
         ))}
       </div>
-      {subTab === 'delay' && <DelayEventsTab projectId={projectId} contracts={[]} tradePackages={[tpOption]} canWrite={canWrite} tradePackageId={pkg.id} />}
-      {subTab === 'eot' && <EotRequestsTab projectId={projectId} contracts={[]} tradePackages={[tpOption]} canWrite={canWrite} tradePackageId={pkg.id} />}
-      {subTab === 'loss-expense' && <LossAndExpenseTab projectId={projectId} contracts={[]} tradePackages={[tpOption]} canWrite={canWrite} tradePackageId={pkg.id} />}
+      {subTab === 'delay' && <DelayEventsTab projectId={projectId} contracts={[]} tradePackages={[tpOption]} canWrite={canManageDelayEvents} tradePackageId={pkg.id} />}
+      {subTab === 'eot' && <EotRequestsTab projectId={projectId} contracts={[]} tradePackages={[tpOption]} canWrite={canManageEotRequests} tradePackageId={pkg.id} />}
+      {subTab === 'loss-expense' && <LossAndExpenseTab projectId={projectId} contracts={[]} tradePackages={[tpOption]} canWrite={canManageLossAndExpenseClaims} tradePackageId={pkg.id} />}
     </div>
   );
 }
@@ -764,8 +789,10 @@ function DelayEotTab({ projectId, pkg, canWrite, subTab, onSubTabChange }: {
 // sub-tabbed section (mirroring Delay & EOT) so Insurance and Document
 // Requirements can slot in as siblings later without redesigning the tab.
 
-function ComplianceTab({ projectId, pkg, canWrite, subTab, onSubTabChange }: {
-  projectId: string; pkg: TradePackage; canWrite: boolean; subTab: DelaySubTab; onSubTabChange: (s: DelaySubTab) => void;
+function ComplianceTab({ projectId, pkg, canManageRisks, canManageDeliveryDocuments, subTab, onSubTabChange }: {
+  projectId: string; pkg: TradePackage;
+  canManageRisks: boolean; canManageDeliveryDocuments: boolean;
+  subTab: DelaySubTab; onSubTabChange: (s: DelaySubTab) => void;
 }) {
   return (
     <div className="space-y-4">
@@ -783,8 +810,8 @@ function ComplianceTab({ projectId, pkg, canWrite, subTab, onSubTabChange }: {
           </button>
         ))}
       </div>
-      {subTab === 'risks' && <RisksTab projectId={projectId} tradePackageId={pkg.id} canWrite={canWrite} />}
-      {subTab === 'delivery-documents' && <DeliveryDocumentsTab projectId={projectId} tradePackageId={pkg.id} canWrite={canWrite} />}
+      {subTab === 'risks' && <RisksTab projectId={projectId} tradePackageId={pkg.id} canWrite={canManageRisks} />}
+      {subTab === 'delivery-documents' && <DeliveryDocumentsTab projectId={projectId} tradePackageId={pkg.id} canWrite={canManageDeliveryDocuments} />}
     </div>
   );
 }

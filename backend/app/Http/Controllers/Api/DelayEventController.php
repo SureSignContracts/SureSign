@@ -39,6 +39,24 @@ class DelayEventController extends Controller
         if ($user->organization_id !== $subject->organization_id) abort(403, 'Access denied.');
     }
 
+    /** Re-derives the delay event's REAL parent project (see MeetingMinutesController). */
+    private function authorizeProjectDelayEvent(Request $request, Project $project, DelayEvent $delayEvent): void
+    {
+        $this->authorize($request, $delayEvent);
+        if ($delayEvent->project_id !== $project->id) {
+            abort(404, 'Delay event not found for this project.');
+        }
+    }
+
+    /** Re-derives the trade package's REAL parent project (see TradePackageController::authorizeProjectPackage). */
+    private function authorizeProjectPackage(Request $request, Project $project, TradePackage $tradePackage): void
+    {
+        $this->authorize($request, $tradePackage);
+        if ($tradePackage->project_id !== $project->id) {
+            abort(404, 'Trade package not found for this project.');
+        }
+    }
+
     public function index(Request $request, Project $project)
     {
         $this->authorize($request, $project);
@@ -55,7 +73,7 @@ class DelayEventController extends Controller
 
     public function indexByTradePackage(Request $request, Project $project, TradePackage $tradePackage)
     {
-        $this->authorize($request, $tradePackage);
+        $this->authorizeProjectPackage($request, $project, $tradePackage);
 
         $events = DelayEvent::where('trade_package_id', $tradePackage->id)
             ->with(['creator:id,name'])
@@ -96,7 +114,7 @@ class DelayEventController extends Controller
 
     public function storeForTradePackage(Request $request, Project $project, TradePackage $tradePackage)
     {
-        $this->authorize($request, $tradePackage);
+        $this->authorizeProjectPackage($request, $project, $tradePackage);
 
         $validated = $request->validate(self::RULES);
 
@@ -130,7 +148,7 @@ class DelayEventController extends Controller
     // applied to MeetingMinutesController/SiteDiaryController/etc.
     public function show(Request $request, Project $project, DelayEvent $delayEvent)
     {
-        $this->authorize($request, $delayEvent);
+        $this->authorizeProjectDelayEvent($request, $project, $delayEvent);
 
         $delayEvent->load(['creator:id,name', 'contract:id,title,reference_number', 'tradePackage:id,name', 'variation:id,title', 'affectedMilestone:id,name']);
 
@@ -143,7 +161,7 @@ class DelayEventController extends Controller
 
     public function update(Request $request, Project $project, DelayEvent $delayEvent)
     {
-        $this->authorize($request, $delayEvent);
+        $this->authorizeProjectDelayEvent($request, $project, $delayEvent);
 
         $validated = $request->validate(array_merge(self::RULES, ['title' => 'sometimes|string|max:255', 'date_occurred' => 'sometimes|date']));
 
@@ -154,7 +172,7 @@ class DelayEventController extends Controller
 
     public function destroy(Request $request, Project $project, DelayEvent $delayEvent)
     {
-        $this->authorize($request, $delayEvent);
+        $this->authorizeProjectDelayEvent($request, $project, $delayEvent);
 
         $delayEvent->delete();
         return response()->json(null, 204);
@@ -167,7 +185,7 @@ class DelayEventController extends Controller
      */
     public function generateNotice(Request $request, Project $project, DelayEvent $delayEvent)
     {
-        $this->authorize($request, $delayEvent);
+        $this->authorizeProjectDelayEvent($request, $project, $delayEvent);
 
         if (!$delayEvent->date_notified) {
             return response()->json(['message' => 'The Delay Event must be marked as notified (date_notified set) before generating a Notice document.'], 422);

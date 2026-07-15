@@ -36,6 +36,15 @@ class AdjudicationCaseController extends Controller
         if ($user->organization_id !== $subject->organization_id) abort(403, 'Access denied.');
     }
 
+    /** Re-derives the case's REAL parent project (see MeetingMinutesController). */
+    private function authorizeProjectCase(Request $request, Project $project, AdjudicationCase $adjudicationCase): void
+    {
+        $this->authorize($request, $adjudicationCase);
+        if ($adjudicationCase->project_id !== $project->id) {
+            abort(404, 'Adjudication case not found for this project.');
+        }
+    }
+
     public function index(Request $request, Project $project)
     {
         $this->authorize($request, $project);
@@ -142,7 +151,7 @@ class AdjudicationCaseController extends Controller
 
     public function show(Request $request, Project $project, AdjudicationCase $adjudicationCase)
     {
-        $this->authorize($request, $adjudicationCase);
+        $this->authorizeProjectCase($request, $project, $adjudicationCase);
 
         return response()->json(
             $adjudicationCase->load([
@@ -159,7 +168,7 @@ class AdjudicationCaseController extends Controller
 
     public function update(Request $request, Project $project, AdjudicationCase $adjudicationCase)
     {
-        $this->authorize($request, $adjudicationCase);
+        $this->authorizeProjectCase($request, $project, $adjudicationCase);
 
         $validated = $request->validate([
             'title'                        => 'sometimes|string|max:255',
@@ -193,7 +202,7 @@ class AdjudicationCaseController extends Controller
 
     public function destroy(Request $request, Project $project, AdjudicationCase $adjudicationCase)
     {
-        $this->authorize($request, $adjudicationCase);
+        $this->authorizeProjectCase($request, $project, $adjudicationCase);
 
         $project = $adjudicationCase->project;
         $adjudicationCase->delete();
@@ -212,7 +221,7 @@ class AdjudicationCaseController extends Controller
 
     public function advanceStep(Request $request, Project $project, AdjudicationCase $adjudicationCase)
     {
-        $this->authorize($request, $adjudicationCase);
+        $this->authorizeProjectCase($request, $project, $adjudicationCase);
 
         $stepKeys = array_keys(AdjudicationCase::STEPS);
         $currentIndex = array_search($adjudicationCase->current_step, $stepKeys);
@@ -261,7 +270,7 @@ class AdjudicationCaseController extends Controller
 
     public function archive(Request $request, Project $project, AdjudicationCase $adjudicationCase)
     {
-        $this->authorize($request, $adjudicationCase);
+        $this->authorizeProjectCase($request, $project, $adjudicationCase);
 
         $adjudicationCase->update([
             'status'      => 'archived',
@@ -306,7 +315,7 @@ class AdjudicationCaseController extends Controller
 
     public function updateStatus(Request $request, Project $project, AdjudicationCase $adjudicationCase)
     {
-        $this->authorize($request, $adjudicationCase);
+        $this->authorizeProjectCase($request, $project, $adjudicationCase);
 
         $validated = $request->validate([
             'status' => 'required|in:draft,active,awaiting_response,decision_pending,notice_of_dispute,notice_of_adjudication,adjudicator_appointment,referral_submission,response_analysis,further_submissions,decision_analysis,enforcement,closed,archived',

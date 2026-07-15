@@ -9,6 +9,7 @@ import { Users2, Plus, Search, Calendar, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PageTourButton from '@/components/tours/PageTourButton';
+import Button from '@/components/ui/Button';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   draft:    { bg: 'rgba(90,86,82,0.2)',    text: '#9a9490' },
@@ -288,7 +289,7 @@ function MeetingDetailModal({
 
 export default function ProjectMeetingsPage() {
   const { id } = useParams<{ id: string }>();
-  const { canWrite } = useProjectPermissions();
+  const { canManageMeetings: canWrite } = useProjectPermissions();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [showModal, setShowModal] = useState(false);
@@ -367,9 +368,9 @@ export default function ProjectMeetingsPage() {
             <Users2 size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No meetings recorded yet</p>
             {canWrite && (
-            <button onClick={() => setShowModal(true)} className="mt-3 px-3 py-1.5 rounded-lg text-xs font-medium active:scale-[0.98]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+            <Button onClick={() => setShowModal(true)} variant="secondary" size="sm" className="mt-3">
               Create First Meeting
-            </button>
+            </Button>
             )}
           </div>
         ) : meetings.map((m: any, i: number) => {

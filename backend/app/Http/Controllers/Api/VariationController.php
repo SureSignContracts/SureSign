@@ -112,8 +112,10 @@ class VariationController extends Controller
         return response()->json($variation->load('creator:id,name'), 201);
     }
 
-    public function show(Variation $variation)
+    public function show(Request $request, Variation $variation)
     {
+        $this->authorizeVariation($request, $variation);
+
         return response()->json($variation->load([
             'creator:id,name',
             'contract:id,title',
@@ -172,8 +174,10 @@ class VariationController extends Controller
         return response()->json($variation->fresh()->load('creator:id,name'));
     }
 
-    public function destroy(Variation $variation)
+    public function destroy(Request $request, Variation $variation)
     {
+        $this->authorizeVariation($request, $variation);
+
         // Check PA inclusion first — gives a more specific error than the generic isDeletable() message.
         if ($variation->isIncludedInPaymentApplication()) {
             return response()->json([

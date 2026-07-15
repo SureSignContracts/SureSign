@@ -262,7 +262,17 @@ class ProjectController extends Controller
             $mainContract = \App\Models\Contract::where('project_id', $project->id)
                 ->where('type', 'main_contract')
                 ->with(['fileUploads' => fn($q) => $q->select(['id','attachable_type','attachable_id','original_name','mime_type'])->latest()])
-                ->orderByRaw("FIELD(status, 'active', 'draft', 'complete', 'expired', 'terminated')")
+                // CASE, not MySQL's FIELD(), so this runs identically under sqlite too.
+                ->orderByRaw("
+                    CASE status
+                        WHEN 'active'     THEN 0
+                        WHEN 'draft'      THEN 1
+                        WHEN 'complete'   THEN 2
+                        WHEN 'expired'    THEN 3
+                        WHEN 'terminated' THEN 4
+                        ELSE 5
+                    END
+                ")
                 ->latest()
                 ->first();
         }
@@ -381,7 +391,16 @@ class ProjectController extends Controller
                   ->orWhereIn('trade_package_id', $tradePackageIds);
             })
             ->where('status', '!=', 'resolved')
-            ->orderByRaw("FIELD(severity, 'critical', 'high', 'medium', 'low')")
+            // CASE, not MySQL's FIELD(), so this runs identically under sqlite too.
+            ->orderByRaw("
+                CASE severity
+                    WHEN 'critical' THEN 0
+                    WHEN 'high'     THEN 1
+                    WHEN 'medium'   THEN 2
+                    WHEN 'low'      THEN 3
+                    ELSE 4
+                END
+            ")
             ->get(['id', 'title', 'severity', 'urgency', 'is_non_standard_amendment', 'category', 'clause_reference', 'commercial_impact', 'recommended_action', 'trade_package_id', 'is_ai_generated'])
             ->map(function ($risk) use ($project) {
                 $risk->action_url = \App\Services\TradePackages\WorkspaceNavigationResolver::actionUrl(

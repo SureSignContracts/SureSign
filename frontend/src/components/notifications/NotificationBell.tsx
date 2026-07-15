@@ -227,7 +227,7 @@ function CriticalBanner({ notifications }: { notifications: SuresignNotification
 
 // ── Main bell ─────────────────────────────────────────────────────────────────
 
-export default function NotificationBell() {
+export default function NotificationBell({ basePath = '/admin/notifications' }: { basePath?: string }) {
   const [open, setOpen] = useState(false);
   const [visible, setVisible] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -317,7 +317,7 @@ export default function NotificationBell() {
 
   function handleOpen() {
     setOpen(false);
-    router.push('/admin/notifications');
+    router.push(basePath);
   }
 
   return (

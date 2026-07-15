@@ -57,6 +57,13 @@ class PaymentNoticeController extends Controller
         $project = $paymentNotice->project;
         $this->authorizeProject($request, $project);
 
+        // A Payment Notice is a formal statutory notice the moment it exists
+        // (the only creation path — PaymentApplicationController::createPaymentNotice
+        // — always sets status='issued') — it must never be silently deleted.
+        if ($paymentNotice->status === 'issued') {
+            return response()->json(['message' => 'An issued Payment Notice cannot be deleted.'], 422);
+        }
+
         $paymentNotice->delete();
         return response()->json(null, 204);
     }

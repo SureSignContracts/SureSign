@@ -16,6 +16,7 @@ import toast from 'react-hot-toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PromptActionButton from '@/components/prompts/PromptActionButton';
 import PageTourButton from '@/components/tours/PageTourButton';
+import Button from '@/components/ui/Button';
 
 // ─── Status Config ────────────────────────────────────────────────────────────
 
@@ -868,7 +869,7 @@ function ProgrammeImpactBanner({ variations }: { variations: any[] }) {
 export default function ProjectVariationsPage() {
   const formatCurrency = useCurrencyFormatter();
   const { id } = useParams<{ id: string }>();
-  const { canWrite } = useProjectPermissions();
+  const { canManageVariations: canWrite } = useProjectPermissions();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showModal, setShowModal] = useState(false);
@@ -972,11 +973,9 @@ export default function ProjectVariationsPage() {
                     {allVariations.length === 0 ? 'No variations yet' : 'No variations match this filter.'}
                   </p>
                   {canWrite && allVariations.length === 0 && (
-                    <button onClick={() => setShowModal(true)}
-                      className="mt-3 px-3 py-1.5 rounded-lg text-xs font-medium"
-                      style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+                    <Button onClick={() => setShowModal(true)} variant="secondary" size="sm" className="mt-3">
                       Create First Variation
-                    </button>
+                    </Button>
                   )}
                 </td>
               </tr>

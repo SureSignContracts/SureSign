@@ -7,6 +7,7 @@ import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { CheckSquare, Plus, Search, X } from 'lucide-react';
 import PageTourButton from '@/components/tours/PageTourButton';
+import Button from '@/components/ui/Button';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -270,11 +271,9 @@ export default function ProjectQaPage() {
         <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
           <CheckSquare size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No QA reports yet</p>
-          <button onClick={() => setModal({ open: true })}
-            className="mt-4 px-4 py-2 rounded-lg text-xs font-medium transition-all active:scale-[0.98]"
-            style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+          <Button onClick={() => setModal({ open: true })} variant="secondary" size="sm" className="mt-4">
             Create First Report
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="rounded-2xl overflow-x-auto" data-tour="qa-table" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>

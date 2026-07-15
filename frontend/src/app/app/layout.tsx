@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useQuery } from '@tanstack/react-query';
 import AppSidebar from '@/components/layout/AppSidebar';
 import MobileTopBar from '@/components/layout/MobileTopBar';
+import NotificationBell from '@/components/notifications/NotificationBell';
 import SureSignLoader from '@/components/ui/SureSignLoader';
 import AiAnalysisWidget from '@/components/ai/AiAnalysisWidget';
 import GlobalTourLauncher from '@/components/tours/GlobalTourLauncher';
@@ -125,7 +126,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           title={orgName}
           logoUrl={logoUrl}
           fallbackInitial={orgName.charAt(0).toUpperCase()}
+          right={<NotificationBell basePath="/app/notifications" />}
         />
+        <header className="hidden lg:flex h-12 items-center justify-end px-4 flex-shrink-0" style={{ backgroundColor: 'var(--bg-base)' }}>
+          <NotificationBell basePath="/app/notifications" />
+        </header>
         <main className="flex-1 overflow-y-auto">
           {children}
         </main>

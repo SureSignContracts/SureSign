@@ -17,6 +17,21 @@ class MeetingMinutesController extends Controller
         if ($user->organization_id !== $subject->organization_id) abort(403, 'Access denied.');
     }
 
+    /**
+     * The route always carries both {project} and {meeting} even though
+     * only the meeting's own organisation is authorisation-relevant — this
+     * re-derives the meeting's REAL parent so a same-organisation but
+     * mismatched project ID in the URL can't address a meeting that
+     * actually belongs to a different project.
+     */
+    private function authorizeProjectMeeting(Request $request, Project $project, MeetingMinutes $meeting): void
+    {
+        $this->authorize($request, $meeting);
+        if ($meeting->project_id !== $project->id) {
+            abort(404, 'Meeting not found for this project.');
+        }
+    }
+
     public function index(Request $request, Project $project)
     {
         $this->authorize($request, $project);
@@ -75,14 +90,14 @@ class MeetingMinutesController extends Controller
     // string ID where $meeting (typed MeetingMinutes) is expected.
     public function show(Request $request, Project $project, MeetingMinutes $meeting)
     {
-        $this->authorize($request, $meeting);
+        $this->authorizeProjectMeeting($request, $project, $meeting);
 
         return response()->json($meeting->load('creator:id,name'));
     }
 
     public function update(Request $request, Project $project, MeetingMinutes $meeting)
     {
-        $this->authorize($request, $meeting);
+        $this->authorizeProjectMeeting($request, $project, $meeting);
 
         $validated = $request->validate([
             'title'        => 'sometimes|string|max:255',
@@ -110,7 +125,7 @@ class MeetingMinutesController extends Controller
 
     public function destroy(Request $request, Project $project, MeetingMinutes $meeting)
     {
-        $this->authorize($request, $meeting);
+        $this->authorizeProjectMeeting($request, $project, $meeting);
 
         $meeting->delete();
         return response()->json(null, 204);

@@ -627,7 +627,7 @@ class PaymentApplicationController extends Controller
             'payment_application_paid',
             "Payment Application #{$paymentApplication->application_number} marked as paid",
             "Paid amount: " . number_format($validated['paid_amount'], 2)
-                . ($validated['payment_reference'] ? " — Ref: {$validated['payment_reference']}" : ''),
+                . (($validated['payment_reference'] ?? null) ? " — Ref: {$validated['payment_reference']}" : ''),
             $paymentApplication
         );
 

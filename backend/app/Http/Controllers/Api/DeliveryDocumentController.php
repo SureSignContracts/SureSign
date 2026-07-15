@@ -46,9 +46,18 @@ class DeliveryDocumentController extends Controller
         if ($user->organization_id !== $subject->organization_id) abort(403, 'Access denied.');
     }
 
-    public function indexByTradePackage(Request $request, Project $project, TradePackage $tradePackage)
+    /** Re-derives the trade package's REAL parent project (see TradePackageController::authorizeProjectPackage). */
+    private function authorizeProjectPackage(Request $request, Project $project, TradePackage $tradePackage): void
     {
         $this->authorize($request, $tradePackage);
+        if ($tradePackage->project_id !== $project->id) {
+            abort(404, 'Trade package not found for this project.');
+        }
+    }
+
+    public function indexByTradePackage(Request $request, Project $project, TradePackage $tradePackage)
+    {
+        $this->authorizeProjectPackage($request, $project, $tradePackage);
 
         $docs = DeliveryDocument::where('trade_package_id', $tradePackage->id)
             ->with('document:id,title,file_name')
@@ -60,7 +69,7 @@ class DeliveryDocumentController extends Controller
 
     public function storeForTradePackage(Request $request, Project $project, TradePackage $tradePackage)
     {
-        $this->authorize($request, $tradePackage);
+        $this->authorizeProjectPackage($request, $project, $tradePackage);
 
         $validated = $request->validate(self::RULES);
 
@@ -151,7 +160,7 @@ class DeliveryDocumentController extends Controller
      */
     public function availableDocuments(Request $request, Project $project, TradePackage $tradePackage)
     {
-        $this->authorize($request, $tradePackage);
+        $this->authorizeProjectPackage($request, $project, $tradePackage);
 
         $documents = Document::where('trade_package_id', $tradePackage->id)
             ->latest()

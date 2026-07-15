@@ -37,6 +37,24 @@ class EotRequestController extends Controller
         if ($user->organization_id !== $subject->organization_id) abort(403, 'Access denied.');
     }
 
+    /** Re-derives the EOT request's REAL parent project (see MeetingMinutesController). */
+    private function authorizeProjectEot(Request $request, Project $project, EotRequest $eotRequest): void
+    {
+        $this->authorize($request, $eotRequest);
+        if ($eotRequest->project_id !== $project->id) {
+            abort(404, 'EOT request not found for this project.');
+        }
+    }
+
+    /** Re-derives the trade package's REAL parent project (see TradePackageController::authorizeProjectPackage). */
+    private function authorizeProjectPackage(Request $request, Project $project, TradePackage $tradePackage): void
+    {
+        $this->authorize($request, $tradePackage);
+        if ($tradePackage->project_id !== $project->id) {
+            abort(404, 'Trade package not found for this project.');
+        }
+    }
+
     public function index(Request $request, Project $project)
     {
         $this->authorize($request, $project);
@@ -53,7 +71,7 @@ class EotRequestController extends Controller
 
     public function indexByTradePackage(Request $request, Project $project, TradePackage $tradePackage)
     {
-        $this->authorize($request, $tradePackage);
+        $this->authorizeProjectPackage($request, $project, $tradePackage);
 
         $eots = EotRequest::where('trade_package_id', $tradePackage->id)
             ->with(['creator:id,name', 'decisionUser:id,name'])
@@ -94,7 +112,7 @@ class EotRequestController extends Controller
 
     public function storeForTradePackage(Request $request, Project $project, TradePackage $tradePackage)
     {
-        $this->authorize($request, $tradePackage);
+        $this->authorizeProjectPackage($request, $project, $tradePackage);
 
         $validated = $request->validate(self::RULES);
 
@@ -127,7 +145,7 @@ class EotRequestController extends Controller
     // applied to MeetingMinutesController/SiteDiaryController/etc.
     public function show(Request $request, Project $project, EotRequest $eotRequest)
     {
-        $this->authorize($request, $eotRequest);
+        $this->authorizeProjectEot($request, $project, $eotRequest);
 
         $eotRequest->load(['creator:id,name', 'decisionUser:id,name', 'contract:id,title,reference_number', 'tradePackage:id,name', 'delayEvent:id,event_number,title']);
 
@@ -136,7 +154,7 @@ class EotRequestController extends Controller
 
     public function update(Request $request, Project $project, EotRequest $eotRequest)
     {
-        $this->authorize($request, $eotRequest);
+        $this->authorizeProjectEot($request, $project, $eotRequest);
 
         $validated = $request->validate(array_merge(self::RULES, [
             'title'       => 'sometimes|string|max:255',
@@ -162,7 +180,7 @@ class EotRequestController extends Controller
      */
     public function decide(Request $request, Project $project, EotRequest $eotRequest)
     {
-        $this->authorize($request, $eotRequest);
+        $this->authorizeProjectEot($request, $project, $eotRequest);
 
         $validated = $request->validate([
             'status'       => 'required|in:granted,refused',
@@ -238,7 +256,7 @@ class EotRequestController extends Controller
 
     public function destroy(Request $request, Project $project, EotRequest $eotRequest)
     {
-        $this->authorize($request, $eotRequest);
+        $this->authorizeProjectEot($request, $project, $eotRequest);
 
         $eotRequest->delete();
         return response()->json(null, 204);
@@ -251,7 +269,7 @@ class EotRequestController extends Controller
      */
     public function generateDecisionNotice(Request $request, Project $project, EotRequest $eotRequest)
     {
-        $this->authorize($request, $eotRequest);
+        $this->authorizeProjectEot($request, $project, $eotRequest);
 
         if (!in_array($eotRequest->status, ['granted', 'refused'])) {
             return response()->json(['message' => 'A Decision Notice can only be generated once the EOT has been decided (granted or refused).'], 422);

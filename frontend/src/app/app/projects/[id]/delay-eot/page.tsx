@@ -71,7 +71,7 @@ type DelayEotTab = 'delay-events' | 'eot' | 'loss-and-expense';
 export default function DelayEotPage() {
   const { id: projectId } = useParams<{ id: string }>();
   const id = projectId!;
-  const { canWrite } = useProjectPermissions();
+  const { canManageDelayEvents, canManageEotRequests, canManageLossAndExpenseClaims } = useProjectPermissions();
   const searchParams = useSearchParams();
 
   const VALID_TABS: DelayEotTab[] = ['delay-events', 'eot', 'loss-and-expense'];
@@ -150,13 +150,13 @@ export default function DelayEotPage() {
       </div>
 
       {tab === 'delay-events' && (
-        <DelayEventsTab projectId={id} contracts={contracts} tradePackages={tradePackages} canWrite={canWrite} />
+        <DelayEventsTab projectId={id} contracts={contracts} tradePackages={tradePackages} canWrite={canManageDelayEvents} />
       )}
       {tab === 'eot' && (
-        <EotRequestsTab projectId={id} contracts={contracts} tradePackages={tradePackages} canWrite={canWrite} />
+        <EotRequestsTab projectId={id} contracts={contracts} tradePackages={tradePackages} canWrite={canManageEotRequests} />
       )}
       {tab === 'loss-and-expense' && (
-        <LossAndExpenseTab projectId={id} contracts={contracts} tradePackages={tradePackages} canWrite={canWrite} />
+        <LossAndExpenseTab projectId={id} contracts={contracts} tradePackages={tradePackages} canWrite={canManageLossAndExpenseClaims} />
       )}
     </div>
   );

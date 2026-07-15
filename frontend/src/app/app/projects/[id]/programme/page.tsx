@@ -1007,7 +1007,7 @@ function SeedButton({ projectId, contracts }: { projectId: string; contracts: Co
 
 export default function ProjectProgrammePage() {
   const { id } = useParams<{ id: string }>();
-  const { canWrite } = useProjectPermissions();
+  const { canManageProgramme: canWrite } = useProjectPermissions();
   const [showModal, setShowModal] = useState(false);
   const [editMilestone, setEditMilestone] = useState<Milestone | null>(null);
   const [statusFilter, setStatusFilter] = useState('all');

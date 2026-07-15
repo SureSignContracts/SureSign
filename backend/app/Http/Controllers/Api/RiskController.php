@@ -48,6 +48,24 @@ class RiskController extends Controller
         if ($user->organization_id !== $subject->organization_id) abort(403, 'Access denied.');
     }
 
+    /** Re-derives the risk's REAL parent project (see MeetingMinutesController). */
+    private function authorizeProjectRisk(Request $request, Project $project, ContractRisk $risk): void
+    {
+        $this->authorize($request, $risk);
+        if ($risk->project_id !== $project->id) {
+            abort(404, 'Risk not found for this project.');
+        }
+    }
+
+    /** Re-derives the trade package's REAL parent project (see TradePackageController::authorizeProjectPackage). */
+    private function authorizeProjectPackage(Request $request, Project $project, TradePackage $tradePackage): void
+    {
+        $this->authorize($request, $tradePackage);
+        if ($tradePackage->project_id !== $project->id) {
+            abort(404, 'Trade package not found for this project.');
+        }
+    }
+
     /**
      * All risks for a project — main contract(s) AND every trade package —
      * for the project-level Risk Register page. Same contract-or-trade-package
@@ -66,7 +84,15 @@ class RiskController extends Controller
                   ->orWhereIn('trade_package_id', $tradePackageIds);
             })
             ->with(['contract:id,title', 'tradePackage:id,name'])
-            ->orderByRaw("FIELD(severity, 'critical', 'high', 'medium', 'low')")
+            ->orderByRaw("
+                CASE severity
+                    WHEN 'critical' THEN 0
+                    WHEN 'high'     THEN 1
+                    WHEN 'medium'   THEN 2
+                    WHEN 'low'      THEN 3
+                    ELSE 4
+                END
+            ")
             ->latest()
             ->get()
             ->map(function (ContractRisk $risk) use ($project) {
@@ -121,10 +147,18 @@ class RiskController extends Controller
 
     public function indexByTradePackage(Request $request, Project $project, TradePackage $tradePackage)
     {
-        $this->authorize($request, $tradePackage);
+        $this->authorizeProjectPackage($request, $project, $tradePackage);
 
         $risks = ContractRisk::where('trade_package_id', $tradePackage->id)
-            ->orderByRaw("FIELD(severity, 'critical', 'high', 'medium', 'low')")
+            ->orderByRaw("
+                CASE severity
+                    WHEN 'critical' THEN 0
+                    WHEN 'high'     THEN 1
+                    WHEN 'medium'   THEN 2
+                    WHEN 'low'      THEN 3
+                    ELSE 4
+                END
+            ")
             ->latest()
             ->get();
 
@@ -133,7 +167,7 @@ class RiskController extends Controller
 
     public function storeForTradePackage(Request $request, Project $project, TradePackage $tradePackage)
     {
-        $this->authorize($request, $tradePackage);
+        $this->authorizeProjectPackage($request, $project, $tradePackage);
 
         $validated = $request->validate(self::RULES);
 
@@ -162,7 +196,7 @@ class RiskController extends Controller
 
     public function update(Request $request, Project $project, ContractRisk $risk)
     {
-        $this->authorize($request, $risk);
+        $this->authorizeProjectRisk($request, $project, $risk);
 
         $validated = $request->validate(array_merge(self::RULES, ['title' => 'sometimes|string|max:255']));
 
@@ -173,7 +207,7 @@ class RiskController extends Controller
 
     public function destroy(Request $request, Project $project, ContractRisk $risk)
     {
-        $this->authorize($request, $risk);
+        $this->authorizeProjectRisk($request, $project, $risk);
 
         $risk->delete();
 

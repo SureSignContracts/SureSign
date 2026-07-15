@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PromptActionButton from '@/components/prompts/PromptActionButton';
 import PageTourButton from '@/components/tours/PageTourButton';
+import Button from '@/components/ui/Button';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   open:             { bg: 'rgba(234,179,8,0.12)',  text: '#facc15' },
@@ -206,7 +207,7 @@ function RfiResponseModal({ rfi, projectId, onClose }: { rfi: any; projectId: st
 
 export default function ProjectRfisPage() {
   const { id } = useParams<{ id: string }>();
-  const { canWrite } = useProjectPermissions();
+  const { canManageRfis: canWrite } = useProjectPermissions();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showModal, setShowModal] = useState(false);
@@ -324,9 +325,9 @@ export default function ProjectRfisPage() {
                   <MessageSquare size={28} className="mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
                   <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No RFIs yet</p>
                   {canWrite && (
-                  <button onClick={() => setShowModal(true)} className="mt-3 px-3 py-1.5 rounded-lg text-xs font-medium transition-all active:scale-[0.98]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+                  <Button onClick={() => setShowModal(true)} variant="secondary" size="sm" className="mt-3">
                     Raise First RFI
-                  </button>
+                  </Button>
                   )}
                 </td>
               </tr>
