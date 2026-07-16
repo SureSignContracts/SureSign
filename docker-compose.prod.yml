@@ -24,8 +24,8 @@ services:
       - APP_ENV=${APP_ENV:-production}
       - APP_KEY=${APP_KEY}
       - APP_DEBUG=${APP_DEBUG:-false}
-      - APP_URL=${APP_URL:-https://suresigncontracts.app}
-      - FRONTEND_URL=${FRONTEND_URL:-https://suresigncontracts.app}
+      - APP_URL=${APP_URL:-https://app.suresigncontracts.app}
+      - FRONTEND_URL=${FRONTEND_URL:-https://app.suresigncontracts.app}
       - APP_LOCALE=en
       - APP_FALLBACK_LOCALE=en
       - APP_FAKER_LOCALE=en_US
@@ -105,7 +105,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://suresigncontracts.app/api}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://app.suresigncontracts.app/api}
     image: suresign-frontend:latest
     container_name: suresign_frontend
     restart: unless-stopped
