@@ -48,6 +48,11 @@ use App\Http\Controllers\Api\RetentionReleaseController;
 use App\Http\Controllers\Api\CalendarController;
 use App\Http\Controllers\Api\FinalAccountController;
 use App\Http\Controllers\Api\SupportTicketController;
+use App\Http\Controllers\Api\SupportTicketMessageController;
+use App\Http\Controllers\Api\KnowledgeBaseController;
+use App\Http\Controllers\Api\SystemStatusController;
+use App\Http\Controllers\Api\PlatformAnnouncementController;
+use App\Http\Controllers\Api\TourMilestoneController;
 use App\Models\FileUpload;
 use Illuminate\Support\Facades\Route;
 
@@ -87,6 +92,7 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current'])->group
         Route::post('/logout', [AuthController::class, 'logout'])->name('auth.logout');
         Route::get('/me', [AuthController::class, 'me'])->name('auth.me');
         Route::put('/password', [AuthController::class, 'updatePassword'])->middleware('throttle:password-change');
+        Route::put('/timezone', [AuthController::class, 'updateTimezone']);
         Route::put('/force-password-change', [AuthController::class, 'forcePasswordChange'])->middleware('throttle:force-password-change')->name('auth.force-password-change');
         Route::post('/email/verification-notification', [AuthController::class, 'sendEmailVerification'])->middleware('throttle:email-verification-resend');
     });
@@ -95,7 +101,34 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current'])->group
     Route::get('/dashboard', [DashboardController::class, 'index']);
 
     // Support tickets — any authenticated user can submit one for their org
-    Route::post('/support-tickets', [SupportTicketController::class, 'store']);
+    Route::post('/support-tickets', [SupportTicketController::class, 'store'])->middleware('throttle:support-ticket');
+    // "My requests" — the authenticated user's own tickets only, not the
+    // admin-wide list (see /admin/support-tickets below).
+    Route::get('/support-tickets', [SupportTicketController::class, 'myTickets']);
+    // Registered before the {supportTicket} wildcard below so this literal
+    // path is matched first, not treated as a ticket id.
+    Route::get('/support-tickets/recent-activity-preview', [SupportTicketController::class, 'recentActivityPreview']);
+    Route::get('/support-tickets/{supportTicket}', [SupportTicketController::class, 'show']);
+    // Screenshot preview — ticket owner or platform operator only (not general
+    // same-organization access — a support screenshot may contain more
+    // personal/sensitive on-screen content than an ordinary project document).
+    Route::get('/support-tickets/{supportTicket}/screenshot', [SupportTicketController::class, 'screenshot']);
+
+    // Threaded conversation — shared route for both the Client and platform
+    // operators (SupportTicketMessageController branches internally on
+    // role, same pattern as show()/screenshot() above). The reply endpoint
+    // gets its own rate-limit bucket, separate from ticket creation.
+    Route::get('/support-tickets/{supportTicket}/messages', [SupportTicketMessageController::class, 'index']);
+    Route::post('/support-tickets/{supportTicket}/messages', [SupportTicketMessageController::class, 'store'])->middleware('throttle:support-ticket-reply');
+    Route::get('/support-ticket-messages/{message}/screenshot', [SupportTicketMessageController::class, 'screenshot']);
+
+    // Help Center — Knowledge Base index, System Status, active platform banner.
+    Route::get('/knowledge-base', [KnowledgeBaseController::class, 'index']);
+    Route::get('/system-status', [SystemStatusController::class, 'index']);
+    Route::get('/platform-announcements/active', [PlatformAnnouncementController::class, 'active']);
+
+    // Guided Tours — personal milestone notifications only (see TourMilestoneController).
+    Route::post('/tour-milestones', [TourMilestoneController::class, 'store']);
 
     // Cross-project reports
     Route::get('/reports/summary', [ReportController::class, 'summary']);
@@ -385,7 +418,14 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current'])->group
             Route::apiResource('templates', DocumentTemplateController::class);
             Route::get('/templates/{template}/preview', [DocumentTemplateController::class, 'preview']);
             Route::get('/support-tickets', [SupportTicketController::class, 'index']);
+            // Registered before the {supportTicket} wildcard below so this
+            // literal path is matched first, not treated as a ticket id.
+            Route::get('/support-tickets/counts', [SupportTicketController::class, 'counts']);
+            Route::get('/support-tickets/{supportTicket}', [SupportTicketController::class, 'adminShow']);
             Route::put('/support-tickets/{id}', [SupportTicketController::class, 'updateStatus']);
+
+            // Platform-wide emergency / known-issue banner management
+            Route::apiResource('platform-announcements', PlatformAnnouncementController::class)->except(['show']);
             Route::get('/system-logs', [AdminController::class, 'systemLogs']);
             Route::get('/audit-log', [AdminController::class, 'auditLog']);
             Route::get('/settings', [AdminController::class, 'settings']);

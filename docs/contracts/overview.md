@@ -47,6 +47,7 @@ Contracts have a status: **Draft**, **Active**, **Expired**, **Complete**, or
 
 - [Trade Packages](../trade-packages/overview.md) — subcontract packages sit
   underneath a project's main contract.
+- New to construction contract terms? See the [Glossary](../reference/glossary.md).
 - [Commercial](../commercial/overview.md) — payment applications and other
   commercial records are raised against a contract.
 - [Programme](../programme/overview.md) — milestones can be seeded from a

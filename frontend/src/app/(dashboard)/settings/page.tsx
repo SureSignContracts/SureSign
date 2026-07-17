@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, Save, Check, Upload, X, Palette, Building2, KeyRound, ScrollText, Lock, BookOpen } from 'lucide-react';
+import { Settings, Save, Check, Upload, X, Palette, Building2, KeyRound, ScrollText, Lock, BookOpen, Globe } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import PasswordStrengthChecker, { checkPassword, isPasswordValid } from '@/components/ui/PasswordStrengthChecker';
+import { getIanaTimezones } from '@/lib/timezones';
+import { useAuthStore } from '@/store/authStore';
 
-type Tab = 'branding' | 'information' | 'password';
+type Tab = 'branding' | 'information' | 'preferences' | 'password';
 
 interface BrandingData {
   company_name: string;
@@ -29,6 +31,23 @@ interface BrandingData {
   postcode: string;
   country: string;
   vat_number: string;
+  timezone: string;
+}
+
+function TimezoneSelect({ value, onChange, id }: { value: string; onChange: (v: string) => void; id?: string }) {
+  const timezones = getIanaTimezones();
+  return (
+    <select
+      id={id}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+      style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+    >
+      {!timezones.includes(value) && value && <option value={value}>{value}</option>}
+      {timezones.map(tz => <option key={tz} value={tz}>{tz}</option>)}
+    </select>
+  );
 }
 
 function Field({
@@ -126,7 +145,7 @@ export default function SettingsPage() {
     company_name: '', description: '', tagline: '', primary_color: '#000000', email_footer: '',
   });
   const [infoForm, setInfoForm] = useState({
-    contact_email: '', contact_phone: '', website: '', address: '', city: '', state: '', postcode: '', country: '', vat_number: '',
+    contact_email: '', contact_phone: '', website: '', address: '', city: '', state: '', postcode: '', country: '', vat_number: '', timezone: 'Europe/London',
   });
 
   useEffect(() => {
@@ -148,6 +167,7 @@ export default function SettingsPage() {
       postcode:      b.postcode      ?? '',
       country:       b.country       ?? '',
       vat_number:    b.vat_number    ?? '',
+      timezone:      b.timezone      ?? 'Europe/London',
     });
     // Apply accent colour for this session only — NOT stored in localStorage
     if (b.primary_color) {
@@ -193,9 +213,14 @@ export default function SettingsPage() {
       postcode: p.postcode,
       country: p.country,
       abn: p.vat_number,
+      timezone: p.timezone,
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['branding'] });
+      // Organisation timezone changes take effect immediately for every
+      // user who inherits it — refresh this session's own cached copy too,
+      // so it's reflected here without requiring a re-login.
+      useAuthStore.getState().fetchUser();
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     },
@@ -203,7 +228,7 @@ export default function SettingsPage() {
 
   const handleSave = () => {
     if (tab === 'branding') brandMutation.mutate(brandForm);
-    else infoMutation.mutate(infoForm);
+    else if (tab === 'information') infoMutation.mutate(infoForm);
   };
 
   const isPending = brandMutation.isPending || infoMutation.isPending;
@@ -211,8 +236,30 @@ export default function SettingsPage() {
   const tabs: { id: Tab; label: string; icon: any }[] = [
     { id: 'branding',     label: 'Company Branding',    icon: Palette },
     { id: 'information',  label: 'Company Information',  icon: Building2 },
+    { id: 'preferences',  label: 'My Preferences',        icon: Globe },
     { id: 'password',     label: 'Change Password',      icon: KeyRound },
   ];
+
+  // ── My Preferences (personal timezone override) ──
+  const { user, fetchUser } = useAuthStore();
+  const [useOrgTimezone, setUseOrgTimezone] = useState(true);
+  const [ownTimezone, setOwnTimezone] = useState('Europe/London');
+  const [tzSaved, setTzSaved] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    setUseOrgTimezone(!user.timezone);
+    setOwnTimezone(user.timezone ?? user.effective_timezone ?? user.organization?.timezone ?? 'Europe/London');
+  }, [user]);
+
+  const timezoneMutation = useMutation({
+    mutationFn: (timezone: string | null) => api.put('/auth/timezone', { timezone }),
+    onSuccess: async () => {
+      await fetchUser();
+      setTzSaved(true);
+      setTimeout(() => setTzSaved(false), 2500);
+    },
+  });
 
   // ── Change Password ──
   const [pwForm, setPwForm] = useState({ current: '', password: '', confirm: '' });
@@ -417,6 +464,57 @@ export default function SettingsPage() {
               <p className="text-xs font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>Legal & Tax</p>
               <Field label="VAT / Tax Number" value={infoForm.vat_number} onChange={v => setInfoForm(f => ({ ...f, vat_number: v }))} placeholder="GB123456789" />
             </div>
+
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem' }}>
+              <p className="text-xs font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>Regional Settings</p>
+              <div>
+                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Organisation Timezone</label>
+                <TimezoneSelect value={infoForm.timezone} onChange={v => setInfoForm(f => ({ ...f, timezone: v }))} />
+                <p className="mt-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>
+                  Applies to every user in your organisation unless they set their own override under My Preferences.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : tab === 'preferences' ? (
+          /* ── My Preferences ── */
+          <div className="space-y-5 max-w-sm">
+            <div>
+              <p className="text-xs font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>Your Timezone</p>
+              <label className="flex items-start gap-2.5 cursor-pointer mb-3">
+                <input
+                  type="checkbox"
+                  checked={useOrgTimezone}
+                  onChange={e => setUseOrgTimezone(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
+                  Use company timezone
+                  <span className="block text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                    {user?.organization?.timezone ?? 'Europe/London'}
+                  </span>
+                </span>
+              </label>
+
+              {!useOrgTimezone && (
+                <div>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Your Timezone</label>
+                  <TimezoneSelect value={ownTimezone} onChange={setOwnTimezone} />
+                </div>
+              )}
+            </div>
+
+            <div className="pt-2">
+              <button
+                onClick={() => timezoneMutation.mutate(useOrgTimezone ? null : ownTimezone)}
+                disabled={timezoneMutation.isPending}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-opacity disabled:opacity-60"
+                style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
+              >
+                {tzSaved ? <Check size={15} /> : <Globe size={15} />}
+                {tzSaved ? 'Saved!' : timezoneMutation.isPending ? 'Saving…' : 'Save Timezone'}
+              </button>
+            </div>
           </div>
         ) : tab === 'password' ? (
           /* ── Change Password ── */
@@ -488,7 +586,7 @@ export default function SettingsPage() {
           </div>
         ) : null}
 
-        {tab !== 'password' && (
+        {tab !== 'password' && tab !== 'preferences' && (
           <div className="mt-6 flex justify-end">
             <button
               onClick={handleSave}

@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { effectiveTodayYmd } from '@/lib/dateTime';
 import { Plus, X, Trash2, FileStack } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getErrorMessage, INPUT_STYLE, CATEGORY_LABELS, StatusBadge, Field } from '@/components/deliveryDocuments/deliveryDocumentShared';
@@ -55,7 +56,9 @@ export default function DeliveryDocumentsPage() {
 
   const docs = data?.data ?? [];
   const filtered = filter === 'all' ? docs : docs.filter(d => d.status === filter);
-  const today = new Date().toISOString().split('T')[0];
+  // Must agree with the backend's own organisation-timezone-aware "today"
+  // (TimezoneResolver), not the UTC calendar day.
+  const today = effectiveTodayYmd();
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6 pb-12">

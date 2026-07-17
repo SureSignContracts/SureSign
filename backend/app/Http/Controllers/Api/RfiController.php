@@ -59,7 +59,9 @@ class RfiController extends Controller
             'created_by'      => $request->user()->id,
             'rfi_number'      => $rfiNumber,
             'status'          => $validated['status'] ?? 'open',
-            'raised_date'     => $validated['raised_date'] ?? now()->toDateString(),
+            // Business-day default (today, for this project's organisation)
+            // when no raised_date is supplied.
+            'raised_date'     => $validated['raised_date'] ?? \App\Services\TimezoneResolver::today(null, $project->organization)->toDateString(),
         ]));
 
         ProjectActivityService::record(

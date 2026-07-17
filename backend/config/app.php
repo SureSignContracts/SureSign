@@ -63,9 +63,14 @@ return [
     | will be used by the PHP date and date-time functions. The timezone
     | is set to "UTC" by default as it is suitable for most use cases.
     |
+    | SureSign architecture note: UTC is the ONLY supported storage/runtime
+    | timezone. This must never be changed per-deployment — organisation and
+    | user timezones are handled at the application layer (TimezoneResolver),
+    | not by changing the app's own runtime timezone.
+    |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => env('APP_TIMEZONE', 'UTC'),
 
     /*
     |--------------------------------------------------------------------------

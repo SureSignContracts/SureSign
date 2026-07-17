@@ -21,11 +21,29 @@ powers reserved for Super Admin.
 - Use **AI contract and subcontract analysis**.
 - Access the **admin panel**, including Companies, Projects, Documents, and the
   other admin tools available to a non-Super-Admin.
+- View and manage **support tickets** (`role:Super Admin|Admin` on the backend
+  — see [Support Ticket Administration](../super-admin/support-and-announcements.md)),
+  and manage the platform **announcement banner** the same way.
+
+!!! note "Sidebar visibility vs. actual access — verified 2026-07-19"
+    Support and Announcements are marked "Super Admin only" in the Admin
+    sidebar's own configuration (so an Admin account won't see the nav links),
+    but the backend routes for both are `role:Super Admin|Admin`, not
+    `role:Super Admin` alone — an Admin account that navigates to
+    `/admin/support` or `/admin/announcements` directly can use them fully.
+    This page previously stated Admin could not access Support at all, which
+    was inaccurate; it's corrected here as of the Batch 5 Help & Support
+    security review. Storage, System Logs, and Audit Log below have not been
+    re-verified against their actual route middleware as part of this review
+    — treat those specific claims with the same caution until checked.
 
 ## What Admin cannot do
 
-- Cannot access **Users**, **AI Config**, **Storage**, **Support**, **System
-  Logs**, or **Audit Log** — these admin sidebar items are Super Admin only.
+- Cannot access **Users** — Super Admin only (`role:Super Admin`, strictly, on
+  the backend).
+- Cannot access **AI Config**, **Storage**, **System Logs**, or **Audit Log**
+  from the sidebar — see the note above on sidebar visibility vs. backend
+  access for these.
 - Cannot invite users, change roles, or perform any of the account-management
   actions listed on the [Super Admin](super-admin.md) page (activate/deactivate,
   ban/unban, password resets, session revocation, tour resets). All of these
@@ -36,8 +54,8 @@ powers reserved for Super Admin.
 ## Where to find Admin tools
 
 Signing in as Admin takes you to the same **admin dashboard** as Super Admin,
-with a reduced sidebar (no Users, AI Config, Storage, Support, System Logs, or
-Audit Log).
+with a reduced sidebar (no Users, AI Config, Storage, System Logs, or Audit
+Log — see the note above regarding Support and Announcements specifically).
 
 ## Related
 

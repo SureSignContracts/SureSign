@@ -22,8 +22,8 @@ does.
 - **Confirmed data can be overwritten by a later confirmed analysis**, not
   automatically merged with it — always check the overwrite warning before
   confirming a new analysis over an existing one.
-- **The general AI Assistant chat is a separate feature** from contract/
-  subcontract analysis and does not read or write structured contract data.
+- **The general AI Assistant chat (Tools menu) is not yet available.** It is
+  unrelated to contract/subcontract analysis and does not affect it either way.
 
 ## Related
 

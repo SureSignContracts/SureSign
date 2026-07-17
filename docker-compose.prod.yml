@@ -20,12 +20,17 @@ services:
       # generated documents). Everything else ships inside the image.
       - backend_storage:/var/www/html/storage/app
     environment: &backend_env
+      # SureSign timezone architecture: UTC only, at every layer. Verified
+      # UTC already via the base image default — set explicitly so a future
+      # base-image change can't silently alter it.
+      - TZ=UTC
       - APP_NAME=SureSign
       - APP_ENV=${APP_ENV:-production}
       - APP_KEY=${APP_KEY}
       - APP_DEBUG=${APP_DEBUG:-false}
       - APP_URL=${APP_URL:-https://app.suresigncontracts.app}
       - FRONTEND_URL=${FRONTEND_URL:-https://app.suresigncontracts.app}
+      - APP_TIMEZONE=UTC
       - APP_LOCALE=en
       - APP_FALLBACK_LOCALE=en
       - APP_FAKER_LOCALE=en_US
@@ -123,6 +128,10 @@ services:
       # interfaces explicitly (found and verified against the real
       # production image, not the dev server, during non-root testing).
       - HOSTNAME=0.0.0.0
+      # Consistency only — the frontend doesn't do server-side date/business
+      # logic that depends on this, but every container in the stack runs
+      # the same explicit clock per SureSign's timezone architecture.
+      - TZ=UTC
     depends_on:
       - backend
     security_opt:
@@ -148,7 +157,15 @@ services:
     image: mysql:8.0
     container_name: suresign_mysql
     restart: unless-stopped
+    # Pins the server's own default time_zone to UTC explicitly — the app's
+    # PDO connections already force `SET time_zone='+00:00'` per-session
+    # (see backend/config/database.php), but @@global.time_zone otherwise
+    # defaults to `SYSTEM` (the container OS clock, verified UTC but not an
+    # enforced fact on its own). This closes that gap for any other client
+    # (mysql CLI, a GUI tool, a future non-Laravel connection).
+    command: --default-time-zone=+00:00
     environment:
+      TZ: UTC
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: suresign
       MYSQL_USER: suresign
@@ -177,6 +194,10 @@ services:
     image: redis:7-alpine
     container_name: suresign_redis
     restart: unless-stopped
+    environment:
+      # Redis itself is timezone-agnostic (no date logic), set purely for
+      # stack-wide consistency per SureSign's timezone architecture.
+      - TZ=UTC
     volumes:
       - redis_data:/data
     healthcheck:

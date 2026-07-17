@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { effectiveTodayYmd } from '@/lib/dateTime';
 import CountUp from '@/components/ui/CountUp';
 import {
   CalendarDays, Plus, Sparkles, X, ChevronDown, Check,
@@ -82,9 +83,7 @@ type ContractOption = { id: number; title: string; reference_number?: string | n
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
-}
+const today = effectiveTodayYmd;
 
 /**
  * Parse a date string that may be a bare date ("2026-04-30") OR a full ISO

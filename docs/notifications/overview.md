@@ -4,8 +4,9 @@
 
 SureSign creates in-app notifications for events such as file uploads,
 document generation, AI analysis completing, and variation status changes, and
-can send email notifications for certain commercial events if your
-organisation's administrator has enabled them.
+can send email notifications for certain commercial events — including
+reminders ahead of key payment deadlines — if your organisation's
+administrator has enabled them.
 
 !!! important "The notification bell is not shown to every account"
     In the current interface, the notification bell icon is only shown to

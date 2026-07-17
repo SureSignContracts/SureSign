@@ -5,11 +5,116 @@ import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
-import { Users2, Plus, Search, Calendar, X } from 'lucide-react';
+import { effectiveTodayYmd, formatTime } from '@/lib/dateTime';
+import { getIanaTimezones } from '@/lib/timezones';
+import { getErrorMessage } from '@/lib/getErrorMessage';
+import { useAuthStore } from '@/store/authStore';
+import { Users2, Plus, Search, Calendar, Clock, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PageTourButton from '@/components/tours/PageTourButton';
 import Button from '@/components/ui/Button';
+
+/** One hour after `time` (HH:MM), wrapping past midnight if needed — used
+ * only as a starting suggestion when a user first switches a meeting to
+ * timed mode, never forced afterwards. */
+function addOneHour(time: string): string {
+  const [h, m] = time.split(':').map(Number);
+  return `${String((h + 1) % 24).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+/** The default scheduling timezone for a new meeting — the organisation's
+ * own timezone (Batch 6 product decision: business meetings default to the
+ * organisation's timezone, not the individual organiser's personal
+ * override; anyone may still explicitly pick a different one in the
+ * selector below). */
+function defaultSchedulingTimezone(): string {
+  return useAuthStore.getState().user?.organization?.timezone ?? 'Europe/London';
+}
+
+function TimezoneSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const timezones = getIanaTimezones();
+  return (
+    <select
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+      style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+    >
+      {!timezones.includes(value) && value && <option value={value}>{value}</option>}
+      {timezones.map(tz => <option key={tz} value={tz}>{tz}</option>)}
+    </select>
+  );
+}
+
+/** Shared "Add a specific time" block — date/type/status stay in the
+ * caller's own grid; this renders the toggle plus (when on) start/end time
+ * + timezone fields, identically for both the create and edit forms. */
+function TimedScheduleFields({
+  isTimed, onToggle, startTime, endTime, timezone, onStartTime, onEndTime, onTimezone,
+}: {
+  isTimed: boolean; onToggle: (v: boolean) => void;
+  startTime: string; endTime: string; timezone: string;
+  onStartTime: (v: string) => void; onEndTime: (v: string) => void; onTimezone: (v: string) => void;
+}) {
+  const labelStyle = { color: 'var(--text-muted)' };
+  const inputStyle = { backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' };
+  return (
+    <div className="space-y-3">
+      <label className="flex items-center gap-2 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={isTimed}
+          onChange={e => {
+            const next = e.target.checked;
+            onToggle(next);
+            if (next && !startTime) {
+              onStartTime('09:00');
+              onEndTime('10:00');
+              onTimezone(timezone || defaultSchedulingTimezone());
+            }
+          }}
+          className="w-4 h-4"
+        />
+        <span className="text-sm flex items-center gap-1.5" style={{ color: 'var(--text-secondary)' }}>
+          <Clock size={13} /> Add a specific time
+        </span>
+      </label>
+
+      {isTimed && (
+        <div className="grid grid-cols-2 gap-4 pl-6">
+          <div>
+            <label className="block text-xs mb-1" style={labelStyle}>Start time *</label>
+            <input
+              type="time" value={startTime} required
+              onChange={e => {
+                const wasDefaultSpan = endTime === addOneHour(startTime);
+                onStartTime(e.target.value);
+                if (wasDefaultSpan) onEndTime(addOneHour(e.target.value));
+              }}
+              className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}
+            />
+          </div>
+          <div>
+            <label className="block text-xs mb-1" style={labelStyle}>End time *</label>
+            <input
+              type="time" value={endTime} required
+              onChange={e => onEndTime(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}
+            />
+          </div>
+          <div className="col-span-2">
+            <label className="block text-xs mb-1" style={labelStyle}>Timezone *</label>
+            <TimezoneSelect value={timezone} onChange={onTimezone} />
+            <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+              Attendees each see this in their own timezone — this is just what you are scheduling against.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   draft:    { bg: 'rgba(90,86,82,0.2)',    text: '#9a9490' },
@@ -26,25 +131,57 @@ const TYPE_LABELS: Record<string, string> = {
   other:         'Other',
 };
 
-type MeetingForm = { title: string; meeting_date: string; location: string; type: string; status: string };
+/**
+ * Human-readable "when" for a meeting, for both the list row and the detail
+ * header. Date-only meetings show just the date, exactly as before Batch 6.
+ * Timed meetings show the date plus the start/end time converted to the
+ * VIEWER's own effective timezone (not the scheduling timezone) — the
+ * scheduling timezone is shown alongside only when it actually differs
+ * from the viewer's, so attendees always know at a glance whether "2pm"
+ * means their own local 2pm or someone else's.
+ */
+function formatMeetingWhen(meeting: any): string {
+  if (!meeting.is_timed || !meeting.starts_at) {
+    return formatDate(meeting.meeting_date);
+  }
+  const viewerTz = useAuthStore.getState().user?.effective_timezone;
+  const start = formatTime(meeting.starts_at, { timeZone: viewerTz });
+  const end = formatTime(meeting.ends_at, { timeZone: viewerTz });
+  const suffix = viewerTz && viewerTz !== meeting.scheduled_timezone ? ` (${viewerTz})` : '';
+  return `${formatDate(meeting.meeting_date)} · ${start}–${end}${suffix}`;
+}
+
+type MeetingForm = {
+  title: string; meeting_date: string; location: string; type: string; status: string;
+  is_timed: boolean; start_time: string; end_time: string; timezone: string;
+};
 
 function NewMeetingModal({ projectId, onClose }: { projectId: string; onClose: () => void }) {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<MeetingForm>({
-    title: '', meeting_date: new Date().toISOString().split('T')[0],
+    title: '', meeting_date: effectiveTodayYmd(),
     location: '', type: 'progress', status: 'draft',
+    is_timed: false, start_time: '', end_time: '', timezone: defaultSchedulingTimezone(),
   });
+  const [error, setError] = useState('');
   const { mutate, isPending } = useMutation({
-    mutationFn: (data: MeetingForm) => api.post(`/projects/${projectId}/meetings`, data).then(r => r.data),
+    mutationFn: (data: MeetingForm) => {
+      const { is_timed, start_time, end_time, timezone, ...rest } = data;
+      return api.post(`/projects/${projectId}/meetings`, {
+        ...rest,
+        is_timed,
+        ...(is_timed ? { start_time, end_time, timezone } : {}),
+      }).then(r => r.data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project-meetings', projectId] });
       queryClient.invalidateQueries({ queryKey: ['project-activities', projectId] });
       toast.success('Meeting created');
       onClose();
     },
-    onError: () => toast.error('Failed to create meeting'),
+    onError: (err) => setError(getErrorMessage(err, 'Failed to create meeting.')),
   });
-  const set = (f: keyof MeetingForm, v: string) => setForm(p => ({ ...p, [f]: v }));
+  const set = <K extends keyof MeetingForm>(f: K, v: MeetingForm[K]) => setForm(p => ({ ...p, [f]: v }));
   const inputStyle = { backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' };
   const labelStyle = { color: 'var(--text-muted)' };
   return (
@@ -54,7 +191,7 @@ function NewMeetingModal({ projectId, onClose }: { projectId: string; onClose: (
           <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>New meeting</h2>
           <button onClick={onClose}><X size={18} style={{ color: 'var(--text-muted)' }} /></button>
         </div>
-        <form onSubmit={e => { e.preventDefault(); mutate(form); }} className="p-5 space-y-4">
+        <form onSubmit={e => { e.preventDefault(); setError(''); mutate(form); }} className="p-5 space-y-4">
           <div>
             <label className="block text-xs mb-1" style={labelStyle}>Title *</label>
             <input value={form.title} onChange={e => set('title', e.target.value)} required className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
@@ -83,6 +220,17 @@ function NewMeetingModal({ projectId, onClose }: { projectId: string; onClose: (
               </select>
             </div>
           </div>
+
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+            <TimedScheduleFields
+              isTimed={form.is_timed} onToggle={v => set('is_timed', v)}
+              startTime={form.start_time} endTime={form.end_time} timezone={form.timezone}
+              onStartTime={v => set('start_time', v)} onEndTime={v => set('end_time', v)} onTimezone={v => set('timezone', v)}
+            />
+          </div>
+
+          {error && <p className="text-xs" style={{ color: '#f87171' }}>{error}</p>}
+
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
             <button type="submit" disabled={isPending} className="px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: isPending ? 0.7 : 1 }}>
@@ -105,6 +253,9 @@ function MeetingDetailModal({
   const inputStyle = { backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' };
   const labelStyle = { color: 'var(--text-muted)' };
 
+  // Timed meetings pre-populate start/end time in the SCHEDULING timezone
+  // (not the viewer's own) — reopening the edit form must show back what
+  // the organiser actually typed, never a silently reinterpreted value.
   const [form, setForm] = useState({
     title:        meeting.title ?? '',
     meeting_date: meeting.meeting_date ? String(meeting.meeting_date).slice(0, 10) : '',
@@ -117,15 +268,24 @@ function MeetingDetailModal({
     action_items: Array.isArray(meeting.action_items)
       ? meeting.action_items.join('\n')
       : (meeting.action_items ?? ''),
+    is_timed:   Boolean(meeting.is_timed),
+    start_time: meeting.is_timed ? formatTime(meeting.starts_at, { timeZone: meeting.scheduled_timezone }) : '',
+    end_time:   meeting.is_timed ? formatTime(meeting.ends_at, { timeZone: meeting.scheduled_timezone }) : '',
+    timezone:   meeting.scheduled_timezone ?? defaultSchedulingTimezone(),
   });
+  const [error, setError] = useState('');
 
   const { mutate, isPending } = useMutation({
-    mutationFn: (data: typeof form) =>
-      api.put(`/projects/${projectId}/meetings/${meeting.id}`, {
-        ...data,
+    mutationFn: (data: typeof form) => {
+      const { is_timed, start_time, end_time, timezone, ...rest } = data;
+      return api.put(`/projects/${projectId}/meetings/${meeting.id}`, {
+        ...rest,
         attendees:    data.attendees.split(',').map((s: string) => s.trim()).filter(Boolean),
         action_items: data.action_items.split('\n').map((s: string) => s.trim()).filter(Boolean),
-      }).then(r => r.data),
+        is_timed,
+        ...(is_timed ? { start_time, end_time, timezone } : {}),
+      }).then(r => r.data);
+    },
     onSuccess: (updated: any) => {
       queryClient.invalidateQueries({ queryKey: ['project-meetings', projectId] });
       queryClient.invalidateQueries({ queryKey: ['project-activities', projectId] });
@@ -133,10 +293,10 @@ function MeetingDetailModal({
       onUpdated(updated?.data ?? updated);
       setEditMode(false);
     },
-    onError: () => toast.error('Failed to update meeting'),
+    onError: (err) => setError(getErrorMessage(err, 'Failed to update meeting.')),
   });
 
-  const set = (f: keyof typeof form, v: string) => setForm(p => ({ ...p, [f]: v }));
+  const set = <K extends keyof typeof form>(f: K, v: (typeof form)[K]) => setForm(p => ({ ...p, [f]: v }));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
@@ -148,7 +308,7 @@ function MeetingDetailModal({
               <span className="font-mono text-xs">#{meeting.meeting_number}</span> — {meeting.title}
             </h2>
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-              {TYPE_LABELS[meeting.type] ?? meeting.type} · {formatDate(meeting.meeting_date)}
+              {TYPE_LABELS[meeting.type] ?? meeting.type} · {formatMeetingWhen(meeting)}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -198,6 +358,15 @@ function MeetingDetailModal({
                 </select>
               </div>
             </div>
+
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+              <TimedScheduleFields
+                isTimed={form.is_timed} onToggle={v => set('is_timed', v)}
+                startTime={form.start_time} endTime={form.end_time} timezone={form.timezone}
+                onStartTime={v => set('start_time', v)} onEndTime={v => set('end_time', v)} onTimezone={v => set('timezone', v)}
+              />
+            </div>
+
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Attendees (comma-separated)</label>
               <input value={form.attendees} onChange={e => set('attendees', e.target.value)}
@@ -220,6 +389,7 @@ function MeetingDetailModal({
                 placeholder="Action item 1&#10;Action item 2"
                 className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none" style={inputStyle} />
             </div>
+            {error && <p className="text-xs" style={{ color: '#f87171' }}>{error}</p>}
             <div className="flex justify-end gap-3 pt-2">
               <button type="button" onClick={() => setEditMode(false)} className="px-4 py-2 rounded-lg text-sm"
                 style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
@@ -233,7 +403,7 @@ function MeetingDetailModal({
           <div className="p-5 space-y-5">
             <div className="grid grid-cols-2 gap-4 text-sm">
               {[
-                { label: 'Date', value: formatDate(meeting.meeting_date) },
+                { label: meeting.is_timed ? 'Date & time' : 'Date', value: formatMeetingWhen(meeting) },
                 { label: 'Location', value: meeting.location || '—' },
                 { label: 'Type', value: TYPE_LABELS[meeting.type] ?? meeting.type },
                 { label: 'Status', value: meeting.status },
@@ -394,7 +564,7 @@ export default function ProjectMeetingsPage() {
                     <span className="font-mono text-[11px]" style={{ color: 'var(--text-muted)' }}>#{m.meeting_number}</span> — {m.title}
                   </p>
                   <p className="text-xs mt-0.5 tabular-nums" style={{ color: 'var(--text-muted)' }}>
-                    {TYPE_LABELS[m.type] ?? m.type} · {formatDate(m.meeting_date)} {m.location ? `· ${m.location}` : ''}
+                    {TYPE_LABELS[m.type] ?? m.type} · {formatMeetingWhen(m)} {m.location ? `· ${m.location}` : ''}
                   </p>
                 </div>
               </div>

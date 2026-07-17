@@ -1,257 +1,85 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  Search, ChevronDown, RotateCcw, CheckCircle2, HelpCircle,
-  Rocket, FolderKanban, FileText, Package, Sparkles, DollarSign,
-  MessageSquare, Users2, Clock, FolderOpen, FileStack, CheckSquare,
-  Bell, Settings, LifeBuoy, Send,
+  HelpCircle, Compass, Inbox, BookOpen, Activity, ScrollText, LifeBuoy,
 } from 'lucide-react';
-import { useTour } from '@/lib/tours/useTour';
-import { TOURS } from '@/lib/tours/registry';
-import api from '@/lib/api';
-import { getErrorMessage } from '@/lib/getErrorMessage';
+import { KnowledgeBaseSection } from '@/components/support/KnowledgeBaseSection';
+import { SystemStatusSection } from '@/components/support/SystemStatusSection';
+import { EmergencyBanner } from '@/components/support/EmergencyBanner';
+import { CombinedSearch } from '@/components/support/CombinedSearch';
 
-interface FaqItem {
-  q: string;
-  a: string;
-}
-
-interface FaqCategory {
-  key: string;
-  label: string;
-  icon: React.ElementType;
-  items: FaqItem[];
-}
-
-const FAQ_CATEGORIES: FaqCategory[] = [
-  {
-    key: 'getting-started',
-    label: 'Getting Started',
-    icon: Rocket,
-    items: [
-      { q: 'Where do I start?', a: 'Your dashboard gives a live overview of everything that needs attention across your projects: open RFIs, pending variations and payment applications. From there, use the sidebar to move between Projects, Commercial, Documents and the other modules.' },
-      { q: 'How do I restart a page tour?', a: 'Open this Help Centre page and use the "Restart" button next to any tour below, or click the question-mark icon in the header of a supported page to take that page’s tour again.' },
-      { q: 'What’s the difference between Admin and Client views?', a: 'Admins and Super Admins manage all projects, contracts and organisation settings. Clients see the projects they’ve been given access to, along with documents, RFIs, notices and their responses.' },
-    ],
-  },
-  {
-    key: 'projects',
-    label: 'Projects',
-    icon: FolderKanban,
-    items: [
-      { q: 'How do I create a new project?', a: 'From the Projects page, click "New project" and fill in the project details. Admins and Super Admins can create projects; Clients see the projects they’ve been added to.' },
-      { q: 'What does the project health score mean?', a: 'The Project Overview page shows a health score combining cost, programme and risk signals for that project: healthy, needs attention, or critical.' },
-    ],
-  },
-  {
-    key: 'contracts',
-    label: 'Contracts',
-    icon: FileText,
-    items: [
-      { q: 'Where do I find a project’s main contract?', a: 'Open a project, then go to Contracts in the project sidebar. You can view contract terms, key dates and any linked AI analysis from there.' },
-    ],
-  },
-  {
-    key: 'trade-packages',
-    label: 'Trade Packages',
-    icon: Package,
-    items: [
-      { q: 'What is a Trade Package?', a: 'A Trade Package represents a subcontract agreement for a specific trade (e.g. groundworks, M&E) within a project, with its own commercial, programme, compliance and document workspace.' },
-      { q: 'How do I upload a subcontract?', a: 'Open the Trade Package workspace, go to the Documents tab, and upload the executed subcontract. You can then run AI Analysis on it to extract key terms.' },
-    ],
-  },
-  {
-    key: 'ai-analysis',
-    label: 'AI Analysis',
-    icon: Sparkles,
-    items: [
-      { q: 'What does AI Analysis do?', a: 'AI Analysis reads an uploaded contract or subcontract and extracts key terms, such as payment rules, important dates, parties and programme milestones, for an admin to review and confirm before it’s used for payment date calculations. It must be enabled by an admin in Settings.' },
-      { q: 'Is AI Analysis on by default?', a: 'No, it’s opt-in per organisation and is configured by an admin in Settings before it can be used.' },
-    ],
-  },
-  {
-    key: 'commercial',
-    label: 'Commercial',
-    icon: DollarSign,
-    items: [
-      { q: 'How do Payment Notices and Pay Less Notices work?', a: 'After a payment application is certified, a Payment Notice confirms the sum due. If the paying party intends to pay less than that sum, a Pay Less Notice is issued before the statutory final date for payment. Both are generated from the Commercial page.' },
-      { q: 'How do I track overdue actions?', a: 'The Commercial and Project Overview pages surface pending certifications, outstanding balances and notices that are due, so overdue items are visible at a glance.' },
-    ],
-  },
-  {
-    key: 'rfis',
-    label: 'RFIs',
-    icon: MessageSquare,
-    items: [
-      { q: 'How do I create an RFI?', a: 'Open a project, go to RFIs, and click "New RFI". Fill in the subject and details, then the RFI is tracked through open, pending response, responded and closed statuses.' },
-    ],
-  },
-  {
-    key: 'meetings',
-    label: 'Meetings',
-    icon: Users2,
-    items: [
-      { q: 'Where do meeting minutes live?', a: 'Open a project and go to Meetings to record and review meeting minutes for that project.' },
-    ],
-  },
-  {
-    key: 'delay-eot',
-    label: 'Delay & EOT',
-    icon: Clock,
-    items: [
-      { q: 'What’s tracked under Delay & EOT?', a: 'Delay events, Extension of Time (EOT) requests, and Loss & Expense claims. Each can be linked to a contract or a trade package.' },
-    ],
-  },
-  {
-    key: 'documents',
-    label: 'Documents',
-    icon: FolderOpen,
-    items: [
-      { q: 'Where do generated documents appear?', a: 'Generated and uploaded documents appear in the project’s Documents page, organised by folder, and are logged in the Document Register for a full audit trail.' },
-    ],
-  },
-  {
-    key: 'delivery-documents',
-    label: 'Delivery Documentation',
-    icon: FileStack,
-    items: [
-      { q: 'What are Delivery Documents?', a: 'Delivery Documents cover handover-related paperwork for a project, such as certificates and manuals, tracked separately from general project documents.' },
-    ],
-  },
-  {
-    key: 'qa-snagging-site',
-    label: 'QA / Snagging / Site Reports',
-    icon: CheckSquare,
-    items: [
-      { q: 'What’s the difference between QA Reports, Snagging and Site Reports?', a: 'QA Reports record quality assurance checks against work stages. Snagging tracks defects that need resolving before handover. Site Reports capture day-to-day site activity and conditions.' },
-    ],
-  },
-  {
-    key: 'notifications',
-    label: 'Notifications',
-    icon: Bell,
-    items: [
-      { q: 'How do I get notified about deadlines?', a: 'SureSign sends reminders for statutory payment dates and other deadlines via email and in-app notifications, based on your organisation’s notification settings.' },
-    ],
-  },
-  {
-    key: 'account-settings',
-    label: 'Account & Settings',
-    icon: Settings,
-    items: [
-      { q: 'Where do I update my organisation’s branding?', a: 'Go to Settings to update your company logo, letterhead and colours. These appear on all generated PDFs and Excel documents.' },
-      { q: 'How do I restart the welcome tour?', a: 'Use the "Restart" button next to "Welcome tour" below. It will run again the next time it can find its target elements, usually on your dashboard.' },
-    ],
-  },
+// The Help Center landing page's hub — some tiles are real pages, others are
+// anchors into sections further down this same page (Knowledge Base, System
+// Status don't have dedicated pages yet). Update an entry's href here, not
+// the anchor id on its section, if that section ever moves to its own page.
+const HUB_LINKS: { label: string; description: string; href: string; icon: React.ElementType }[] = [
+  { label: 'Guided Tours', description: 'A walkthrough for every page.', href: '/app/help/tours', icon: Compass },
+  { label: 'Contact Support', description: 'Send a question to the SureSign team.', href: '/app/help/support', icon: LifeBuoy },
+  { label: 'My Support Requests', description: 'Track requests you’ve submitted.', href: '/app/help/support?tab=requests', icon: Inbox },
+  { label: 'Knowledge Base', description: 'Browse the SureSign user guide.', href: '#knowledge-base', icon: BookOpen },
+  { label: 'FAQ', description: 'Quick answers, by category.', href: '/app/help/faq', icon: HelpCircle },
+  { label: 'System Status', description: 'Live status of platform components.', href: '#system-status', icon: Activity },
+  { label: 'Release Notes', description: 'What’s new in SureSign.', href: '/app/settings/releases', icon: ScrollText },
 ];
 
-function AccordionItem({ item }: { item: FaqItem }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div style={{ borderBottom: '1px solid var(--border)' }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between gap-3 px-5 py-3.5 text-left transition-colors hover:bg-[var(--bg-hover)]"
-      >
-        <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{item.q}</span>
-        <ChevronDown
-          size={15}
-          className="flex-shrink-0 transition-transform duration-200"
-          style={{ color: 'var(--text-muted)', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
-        />
-      </button>
-      {open && (
-        <div className="px-5 pb-4 text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-          {item.a}
-        </div>
-      )}
-    </div>
+function HubTile({ label, description, href, icon: Icon }: { label: string; description: string; href: string; icon: React.ElementType }) {
+  const content = (
+    <>
+      <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--gold-15)' }}>
+        <Icon size={16} style={{ color: 'var(--gold)' }} />
+      </div>
+      <div className="min-w-0">
+        <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{label}</p>
+        <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>{description}</p>
+      </div>
+    </>
   );
+  const className = 'group flex items-center gap-3 rounded-2xl px-4 py-3.5 transition-colors hover:bg-[var(--bg-hover)]';
+  const style = { backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' };
+
+  return href.startsWith('#')
+    ? <a href={href} className={className} style={style}>{content}</a>
+    : <Link href={href} className={className} style={style}>{content}</Link>;
 }
 
-function ContactSupportCard() {
-  const [subject, setSubject] = useState('');
-  const [message, setMessage] = useState('');
-  const [sent, setSent] = useState(false);
-  const [error, setError] = useState('');
+export default function HelpCenterPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const mutation = useMutation({
-    mutationFn: () => api.post('/support-tickets', { subject, message }),
-    onSuccess: () => {
-      setSent(true);
-      setSubject('');
-      setMessage('');
-    },
-    onError: (err) => setError(getErrorMessage(err, 'Could not submit your request. Please try again.')),
-  });
+  // Backward compatibility for two generations of old links, both now
+  // redirected on rather than left to land on a landing page that no longer
+  // has the content they were pointing at. Contact Support and My Support
+  // Requests are now the same page (/app/help/support), split into tabs —
+  // see the "tab" query param below.
+  //   1. Contact Support (Batch 4): a `category`/`route`/`module` query
+  //      param, or a bare #contact-support hash, unambiguously means this
+  //      was a Contact-Support-intent link — redirect to /app/help/support
+  //      (New Request tab) with the same params.
+  //   2. My Support Requests (Batch 5): a `ticket` query param, or a bare
+  //      #my-requests hash, means this was a My-Support-Requests-intent
+  //      link — redirect to /app/help/support/{ticket} if an id is present,
+  //      otherwise /app/help/support?tab=requests.
+  // router.replace (not push) so the stale intermediate URL doesn't sit in
+  // browser history; each branch redirects to a different route, so neither
+  // can loop back into this effect.
+  useEffect(() => {
+    const hasSupportIntent =
+      searchParams.has('category') || searchParams.has('route') || searchParams.has('module') ||
+      window.location.hash === '#contact-support';
+    if (hasSupportIntent) {
+      router.replace(`/app/help/support?${searchParams.toString()}`);
+      return;
+    }
 
-  return (
-    <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
-      <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
-        <h2 className="text-sm font-semibold flex items-center gap-1.5" style={{ color: 'var(--text-primary)' }}>
-          <LifeBuoy size={14} />
-          Contact Support
-        </h2>
-        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Can&apos;t find an answer above? Send your question to the SureSign team.</p>
-      </div>
-      <div className="p-5 space-y-3">
-        {sent ? (
-          <div className="flex items-center gap-2 text-sm" style={{ color: '#4ade80' }}>
-            <CheckCircle2 size={15} />
-            Your request has been submitted. We&apos;ll get back to you by email.
-          </div>
-        ) : (
-          <>
-            {error && <p className="text-xs" style={{ color: '#f87171' }}>{error}</p>}
-            <input
-              value={subject}
-              onChange={e => setSubject(e.target.value)}
-              placeholder="Subject"
-              className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none"
-              style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-            />
-            <textarea
-              value={message}
-              onChange={e => setMessage(e.target.value)}
-              placeholder="Describe your question or issue…"
-              rows={4}
-              className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none resize-none"
-              style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-            />
-            <div className="flex justify-end">
-              <button
-                onClick={() => mutation.mutate()}
-                disabled={!subject.trim() || !message.trim() || mutation.isPending}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-opacity disabled:opacity-50 active:scale-[0.98]"
-                style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
-              >
-                <Send size={12} />
-                {mutation.isPending ? 'Sending…' : 'Send Request'}
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-export default function HelpCentrePage() {
-  const [search, setSearch] = useState('');
-  const { startTour, isTourCompleted } = useTour();
-
-  const filteredCategories = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return FAQ_CATEGORIES;
-    return FAQ_CATEGORIES
-      .map(cat => ({
-        ...cat,
-        items: cat.items.filter(i => i.q.toLowerCase().includes(q) || i.a.toLowerCase().includes(q)),
-      }))
-      .filter(cat => cat.items.length > 0);
-  }, [search]);
+    const ticketParam = searchParams.get('ticket');
+    const hasRequestsIntent = !!ticketParam || window.location.hash === '#my-requests';
+    if (hasRequestsIntent) {
+      router.replace(ticketParam && /^\d+$/.test(ticketParam) ? `/app/help/support/${ticketParam}` : '/app/help/support?tab=requests');
+    }
+  }, [searchParams, router]);
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
@@ -261,87 +89,25 @@ export default function HelpCentrePage() {
           <HelpCircle size={20} style={{ color: 'var(--gold)' }} />
         </div>
         <div>
-          <h1 className="text-[1.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>Help Centre</h1>
+          <h1 className="text-[1.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>Help Center</h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-            Guided tours, and answers to common questions about running projects in SureSign.
+            Everything for getting help in SureSign, in one place.
           </p>
         </div>
       </div>
 
-      {/* Tours */}
-      <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
-        <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Guided tours</h2>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Restart the welcome tour, or take a tour of a specific page.</p>
-        </div>
-        <div>
-          {TOURS.map(tour => {
-            const completed = isTourCompleted(tour.key);
-            return (
-              <div
-                key={tour.key}
-                className="flex items-center justify-between gap-3 px-5 py-3.5"
-                style={{ borderBottom: '1px solid var(--border)' }}
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{tour.label}</p>
-                    {completed && (
-                      <span className="inline-flex items-center gap-1 text-xs" style={{ color: '#4ade80' }}>
-                        <CheckCircle2 size={12} /> Completed
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>{tour.description}</p>
-                </div>
-                <button
-                  onClick={() => startTour(tour.key, { force: true })}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-[0.98] hover:opacity-90 flex-shrink-0"
-                  style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
-                >
-                  <RotateCcw size={12} />
-                  {completed ? 'Restart' : 'Start'}
-                </button>
-              </div>
-            );
-          })}
-        </div>
+      <EmergencyBanner />
+
+      <CombinedSearch />
+
+      {/* Hub */}
+      <div className="grid sm:grid-cols-2 gap-3">
+        {HUB_LINKS.map(link => <HubTile key={link.label} {...link} />)}
       </div>
 
-      <ContactSupportCard />
+      <KnowledgeBaseSection />
 
-      {/* FAQ search */}
-      <div className="relative">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
-        <input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search the FAQ…"
-          className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none"
-          style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)', boxShadow: 'var(--shadow-card)' }}
-        />
-      </div>
-
-      {/* FAQ categories */}
-      {filteredCategories.length === 0 ? (
-        <div className="rounded-2xl p-8 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No results for "{search}".</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {filteredCategories.map(cat => (
-            <div key={cat.key} className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
-              <div className="flex items-center gap-2.5 px-5 py-3.5" style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-elevated)' }}>
-                <cat.icon size={15} style={{ color: 'var(--text-secondary)' }} />
-                <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{cat.label}</h2>
-              </div>
-              <div>
-                {cat.items.map(item => <AccordionItem key={item.q} item={item} />)}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <SystemStatusSection />
     </div>
   );
 }

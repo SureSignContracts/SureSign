@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { effectiveTodayYmd } from '@/lib/dateTime';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import {
   ArrowLeft, Save, Send, Download, FileSpreadsheet, FileText,
@@ -673,7 +674,9 @@ const STAGE_GLOW: Record<StageStatus, string | undefined> = {
 };
 
 function PaymentCycleTimeline({ pa, formatCurrency }: { pa: PA; formatCurrency: (v: number | string) => string }) {
-  const today   = new Date().toISOString().split('T')[0];
+  // Must agree with the backend's own organisation-timezone-aware "today"
+  // (TimezoneResolver), not the UTC calendar day.
+  const today   = effectiveTodayYmd();
   const hasPN   = (pa.payment_notices?.length ?? 0) > 0;
   const hasPLN  = (pa.pay_less_notices?.length ?? 0) > 0;
   const isPaid  = pa.status === 'paid';

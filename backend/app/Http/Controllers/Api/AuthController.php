@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\User;
 use App\Services\EmailVerificationService;
+use App\Services\TimezoneResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password as PasswordBroker;
@@ -92,6 +93,25 @@ class AuthController extends Controller
         self::revokeOtherTokens($user, $currentTokenId);
 
         return response()->json(['message' => 'Password updated.']);
+    }
+
+    /**
+     * Self-service timezone override — same pattern as updatePassword()
+     * above (the authenticated user acting on their own account, no role
+     * gate needed). `timezone: null` explicitly means "use company
+     * timezone" (clears any existing override); a real IANA identifier sets
+     * one. See App\Services\TimezoneResolver for how this is resolved.
+     */
+    public function updateTimezone(Request $request)
+    {
+        $validated = $request->validate([
+            'timezone' => 'nullable|timezone',
+        ]);
+
+        $user = $request->user();
+        $user->update(['timezone' => $validated['timezone'] ?? null]);
+
+        return response()->json($this->userResource($user->fresh('organization.branding')));
     }
 
     // Used only for the admin-forced "must change password" flow — the user
@@ -231,11 +251,19 @@ class AuthController extends Controller
             'banned_at'            => $user->banned_at,
             'must_change_password' => $user->must_change_password,
             'tours_reset_at'       => $user->tours_reset_at,
+            // `timezone` is the raw override (null = inheriting the
+            // organisation's timezone). `effective_timezone` is what
+            // actually applies right now, per TimezoneResolver's
+            // user → organisation → platform → UTC hierarchy — provided so
+            // clients don't have to reimplement that resolution themselves.
+            'timezone'             => $user->timezone,
+            'effective_timezone'   => TimezoneResolver::effectiveTimezone($user, $user->organization),
             'organization' => $user->organization ? [
                 'id'           => $user->organization->id,
                 'name'         => $user->organization->name,
                 'slug'         => $user->organization->slug,
                 'is_onboarded' => (bool) $user->organization->is_onboarded,
+                'timezone'     => $user->organization->timezone,
                 'branding'     => $user->organization->branding,
             ] : null,
         ];

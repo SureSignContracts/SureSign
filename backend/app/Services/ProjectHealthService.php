@@ -7,6 +7,7 @@ use App\Models\ContractDeliverable;
 use App\Models\ContractRisk;
 use App\Models\FinalAccount;
 use App\Models\PaymentApplication;
+use App\Models\Project;
 
 /**
  * Transparent score-based project health calculator.
@@ -60,7 +61,9 @@ class ProjectHealthService
 
     public function getHealth(int $projectId, ?int $contractId = null): array
     {
-        $today = now()->toDateString();
+        // "Overdue" is a business-day concept scoped to this project's own
+        // organisation, not the server's UTC calendar day.
+        $today = TimezoneResolver::today(null, Project::find($projectId)?->organization)->toDateString();
 
         // ── Commercial ───────────────────────────────────────────────────────
 

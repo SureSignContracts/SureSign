@@ -12,12 +12,14 @@ use App\Models\DelayEvent;
 use App\Models\DeliveryDocument;
 use App\Models\EotRequest;
 use App\Models\FinalAccount;
+use App\Models\Organization;
 use App\Models\PaymentApplication;
 use App\Models\RetentionRelease;
 use App\Models\Rfi;
 use App\Models\TradePackage;
 use App\Services\FinalAccountService;
 use App\Services\TradePackages\WorkspaceNavigationResolver;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
 /**
@@ -134,10 +136,14 @@ class OperationalIntelligenceService
      */
     public function getUpcoming(int $projectId, int $days = 30, ?int $contractId = null): Collection
     {
-        $cutoff = now()->addDays($days)->endOfDay();
-
+        // Was previously a separate `now()->addDays($days)->endOfDay()` cutoff
+        // compared against event_date directly — mathematically equivalent to
+        // (and duplicated) the days_from_today bound below, while requiring
+        // its own independent "now" resolution. Using days_from_today alone
+        // is the single source of truth (already organisation-timezone-aware
+        // via each normalizer) rather than a second parallel computation.
         return $this->getItemsForProject($projectId, $contractId)
-            ->filter(fn($i) => $i['days_from_today'] !== null && $i['days_from_today'] >= 0 && $i['event_date']->lte($cutoff));
+            ->filter(fn($i) => $i['days_from_today'] !== null && $i['days_from_today'] >= 0 && $i['days_from_today'] <= $days);
     }
 
     /**
@@ -402,7 +408,7 @@ class OperationalIntelligenceService
     private function normalizeDeadline(ContractDeadline $d, int $projectId, ?int $organizationId): array
     {
         $date  = $d->resolved_date;
-        $days  = $date ? (int) now()->startOfDay()->diffInDays($date->copy()->startOfDay(), false) : null;
+        $days  = $this->daysFromToday($date, $organizationId);
         $cat   = $this->deadlineCategoryToCalendarCategory($d->category);
 
         return [
@@ -432,7 +438,7 @@ class OperationalIntelligenceService
     private function normalizePaymentDate(PaymentApplication $app, string $field, string $label, int $projectId, ?int $organizationId): array
     {
         $date = $app->{$field};
-        $days = $date ? (int) now()->startOfDay()->diffInDays($date->copy()->startOfDay(), false) : null;
+        $days = $this->daysFromToday($date, $organizationId);
         $cat  = CalendarEvent::CATEGORY_PAYMENT;
         $ref  = $app->reference ?? "App #{$app->application_number}";
 
@@ -462,7 +468,7 @@ class OperationalIntelligenceService
     private function normalizeMilestone(ContractProgrammeMilestone $m, int $projectId, ?int $organizationId): array
     {
         $date = $m->forecast_date ?? $m->planned_date;
-        $days = $date ? (int) now()->startOfDay()->diffInDays($date->copy()->startOfDay(), false) : null;
+        $days = $this->daysFromToday($date, $organizationId);
         $cat  = CalendarEvent::CATEGORY_PROGRAMME;
 
         return [
@@ -496,7 +502,7 @@ class OperationalIntelligenceService
     private function normalizeDelayEvent(DelayEvent $e, int $projectId, ?int $organizationId): array
     {
         $date = $e->date_notified ?? $e->date_occurred;
-        $days = $date ? (int) now()->startOfDay()->diffInDays($date->copy()->startOfDay(), false) : null;
+        $days = $this->daysFromToday($date, $organizationId);
         $cat  = CalendarEvent::CATEGORY_PROGRAMME;
 
         return [
@@ -529,7 +535,7 @@ class OperationalIntelligenceService
     private function normalizeEotRequest(EotRequest $eot, int $projectId, ?int $organizationId): array
     {
         $date = $eot->notice_date;
-        $days = $date ? (int) now()->startOfDay()->diffInDays($date->copy()->startOfDay(), false) : null;
+        $days = $this->daysFromToday($date, $organizationId);
         $cat  = CalendarEvent::CATEGORY_PROGRAMME;
 
         return [
@@ -559,7 +565,7 @@ class OperationalIntelligenceService
     private function normalizeRisk(ContractRisk $risk, int $projectId, ?int $organizationId): array
     {
         $date = $risk->review_date;
-        $days = $date ? (int) now()->startOfDay()->diffInDays($date->copy()->startOfDay(), false) : null;
+        $days = $this->daysFromToday($date, $organizationId);
         $cat  = CalendarEvent::CATEGORY_RISK;
 
         return [
@@ -590,7 +596,7 @@ class OperationalIntelligenceService
     private function normalizeDeliveryDocument(DeliveryDocument $doc, int $projectId, ?int $organizationId): array
     {
         $date = $doc->due_date;
-        $days = $date ? (int) now()->startOfDay()->diffInDays($date->copy()->startOfDay(), false) : null;
+        $days = $this->daysFromToday($date, $organizationId);
         $cat  = CalendarEvent::CATEGORY_COMPLIANCE;
 
         return [
@@ -620,7 +626,7 @@ class OperationalIntelligenceService
     private function normalizeRfi(Rfi $rfi, int $projectId, ?int $organizationId): array
     {
         $date = $rfi->response_due_date;
-        $days = $date ? (int) now()->startOfDay()->diffInDays($date->copy()->startOfDay(), false) : null;
+        $days = $this->daysFromToday($date, $organizationId);
         $cat  = CalendarEvent::CATEGORY_COMMUNICATION;
 
         return [
@@ -651,7 +657,7 @@ class OperationalIntelligenceService
     private function normalizeRetention(RetentionRelease $r, int $projectId, ?int $organizationId): array
     {
         $date   = $r->release_date;
-        $days   = $date ? (int) now()->startOfDay()->diffInDays($date->copy()->startOfDay(), false) : null;
+        $days   = $this->daysFromToday($date, $organizationId);
         $cat    = CalendarEvent::CATEGORY_RETENTION;
         $moiety = $r->moiety === RetentionRelease::MOIETY_HALF_1 ? 'Half 1 (Practical Completion)' : 'Half 2 (Making Good Defects)';
 
@@ -681,7 +687,7 @@ class OperationalIntelligenceService
     private function normalizeDeliverable(ContractDeliverable $d, int $projectId, ?int $organizationId): array
     {
         $date  = $d->resolved_date;
-        $days  = $date ? (int) now()->startOfDay()->diffInDays($date->copy()->startOfDay(), false) : null;
+        $days  = $this->daysFromToday($date, $organizationId);
         $cat   = CalendarEvent::CATEGORY_DELIVERABLES;
 
         return [
@@ -718,56 +724,150 @@ class OperationalIntelligenceService
         $cat = CalendarEvent::CATEGORY_COMMERCIAL;
         $items = collect();
 
-        $push = function (string $field, string $title, $date, ?string $description = null) use (&$items, $fa, $cat, $projectId, $organizationId) {
-            if (!$date) return;
-            $date = \Carbon\Carbon::parse($date)->startOfDay();
-            $days = (int) now()->startOfDay()->diffInDays($date, false);
+        // Batch 3.5 fix (previously a Batch 4 AMBIGUOUS CASE — see the Batch 4
+        // report): this method genuinely mixes two different value types and
+        // now uses two distinct, clearly named paths instead of forcing both
+        // through one generic calculation:
+        //   - pushDateOnlyItem(): for a true DATE-only value
+        //     (dispute_window_expires_at) — never touches its timezone.
+        //   - pushDatetimeInstantItem(): for a true DATETIME instant
+        //     (submitted_at, final_certificate_issued_at) — converts to this
+        //     organisation's timezone *first* to find its local calendar day,
+        //     which is the correct (and only sensible) way to ask "which
+        //     local day did this real moment happen on."
+        // review_due/close_out_overdue are themselves derived deadlines (an
+        // SLA measured in calendar days from a DATETIME instant) — computed
+        // via finalAccountLocalDeadlineDate(), the same calendar-day logic
+        // FinalAccount::isReviewOverdue()/isCloseOutOverdue() use, so the
+        // calendar item and the model's own overdue flag can never disagree.
 
-            $items->push([
-                'source_type'     => CalendarEvent::SOURCE_FINAL_ACCOUNT,
-                'source_id'       => $fa->id,
-                'source_field'    => $field,
-                'title'           => $title,
-                'description'     => $description,
-                'category'        => $cat,
-                'priority'        => CalendarEvent::computePriority($days, $cat),
-                'event_date'      => $date,
-                'status'          => $this->computeStatus($days),
-                'days_from_today' => $days,
-                'contract_id'     => $fa->contract_id,
-                'trade_package_id' => $fa->trade_package_id,
-                'action_url'      => WorkspaceNavigationResolver::actionUrl($projectId, CalendarEvent::SOURCE_FINAL_ACCOUNT, $fa->id, $fa->trade_package_id),
-                'project_id'      => $projectId,
-                'organization_id' => $organizationId,
-                'meta'            => [
-                    'final_account_id'        => $fa->id,
-                    'final_account_reference' => $fa->reference,
-                    'final_account_status'    => $fa->status,
-                ],
-            ]);
-        };
-
-        if ($fa->status === FinalAccount::STATUS_SUBMITTED) {
-            $push('submitted_review_pending', "Final Account Submitted — Review Required ({$fa->reference})", $fa->submitted_at);
+        if ($fa->status === FinalAccount::STATUS_SUBMITTED && $fa->submitted_at) {
+            $items->push($this->pushDatetimeInstantItem(
+                $fa, 'submitted_review_pending', "Final Account Submitted — Review Required ({$fa->reference})",
+                $fa->submitted_at, $cat, $projectId, $organizationId
+            ));
         }
 
         if ($fa->status === FinalAccount::STATUS_UNDER_REVIEW && $fa->reviewed_at) {
-            $push('review_due', "Final Account Review ({$fa->reference})", $fa->reviewed_at->copy()->addDays(FinalAccount::reviewSlaDays()));
+            $items->push($this->pushDateOnlyItem(
+                $fa, 'review_due', "Final Account Review ({$fa->reference})",
+                $this->finalAccountLocalDeadlineDate($fa->reviewed_at, FinalAccount::reviewSlaDays(), $organizationId),
+                $cat, $projectId, $organizationId
+            ));
         }
 
         if ($fa->status === FinalAccount::STATUS_FINAL_CERTIFICATE_ISSUED) {
-            $push('certificate_issued_closeout_ready', "Final Certificate Issued — Ready for Commercial Close-Out ({$fa->reference})", $fa->final_certificate_issued_at);
+            if ($fa->final_certificate_issued_at) {
+                $items->push($this->pushDatetimeInstantItem(
+                    $fa, 'certificate_issued_closeout_ready', "Final Certificate Issued — Ready for Commercial Close-Out ({$fa->reference})",
+                    $fa->final_certificate_issued_at, $cat, $projectId, $organizationId
+                ));
 
-            $push('close_out_overdue', "Commercial Close-Out ({$fa->reference})", $fa->final_certificate_issued_at?->copy()->addDays(FinalAccount::closeoutGraceDays()));
+                $items->push($this->pushDateOnlyItem(
+                    $fa, 'close_out_overdue', "Commercial Close-Out ({$fa->reference})",
+                    $this->finalAccountLocalDeadlineDate($fa->final_certificate_issued_at, FinalAccount::closeoutGraceDays(), $organizationId),
+                    $cat, $projectId, $organizationId
+                ));
 
-            $push('dispute_window_expiry', "Final Account Dispute Window Expiry ({$fa->reference})", $fa->dispute_window_expires_at);
+                if (!$this->finalAccountService->hasHalf2RetentionReleased($fa)) {
+                    $items->push($this->pushDatetimeInstantItem(
+                        $fa, 'half2_retention_available', "Half 2 Retention Available for Release ({$fa->reference})",
+                        $fa->final_certificate_issued_at, $cat, $projectId, $organizationId
+                    ));
+                }
+            }
 
-            if (!$this->finalAccountService->hasHalf2RetentionReleased($fa)) {
-                $push('half2_retention_available', "Half 2 Retention Available for Release ({$fa->reference})", $fa->final_certificate_issued_at);
+            if ($fa->dispute_window_expires_at) {
+                $items->push($this->pushDateOnlyItem(
+                    $fa, 'dispute_window_expiry', "Final Account Dispute Window Expiry ({$fa->reference})",
+                    $fa->dispute_window_expires_at, $cat, $projectId, $organizationId
+                ));
             }
         }
 
-        return $items;
+        return $items->filter()->values();
+    }
+
+    /**
+     * The calendar day $days calendar days after $fromInstant's LOCAL
+     * calendar date (for this organisation) — i.e. the same calculation as
+     * FinalAccount::isCalendarDeadlinePassed(), returned as a date-only
+     * Carbon rather than a bool, so it can be surfaced as a calendar item.
+     * $fromInstant is a genuine DATETIME; its timezone is converted here
+     * specifically to determine its local calendar day, which is correct
+     * for a real instant (unlike a true DATE-only value).
+     */
+    private function finalAccountLocalDeadlineDate(Carbon $fromInstant, int $days, ?int $organizationId): Carbon
+    {
+        $timezone = TimezoneResolver::effectiveTimezone(null, $this->resolveOrganizationForFinalAccount($organizationId));
+        $localDate = $fromInstant->copy()->setTimezone($timezone)->toDateString();
+
+        return Carbon::parse($localDate)->addDays($days);
+    }
+
+    private function resolveOrganizationForFinalAccount(?int $organizationId): ?Organization
+    {
+        return $organizationId !== null
+            ? ($this->organizationCache[$organizationId] ??= Organization::find($organizationId))
+            : null;
+    }
+
+    /**
+     * Build a Final Account calendar item from a true DATE-only value
+     * (e.g. dispute_window_expires_at, or a deadline date already derived
+     * via finalAccountLocalDeadlineDate()) — never converts its timezone.
+     */
+    private function pushDateOnlyItem(FinalAccount $fa, string $field, string $title, ?Carbon $dateOnly, string $category, int $projectId, ?int $organizationId): ?array
+    {
+        if (!$dateOnly) {
+            return null;
+        }
+
+        $days = $this->daysFromToday($dateOnly, $organizationId);
+
+        return $this->finalAccountItem($fa, $field, $title, $dateOnly, $days, $category, $projectId, $organizationId);
+    }
+
+    /**
+     * Build a Final Account calendar item from a true DATETIME instant
+     * (e.g. submitted_at, final_certificate_issued_at) — converts to this
+     * organisation's timezone first to determine its local calendar day,
+     * which is the correct way to ask "which local day did this happen on"
+     * for a real instant.
+     */
+    private function pushDatetimeInstantItem(FinalAccount $fa, string $field, string $title, Carbon $instant, string $category, int $projectId, ?int $organizationId): array
+    {
+        $timezone  = TimezoneResolver::effectiveTimezone(null, $this->resolveOrganizationForFinalAccount($organizationId));
+        $localDate = Carbon::parse($instant->copy()->setTimezone($timezone)->toDateString());
+        $days      = $this->daysFromToday($localDate, $organizationId);
+
+        return $this->finalAccountItem($fa, $field, $title, $localDate, $days, $category, $projectId, $organizationId);
+    }
+
+    private function finalAccountItem(FinalAccount $fa, string $field, string $title, Carbon $eventDate, ?int $days, string $category, int $projectId, ?int $organizationId): array
+    {
+        return [
+            'source_type'     => CalendarEvent::SOURCE_FINAL_ACCOUNT,
+            'source_id'       => $fa->id,
+            'source_field'    => $field,
+            'title'           => $title,
+            'description'     => null,
+            'category'        => $category,
+            'priority'        => CalendarEvent::computePriority($days, $category),
+            'event_date'      => $eventDate,
+            'status'          => $this->computeStatus($days),
+            'days_from_today' => $days,
+            'contract_id'     => $fa->contract_id,
+            'trade_package_id' => $fa->trade_package_id,
+            'action_url'      => WorkspaceNavigationResolver::actionUrl($projectId, CalendarEvent::SOURCE_FINAL_ACCOUNT, $fa->id, $fa->trade_package_id),
+            'project_id'      => $projectId,
+            'organization_id' => $organizationId,
+            'meta'            => [
+                'final_account_id'        => $fa->id,
+                'final_account_reference' => $fa->reference,
+                'final_account_status'    => $fa->status,
+            ],
+        ];
     }
 
     private function normalizeContractMilestoneDate(Contract $contract, string $field, string $title, $rawDate, int $projectId, ?int $organizationId): ?array
@@ -780,7 +880,7 @@ class OperationalIntelligenceService
             return null;
         }
 
-        $days = (int) now()->startOfDay()->diffInDays($date, false);
+        $days = $this->daysFromToday($date, $organizationId);
         $cat  = CalendarEvent::CATEGORY_CONTRACT;
 
         return [
@@ -817,7 +917,7 @@ class OperationalIntelligenceService
             return null;
         }
 
-        $days = (int) now()->startOfDay()->diffInDays($date, false);
+        $days = $this->daysFromToday($date, $organizationId);
         $cat  = CalendarEvent::CATEGORY_CONTRACT;
 
         return [
@@ -866,7 +966,7 @@ class OperationalIntelligenceService
             return null;
         }
 
-        $days = (int) now()->startOfDay()->diffInDays($date, false);
+        $days = $this->daysFromToday($date, $organizationId);
         $cat  = CalendarEvent::CATEGORY_CONTRACT;
 
         return [
@@ -893,6 +993,41 @@ class OperationalIntelligenceService
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /** @var array<int, Organization|null> */
+    private array $organizationCache = [];
+
+    /**
+     * Business-day distance from "today" (for the given organisation) to a
+     * calendar date — the single implementation every collector below uses
+     * for its days_from_today/status/priority computation.
+     *
+     * Compares the date's own calendar-day string (toDateString()) against
+     * the organisation's local "today", rather than converting the date
+     * value's own timezone — every $date passed in here is a DATE-only
+     * business value (a deadline/milestone day, not a precise instant), so
+     * reinterpreting its timezone would risk shifting which calendar day it
+     * represents. See TimezoneResolver for the equivalent rule applied to
+     * ContractDeadline/CalendarEvent/ContractDeliverable/AdjudicationDeadline.
+     */
+    private function daysFromToday(?Carbon $date, ?int $organizationId): ?int
+    {
+        if (!$date) {
+            return null;
+        }
+
+        return (int) Carbon::parse($this->todayForOrganization($organizationId))
+            ->diffInDays(Carbon::parse($date->toDateString()), false);
+    }
+
+    private function todayForOrganization(?int $organizationId): string
+    {
+        $organization = $organizationId !== null
+            ? ($this->organizationCache[$organizationId] ??= Organization::find($organizationId))
+            : null;
+
+        return TimezoneResolver::today(null, $organization)->toDateString();
+    }
 
     private function computeStatus(?int $daysFromToday): string
     {

@@ -4,6 +4,10 @@ import Link from 'next/link';
 import { ArrowLeft, Tag } from 'lucide-react';
 import { APP_VERSION, APP_VERSION_DATE, APP_VERSION_STATUS } from '@/config/app-version';
 
+// Only officially deployed production releases belong here — see CLAUDE.md
+// (Versioning & Release Notes Policy). Internal development milestones are
+// tracked in git history and internal documentation, never as a public
+// version entry.
 const releases = [
   {
     version: APP_VERSION,
@@ -11,67 +15,46 @@ const releases = [
     status: APP_VERSION_STATUS,
     sections: [
       {
-        title: 'Project & Trade Package Management',
+        title: 'New',
         items: [
-          'Trade Package folder generation with configurable subfolders per package type.',
-          'Trade Package Package Generation — bulk creation of document packages across multiple trade packages.',
-          'Automated document numbering sequences per Project and Trade Package.',
-          'Document Register with full CRUD, filtering by status and category, and export to PDF/DOCX.',
-          'Project storage overview with per-folder file counts and sizes.',
+          'End-to-end contract administration: contracts, subcontract trade packages, variations, RFIs, meetings, programme milestones, delay and extension of time, risk register, and adjudication support.',
+          'Payment applications with automatic statutory date calculation (due date, final date for payment, payment notice and pay less notice deadlines).',
+          'Optional AI-assisted contract and subcontract analysis, extracting key terms and dates for review before they’re used.',
+          'Prompt Library for AI-assisted drafting workflows.',
+          'Organisation branding (logo, colours, letterhead) applied automatically to every generated PDF and Excel document.',
+          'Local Windows folder sync, keeping a mirrored copy of your documents outside SureSign.',
+          'Guided product tours, an in-app Help Center with a searchable Knowledge Base, and Contact Support with threaded replies.',
+          'Timezone-aware meeting scheduling, shown automatically in each person’s own timezone.',
+          'Email reminders ahead of key payment deadlines.',
         ],
       },
       {
-        title: 'Document Management',
+        title: 'Improvements',
         items: [
-          'Document template system with support for contract, letter, and report template types.',
-          'DOCX-to-PDF conversion service for automated document generation.',
-          'Soft-delete support for file uploads with restore capability.',
-          'Local document mirror sync with configurable Windows folder paths.',
-          'File upload metadata improvements including category, version, and project association.',
+          'Centralised notifications across every operational module, grouped by priority and category.',
+          'Company search and lookup via Companies House for faster contractor and subcontractor setup.',
+          'Consistent project and document navigation across all modules.',
         ],
       },
       {
-        title: 'Notifications',
+        title: 'Security',
         items: [
-          'In-platform notification system with read/unread state management.',
-          'Notification bell with live unread count badge.',
-          'Notification preferences and dismissal support.',
-          'Admin tools for sending system-wide notifications.',
+          'Organisation-scoped data access enforced consistently across every module.',
+          'Private, access-controlled handling of support request attachments and diagnostics.',
+          'Hardened file upload validation.',
         ],
       },
       {
-        title: 'Companies House Integration',
+        title: 'Performance',
         items: [
-          'Company search and lookup via Companies House.',
-          'Automatic population of company details from public registry data.',
-          'Registered address import for contractor and subcontractor records.',
+          'Background processing for document generation, so larger documents no longer block your work.',
+          'Regular, automatic refresh of calendar and reminder data without manual action.',
         ],
       },
       {
-        title: 'Organisation & User Management',
+        title: 'Bug Fixes',
         items: [
-          'Organisation branding configuration including logo, cover image, accent colour, and email footer.',
-          'Improved user role management with policy-based access control.',
-          'Admin panel enhancements including feature flags and platform-wide settings.',
-          'Support for multiple administrator roles with scoped permissions.',
-        ],
-      },
-      {
-        title: 'Settings & Configuration',
-        items: [
-          'Platform settings management for administrators.',
-          'Feature flag controls for AI assistant, document generation, and self-registration.',
-          'Local document mirror configuration with path testing.',
-          'Suresign-specific settings panel for platform customisation.',
-        ],
-      },
-      {
-        title: 'Infrastructure & Stability',
-        items: [
-          'Docker configuration improvements for consistent local and production environments.',
-          'Additional database migrations for new models and relationships.',
-          'Queue-based processing for long-running document operations.',
-          'Improved error handling across API controllers.',
+          'As this is SureSign’s first public release, there are no prior customer-reported issues to list here.',
         ],
       },
     ],

@@ -76,6 +76,7 @@ variation).
 
 - [Payment Applications](../commercial/payment-applications.md)
 - [Final Account](../commercial/final-account.md)
+- [Glossary](../reference/glossary.md)
 - [Programme](../programme/overview.md) — for programme impact
 - [Risks](../risks/overview.md)
 

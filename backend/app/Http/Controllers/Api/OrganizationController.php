@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\BrandingSetting;
 use App\Models\Organization;
 use App\Services\FileSecurityService;
+use App\Services\TimezoneResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
@@ -205,6 +206,12 @@ class OrganizationController extends Controller
             'postcode'     => 'nullable|string|max:20',
             'country'      => 'nullable|string|max:100',
             'abn'          => 'nullable|string|max:50',
+            // 'sometimes' (not 'nullable') — timezone is a required, non-null
+            // column, so a request may omit it to leave the current value
+            // untouched, but if the key IS present it must be a real IANA
+            // identifier (Laravel's built-in `timezone` rule rejects
+            // "UTC+8"/"GMT+1"/raw offsets), never blank.
+            'timezone'     => 'sometimes|required|timezone',
         ]);
         $org->update($validated);
         return response()->json($org->fresh());
@@ -259,6 +266,7 @@ class OrganizationController extends Controller
             'postcode'       => '',
             'country'        => '',
             'vat_number'     => '',
+            'timezone'       => TimezoneResolver::platformTimezone(),
         ];
     }
 
@@ -419,6 +427,7 @@ class OrganizationController extends Controller
             'postcode'       => $org->postcode ?? '',
             'country'        => $org->country  ?? '',
             'vat_number'     => $org->abn      ?? '',
+            'timezone'       => $org->timezone,
         ];
     }
 }

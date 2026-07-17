@@ -25,7 +25,7 @@
 | Archive | Adjudication Cases | Moves a case out of the active list. |
 | Mark Project Complete | Closeout | Marks the whole closeout checklist as complete. |
 | Mark as Read / Mark all as read | Notifications | Clears the unread state on one or all notifications. |
-| Reset Tour | Help | Replays the guided product tour. |
+| Start / Restart | Guided Tours | Starts a tour, or restarts one you've already completed. |
 | Invite | Team | Sends an account invitation with a chosen role. |
 
 Only actions that actually appear in the current interface are listed here. If

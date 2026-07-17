@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { effectiveTodayYmd, parseDateOnly } from '@/lib/dateTime';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import CountUp from '@/components/ui/CountUp';
 import { DollarSign, FileText, MessageSquare, GitBranch, AlertCircle, Activity, BarChart2, ChevronRight, ShieldAlert, TrendingUp, Zap, FileCheck } from 'lucide-react';
@@ -118,7 +119,7 @@ function ActionRow({ action }: { action: any }) {
               ? `Overdue by ${Math.abs(action.days_remaining)}d`
               : isDueToday
               ? 'Due today'
-              : action.due_date ? new Date(action.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : ''}
+              : action.due_date ? parseDateOnly(action.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : ''}
           </span>
         </div>
       </div>
@@ -404,7 +405,9 @@ const PROG_HEALTH_CONFIG: Record<string, { label: string; bg: string; text: stri
 
 function ProgrammeOverviewWidget({ milestones, projectId }: { milestones: any[]; projectId: string }) {
   const router = useRouter();
-  const today = new Date().toISOString().split('T')[0];
+  // Must agree with the backend's own organisation-timezone-aware "today"
+  // (TimezoneResolver), not the UTC calendar day.
+  const today = effectiveTodayYmd();
   const health = calcProgrammeHealth(milestones, today);
   const cfg = PROG_HEALTH_CONFIG[health];
   const overdue = milestones.filter((m: any) => m.status !== 'complete' && m.planned_date && m.planned_date < today).length;
@@ -491,7 +494,7 @@ function ActivityFeed({ activities }: { activities: any[] }) {
               <p className="text-xs font-medium truncate" style={{ color: 'var(--text-primary)' }}>{a.title}</p>
               {a.description && <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{a.description}</p>}
               <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                {a.user?.name} · {a.created_at ? new Date(a.created_at).toLocaleDateString() : ''}
+                {a.user?.name} · {a.created_at ? formatDate(a.created_at) : ''}
               </p>
             </div>
           </div>

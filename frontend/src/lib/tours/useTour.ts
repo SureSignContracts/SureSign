@@ -1,9 +1,11 @@
 'use client';
 
 import { useCallback } from 'react';
+import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 import { getTour } from './registry';
 import { isTourCompleted, markTourCompleted, resetTourCompletion } from './storage';
+import { checkTourMilestones } from './milestones';
 
 export function useTour() {
   const userId = useAuthStore(s => s.user?.id ?? null);
@@ -40,7 +42,14 @@ export function useTour() {
       stageRadius: 12,
       popoverClass: 'ss-tour-popover',
       steps,
-      onDestroyed: () => markTourCompleted(userId, tourKey),
+      onDestroyed: () => {
+        markTourCompleted(userId, tourKey);
+        toast.success(`${def.label} completed`);
+        // Fire-and-forget — checkTourMilestones is itself idempotent per
+        // milestone/user, so calling it on every completion (including a
+        // restart) never risks a duplicate notification.
+        checkTourMilestones(userId);
+      },
     });
     driverObj.drive();
   }, [userId, roles]);

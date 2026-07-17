@@ -11,10 +11,38 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { useUnreadCount, useNotifications, type SuresignNotification } from '@/hooks/useNotifications';
+import { useAuthStore } from '@/store/authStore';
+import { formatDate } from '@/lib/utils';
+import { isToday as isTodayInTimezone, formatDateTime } from '@/lib/dateTime';
 import toast from 'react-hot-toast';
+
+/**
+ * For a timed-meeting notification, the shared `message` text can only ever
+ * show ONE timezone's rendering (the meeting's scheduling timezone — always
+ * explicitly labelled, so never ambiguous, just not personalised). This
+ * renders an additional line in the VIEWER's own effective timezone, using
+ * the raw UTC instant carried in `data` — but only when it would actually
+ * show something different from the scheduling timezone already in the
+ * message, to avoid redundant noise for the common case where they match.
+ */
+function recipientLocalMeetingTime(n: SuresignNotification): string | null {
+  const data = n.data as { is_timed?: boolean; starts_at?: string; scheduled_timezone?: string } | null | undefined;
+  if (!data?.is_timed || !data.starts_at) return null;
+
+  const viewerTz = useAuthStore.getState().user?.effective_timezone;
+  if (!viewerTz || viewerTz === data.scheduled_timezone) return null;
+
+  return `Your time: ${formatDateTime(data.starts_at, { timeZone: viewerTz })} (${viewerTz})`;
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+// Threshold-based ("Xm ago" -> "Xh ago" -> "Xd ago" -> short date after a
+// week) rather than lib/dateTime.ts's always-relative formatRelativeTime() —
+// this is an intentional, pre-existing UX choice for the bell dropdown, not
+// a duplicate to remove. The only fix here is the >1-week fallback, which
+// now resolves to the viewer's effective timezone via formatDate() instead
+// of the browser's own local one.
 function formatTimeAgo(dateStr: string): string {
   const date = new Date(dateStr);
   const diff = Math.floor((Date.now() - date.getTime()) / 1000);
@@ -22,13 +50,7 @@ function formatTimeAgo(dateStr: string): string {
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
   if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
-  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-}
-
-function isToday(dateStr: string): boolean {
-  const d = new Date(dateStr);
-  const n = new Date();
-  return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
+  return formatDate(dateStr);
 }
 
 // ── Type → icon mapping (existing notification types) ────────────────────────
@@ -172,6 +194,11 @@ function NotifRow({
         <p className="text-xs mt-0.5 line-clamp-2" style={{ color: 'var(--text-muted)' }}>
           {n.message}
         </p>
+        {recipientLocalMeetingTime(n) && (
+          <p className="text-[10px] mt-0.5 italic" style={{ color: 'var(--text-muted)' }}>
+            {recipientLocalMeetingTime(n)}
+          </p>
+        )}
         <div className="flex items-center gap-2 mt-1 flex-wrap">
           <span className="text-[10px] tabular-nums" style={{ color: 'var(--text-muted)' }}>
             {formatTimeAgo(n.created_at)}
@@ -241,16 +268,17 @@ export default function NotificationBell({ basePath = '/admin/notifications' }: 
   const { count } = useUnreadCount();
   // Fetch active notifications only — server excludes resolved/expired by default
   const { notifications, isLoading, error } = useNotifications('active');
+  const effectiveTimezone = useAuthStore(s => s.user?.effective_timezone);
 
   const all = notifications ?? [];
 
   // Group client-side within the active set (server already filtered resolved/expired/dismissed)
   // Critical: priority=critical, unread
   const critical = all.filter(n => n.priority === 'critical' && n.status === 'unread');
-  // Today: created today, not critical, unread
-  const todayUnread = all.filter(n => n.priority !== 'critical' && n.status === 'unread' && isToday(n.created_at));
+  // Today: created today (in the viewer's effective timezone), not critical, unread
+  const todayUnread = all.filter(n => n.priority !== 'critical' && n.status === 'unread' && isTodayInTimezone(n.created_at, effectiveTimezone));
   // Earlier: unread from before today (non-critical)
-  const earlierUnread = all.filter(n => n.priority !== 'critical' && n.status === 'unread' && !isToday(n.created_at));
+  const earlierUnread = all.filter(n => n.priority !== 'critical' && n.status === 'unread' && !isTodayInTimezone(n.created_at, effectiveTimezone));
   // Read: recently read ones for context
   const read = all.filter(n => n.status === 'read').slice(0, 5);
 

@@ -2,8 +2,8 @@
 
 ## Where to find it
 
-Tenant workspace → **Settings**, which has three tabs: **Company Branding**,
-**Company Information**, and **Change Password**.
+Tenant workspace → **Settings**, which has four tabs: **Company Branding**,
+**Company Information**, **My Preferences**, and **Change Password**.
 
 ## Company Branding tab
 
@@ -19,6 +19,16 @@ Tenant workspace → **Settings**, which has three tabs: **Company Branding**,
 - Contact Email, Contact Number, Website
 - Street Address, City, State/County, Postcode, Country
 - VAT/Tax Number
+- **Organisation Timezone** — applies to every user in your organisation
+  unless they set their own override under My Preferences
+
+## My Preferences tab
+
+- **Your Timezone** — leave **Use company timezone** ticked to see everything
+  in your organisation's timezone, or untick it to pick your own. This only
+  changes how times are displayed to you; it never changes any deadline or
+  reminder timing. See [Settings Overview](overview.md) for more on how
+  timezone display works.
 
 ## Change Password tab
 

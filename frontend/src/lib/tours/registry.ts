@@ -19,11 +19,24 @@ const RESTART_STEP = {
 // a record type the user hasn't created anything of yet. Every tour's
 // second-to-last step points forward to the next thing worth doing, so the
 // guidance progresses with the user's project rather than stopping cold.
+// Order here doubles as display order within each group on the Guided Tours
+// page — do not reorder purely for readability without checking that page.
+export const GROUP_ORDER = [
+  'Getting Started',
+  'Projects and Contracts',
+  'Trade Packages',
+  'Commercial',
+  'Project Administration',
+  'Documents and Compliance',
+] as const;
+
 export const TOURS: TourDef[] = [
   {
     key: 'global-welcome',
     label: 'Welcome tour',
     description: 'A first-time walkthrough of the sidebar, dashboard and Help Centre.',
+    group: 'Getting Started',
+    route: () => '/app',
     steps: [
       {
         target: '[data-tour="dashboard-header"]',
@@ -77,6 +90,8 @@ export const TOURS: TourDef[] = [
     key: 'page-dashboard',
     label: 'Dashboard tour',
     description: 'Reading the dashboard and getting back to recent work quickly.',
+    group: 'Getting Started',
+    route: () => '/app',
     steps: [
       {
         target: '[data-tour="dashboard-header"]',
@@ -107,6 +122,8 @@ export const TOURS: TourDef[] = [
     key: 'page-projects',
     label: 'Projects tour',
     description: 'Finding and creating construction projects.',
+    group: 'Projects and Contracts',
+    route: () => '/app/projects',
     steps: [
       {
         target: '[data-tour="projects-filters"]',
@@ -137,6 +154,9 @@ export const TOURS: TourDef[] = [
     key: 'page-project-overview',
     label: 'Project Overview tour',
     description: 'What the project overview page shows and how to use it.',
+    group: 'Projects and Contracts',
+    requires: 'project',
+    route: (ctx) => `/app/projects/${ctx.projectId}/overview`,
     steps: [
       {
         target: '[data-tour="overview-stats"]',
@@ -176,6 +196,9 @@ export const TOURS: TourDef[] = [
     key: 'page-contracts',
     label: 'Contracts tour',
     description: 'The main contract, its terms, and how they connect to everything else.',
+    group: 'Projects and Contracts',
+    requires: 'project',
+    route: (ctx) => `/app/projects/${ctx.projectId}/contracts`,
     steps: [
       {
         target: '[data-tour="contracts-filters"]',
@@ -216,6 +239,9 @@ export const TOURS: TourDef[] = [
     key: 'page-trade-package',
     label: 'Trade Package tour',
     description: 'The subcontract package workspace, and how its payments relate to the main contract.',
+    group: 'Trade Packages',
+    requires: 'trade-package',
+    route: (ctx) => `/app/projects/${ctx.projectId}/subcontracts/${ctx.tradePackageId}`,
     steps: [
       {
         target: '[data-tour="tp-header"]',
@@ -252,6 +278,9 @@ export const TOURS: TourDef[] = [
     key: 'page-commercial',
     label: 'Commercial tour',
     description: 'How a payment application moves from submission to the final account.',
+    group: 'Commercial',
+    requires: 'project',
+    route: (ctx) => `/app/projects/${ctx.projectId}/commercial`,
     steps: [
       {
         target: '[data-tour="commercial-summary"]',
@@ -287,6 +316,9 @@ export const TOURS: TourDef[] = [
     key: 'page-variations',
     label: 'Variations tour',
     description: 'Tracking instructed and requested changes to the works.',
+    group: 'Commercial',
+    requires: 'project',
+    route: (ctx) => `/app/projects/${ctx.projectId}/variations`,
     steps: [
       {
         target: '[data-tour="variations-summary"]',
@@ -327,6 +359,9 @@ export const TOURS: TourDef[] = [
     key: 'page-programme',
     label: 'Programme tour',
     description: 'Contract milestones and programme progress, including seeding them from AI analysis.',
+    group: 'Project Administration',
+    requires: 'project',
+    route: (ctx) => `/app/projects/${ctx.projectId}/programme`,
     steps: [
       {
         target: '[data-tour="programme-health"]',
@@ -367,6 +402,9 @@ export const TOURS: TourDef[] = [
     key: 'page-delay-eot',
     label: 'Delay & EOT tour',
     description: 'Delay events, Extension of Time requests and Loss & Expense claims.',
+    group: 'Project Administration',
+    requires: 'project',
+    route: (ctx) => `/app/projects/${ctx.projectId}/delay-eot`,
     steps: [
       {
         target: '[data-tour="delay-eot-tabs"]',
@@ -402,6 +440,9 @@ export const TOURS: TourDef[] = [
     key: 'page-notices',
     label: 'Notices tour',
     description: 'Statutory payment and contractual notices.',
+    group: 'Commercial',
+    requires: 'project',
+    route: (ctx) => `/app/projects/${ctx.projectId}/notices`,
     steps: [
       {
         target: '[data-tour="notices-tabs"]',
@@ -437,6 +478,9 @@ export const TOURS: TourDef[] = [
     key: 'page-risks',
     label: 'Risk Register tour',
     description: 'Identifying and tracking project risk.',
+    group: 'Project Administration',
+    requires: 'project',
+    route: (ctx) => `/app/projects/${ctx.projectId}/risks`,
     steps: [
       {
         target: '[data-tour="risks-filters"]',
@@ -472,6 +516,9 @@ export const TOURS: TourDef[] = [
     key: 'page-rfis',
     label: 'RFIs tour',
     description: 'Raising and tracking Requests for Information, and how an open one stays visible elsewhere.',
+    group: 'Project Administration',
+    requires: 'project',
+    route: (ctx) => `/app/projects/${ctx.projectId}/rfis`,
     steps: [
       {
         target: '[data-tour="rfis-summary"]',
@@ -507,6 +554,9 @@ export const TOURS: TourDef[] = [
     key: 'page-meetings',
     label: 'Meetings tour',
     description: 'Meeting minutes and action items.',
+    group: 'Project Administration',
+    requires: 'project',
+    route: (ctx) => `/app/projects/${ctx.projectId}/meetings`,
     steps: [
       {
         target: '[data-tour="meetings-filters"]',
@@ -537,6 +587,9 @@ export const TOURS: TourDef[] = [
     key: 'page-documents',
     label: 'Documents tour',
     description: 'Browsing and uploading project documents.',
+    group: 'Documents and Compliance',
+    requires: 'project',
+    route: (ctx) => `/app/projects/${ctx.projectId}/documents`,
     steps: [
       {
         target: '[data-tour="documents-header-actions"]',
@@ -562,6 +615,9 @@ export const TOURS: TourDef[] = [
     key: 'page-delivery-documents',
     label: 'Delivery Documents tour',
     description: 'RAMS, method statements and other delivery documentation.',
+    group: 'Documents and Compliance',
+    requires: 'project',
+    route: (ctx) => `/app/projects/${ctx.projectId}/delivery-documents`,
     steps: [
       {
         target: '[data-tour="delivery-documents-filters"]',
@@ -592,6 +648,9 @@ export const TOURS: TourDef[] = [
     key: 'page-qa',
     label: 'QA Reports tour',
     description: 'Quality assurance checks against work stages.',
+    group: 'Documents and Compliance',
+    requires: 'project',
+    route: (ctx) => `/app/projects/${ctx.projectId}/qa`,
     steps: [
       {
         target: '[data-tour="qa-summary"]',
@@ -627,6 +686,9 @@ export const TOURS: TourDef[] = [
     key: 'page-snagging',
     label: 'Snagging tour',
     description: 'Tracking defects through to close-out.',
+    group: 'Documents and Compliance',
+    requires: 'project',
+    route: (ctx) => `/app/projects/${ctx.projectId}/snagging`,
     steps: [
       {
         target: '[data-tour="snagging-summary"]',
@@ -662,6 +724,9 @@ export const TOURS: TourDef[] = [
     key: 'page-site-reports',
     label: 'Site Reports tour',
     description: 'Daily site diary records.',
+    group: 'Documents and Compliance',
+    requires: 'project',
+    route: (ctx) => `/app/projects/${ctx.projectId}/site-reports`,
     steps: [
       {
         target: '[data-tour="site-reports-filters"]',
@@ -692,6 +757,9 @@ export const TOURS: TourDef[] = [
     key: 'page-closeout',
     label: 'Closeout tour',
     description: 'The project close-out checklist.',
+    group: 'Project Administration',
+    requires: 'project',
+    route: (ctx) => `/app/projects/${ctx.projectId}/closeout`,
     steps: [
       {
         target: '[data-tour="closeout-checklist"]',
@@ -717,6 +785,9 @@ export const TOURS: TourDef[] = [
     key: 'page-calendar',
     label: 'Calendar tour',
     description: 'Every contractual and statutory date for this project, in one place.',
+    group: 'Project Administration',
+    requires: 'project',
+    route: (ctx) => `/app/projects/${ctx.projectId}/calendar`,
     steps: [
       {
         target: '[data-tour="calendar-summary"]',

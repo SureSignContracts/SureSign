@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { effectiveTodayYmd } from '@/lib/dateTime';
 import { Plus, X, FileOutput, Trash2, Check, Ban, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getErrorMessage, blobDownload, assertDeleteSucceeded, type ContractOption, type TradePackageOption } from './page';
@@ -69,7 +70,7 @@ function DelayEventModal({ projectId, contracts, tradePackages, delayEvent, onCl
     title: delayEvent?.title ?? '',
     description: delayEvent?.description ?? '',
     cause_category: delayEvent?.cause_category ?? 'other',
-    date_occurred: delayEvent?.date_occurred?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+    date_occurred: delayEvent?.date_occurred?.slice(0, 10) ?? effectiveTodayYmd(),
     date_notified: delayEvent?.date_notified?.slice(0, 10) ?? '',
     notified_by: delayEvent?.notified_by ?? '',
     estimated_delay_days: delayEvent?.estimated_delay_days?.toString() ?? '',

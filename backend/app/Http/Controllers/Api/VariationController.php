@@ -68,7 +68,10 @@ class VariationController extends Controller
 
         $variationNumber = (Variation::where('project_id', $contract->project_id)->max('variation_number') ?? 0) + 1;
 
-        $instructionDate   = Carbon::parse($validated['variation_date'] ?? now());
+        // Default to "today" for this contract's own organisation when no
+        // variation_date is supplied — a business-day default, not the
+        // server's UTC calendar day.
+        $instructionDate   = Carbon::parse($validated['variation_date'] ?? \App\Services\TimezoneResolver::today(null, $contract->organization));
         $instructionMethod = $validated['instruction_method'] ?? 'written';
 
         $writtenConfirmationDue = $instructionMethod === 'verbal_emergency'
@@ -287,7 +290,12 @@ class VariationController extends Controller
         $variation->update([
             'status'                 => Variation::STATUS_QUOTED,
             'quoted_amount'          => $validated['quoted_amount'],
-            'quotation_submitted_at' => $validated['quotation_submitted_at'] ?? now()->toDateString(),
+            // Business-day default (today, for this variation's organisation)
+            // when no quotation_submitted_at is supplied. Note this field is
+            // DATE-typed despite its "_at" name (a pre-existing naming
+            // inconsistency, out of scope for this batch — see the earlier
+            // architecture audit).
+            'quotation_submitted_at' => $validated['quotation_submitted_at'] ?? \App\Services\TimezoneResolver::today(null, $variation->organization)->toDateString(),
             'quoted_by'              => $request->user()->id,
             'valuation_method'       => $validated['valuation_method'] ?? $variation->valuation_method,
         ]);

@@ -53,3 +53,8 @@ flowchart LR
 
 Start with [Payment Applications](payment-applications.md) if you are new to
 this area.
+
+## Related
+
+- [Glossary](../reference/glossary.md) — definitions for terms like Retention,
+  Notified Sum, and Due Date.

@@ -29,5 +29,6 @@ Use this checklist the first time you sign in to SureSign.
     what is outstanding.
 
 !!! tip
-    The **Help** page (in the main menu) lets you replay the guided product tour
-    at any time if you want a refresher.
+    The **Help** page (in the main menu) links to **Guided Tours**, where you
+    can start or restart any of SureSign's short walkthroughs at any time if
+    you want a refresher.

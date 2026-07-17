@@ -42,3 +42,4 @@ dashboard's "Open RFIs" figure.
 ## Related
 
 - [Meetings](../meetings/overview.md)
+- [Glossary](../reference/glossary.md)

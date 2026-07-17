@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { effectiveTodayYmd } from '@/lib/dateTime';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import CountUp from '@/components/ui/CountUp';
 import {
@@ -152,7 +153,7 @@ function NewVariationModal({ projectId, onClose }: { projectId: string; onClose:
   const [form, setForm] = useState<VariationForm>({
     contract_id: '', title: '', description: '', type: '',
     quoted_amount: '', agreed_amount: '',
-    variation_date: new Date().toISOString().split('T')[0],
+    variation_date: effectiveTodayYmd(),
     programme_impact_days: '', instruction_method: 'written',
     valuation_method: '', quotation_submitted_at: '', agreed_in_writing: false,
   });
@@ -659,14 +660,14 @@ function VariationDetailRow({ v, colSpan }: { v: any; colSpan: number }) {
           </div>
           {v.written_confirmation_due && (
             <div><span style={{ color: 'var(--text-muted)' }}>Written Confirmation Due: </span>
-              <span style={{ color: new Date(v.written_confirmation_due) < new Date() ? '#f87171' : 'inherit' }}>
+              <span style={{ color: v.written_confirmation_due < effectiveTodayYmd() ? '#f87171' : 'inherit' }}>
                 {formatDate(v.written_confirmation_due)}
               </span>
             </div>
           )}
           <div><span style={{ color: 'var(--text-muted)' }}>Quotation Due: </span>
             {v.quotation_due_date
-              ? <span style={{ color: !v.quotation_submitted_at && new Date(v.quotation_due_date) < new Date() ? '#f87171' : 'inherit' }}>
+              ? <span style={{ color: !v.quotation_submitted_at && v.quotation_due_date < effectiveTodayYmd() ? '#f87171' : 'inherit' }}>
                   {formatDate(v.quotation_due_date)}
                 </span>
               : '—'}
@@ -892,7 +893,9 @@ export default function ProjectVariationsPage() {
     return matchSearch && matchStatus;
   });
 
-  const today = new Date().toISOString().split('T')[0];
+  // Must agree with the backend's own organisation-timezone-aware "today"
+  // (TimezoneResolver), not the UTC calendar day.
+  const today = effectiveTodayYmd();
   const TABLE_COLS = 10;
 
   return (

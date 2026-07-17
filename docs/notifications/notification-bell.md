@@ -12,7 +12,7 @@ the tenant workspace.
 - A dropdown grouped into **Critical** (with a banner if any require immediate
   attention), **Today**, **Earlier**, and the last few **Read** notifications.
 - Category pills such as Commercial, Contract, Programme, Compliance, Payment,
-  Variation, Retention, Deliverable, Notice, Risk, and General.
+  Variation, Retention, Deliverable, Notice, Risk, Communication, and General.
 
 ## How to use it
 

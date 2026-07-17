@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { effectiveTodayYmd, parseDateOnly } from '@/lib/dateTime';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import { Plus, Search, FolderKanban, ChevronRight, X } from 'lucide-react';
 import Button from '@/components/ui/Button';
@@ -28,10 +29,13 @@ const INPUT_CLS = 'w-full rounded-lg px-3 py-2 text-sm outline-none border borde
 /** Fraction of the programme elapsed between start and completion, for the card timeline. */
 function progressPct(start?: string, end?: string): number | null {
   if (!start || !end) return null;
-  const s = new Date(start).getTime();
-  const e = new Date(end).getTime();
+  const s = parseDateOnly(start).getTime();
+  const e = parseDateOnly(end).getTime();
   if (isNaN(s) || isNaN(e) || e <= s) return null;
-  return Math.min(100, Math.max(0, ((Date.now() - s) / (e - s)) * 100));
+  // start/end are DATE-only fields — "now" here is "today" in the viewer's
+  // effective SureSign timezone, not the raw device clock instant.
+  const now = parseDateOnly(effectiveTodayYmd()).getTime();
+  return Math.min(100, Math.max(0, ((now - s) / (e - s)) * 100));
 }
 
 function CreateProjectModal({ onClose }: { onClose: () => void }) {

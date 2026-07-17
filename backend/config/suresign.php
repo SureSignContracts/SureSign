@@ -24,4 +24,19 @@ return [
         'closeout_grace_days' => env('SURESIGN_FA_CLOSEOUT_GRACE_DAYS', 30),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Deadline Reminders — Worldwide Scheduling (Batch 7)
+    |--------------------------------------------------------------------------
+    |
+    | Platform-wide default local hour at which `suresign:send-deadline-reminders`
+    | processes an organisation, in THAT organisation's own timezone — not a
+    | UTC hour. No per-organisation override exists (no genuine product need
+    | for one yet — see Batch 7 report); every organisation uses this same
+    | default hour, each in its own local time.
+    |
+    */
+
+    'deadline_reminder_local_hour' => env('SURESIGN_DEADLINE_REMINDER_LOCAL_HOUR', 8),
+
 ];

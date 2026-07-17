@@ -231,11 +231,15 @@ class FinalAccountController extends Controller
             return response()->json(['message' => $guard['reason']], 422);
         }
 
-        // JCT: dispute window = 28 days from Final Certificate
+        // JCT: dispute window = 28 days from Final Certificate. The deadline
+        // itself is a business-day calculation (28 calendar days from
+        // "today" for this Final Account's own organisation) — kept
+        // distinct from final_certificate_issued_at just below, which
+        // remains a genuine UTC storage timestamp.
         $finalAccount->update([
             'status'                      => FinalAccount::STATUS_FINAL_CERTIFICATE_ISSUED,
             'final_certificate_issued_at' => now(),
-            'dispute_window_expires_at'   => now()->addDays(28)->toDateString(),
+            'dispute_window_expires_at'   => \App\Services\TimezoneResolver::today(null, $finalAccount->organization)->addDays(28)->toDateString(),
         ]);
 
         ProjectActivityService::record(

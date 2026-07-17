@@ -8,6 +8,7 @@ use App\Models\Rfi;
 use App\Models\Variation;
 use App\Models\PaymentApplication;
 use App\Models\Document;
+use App\Services\TimezoneResolver;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
@@ -30,7 +31,12 @@ class DashboardController extends Controller
                 'active_projects'        => (clone $projectQuery)->where('status', 'active')->count(),
                 'open_rfis'              => Rfi::whereIn('project_id', $projectIds)->where('status', 'open')->count(),
                 'pending_variations'     => Variation::whereIn('project_id', $projectIds)->where('status', 'pending')->count(),
-                'documents_this_month'   => Document::whereIn('project_id', $projectIds)->whereMonth('created_at', now()->month)->count(),
+                // "This month" is this user's own business month, not the
+                // server's UTC month — only the month source changed here;
+                // the pre-existing whereMonth()-without-whereYear() shape
+                // (matches any past year's same month too) is untouched, out
+                // of scope for a timezone-only batch.
+                'documents_this_month'   => Document::whereIn('project_id', $projectIds)->whereMonth('created_at', TimezoneResolver::now($user)->month)->count(),
                 'payment_apps_pending'   => PaymentApplication::whereIn('project_id', $projectIds)->where('status', 'submitted')->count(),
             ],
             'recent_projects' => $projectQuery->with('creator:id,name')->latest()->limit(5)->get(),

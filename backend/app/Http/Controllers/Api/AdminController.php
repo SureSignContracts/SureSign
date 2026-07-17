@@ -14,6 +14,7 @@ use App\Models\ProjectActivity;
 use App\Models\SuresignNotification;
 use App\Models\SuresignSetting;
 use App\Models\User;
+use App\Services\TimezoneResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -32,9 +33,13 @@ class AdminController extends Controller
         $storageUsedBytes = DB::table('file_uploads')->sum('file_size') ?? 0;
         $storageUsedGB    = round($storageUsedBytes / (1024 ** 3), 2);
 
-        // Monthly AI usage (conversations started this calendar month)
-        $monthlyAiUsage = AiConversation::whereMonth('created_at', now()->month)
-            ->whereYear('created_at', now()->year)
+        // Monthly AI usage (conversations started this calendar month).
+        // This is a platform-wide (all-organisations) Super Admin view, not
+        // scoped to any single org — "this month" resolves to the platform
+        // default timezone, not the server's UTC calendar.
+        $platformNow = TimezoneResolver::now();
+        $monthlyAiUsage = AiConversation::whereMonth('created_at', $platformNow->month)
+            ->whereYear('created_at', $platformNow->year)
             ->count();
 
         $recentCompanies = Organization::select('id', 'name', 'email', 'created_at')
@@ -137,7 +142,8 @@ class AdminController extends Controller
             'recent_activity'     => $recentActivity,
             'recent_notifications' => $recentNotifications,
             'activity' => [
-                'docs_today'           => FileUpload::whereDate('created_at', today())->count(),
+                // Platform-wide view again — "today" is the platform default timezone.
+                'docs_today'           => FileUpload::whereDate('created_at', TimezoneResolver::today()->toDateString())->count(),
                 'ai_requests'          => $monthlyAiUsage,
                 'active_sessions'      => 0,
                 'support_tickets'      => 0,

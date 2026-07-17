@@ -4,15 +4,17 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/authStore';
 import { useTheme } from '@/hooks/useTheme';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { cn } from '@/lib/utils';
+import api from '@/lib/api';
 import {
   LayoutDashboard, Building2, FolderKanban, FileText, LayoutTemplate,
   Brain, HardDrive, CreditCard, Users, LifeBuoy, ScrollText, ClipboardList,
-  Settings, LogOut, Sun, Moon, Gem, BookOpen, Search,
+  Settings, LogOut, Sun, Moon, Gem, BookOpen, Search, Megaphone,
   PanelLeftClose, PanelLeftOpen, ChevronRight,
 } from 'lucide-react';
 import { APP_VERSION_LABEL } from '@/config/app-version';
@@ -52,6 +54,7 @@ const NAV_GROUPS = [
       { href: '/admin/ai-configurations', label: 'AI Config',   icon: Brain,         pageKey: 'ai-configurations', superAdminOnly: true },
       { href: '/admin/storage',           label: 'Storage',     icon: HardDrive,     pageKey: 'storage',           superAdminOnly: true },
       { href: '/admin/support',           label: 'Support',     icon: LifeBuoy,      pageKey: 'support',           superAdminOnly: true },
+      { href: '/admin/announcements',     label: 'Announcements', icon: Megaphone,   pageKey: 'announcements',     superAdminOnly: true },
       { href: '/admin/system-logs',       label: 'System Logs', icon: ScrollText,    pageKey: 'system-logs',       superAdminOnly: true },
       { href: '/admin/audit-log',         label: 'Audit Log',   icon: ClipboardList, pageKey: 'audit-log',         superAdminOnly: true },
     ],
@@ -285,18 +288,31 @@ function ProfilePopover({
 
 // ─── Nav item ─────────────────────────────────────────────────────────────────
 
+function NavBadge({ count }: { count: number }) {
+  return (
+    <span
+      className="flex-shrink-0 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-[10px] font-bold tabular-nums"
+      style={{ backgroundColor: '#ef4444', color: '#fff' }}
+    >
+      {count > 99 ? '99+' : count}
+    </span>
+  );
+}
+
 function NavItem({
   href,
   label,
   icon: Icon,
   active,
   collapsed,
+  badge,
 }: {
   href: string;
   label: string;
   icon: React.ElementType;
   active: boolean;
   collapsed: boolean;
+  badge?: number;
 }) {
   const linkRef = useRef<HTMLAnchorElement>(null);
   const [hovered, setHovered] = useState(false);
@@ -332,8 +348,16 @@ function NavItem({
               style={{ backgroundColor: 'var(--text-primary)' }}
             />
           )}
+          {!!badge && (
+            <span
+              className="absolute -top-1 -right-1 min-w-[14px] h-3.5 px-1 rounded-full flex items-center justify-center text-[9px] font-bold tabular-nums"
+              style={{ backgroundColor: '#ef4444', color: '#fff' }}
+            >
+              {badge > 99 ? '99+' : badge}
+            </span>
+          )}
         </Link>
-        {hovered && <SidebarTooltip label={label} anchorRef={linkRef} />}
+        {hovered && <SidebarTooltip label={badge ? `${label} (${badge})` : label} anchorRef={linkRef} />}
       </>
     );
   }
@@ -369,6 +393,8 @@ function NavItem({
         )}
       />
       <span className="truncate">{label}</span>
+
+      {!!badge && <NavBadge count={badge} />}
 
       {/* Hover right-arrow hint */}
       {!active && (
@@ -445,6 +471,19 @@ export default function AdminSidebar({
   const isSuperAdmin  = user?.roles?.includes('Super Admin');
   const { data: siteSettings, isSettingsReady } = useSiteSettings();
   const hiddenPages: string[] = siteSettings?.hidden_pages ?? [];
+
+  // Support inbox badge — "needs attention" count (Waiting for Support,
+  // including legacy pre-Batch-5 Open rows folded in by the backend).
+  // Lightweight dedicated endpoint (no ticket list), polled every 60s to
+  // match the notification bell's own cadence. Super Admin only, since the
+  // Support nav item itself is superAdminOnly.
+  const { data: supportCounts } = useQuery({
+    queryKey: ['admin-support-ticket-counts'],
+    queryFn: () => api.get('/admin/support-tickets/counts').then(r => r.data.counts as Record<string, number>),
+    enabled: !!isSuperAdmin,
+    refetchInterval: 60000,
+  });
+  const supportBadge = supportCounts?.waiting_for_support ?? 0;
 
   function isVisible(item: { pageKey: string | null; superAdminOnly?: boolean }) {
     if (item.superAdminOnly && !isSuperAdmin) return false;
@@ -574,6 +613,7 @@ export default function AdminSidebar({
                       icon={item.icon}
                       active={isActive(item.href, (item as any).exact)}
                       collapsed={showCollapsed}
+                      badge={item.pageKey === 'support' ? supportBadge : undefined}
                     />
                   ))}
                 </div>

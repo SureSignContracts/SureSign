@@ -106,14 +106,14 @@ class EmailNotificationService
      * aren't tied to an organization event or the notification_settings
      * toggle list that send() gates on.
      */
-    public static function sendDirect(string $toEmail, string $subject, string $bodyText): void
+    public static function sendDirect(string $toEmail, string $subject, string $bodyText): bool
     {
         try {
             $settings = SuresignSetting::instance();
 
             if (empty($settings->brevo_api_key)) {
                 Log::warning("EmailNotificationService::sendDirect: no Brevo API key configured — skipping '{$subject}' to {$toEmail}");
-                return;
+                return false;
             }
 
             $bodyHtml = nl2br(e($bodyText));
@@ -138,9 +138,13 @@ class EmailNotificationService
                 Log::warning("EmailNotificationService::sendDirect: Brevo returned {$response->status()} for '{$subject}' to {$toEmail}", [
                     'body' => $response->body(),
                 ]);
+                return false;
             }
+
+            return true;
         } catch (\Throwable $e) {
             Log::warning("EmailNotificationService::sendDirect: exception sending '{$subject}' to {$toEmail}: " . $e->getMessage());
+            return false;
         }
     }
 

@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { effectiveTodayYmd } from '@/lib/dateTime';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
 import {
@@ -427,7 +428,7 @@ function NewPaymentAppModal({ projectId, onClose, initialTradePackageId, initial
   const [contractId, setContractId] = useState(initialContractId ? String(initialContractId) : '');
   const [tradePackageId, setTradePackageId] = useState(initialTradePackageId ? String(initialTradePackageId) : '');
   const [form, setForm] = useState({
-    application_date: new Date().toISOString().split('T')[0],
+    application_date: effectiveTodayYmd(),
     valuation_period_start: '',
     valuation_period_end: '',
     due_date: '',
@@ -681,7 +682,7 @@ function CertifyModal({ pa, projectId, onClose }: { pa: PaymentApplication; proj
   const currencySymbol = siteSettings?.currency_symbol ?? '£';
   const queryClient = useQueryClient();
   const [certifiedAmount, setCertifiedAmount] = useState(String(fmt(pa.amount_due) > 0 ? fmt(pa.amount_due) : ''));
-  const [certifiedDate, setCertifiedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [certifiedDate, setCertifiedDate] = useState(effectiveTodayYmd());
   const [certRef, setCertRef] = useState('');
   const [certNotes, setCertNotes] = useState('');
 
@@ -774,7 +775,7 @@ function MarkPaidModal({ pa, projectId, onClose }: { pa: PaymentApplication; pro
   const queryClient = useQueryClient();
   const [form, setForm] = useState({
     paid_amount: String(fmt(pa.certified_amount) > 0 ? fmt(pa.certified_amount) : fmt(pa.amount_due)),
-    payment_date: new Date().toISOString().split('T')[0],
+    payment_date: effectiveTodayYmd(),
     payment_reference: '',
     notes: '',
   });
@@ -824,7 +825,7 @@ function PaymentNoticeModal({ pa, projectId, onClose }: { pa: PaymentApplication
   const notifiedDefault = fmt(pa.certified_amount) > 0 ? fmt(pa.certified_amount) : fmt(pa.amount_due);
 
   const [form, setForm] = useState({
-    notice_date: new Date().toISOString().split('T')[0],
+    notice_date: effectiveTodayYmd(),
     reference: '',
     notified_sum: String(notifiedDefault),
     basis_of_assessment: '',
@@ -930,7 +931,7 @@ function PayLessNoticeModal({ pa, projectId, onClose }: { pa: PaymentApplication
     : (fmt(pa.certified_amount) > 0 ? fmt(pa.certified_amount) : fmt(pa.amount_due));
 
   const [form, setForm] = useState({
-    notice_date: new Date().toISOString().split('T')[0],
+    notice_date: effectiveTodayYmd(),
     reference: '',
     original_amount_due: String(originalAmountDue),
     total_deductions: '',
@@ -1099,7 +1100,7 @@ function ReleaseRetentionModal({
   const [form, setForm] = useState({
     moiety:         startMoiety,
     release_amount: suggestedAmount(startMoiety),
-    release_date:   new Date().toISOString().split('T')[0],
+    release_date:   effectiveTodayYmd(),
     release_reason: MOIETY_REASON_DEFAULT[startMoiety] ?? RETENTION_RELEASE_REASONS[0],
     notes:          '',
   });
@@ -1254,7 +1255,9 @@ function ApplicationsTable({
 }) {
   const formatCurrency = useCurrencyFormatter();
   const queryClient = useQueryClient();
-  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+  // Must agree with the backend's own organisation-timezone-aware "today"
+  // (TimezoneResolver) — see the note on the sibling component below.
+  const today = useMemo(() => effectiveTodayYmd(), []);
   const [paymentDetailsTarget, setPaymentDetailsTarget] = useState<PaymentApplication | null>(null);
 
   const submitMutation = useMutation({
@@ -1507,9 +1510,13 @@ function OverviewTab({ paymentApps, contracts, tradePackages, formatCurrency, ca
   canWrite: boolean;
   onNewApp: (opts?: { contractId?: number; tradePackageId?: number }) => void;
 }) {
-  const today = new Date().toISOString().split('T')[0];
-  const sevenDays = new Date(); sevenDays.setDate(sevenDays.getDate() + 7);
-  const nextWeek = sevenDays.toISOString().split('T')[0];
+  // Business-day comparisons — must agree with the backend's own
+  // organisation-timezone-aware "today" (TimezoneResolver), not the UTC
+  // calendar day, or these overdue/upcoming groupings could disagree with
+  // the source-of-truth status the API already computed.
+  const today = effectiveTodayYmd();
+  const sevenDaysFromNow = new Date(`${today}T00:00:00`); sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+  const nextWeek = `${sevenDaysFromNow.getFullYear()}-${String(sevenDaysFromNow.getMonth() + 1).padStart(2, '0')}-${String(sevenDaysFromNow.getDate()).padStart(2, '0')}`;
 
   const active = paymentApps.filter(p => p.status !== 'cancelled');
 

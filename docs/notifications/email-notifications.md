@@ -6,6 +6,12 @@ SureSign can send an email for certain commercial events, such as a payment
 application being submitted or certified, a pay less notice being issued, an
 AI analysis completing, or a variation changing status.
 
+SureSign also sends reminder emails ahead of key payment deadlines — payment
+due dates, pay less notice deadlines, payment notice deadlines, and final
+dates for payment — so nothing is missed. These are sent once a day, timed to
+your organisation's own morning, and only once per deadline (you won't get the
+same reminder twice).
+
 ## When an email actually sends
 
 An email only sends if **all** of the following are true:

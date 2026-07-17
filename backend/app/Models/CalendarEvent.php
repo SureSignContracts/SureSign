@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Services\TimezoneResolver;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -86,19 +88,41 @@ class CalendarEvent extends Model
         return $this->belongsTo(Contract::class);
     }
 
+    public function organization(): BelongsTo
+    {
+        return $this->belongsTo(Organization::class);
+    }
+
     public function isDueToday(): bool
     {
-        return $this->event_date?->isToday() ?? false;
+        return $this->event_date?->toDateString() === $this->todayForOrganization();
     }
 
     public function isOverdue(): bool
     {
-        return $this->event_date !== null && $this->event_date->isPast() && !$this->event_date->isToday();
+        return $this->event_date !== null && $this->event_date->toDateString() < $this->todayForOrganization();
     }
 
     public function daysFromToday(): ?int
     {
-        return $this->event_date ? (int) now()->startOfDay()->diffInDays($this->event_date->startOfDay(), false) : null;
+        if (!$this->event_date) {
+            return null;
+        }
+
+        return (int) Carbon::parse($this->todayForOrganization())
+            ->diffInDays(Carbon::parse($this->event_date->toDateString()), false);
+    }
+
+    /**
+     * "Today" for this event's organisation, as a plain Y-m-d string —
+     * never the server's own UTC calendar day. `event_date` is a DATE
+     * column with no time-of-day; comparing its own toDateString() against
+     * this (rather than converting the DATE value's timezone) is what keeps
+     * a date-only field from ever shifting — see TimezoneResolver.
+     */
+    private function todayForOrganization(): string
+    {
+        return TimezoneResolver::today(null, $this->organization)->toDateString();
     }
 
     /**

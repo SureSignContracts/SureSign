@@ -34,6 +34,25 @@ class NotificationService
     public const VARIATION_APPROVED    = 'variation_approved';
     public const VARIATION_REJECTED    = 'variation_rejected';
     public const VARIATION_RESUBMITTED = 'variation_resubmitted';
+    // Support tickets — personal to the submitter only, never fanned out to
+    // the rest of the organization (see SupportTicketController).
+    public const SUPPORT_TICKET_RECEIVED       = 'support_ticket_received';
+    public const SUPPORT_TICKET_STATUS_CHANGED = 'support_ticket_status_changed';
+    // Threaded conversation events (Batch 5) — SUPPORT_TICKET_REPLY notifies
+    // the ticket owner only (a support reply); SUPPORT_TICKET_CUSTOMER_REPLY
+    // notifies platform support operators only (a customer reply). Neither
+    // is ever sent via sendToOrganization().
+    public const SUPPORT_TICKET_REPLY          = 'support_ticket_reply';
+    public const SUPPORT_TICKET_CUSTOMER_REPLY = 'support_ticket_customer_reply';
+    // A brand-new ticket submission — notifies every platform operator
+    // (Super Admin/Admin) personally, separate from SUPPORT_TICKET_RECEIVED
+    // (the submitter's own personal receipt).
+    public const SUPPORT_TICKET_SUBMITTED      = 'support_ticket_submitted';
+    // Guided tour milestones — personal only, one-off per user (see
+    // TourMilestoneController), never fanned out to the organization.
+    public const TOUR_MILESTONE_FIRST            = 'tour_milestone_first';
+    public const TOUR_MILESTONE_GETTING_STARTED  = 'tour_milestone_getting_started';
+    public const TOUR_MILESTONE_ALL_COMPLETE     = 'tour_milestone_all_complete';
 
     /**
      * Create a manual (non-operational) notification.

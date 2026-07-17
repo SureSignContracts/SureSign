@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { effectiveTodayYmd, parseDateOnly } from '@/lib/dateTime';
 import {
   Scale, ArrowLeft, ChevronRight, CheckCircle2, Circle, Clock,
   AlertCircle, FileText, Plus, X, Upload, Calendar, ChevronDown,
@@ -92,11 +93,13 @@ const STEP_ACTIONS: Record<string, StepAction[]> = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+// due_date is a DATE-only field — compared against "today" in the viewer's
+// effective SureSign timezone (TimezoneResolver's own rule, mirrored here),
+// not the browser's local midnight, or this could disagree with the
+// backend's own overdue computation near a midnight boundary.
 function computeDaysRemaining(dueDate: string): { days: number; label: string; status: 'overdue' | 'today' | 'due_soon' | 'upcoming' | 'completed' } {
-  const due = new Date(dueDate);
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  due.setHours(0, 0, 0, 0);
+  const due = parseDateOnly(dueDate);
+  const now = parseDateOnly(effectiveTodayYmd());
   const diff = Math.round((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   if (diff < 0)  return { days: Math.abs(diff), label: `Overdue by ${Math.abs(diff)} day${Math.abs(diff) !== 1 ? 's' : ''}`,   status: 'overdue' };
   if (diff === 0) return { days: 0,              label: 'Due today',                                                               status: 'today' };
@@ -796,10 +799,13 @@ export default function AdjudicationCaseDetailPage() {
   const canAdvance = canWrite && currentIdx < stepKeys.length - 1 && adjCase.status !== 'closed';
 
   // Deadline computed status
+  // due_date is a DATE-only field — see computeDaysRemaining() above for
+  // why this compares against effectiveTodayYmd(), not the browser's raw
+  // "now".
   const computeDeadlineStatus = (dl: any) => {
     if (dl.completed_at) return 'completed';
-    const due = new Date(dl.due_date);
-    const now = new Date();
+    const due = parseDateOnly(dl.due_date);
+    const now = parseDateOnly(effectiveTodayYmd());
     const diff = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     if (diff < 0) return 'overdue';
     if (diff <= 3) return 'due_soon';

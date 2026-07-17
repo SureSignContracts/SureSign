@@ -9,25 +9,31 @@ accounts with broader administrative access.
 The left-hand sidebar is organised into:
 
 - **Dashboard** — your summary view.
-- **Workspace** — Projects, Commercial (cross-project view), Site Admin,
-  Documents (organisation-wide library).
-- **Tools** — Reports, AI Assistant, Team, Help.
+- **Workspace** — Projects, Commercial (cross-project view),
+  [Site Admin](../site-admin/overview.md), Documents (organisation-wide
+  library).
+- **Tools** — [Reports](../reports/overview.md), AI Assistant, Team, Help.
 
 The sidebar footer has a profile menu with **Settings**, a light/dark theme
 toggle, and **Sign out**.
 
 !!! note "No notification bell in the tenant workspace"
     The notification bell is not currently shown in the tenant workspace. If
-    you are a Client user, check the **Overview** page of a project or your
-    **Reports** for recent activity instead.
+    you are a Client user, check a project's **Overview** activity feed
+    instead — see [Activity History](../notifications/activity-history.md).
+
+!!! note "AI Assistant"
+    The **AI Assistant** chat page is not yet available. SureSign's real AI
+    features today are [Contract AI Analysis](../ai/contract-analysis.md) and
+    the [Prompt Library](../ai/overview.md).
 
 ## Project workspace
 
 Opening a project shows a project-specific sidebar with:
 
 - **Overview** — project summary and activity feed.
-- **Contract group** — Contracts, Commercial, Variations, Notices, Programme,
-  Delay & EOT, Risk Register.
+- **Contract group** — Contracts, Commercial, Variations,
+  [Notices](../notices/overview.md), Programme, Delay & EOT, Risk Register.
 - **Communications group** — RFIs, Meetings.
 - **Delivery group** — QA Reports, Snagging, Site Reports, Delivery Documents,
   Closeout.

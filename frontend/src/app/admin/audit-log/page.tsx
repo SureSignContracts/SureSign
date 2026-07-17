@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { ClipboardList, Search, ChevronDown, ChevronRight } from 'lucide-react';
 import EmptyState from '@/components/ui/EmptyState';
+import { useAuthStore } from '@/store/authStore';
 
 const ACTION_LABELS: Record<string, { label: string; color: string }> = {
   'contract.created':               { label: 'Contract Created',       color: '#60a5fa' },
@@ -26,10 +27,14 @@ const ACTION_OPTIONS = [
   ...Object.entries(ACTION_LABELS).map(([value, { label }]) => ({ value, label })),
 ];
 
+// created_at is a genuine DATETIME instant — resolved to the viewer's
+// effective SureSign timezone (organisation/user preference), not the
+// browser's own local OS timezone, before formatting.
 function formatTimestamp(ts: string) {
   const d = new Date(ts);
-  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-    + ' ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  const timeZone = useAuthStore.getState().user?.effective_timezone;
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone })
+    + ' ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone });
 }
 
 function ActionBadge({ action }: { action: string }) {

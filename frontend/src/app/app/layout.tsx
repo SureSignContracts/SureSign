@@ -10,6 +10,7 @@ import NotificationBell from '@/components/notifications/NotificationBell';
 import SureSignLoader from '@/components/ui/SureSignLoader';
 import AiAnalysisWidget from '@/components/ai/AiAnalysisWidget';
 import GlobalTourLauncher from '@/components/tours/GlobalTourLauncher';
+import PendingTourLauncher from '@/components/tours/PendingTourLauncher';
 import ForcePasswordChangeGate from '@/components/auth/ForcePasswordChangeGate';
 import api from '@/lib/api';
 
@@ -139,6 +140,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           even after navigating away from the project. */}
       <AiAnalysisWidget />
       <GlobalTourLauncher />
+      <PendingTourLauncher />
     </div>
   );
 }

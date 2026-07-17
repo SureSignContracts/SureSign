@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { effectiveTodayYmd } from '@/lib/dateTime';
 import { Bell, Plus, Search, Clock, AlertTriangle, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
@@ -59,7 +60,7 @@ const labelStyle = { color: 'var(--text-muted)' };
 
 function NewEotModal({ projectId, onClose }: { projectId: string; onClose: () => void }) {
   const queryClient = useQueryClient();
-  const [form, setForm] = useState({ title: '', grounds: '', notice_date: new Date().toISOString().split('T')[0], days_claimed: '' });
+  const [form, setForm] = useState({ title: '', grounds: '', notice_date: effectiveTodayYmd(), days_claimed: '' });
   const { mutate, isPending } = useMutation({
     mutationFn: (data: typeof form) => api.post(`/projects/${projectId}/eot-requests`, data).then(r => r.data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['project-notices', projectId] }); queryClient.invalidateQueries({ queryKey: ['project-activities', projectId] }); toast.success('EOT submitted'); onClose(); },
@@ -93,7 +94,7 @@ function NewPayLessModal({ projectId, onClose }: { projectId: string; onClose: (
 
   const [form, setForm] = useState({
     payment_application_id: '',
-    notice_date: new Date().toISOString().split('T')[0],
+    notice_date: effectiveTodayYmd(),
     amount: '',
     reason: '',
     reference: '',
@@ -150,7 +151,7 @@ function NewSiteInstructionModal({ projectId, onClose }: { projectId: string; on
     title: '',
     type: 'general',
     description: '',
-    issued_date: new Date().toISOString().split('T')[0],
+    issued_date: effectiveTodayYmd(),
     issued_to: '',
   });
   const { mutate, isPending } = useMutation({

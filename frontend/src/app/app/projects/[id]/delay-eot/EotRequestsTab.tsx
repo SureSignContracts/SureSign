@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { effectiveTodayYmd } from '@/lib/dateTime';
 import { Plus, X, FileOutput, Trash2, Check, Ban } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getErrorMessage, blobDownload, assertDeleteSucceeded, type ContractOption, type TradePackageOption } from './page';
@@ -67,7 +68,7 @@ function EotModal({ projectId, contracts, tradePackages, delayEvents, eot, onClo
   const isEdit = !!eot;
   const [form, setForm] = useState({
     title: eot?.title ?? '',
-    notice_date: eot?.notice_date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+    notice_date: eot?.notice_date?.slice(0, 10) ?? effectiveTodayYmd(),
     grounds: eot?.grounds ?? '',
     days_claimed: eot?.days_claimed?.toString() ?? '',
     contract_id: eot?.contract?.id?.toString() ?? '',

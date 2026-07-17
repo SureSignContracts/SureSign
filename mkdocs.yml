@@ -72,6 +72,10 @@ nav:
       - roles/comparison.md
   - Dashboard:
       - dashboard/overview.md
+  - Reports:
+      - reports/overview.md
+  - Site Admin:
+      - site-admin/overview.md
   - Projects:
       - projects/overview.md
       - projects/creating-a-project.md
@@ -117,6 +121,8 @@ nav:
       - delay-and-eot/overview.md
       - delay-and-eot/delay-events.md
       - delay-and-eot/extension-of-time.md
+  - Notices:
+      - notices/overview.md
   - RFIs:
       - rfis/overview.md
       - rfis/creating-an-rfi.md
@@ -161,6 +167,8 @@ nav:
       - notifications/notification-bell.md
       - notifications/email-notifications.md
       - notifications/activity-history.md
+  - Help Center:
+      - help-center/overview.md
   - Calendar:
       - calendar/overview.md
       - calendar/deadlines.md

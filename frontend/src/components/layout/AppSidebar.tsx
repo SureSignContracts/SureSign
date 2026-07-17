@@ -14,9 +14,11 @@ import {
   LayoutDashboard, FolderKanban, DollarSign, HardHat,
   FileText, BarChart2, Brain, Users, Settings, LogOut,
   Sun, Moon, ShieldCheck, ChevronRight, HelpCircle,
-  PanelLeftClose, PanelLeftOpen,
+  PanelLeftClose, PanelLeftOpen, LifeBuoy, Compass,
+  ScrollText, Lock, BookOpen,
 } from 'lucide-react';
 import { APP_VERSION_LABEL } from '@/config/app-version';
+import { buildSupportHref } from '@/lib/supportContext';
 
 const COLLAPSED_KEY = 'suresign_app_sidebar_collapsed';
 
@@ -46,6 +48,22 @@ const NAV_GROUPS = [
     ],
   },
 ];
+
+// Contact Support carries the current route as context (see
+// supportContext.ts) — the other six are context-free. "Report a Bug" and
+// "Feature Request" are no longer separate nav entries; they're just
+// SUPPORT_CATEGORIES options inside Contact Support now — deep-link to them
+// with buildSupportHref('technical_issue' | 'feature_request', pathname).
+function buildHelpLinks(pathname: string): { href: string; label: string; icon: React.ElementType }[] {
+  return [
+    { href: '/app/help/tours', label: 'Guided Tours', icon: Compass },
+    { href: '/app/help', label: 'Help Center', icon: HelpCircle },
+    { href: buildSupportHref(null, pathname), label: 'Contact Support', icon: LifeBuoy },
+    { href: '/app/settings/releases', label: 'Release Notes', icon: ScrollText },
+    { href: '/app/settings/terms', label: 'Terms of Service', icon: BookOpen },
+    { href: '/app/settings/privacy', label: 'Privacy Policy', icon: Lock },
+  ];
+}
 
 // ─── Portal tooltip ────────────────────────────────────────────────────────────
 
@@ -241,6 +259,152 @@ function NavItem({
   );
 }
 
+// ─── Help flyout ──────────────────────────────────────────────────────────────
+
+function HelpLinksList({
+  links,
+  onNavigate,
+}: {
+  links: { href: string; label: string; icon: React.ElementType }[];
+  onNavigate: () => void;
+}) {
+  return (
+    <>
+      {links.map(link => (
+        <Link
+          key={link.href}
+          href={link.href}
+          onClick={onNavigate}
+          role="menuitem"
+          className="group flex items-center gap-2.5 px-3.5 py-2.5 text-xs transition-colors hover:bg-[var(--bg-hover)]"
+          style={{ color: 'var(--text-secondary)' }}
+        >
+          <link.icon size={13} className="flex-shrink-0" />
+          {link.label}
+        </Link>
+      ))}
+    </>
+  );
+}
+
+// Up/Down roves focus between menu items (wrapping at either end); Home/End
+// jump to the first/last. Shared by the desktop flyout and the mobile inline
+// list — harmless on mobile since touch users never trigger arrow keys, but
+// it helps anyone on a tablet/external keyboard.
+function handleMenuArrowKeys(e: React.KeyboardEvent<HTMLDivElement>) {
+  if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Home' && e.key !== 'End') return;
+  const items = Array.from(e.currentTarget.querySelectorAll<HTMLAnchorElement>('[role="menuitem"]'));
+  if (!items.length) return;
+  e.preventDefault();
+  const currentIndex = items.indexOf(document.activeElement as HTMLAnchorElement);
+  if (e.key === 'ArrowDown') items[(currentIndex + 1) % items.length]?.focus();
+  else if (e.key === 'ArrowUp') items[(currentIndex - 1 + items.length) % items.length]?.focus();
+  else if (e.key === 'Home') items[0]?.focus();
+  else if (e.key === 'End') items[items.length - 1]?.focus();
+}
+
+// Desktop-only: a submenu portaled to <body> and positioned beside the Help
+// trigger row (flipping to the left if it would overflow the right edge of
+// the viewport). Mobile renders HelpLinksList inline instead — see
+// ProfilePopover — since there's no side space to flip into on a narrow
+// screen and hover/flyout affordances don't translate to touch anyway.
+function HelpFlyout({
+  anchorRef,
+  contentRef,
+  links,
+  onCloseAll,
+  onCloseMenu,
+  outsideRef,
+}: {
+  anchorRef: React.RefObject<HTMLElement | null>;
+  contentRef: React.RefObject<HTMLElement | null>;
+  links: { href: string; label: string; icon: React.ElementType }[];
+  onCloseAll: () => void;
+  onCloseMenu: () => void;
+  outsideRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  const [pos, setPos] = useState<{ top: number; left?: number; right?: number; maxHeight: number; origin: string } | null>(null);
+
+  useEffect(() => {
+    // Align with the whole first popup (Settings/Dark mode/Help/Sign out
+    // panel), not just the Help row inside it — the submenu should read as
+    // a sibling panel sitting beside the popup, sharing its top edge,
+    // rather than floating off the height of one row within it.
+    const panel = contentRef.current;
+    const el = anchorRef.current;
+    if (!panel || !el) return;
+    const panelRect = panel.getBoundingClientRect();
+    const flyoutWidth = 216;
+    const margin = 8;
+    const fitsRight = panelRect.right + margin + flyoutWidth <= window.innerWidth;
+    // Clamp so the panel never starts above the viewport top nor leaves no
+    // headroom below — maxHeight + overflow-y below is the safety net for
+    // whatever headroom remains, mirroring ProfilePopover's own clamp.
+    const top = Math.min(Math.max(panelRect.top, margin), window.innerHeight - margin);
+    const maxHeight = window.innerHeight - top - margin;
+
+    setPos(
+      fitsRight
+        ? { top, left: panelRect.right + margin, maxHeight, origin: 'top left' }
+        : { top, right: window.innerWidth - panelRect.left + margin, maxHeight, origin: 'top right' },
+    );
+  }, [anchorRef, contentRef, links.length]);
+
+  // Move focus into the menu as soon as it's positioned — this is a true
+  // `menu` widget (WAI-ARIA menu-button pattern), so focus belongs on its
+  // first item on open regardless of whether it was opened by mouse or
+  // keyboard, the same way GitHub/Notion-style menus behave.
+  useEffect(() => {
+    if (!pos) return;
+    outsideRef.current?.querySelector<HTMLAnchorElement>('[role="menuitem"]')?.focus();
+  }, [pos, outsideRef]);
+
+  if (!pos) return null;
+
+  // Tab/Shift+Tab: close just the submenu (leaving the popover open) and
+  // hand focus to whatever would naturally follow/precede the Help trigger.
+  // Without this the browser's default Tab would jump to wherever this
+  // portal happens to sit in the DOM (the end of <body>) instead of
+  // continuing through the still-open popover, since a portaled node's tab
+  // position follows its DOM location, not its visual one.
+  function handleTab(e: React.KeyboardEvent) {
+    if (e.key !== 'Tab') return;
+    e.preventDefault();
+    onCloseMenu();
+    const container = contentRef.current;
+    const trigger = anchorRef.current;
+    if (!container || !trigger) return;
+    const focusables = Array.from(container.querySelectorAll<HTMLElement>('a[href], button:not(:disabled)'));
+    const idx = focusables.indexOf(trigger);
+    const target = e.shiftKey ? focusables[idx - 1] : focusables[idx + 1];
+    (target ?? trigger).focus();
+  }
+
+  return createPortal(
+    <div
+      ref={outsideRef}
+      role="menu"
+      aria-label="Help"
+      onKeyDown={(e) => { handleMenuArrowKeys(e); handleTab(e); }}
+      className="fixed z-[210] rounded-xl ss-menu-pop-in py-1 overflow-y-auto"
+      style={{
+        top: pos.top,
+        left: pos.left,
+        right: pos.right,
+        width: '216px',
+        maxHeight: pos.maxHeight,
+        transformOrigin: pos.origin,
+        backgroundColor: 'var(--bg-surface)',
+        border: '1px solid var(--border)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+      }}
+    >
+      <HelpLinksList links={links} onNavigate={onCloseAll} />
+    </div>,
+    document.body,
+  );
+}
+
 // ─── Profile popover ──────────────────────────────────────────────────────────
 
 function ProfilePopover({
@@ -250,6 +414,13 @@ function ProfilePopover({
   email,
   theme,
   isSuperAdmin,
+  isMobile,
+  pathname,
+  helpOpen,
+  onToggleHelp,
+  onCloseHelp,
+  helpTriggerRef,
+  helpFlyoutRef,
   onClose,
   onToggleTheme,
   onLogout,
@@ -261,14 +432,29 @@ function ProfilePopover({
   email?: string;
   theme: string;
   isSuperAdmin: boolean;
+  isMobile: boolean;
+  pathname: string;
+  helpOpen: boolean;
+  onToggleHelp: () => void;
+  onCloseHelp: () => void;
+  helpTriggerRef: React.RefObject<HTMLButtonElement | null>;
+  helpFlyoutRef: React.RefObject<HTMLDivElement | null>;
   onClose: () => void;
   onToggleTheme: () => void;
   onLogout: () => void;
   portalRef: React.RefObject<HTMLDivElement | null>;
 }) {
+  const helpLinks = buildHelpLinks(pathname);
+  // Not-collapsed counterpart to portalRef — needed so Tab-escape (below) can
+  // find "what comes after the Help trigger" in either layout, without
+  // manually writing to a ref object passed in as a prop (portalRef is only
+  // ever set via the native `ref={...}` mechanism, never assigned to by hand).
+  const expandedRef = useRef<HTMLDivElement>(null);
+  const contentRef = collapsed ? portalRef : expandedRef;
+
   const content = (
     <div
-      ref={collapsed ? portalRef : undefined}
+      ref={contentRef}
       className={cn(
         'overflow-hidden rounded-xl transition-all duration-200 ease-out',
         collapsed ? 'fixed z-[200] w-52' : 'absolute bottom-full left-3 right-3 z-[200] mb-1',
@@ -291,6 +477,8 @@ function ProfilePopover({
               border: '1px solid var(--border)',
               boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
               transformOrigin: 'bottom center',
+              maxHeight: 'calc(100vh - 96px)',
+              overflowY: 'auto',
             }
       }
     >
@@ -320,6 +508,40 @@ function ProfilePopover({
         {theme === 'dark' ? 'Light mode' : 'Dark mode'}
       </button>
 
+      <div>
+        <button
+          ref={helpTriggerRef}
+          onClick={onToggleHelp}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowRight' && !helpOpen) { e.preventDefault(); onToggleHelp(); }
+            if (e.key === 'ArrowLeft' && helpOpen) { e.preventDefault(); onToggleHelp(); }
+          }}
+          aria-haspopup="menu"
+          aria-expanded={helpOpen}
+          className="group w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs transition-colors hover:bg-[var(--bg-hover)]"
+          style={{ color: 'var(--text-secondary)', backgroundColor: helpOpen ? 'var(--bg-hover)' : undefined }}
+        >
+          <HelpCircle size={13} />
+          Help
+          <ChevronRight
+            size={11}
+            className={cn('ml-auto transition-transform duration-150', helpOpen && !isMobile && 'rotate-90')}
+          />
+        </button>
+
+        {/* Mobile: no side space to flip a flyout into, so expand inline instead. */}
+        {isMobile && helpOpen && (
+          <div
+            role="menu"
+            aria-label="Help"
+            onKeyDown={handleMenuArrowKeys}
+            style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}
+          >
+            <HelpLinksList links={helpLinks} onNavigate={onClose} />
+          </div>
+        )}
+      </div>
+
       {isSuperAdmin && (
         <Link
           href="/admin"
@@ -330,6 +552,17 @@ function ProfilePopover({
           <ShieldCheck size={13} />
           Admin Panel
         </Link>
+      )}
+
+      {!isMobile && helpOpen && (
+        <HelpFlyout
+          anchorRef={helpTriggerRef}
+          contentRef={contentRef}
+          links={helpLinks}
+          onCloseAll={onClose}
+          onCloseMenu={onCloseHelp}
+          outsideRef={helpFlyoutRef}
+        />
       )}
 
       <button
@@ -423,6 +656,7 @@ export default function AppSidebar({
   const { theme, toggle } = useTheme();
   const isMobile = useIsMobile();
   const [profileOpen, setProfileOpen] = useState(false);
+  const [helpOpen, setHelpOpen]       = useState(false);
   const [collapsed, setCollapsed]     = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
   // ProfilePopover is portaled to document.body when collapsed (see below) so
@@ -430,6 +664,10 @@ export default function AppSidebar({
   // it's no longer a DOM descendant of popoverRef, so the outside-click
   // handler needs its own ref to still recognise clicks inside the popover.
   const portalPopoverRef = useRef<HTMLDivElement>(null);
+  const helpTriggerRef = useRef<HTMLButtonElement>(null);
+  // The Help submenu is itself portaled to document.body (desktop only — see
+  // HelpFlyout) so it also needs its own ref for the outside-click check below.
+  const helpFlyoutRef = useRef<HTMLDivElement>(null);
 
   // On mobile the sidebar is a full drawer — never the icon-only collapsed view.
   const showCollapsed = collapsed && !isMobile;
@@ -453,19 +691,45 @@ export default function AppSidebar({
     } catch {}
   }, []);
 
+  // Closes the profile popover and, with it, any open Help submenu — the
+  // latter never makes sense open on its own, so every path that closes the
+  // popover closes both together here rather than via a syncing effect.
+  function closeProfile() {
+    setProfileOpen(false);
+    setHelpOpen(false);
+  }
+
   useEffect(() => {
     if (!profileOpen) return;
     function handle(e: MouseEvent) {
       const target = e.target as Node;
       const insidePopover = popoverRef.current?.contains(target);
       const insidePortal = portalPopoverRef.current?.contains(target);
-      if (!insidePopover && !insidePortal) {
-        setProfileOpen(false);
+      const insideHelpFlyout = helpFlyoutRef.current?.contains(target);
+      if (!insidePopover && !insidePortal && !insideHelpFlyout) {
+        closeProfile();
       }
     }
     document.addEventListener('mousedown', handle);
     return () => document.removeEventListener('mousedown', handle);
   }, [profileOpen]);
+
+  // Escape closes one level at a time: the Help submenu first (returning
+  // focus to its trigger), then the profile popover itself on a second press.
+  useEffect(() => {
+    if (!profileOpen) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return;
+      if (helpOpen) {
+        setHelpOpen(false);
+        helpTriggerRef.current?.focus();
+      } else {
+        closeProfile();
+      }
+    }
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [profileOpen, helpOpen]);
 
   function toggleCollapsed() {
     setCollapsed(c => {
@@ -473,7 +737,15 @@ export default function AppSidebar({
       try { localStorage.setItem(COLLAPSED_KEY, String(next)); } catch {}
       return next;
     });
-    setProfileOpen(false);
+    closeProfile();
+  }
+
+  function toggleProfile() {
+    setProfileOpen(p => {
+      const next = !p;
+      if (!next) setHelpOpen(false);
+      return next;
+    });
   }
 
   function isActive(href: string, exact?: boolean) {
@@ -615,7 +887,14 @@ export default function AppSidebar({
           email={user?.email}
           theme={theme}
           isSuperAdmin={isSuperAdmin}
-          onClose={() => setProfileOpen(false)}
+          isMobile={isMobile}
+          pathname={pathname ?? '/app'}
+          helpOpen={helpOpen}
+          onToggleHelp={() => setHelpOpen(h => !h)}
+          onCloseHelp={() => setHelpOpen(false)}
+          helpTriggerRef={helpTriggerRef}
+          helpFlyoutRef={helpFlyoutRef}
+          onClose={closeProfile}
           onToggleTheme={toggle}
           onLogout={() => logout().then(() => (window.location.href = '/login'))}
           portalRef={portalPopoverRef}
@@ -629,7 +908,7 @@ export default function AppSidebar({
             profileOpen={profileOpen}
             onToggleCollapsed={toggleCollapsed}
             onToggleTheme={toggle}
-            onToggleProfile={() => setProfileOpen(p => !p)}
+            onToggleProfile={toggleProfile}
           />
         )}
 
@@ -652,7 +931,7 @@ export default function AppSidebar({
             </div>
 
             <button
-              onClick={() => setProfileOpen(p => !p)}
+              onClick={toggleProfile}
               className={cn(
                 'group w-full flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all duration-150',
                 profileOpen ? 'bg-[var(--bg-elevated)]' : 'hover:bg-[var(--bg-surface)]',

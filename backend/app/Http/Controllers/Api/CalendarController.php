@@ -7,8 +7,10 @@ use App\Models\Contract;
 use App\Models\ContractProgrammeMilestone;
 use App\Models\FinalAccount;
 use App\Models\PaymentApplication;
+use App\Models\Organization;
 use App\Models\Project;
 use App\Services\OperationalIntelligenceService;
+use App\Services\TimezoneResolver;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -122,7 +124,7 @@ class CalendarController extends Controller
             );
 
             if (!empty($app->application_date)) {
-                $days = $this->daysFromToday($app->application_date);
+                $days = $this->daysFromToday($app->application_date, $project->organization);
                 $events[] = $this->makeEvent(
                     "payapp-{$app->id}-application",
                     "Payment App #{$app->application_number}: {$contractTitle}",
@@ -140,7 +142,7 @@ class CalendarController extends Controller
             }
 
             if (!empty($app->due_date)) {
-                $days = $this->daysFromToday($app->due_date);
+                $days = $this->daysFromToday($app->due_date, $project->organization);
                 $events[] = $this->makeEvent(
                     "payapp-{$app->id}-due",
                     "Payment Due #{$app->application_number}: {$contractTitle}",
@@ -158,7 +160,7 @@ class CalendarController extends Controller
             }
 
             if (!empty($app->final_date_for_payment)) {
-                $days = $this->daysFromToday($app->final_date_for_payment);
+                $days = $this->daysFromToday($app->final_date_for_payment, $project->organization);
                 $events[] = $this->makeEvent(
                     "payapp-{$app->id}-final",
                     "Final Payment #{$app->application_number}: {$contractTitle}",
@@ -205,7 +207,7 @@ class CalendarController extends Controller
             // regardless of how far in the past its date sits.
             $calendarStatus = $m->status === 'complete'
                 ? \App\Models\CalendarEvent::STATUS_COMPLETED
-                : \App\Models\CalendarEvent::computeStatusFromDays($this->daysFromToday($date));
+                : \App\Models\CalendarEvent::computeStatusFromDays($this->daysFromToday($date, $project->organization));
 
             $events[] = $this->makeEvent(
                 "milestone-{$m->id}",
@@ -217,7 +219,7 @@ class CalendarController extends Controller
                 $contractTitle,
                 ['status' => $m->status, 'is_ai_generated' => $m->is_ai_generated],
                 \App\Models\CalendarEvent::CATEGORY_PROGRAMME,
-                \App\Models\CalendarEvent::computePriority($this->daysFromToday($date), \App\Models\CalendarEvent::CATEGORY_PROGRAMME),
+                \App\Models\CalendarEvent::computePriority($this->daysFromToday($date, $project->organization), \App\Models\CalendarEvent::CATEGORY_PROGRAMME),
                 $calendarStatus,
                 $milestoneActionUrl
             );
@@ -382,16 +384,23 @@ class CalendarController extends Controller
     }
 
     /**
-     * Days between today and $value, or null if unparseable/empty.
-     * Feeds CalendarEvent::computePriority()/computeStatusFromDays() for the
-     * sections here that aren't sourced from OperationalIntelligenceService
-     * (which already computes this itself).
+     * Days between today (for $organization) and $value, or null if
+     * unparseable/empty. Feeds CalendarEvent::computePriority()/
+     * computeStatusFromDays() for the sections here that aren't sourced
+     * from OperationalIntelligenceService (which already computes this
+     * itself, org-aware, since Batch 4).
+     *
+     * $value is always a DATE-only business value here (application_date,
+     * due_date, final_date_for_payment, a milestone date) — compared via
+     * toDateString() against the organisation's own "today" rather than by
+     * converting $value's own timezone, so a date-only field never shifts.
      */
-    private function daysFromToday(mixed $value): ?int
+    private function daysFromToday(mixed $value, ?Organization $organization): ?int
     {
         if (empty($value)) return null;
         try {
-            return (int) now()->startOfDay()->diffInDays(Carbon::parse($value)->startOfDay(), false);
+            $today = TimezoneResolver::today(null, $organization)->toDateString();
+            return (int) Carbon::parse($today)->diffInDays(Carbon::parse($value)->startOfDay(), false);
         } catch (\Throwable) {
             return null;
         }

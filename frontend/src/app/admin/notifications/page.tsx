@@ -11,6 +11,8 @@ import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import PaginationBar from '@/components/ui/PaginationBar';
 import { type SuresignNotification, type NotificationFilter } from '@/hooks/useNotifications';
+import { formatDateTime } from '@/lib/dateTime';
+import { useAuthStore } from '@/store/authStore';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -79,10 +81,12 @@ const STATUS_CONFIG: Record<string, { color: string; bg: string }> = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+// created_at is a genuine DATETIME instant — resolved to the viewer's
+// effective SureSign timezone, not the browser's own local OS timezone.
 function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleString('en-GB', {
-    day: 'numeric', month: 'short', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
+  return formatDateTime(dateString, {
+    timeZone: useAuthStore.getState().user?.effective_timezone,
+    locale: 'en-GB',
   });
 }
 

@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { effectiveTodayYmd } from '@/lib/dateTime';
 import { MessageSquare, Plus, Search, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
@@ -50,7 +51,7 @@ function NewRfiModal({ projectId, onClose }: { projectId: string; onClose: () =>
   const queryClient = useQueryClient();
   const [form, setForm] = useState<RfiForm>({
     subject: '', description: '', priority: 'normal',
-    raised_date: new Date().toISOString().split('T')[0],
+    raised_date: effectiveTodayYmd(),
     response_due_date: '', programme_impact: false,
     programme_impact_days: '', cost_impact_amount: '',
   });
@@ -147,7 +148,7 @@ function RfiResponseModal({ rfi, projectId, onClose }: { rfi: any; projectId: st
   const queryClient = useQueryClient();
   const [form, setForm] = useState({
     response:       rfi.response ?? '',
-    responded_at:   rfi.responded_at ? String(rfi.responded_at).slice(0, 10) : new Date().toISOString().split('T')[0],
+    responded_at:   rfi.responded_at ? String(rfi.responded_at).slice(0, 10) : effectiveTodayYmd(),
   });
 
   const { mutate, isPending } = useMutation({

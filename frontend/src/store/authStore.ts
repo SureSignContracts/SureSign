@@ -7,6 +7,7 @@ interface Organization {
   name: string;
   slug: string;
   is_onboarded: boolean;
+  timezone?: string;
   branding?: {
     primary_color: string;
     logo_path: string | null;
@@ -28,6 +29,11 @@ interface User {
   province?: string;
   postal_code?: string;
   country?: string;
+  // `timezone` is the user's own override (null = inheriting the
+  // organisation's timezone). `effective_timezone` is what actually
+  // applies right now — prefer this for any display logic.
+  timezone?: string | null;
+  effective_timezone?: string;
   roles: string[];
   permissions: string[];
   organization: Organization | null;

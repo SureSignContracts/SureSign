@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { effectiveTodayYmd } from '@/lib/dateTime';
 import { ClipboardList, Plus, Search, X, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
@@ -26,7 +27,7 @@ type DiaryForm = {
 };
 
 const emptyForm: DiaryForm = {
-  diary_date: new Date().toISOString().split('T')[0],
+  diary_date: effectiveTodayYmd(),
   weather: '', workers_on_site: '', works_carried_out: '', issues: '',
   materials_delivered: '', visitors: '', status: 'draft',
 };

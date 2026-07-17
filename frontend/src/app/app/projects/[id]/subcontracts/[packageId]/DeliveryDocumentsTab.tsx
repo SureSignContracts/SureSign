@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { effectiveTodayYmd } from '@/lib/dateTime';
 import { Plus, X, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getErrorMessage, INPUT_STYLE, CATEGORY_LABELS, StatusBadge, Field } from '@/components/deliveryDocuments/deliveryDocumentShared';
@@ -47,7 +48,9 @@ export function DeliveryDocumentsTab({ projectId, tradePackageId, canWrite }: { 
   });
 
   const docs = data ?? [];
-  const today = new Date().toISOString().split('T')[0];
+  // Must agree with the backend's own organisation-timezone-aware "today"
+  // (TimezoneResolver), not the UTC calendar day.
+  const today = effectiveTodayYmd();
 
   return (
     <div className="space-y-4">

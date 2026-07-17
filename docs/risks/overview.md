@@ -40,3 +40,4 @@ Risks with a review date appear on the project [Calendar](../calendar/overview.m
 
 - [Contracts: AI Analysis](../contracts/ai-analysis.md)
 - [Trade Packages: Workspace](../trade-packages/workspace.md)
+- [Glossary](../reference/glossary.md)

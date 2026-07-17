@@ -66,6 +66,20 @@ Programme milestones and other dated items appear on the project's
 [Calendar](../calendar/overview.md) rather than the global dashboard, which
 focuses on project-level counts (open RFIs, pending variations, and so on).
 
+**Why does a meeting time look different to me than to a colleague?**
+A timed meeting is scheduled against a specific timezone, but SureSign always
+displays it converted into your own timezone. If your timezone is different
+from the one it was scheduled in, that original scheduling timezone is shown
+alongside the time as a reminder — so "2pm" always means your own local 2pm,
+never someone else's.
+
+**Does SureSign use my timezone, or my organisation's?**
+By default, you see everything in your organisation's timezone. If you travel
+or work from a different region, you can set your own personal timezone in
+Settings — this only changes how times are displayed to you, it never
+changes a deadline or when a reminder is sent, both of which always follow
+your organisation's timezone. See [Settings](../settings/overview.md).
+
 **What happens when an AI analysis limit is reached?**
 You will see a message telling you the rate limit has been exceeded and to try
 again later, or that an analysis is already in progress if you try to start a

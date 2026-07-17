@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Services\TimezoneResolver;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -193,22 +195,58 @@ class FinalAccount extends Model
 
     /**
      * True when this Final Account has sat in under_review beyond the review SLA.
+     *
+     * Batch 3.5 decision: "review_sla_days"/"closeout_grace_days" are
+     * calendar-day grace periods ("days allowed" — see config/suresign.php),
+     * not exact elapsed-hour durations. Previously computed as
+     * `$instant->addDays($n)->isPast()`, which measures N×24 real hours from
+     * the exact stored timestamp — technically wrong for a calendar-day SLA
+     * (it silently drifts across DST transitions, and treats "14 days" as
+     * "336 hours" rather than "the calendar day 14 days later"). Fixed to:
+     * convert the originating UTC instant to this organisation's local
+     * calendar date, add N calendar days, and compare against the
+     * organisation's own "today" — the deadline day itself is still on
+     * time; overdue only once that day has fully passed.
      */
     public function isReviewOverdue(): bool
     {
         return $this->status === self::STATUS_UNDER_REVIEW
-            && $this->reviewed_at !== null
-            && $this->reviewed_at->copy()->addDays(self::reviewSlaDays())->isPast();
+            && $this->isCalendarDeadlinePassed($this->reviewed_at, self::reviewSlaDays());
     }
 
     /**
      * True when the Final Certificate has been issued but commercial close-out
-     * has not happened within the close-out grace period.
+     * has not happened within the close-out grace period. See isReviewOverdue()
+     * for the calendar-day-vs-elapsed-duration decision.
      */
     public function isCloseOutOverdue(): bool
     {
         return $this->status === self::STATUS_FINAL_CERTIFICATE_ISSUED
-            && $this->final_certificate_issued_at !== null
-            && $this->final_certificate_issued_at->copy()->addDays(self::closeoutGraceDays())->isPast();
+            && $this->isCalendarDeadlinePassed($this->final_certificate_issued_at, self::closeoutGraceDays());
+    }
+
+    /**
+     * True when today (for this Final Account's own organisation) is past
+     * the calendar day that is $days days after $fromInstant's local
+     * calendar date. $fromInstant is a genuine UTC DATETIME (reviewed_at /
+     * final_certificate_issued_at) — its own timezone is converted to the
+     * organisation's timezone here specifically to find which local
+     * calendar day it falls on, which is the correct thing to do for a
+     * real instant (unlike a true DATE-only value, which must never have
+     * its timezone touched).
+     */
+    private function isCalendarDeadlinePassed(?Carbon $fromInstant, int $days): bool
+    {
+        if (!$fromInstant) {
+            return false;
+        }
+
+        $timezone = TimezoneResolver::effectiveTimezone(null, $this->organization);
+
+        $fromLocalDate = $fromInstant->copy()->setTimezone($timezone)->toDateString();
+        $deadlineDate  = Carbon::parse($fromLocalDate)->addDays($days)->toDateString();
+        $today         = TimezoneResolver::today(null, $this->organization)->toDateString();
+
+        return $today > $deadlineDate;
     }
 }

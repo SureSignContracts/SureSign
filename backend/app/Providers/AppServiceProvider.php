@@ -151,6 +151,45 @@ class AppServiceProvider extends ServiceProvider
         // throttles the rate of *new* analysis requests reaching those
         // checks. reparse/confirm/cancel/generate-brief make no AI call and
         // are intentionally not covered.
+        // Support ticket submission — authenticated endpoint, each submission
+        // triggers a real outbound Brevo email to the support team, so it
+        // gets its own bucket separate from the general 'api' limiter to stop
+        // a compromised/scripted session from spamming the support inbox.
+        // Keyed per-user with a looser per-IP ceiling, same shape as
+        // 'ai-analysis' above.
+        RateLimiter::for('support-ticket', function (Request $request) {
+            $tooManyAttempts = function (Request $request, array $headers) {
+                return response()->json(
+                    ['message' => 'Too many support requests have been submitted. Please try again later.'],
+                    429,
+                    $headers
+                );
+            };
+
+            return [
+                Limit::perMinutes(15, 5)->by($request->user()?->id ?: $request->ip())->response($tooManyAttempts),
+                Limit::perMinutes(15, 15)->by($request->ip())->response($tooManyAttempts),
+            ];
+        });
+
+        // A reply is a cheap write (no outbound email to the whole team like
+        // 'support-ticket' above), but still gets its own bucket so a
+        // double-click or scripted loop can't flood a ticket thread.
+        RateLimiter::for('support-ticket-reply', function (Request $request) {
+            $tooManyAttempts = function (Request $request, array $headers) {
+                return response()->json(
+                    ['message' => 'Too many replies have been sent. Please try again later.'],
+                    429,
+                    $headers
+                );
+            };
+
+            return [
+                Limit::perMinutes(15, 10)->by($request->user()?->id ?: $request->ip())->response($tooManyAttempts),
+                Limit::perMinutes(15, 30)->by($request->ip())->response($tooManyAttempts),
+            ];
+        });
+
         RateLimiter::for('ai-analysis', function (Request $request) {
             $tooManyAttempts = function (Request $request, array $headers) {
                 return response()->json(

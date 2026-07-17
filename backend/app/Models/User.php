@@ -17,7 +17,7 @@ class User extends Authenticatable
     protected $fillable = [
         'organization_id', 'name', 'first_name', 'last_name',
         'email', 'phone', 'job_title', 'avatar', 'password',
-        'address', 'city', 'province', 'postal_code', 'country',
+        'address', 'city', 'province', 'postal_code', 'country', 'timezone',
         'is_active', 'last_login_at', 'email_verified_at',
         'banned_at', 'banned_reason', 'must_change_password', 'tours_reset_at',
     ];

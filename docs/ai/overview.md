@@ -8,10 +8,9 @@ organisation administrator:
 2. **Subcontract AI analysis** — the same idea, applied to a trade package's
    subcontract document. See [Subcontract Analysis](subcontract-analysis.md).
 
-There is also a general **AI Assistant** chat available from the tenant
-workspace's Tools menu, for open-ended questions and drafting help — this is a
-separate, general-purpose chat feature rather than the structured contract/
-subcontract analysis described above.
+!!! note "AI Assistant"
+    The **AI Assistant** chat page (Tools menu) is not yet available. The two
+    AI features described above are the only ones currently working.
 
 !!! important "AI output is a suggestion, not a decision"
     Everywhere SureSign uses AI, the output is an extracted or generated

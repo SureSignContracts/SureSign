@@ -6,6 +6,20 @@ import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { useAuthStore } from '@/store/authStore';
+
+// AI analysis completed_at/created_at are genuine DATETIME instants —
+// resolved to the viewer's effective SureSign timezone rather than the
+// browser's own local OS timezone. Kept as its own helper (not formatDate())
+// since this display intentionally omits leading-zero day padding
+// ('numeric', not formatDate()'s '2-digit') — a pre-existing, distinct
+// visual format for this AI-analysis history list.
+function formatAiAnalysisDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-GB', {
+    day: 'numeric', month: 'short', year: 'numeric',
+    timeZone: useAuthStore.getState().user?.effective_timezone,
+  });
+}
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import { FileText, Plus, Search, X, Sparkles, Loader2, CheckCircle, AlertTriangle, Minus, Upload, ArrowRight, Eye, Download, Paperclip, MoreHorizontal, Trash2, Archive, RotateCcw, LayoutDashboard, Pencil, FileSignature } from 'lucide-react';
 import DocumentPreviewModal, { PreviewTarget } from '@/components/documents/DocumentPreviewModal';
@@ -395,8 +409,8 @@ function AiAnalysisModal({ contract, projectId, onClose, initialAnalysis, forceN
                       <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
                         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                           {a.completed_at
-                            ? new Date(a.completed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-                            : new Date(a.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            ? formatAiAnalysisDate(a.completed_at)
+                            : formatAiAnalysisDate(a.created_at)}
                         </span>
                         {a.creator?.name && (
                           <span className="text-xs" style={{ color: 'var(--text-muted)' }}>by {a.creator.name}</span>
@@ -1547,7 +1561,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
                           </p>
                           <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
                             <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                              Completed {a.completed_at ? new Date(a.completed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : (a.created_at ? new Date(a.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—')}
+                              Completed {a.completed_at ? formatAiAnalysisDate(a.completed_at) : (a.created_at ? formatAiAnalysisDate(a.created_at) : '—')}
                             </span>
                             {a.creator?.name && (
                               <span className="text-xs" style={{ color: 'var(--text-muted)' }}>by {a.creator.name}</span>
@@ -1691,8 +1705,8 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
                           <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
                             <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                               {a.completed_at
-                                ? new Date(a.completed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-                                : new Date(a.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                ? formatAiAnalysisDate(a.completed_at)
+                                : formatAiAnalysisDate(a.created_at)}
                             </span>
                             {a.creator?.name && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>by {a.creator.name}</span>}
                             {a.model && <span className="text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>{a.model.replace('claude-', '')}</span>}
@@ -3009,7 +3023,7 @@ export default function ProjectContractsPage() {
                   return (
                     <tr key={a.id} className="ss-animate-in hover:bg-[var(--bg-hover)] transition-colors" style={{ borderBottom: '1px solid var(--border)', animationDelay: `${Math.min(index * 45, 360)}ms` }}>
                       <td className="px-5 py-3 text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
-                        {a.created_at ? new Date(a.created_at).toLocaleDateString() : '—'}
+                        {a.created_at ? formatDate(a.created_at) : '—'}
                       </td>
                       <td className="px-5 py-3 text-xs font-medium" style={{ color: 'var(--text-primary)' }}>
                         {a.contract?.title ?? contractForRow?.title ?? `Contract #${a.contract_id}`}

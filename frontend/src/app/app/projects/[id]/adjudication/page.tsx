@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { effectiveTodayYmd, parseDateOnly } from '@/lib/dateTime';
 import { Scale, Plus, Search, X, ChevronRight, AlertCircle, Clock, CheckCircle2 } from 'lucide-react';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
@@ -274,15 +275,19 @@ function CreateCaseModal({ projectId, onClose }: { projectId: string; onClose: (
 
 // ─── Deadline badge helper ────────────────────────────────────────────────────
 
+// due_date is a DATE-only field — compared against "today" in the viewer's
+// effective SureSign timezone, not the browser's raw current instant, or
+// this could disagree with the backend's own overdue computation near a
+// midnight boundary.
 function nextDeadlineBadge(deadlines: any[]) {
   if (!deadlines?.length) return null;
-  const now = new Date();
+  const now = parseDateOnly(effectiveTodayYmd());
   const upcoming = deadlines
     .filter((d: any) => d.status !== 'completed' && d.due_date)
     .sort((a: any, b: any) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
   if (!upcoming.length) return null;
   const next = upcoming[0];
-  const dueDate = new Date(next.due_date);
+  const dueDate = parseDateOnly(next.due_date);
   const diffMs = dueDate.getTime() - now.getTime();
   const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
   const isOverdue = diffDays < 0;

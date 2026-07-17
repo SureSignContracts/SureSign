@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import api from '@/lib/api';
+import { parseDateOnly } from '@/lib/dateTime';
 import {
   ArrowLeft, Building2, Mail, Phone, MapPin, Plus, Search,
   FolderOpen, Calendar, DollarSign, ChevronRight, X,
@@ -14,8 +15,12 @@ const STATUS_COLORS: Record<string, string> = {
   active: '#10b981', on_hold: '#f59e0b', completed: '#3b82f6', cancelled: '#ef4444',
 };
 
+// project.start_date/end_date are DATE-only fields — parsed via
+// parseDateOnly() (local calendar components), never `new Date(dateString)`
+// (which the spec parses as UTC midnight and can roll the date back a day
+// for a negative-UTC-offset viewer).
 function fmtDate(d: string) {
-  return new Date(d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+  return parseDateOnly(d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 // ─── New Project Modal ────────────────────────────────────────────────────────

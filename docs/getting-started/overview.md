@@ -30,7 +30,8 @@ for full detail.
 
 ## Getting help
 
-- The **Help** area (in the main menu) links back to this guide and lets you
-  replay the guided product tour.
+- The **Help** area (in the main menu) links back to this guide and to
+  **Guided Tours** — short, restartable walkthroughs of each part of
+  SureSign. See [Help Center](../help-center/overview.md).
 - If something looks wrong or is missing, check [Troubleshooting](../troubleshooting/index.md)
   before contacting support.

@@ -3,6 +3,7 @@
 ## What this is
 
 A record of a project meeting: agenda, minutes, attendees, and action items.
+Meetings can be date-only, or scheduled with a specific start and end time.
 
 ## Who can use it
 

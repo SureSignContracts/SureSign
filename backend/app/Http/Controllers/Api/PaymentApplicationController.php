@@ -108,7 +108,12 @@ class PaymentApplicationController extends Controller
             'application_date' => 'nullable|date',
         ]);
 
-        $applicationDate = Carbon::parse($validated['application_date'] ?? now()->toDateString());
+        // Default to "today" for this project's own organisation when no
+        // application_date is supplied — a business-day default, not the
+        // server's UTC calendar day.
+        $applicationDate = Carbon::parse(
+            $validated['application_date'] ?? \App\Services\TimezoneResolver::today(null, $project->organization)->toDateString()
+        );
 
         $contract  = null;
         $scope     = [];
@@ -574,7 +579,10 @@ class PaymentApplicationController extends Controller
 
         $paymentApplication->update(array_merge($validated, [
             'status'         => 'certified',
-            'certified_date' => $validated['certified_date'] ?? now()->toDateString(),
+            // Business-day default (today, for this project's organisation)
+            // when no certified_date is supplied. certified_at below remains
+            // a genuine UTC storage timestamp, untouched.
+            'certified_date' => $validated['certified_date'] ?? \App\Services\TimezoneResolver::today(null, $project->organization)->toDateString(),
             'certified_at'   => now(),
             'certified_by'   => $request->user()->id,
         ]));
@@ -650,7 +658,10 @@ class PaymentApplicationController extends Controller
 
         $paymentApplication->update(array_merge($validated, [
             'status'       => 'paid',
-            'payment_date' => $validated['payment_date'] ?? now()->toDateString(),
+            // Business-day default (today, for this project's organisation)
+            // when no payment_date is supplied. paid_at below remains a
+            // genuine UTC storage timestamp, untouched.
+            'payment_date' => $validated['payment_date'] ?? \App\Services\TimezoneResolver::today(null, $project->organization)->toDateString(),
             'paid_at'      => now(),
             'paid_by'      => $request->user()->id,
         ]));

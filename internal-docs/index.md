@@ -13,7 +13,7 @@ Nothing in this tree should be published to the public documentation site.
 ## Contents
 
 - `roles/` — Super Admin and Admin role capabilities
-- `super-admin/` — Companies, Users, Platform Branding, Security Actions
+- `super-admin/` — Companies, Users, Platform Branding, Security Actions, [Support Ticket Administration and Platform Announcements](super-admin/support-and-announcements.md)
 - `settings/` — Platform Settings, Feature Flags
 - `workflows/` — platform onboarding and account-security workflows
 

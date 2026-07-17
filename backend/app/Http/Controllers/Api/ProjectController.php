@@ -12,7 +12,9 @@ use App\Services\ProjectActivityService;
 use App\Services\ProjectHealthService;
 use App\Services\ProjectStatsService;
 use App\Services\ProjectStorageService;
+use App\Services\TimezoneResolver;
 use App\Services\UpcomingActionsService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class ProjectController extends Controller
@@ -313,9 +315,12 @@ class ProjectController extends Controller
         // Document count
         $documentsCount = \App\Models\FileUpload::where('project_id', $project->id)->count();
 
-        // Upcoming payment deadlines — next 30 days, non-cancelled apps only
-        $horizon = now()->addDays(30)->toDateString();
-        $today   = now()->toDateString();
+        // Upcoming payment deadlines — next 30 days, non-cancelled apps only.
+        // "Today"/"the next 30 days" is a business-day concept scoped to this
+        // project's own organisation, not the server's UTC calendar day.
+        $todayCarbon = TimezoneResolver::today(null, $project->organization);
+        $today       = $todayCarbon->toDateString();
+        $horizon     = $todayCarbon->copy()->addDays(30)->toDateString();
 
         $deadlineApps = \App\Models\PaymentApplication::where('project_id', $project->id)
             ->whereNotIn('status', ['cancelled', 'paid'])
@@ -346,7 +351,8 @@ class ProjectController extends Controller
             foreach ($deadlineFields as $field => $label) {
                 if (!empty($app->$field)) {
                     $date = \Carbon\Carbon::parse($app->$field);
-                    $daysUntil = (int) now()->startOfDay()->diffInDays($date->startOfDay(), false);
+                    // $today already resolved for this project's organisation above.
+                    $daysUntil = (int) Carbon::parse($today)->diffInDays(Carbon::parse($date->toDateString()), false);
                     $upcomingDeadlines[] = [
                         'application_id'     => $app->id,
                         'application_number' => $app->application_number,
@@ -428,13 +434,14 @@ class ProjectController extends Controller
             ->with(['contract:id,title', 'tradePackage:id,name'])
             ->orderByDesc('created_at')
             ->get()
-            ->map(function (\App\Models\FinalAccount $fa) use ($finalAccountService) {
+            ->map(function (\App\Models\FinalAccount $fa) use ($finalAccountService, $today) {
                 $totals = $fa->isSnapshotted()
                     ? ['final_balance_due' => (float) $fa->final_balance_due, 'retention_outstanding' => (float) $fa->retention_outstanding]
                     : $finalAccountService->calculateCurrentTotals($fa);
 
+                // $today already resolved for this project's organisation above.
                 $disputeRemaining = $fa->dispute_window_expires_at
-                    ? (int) now()->startOfDay()->diffInDays(\Carbon\Carbon::parse($fa->dispute_window_expires_at)->startOfDay(), false)
+                    ? (int) Carbon::parse($today)->diffInDays(Carbon::parse($fa->dispute_window_expires_at->toDateString()), false)
                     : null;
 
                 return [

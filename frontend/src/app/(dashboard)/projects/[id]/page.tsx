@@ -6,6 +6,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
+import { parseDateOnly } from '@/lib/dateTime';
+import { useAuthStore } from '@/store/authStore';
 import {
   ArrowLeft, Building2, Calendar, DollarSign, FileText, Users,
   FolderOpen, Folder, Upload, Download, Trash2, Search,
@@ -47,8 +49,17 @@ function fmtSize(bytes: number) {
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
   return (bytes / 1024 / 1024).toFixed(1) + ' MB';
 }
+// Used for both DATE-only fields (project.start_date/end_date) and genuine
+// DATETIME instants (file.created_at) — same distinction as lib/utils.ts's
+// formatDate(), kept as its own function here only because this page's
+// visual format ('numeric' day, no leading zero) differs from that one.
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 function fmtDate(d: string) {
-  return new Date(d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+  const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' };
+  if (DATE_ONLY_RE.test(d)) {
+    return parseDateOnly(d).toLocaleDateString('en-AU', opts);
+  }
+  return new Date(d).toLocaleDateString('en-AU', { ...opts, timeZone: useAuthStore.getState().user?.effective_timezone });
 }
 
 // ─── Folder grid ──────────────────────────────────────────────────────────────
