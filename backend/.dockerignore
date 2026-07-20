@@ -53,6 +53,12 @@ public/storage
 storage/framework/cache
 storage/framework/sessions
 storage/framework/views
+# Test-run artifacts (e.g. fake-disk uploads from `Storage::fake()` in
+# PHPUnit) — never needed at runtime, and a stray root-owned leftover here
+# from a prior local test run has actually blocked `docker build`'s context
+# transfer outright (permission denied tarring the directory), not just
+# bloated the image.
+storage/framework/testing
 bootstrap/cache
 
 # Stray local sqlite artifacts — production runs on MySQL only

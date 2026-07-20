@@ -83,14 +83,21 @@ services:
       # the database driver (see config/queue.php) — moving to Redis needs its
       # own isolated retry_after review, deferred to a separate phase.
       - QUEUE_CONNECTION=database
-      # redis, not database: cache reads/writes no longer hit MySQL, and this
-      # is also what Laravel's default RateLimiter and the scheduler's
-      # withoutOverlapping() lock use (both read config('cache.default')) —
-      # one change gets cache, rate limiting, and scheduler locking onto a
-      # store actually designed for high-frequency ephemeral writes. Cache
-      # data was never authoritative, so a Redis outage degrades to cache
-      # misses, not data loss — MySQL remains the source of truth.
-      - CACHE_STORE=redis
+      # REVERTED to database (was briefly `redis`) — caused a full production
+      # outage: the `phpredis` extension (REDIS_CLIENT=phpredis) was never
+      # actually installed in this Dockerfile, so RedisManager threw
+      # `Class "Redis" not found` on every single request the instant a
+      # rebuilt image went live (Laravel's default rate-limiter middleware
+      # touches the cache store on every API request). The extension has
+      # since been added to backend/Dockerfile and verified locally
+      # end-to-end on 2026-07-20: rebuilt the image, confirmed `php -m` lists
+      # redis, then ran a real HTTP request (`/readyz`, which passes through
+      # the rate-limiter's cache touch) against the container with
+      # CACHE_STORE=redis and got a 200 — not just `redis-cli ping` against
+      # the container. Re-enable `redis` here only after repeating that same
+      # verification against whatever image is about to go to production —
+      # a local build passing does not guarantee the deployed image matches.
+      - CACHE_STORE=database
       - REDIS_CLIENT=phpredis
       - REDIS_HOST=redis
       - REDIS_PASSWORD=null

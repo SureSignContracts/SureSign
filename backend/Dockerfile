@@ -25,6 +25,17 @@ RUN apt-get update && apt-get install -y \
     fonts-freefont-ttf \
     fontconfig \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip \
+    # `REDIS_CLIENT=phpredis` (docker-compose.prod.yml) requires this C
+    # extension — it does not ship with the base php image and was
+    # missing entirely until this line. Confirmed live in production: with
+    # CACHE_STORE=redis set but this extension absent, every single request
+    # threw `Class "Redis" not found` (RedisManager resolves it eagerly via
+    # PhpRedisConnector), since Laravel's default rate-limiter middleware
+    # touches the cache store on every API request — not a narrow edge
+    # case, a total outage. Install it before ever setting CACHE_STORE,
+    # QUEUE_CONNECTION, or SESSION_DRIVER to `redis` again.
+    && pecl install redis \
+    && docker-php-ext-enable redis \
     && fc-cache -f -v \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
