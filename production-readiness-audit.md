@@ -133,6 +133,16 @@ Laravel's default `RateLimiter` and the scheduler's `withoutOverlapping()` lock 
 read `config('cache.default')`, this single change also moves rate limiting and the
 scheduler mutex onto Redis, without any separate driver change.
 
+**Correction (2026-07-20):** this section's recommendation was applied without first
+installing the `phpredis` PHP extension in `backend/Dockerfile` — `REDIS_CLIENT=phpredis`
+requires the actual C extension, which does not ship with the base PHP image. The gap
+caused a full production outage (`Class "Redis" not found` on every request, since the
+rate-limiter middleware above touches the cache store on every API call). The extension
+is now installed in `backend/Dockerfile`. Anyone repeating this recommendation on a
+different image/base must confirm the extension is present (`php -m | grep redis`) and
+verify with a real HTTP request through the cache — not just `redis-cli ping` against
+the container — before flipping `CACHE_STORE` to `redis`.
+
 ### 3.6 Forward-looking Swarm `deploy:` blocks (inert today)
 
 Added `deploy:` blocks to `backend` and `frontend` (`replicas: 1`,

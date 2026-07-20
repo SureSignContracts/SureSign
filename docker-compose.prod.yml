@@ -83,21 +83,21 @@ services:
       # the database driver (see config/queue.php) — moving to Redis needs its
       # own isolated retry_after review, deferred to a separate phase.
       - QUEUE_CONNECTION=database
-      # REVERTED to database (was briefly `redis`) — caused a full production
-      # outage: the `phpredis` extension (REDIS_CLIENT=phpredis) was never
-      # actually installed in this Dockerfile, so RedisManager threw
-      # `Class "Redis" not found` on every single request the instant a
-      # rebuilt image went live (Laravel's default rate-limiter middleware
-      # touches the cache store on every API request). The extension has
-      # since been added to backend/Dockerfile and verified locally
-      # end-to-end on 2026-07-20: rebuilt the image, confirmed `php -m` lists
-      # redis, then ran a real HTTP request (`/readyz`, which passes through
-      # the rate-limiter's cache touch) against the container with
-      # CACHE_STORE=redis and got a 200 — not just `redis-cli ping` against
-      # the container. Re-enable `redis` here only after repeating that same
-      # verification against whatever image is about to go to production —
-      # a local build passing does not guarantee the deployed image matches.
-      - CACHE_STORE=database
+      # Re-enabled 2026-07-20 after a prior attempt caused a full production
+      # outage: `phpredis` (REDIS_CLIENT=phpredis) was never actually
+      # installed in this Dockerfile, so RedisManager threw `Class "Redis"
+      # not found` on every single request the instant a rebuilt image went
+      # live (Laravel's rate-limiter middleware touches the cache store on
+      # every API request). The extension is now installed in
+      # backend/Dockerfile and was verified locally end-to-end: rebuilt the
+      # image, confirmed `php -m` lists redis, then made a real HTTP request
+      # (`/readyz`, which passes through the rate-limiter's cache touch)
+      # against the container with CACHE_STORE=redis and got a 200 — not
+      # just `redis-cli ping` against the container. If this ever needs to
+      # be reverted again, set this back to `database` (no extension
+      # dependency) — do not attempt any other cache store without repeating
+      # the same real-HTTP-request verification first.
+      - CACHE_STORE=redis
       - REDIS_CLIENT=phpredis
       - REDIS_HOST=redis
       - REDIS_PASSWORD=null
