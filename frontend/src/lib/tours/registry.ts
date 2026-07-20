@@ -89,29 +89,29 @@ export const TOURS: TourDef[] = [
   {
     key: 'page-dashboard',
     label: 'Dashboard tour',
-    description: 'Reading the dashboard and getting back to recent work quickly.',
+    description: 'Triaging what needs attention across your organisation before you go looking project by project.',
     group: 'Getting Started',
     route: () => '/app',
     steps: [
       {
         target: '[data-tour="dashboard-header"]',
-        title: 'Live, not cached',
-        description: 'This greeting updates with the time of day as a quick confirmation you are looking at current data, not a stale report someone ran last week.',
+        title: 'Start here, not in a project',
+        description: 'A busy contract administrator rarely knows in advance which project needs them today. The Dashboard exists to answer that question first, so you triage across the whole organisation before opening any single project.',
       },
       {
-        target: '[data-tour="dashboard-stats"]',
-        title: 'Where to look first',
-        description: 'Active projects, open RFIs, pending variations and documents processed this month. These are the numbers most likely to need your attention today, before you go looking project by project.',
+        target: '[data-tour="dashboard-needs-attention"]',
+        title: 'Needs Attention',
+        description: 'Every overdue or soon-due RFI, variation, payment deadline, risk review, delivery document, and programme milestone across all your projects, in one prioritised queue, most overdue first. Select any row to go straight to that record.',
       },
       {
-        target: '[data-tour="dashboard-recent"]',
-        title: 'Straight back to work',
-        description: 'Recent Projects and Recent RFIs give you a fast route back into whatever you were last working on, without digging through menus.',
+        target: '[data-tour="dashboard-portfolio-health"]',
+        title: 'Portfolio Health',
+        description: 'A fast read on the whole portfolio: how many projects are active, and how many currently have something overdue. These counts come from the same queue above, so they always agree with what you see there.',
       },
       {
-        target: '[data-tour="dashboard-recent"]',
-        title: 'What to do next',
-        description: 'Pick a project to start working in. Once it has a contract with its payment terms set, SureSign starts guiding you through the commercial workflow from there.',
+        target: '[data-tour="dashboard-commercial-snapshot"]',
+        title: 'Commercial Snapshot',
+        description: 'A quick read on cash position: outstanding balance, retention held, and applications awaiting certification, before you head into Global Commercial for the full operational picture.',
       },
       RESTART_STEP,
     ],
@@ -121,19 +121,24 @@ export const TOURS: TourDef[] = [
   {
     key: 'page-projects',
     label: 'Projects tour',
-    description: 'Finding and creating construction projects.',
+    description: 'Browsing, comparing, and opening projects across the whole organisation.',
     group: 'Projects and Contracts',
     route: () => '/app/projects',
     steps: [
       {
+        target: '[data-tour="projects-summary"]',
+        title: 'The portfolio at a glance',
+        description: 'How many projects you run, how many are active, and how many currently need attention. This is the same attention count the Dashboard uses, so the two pages always agree.',
+      },
+      {
         target: '[data-tour="projects-filters"]',
         title: 'Finding a project',
-        description: 'Search by name, or filter to Active, On Hold, Completed or Cancelled. Useful once you are running several contracts at once and scrolling stops being practical.',
+        description: 'Search by name, reference, or location, then narrow by status, attention state, or currency once you run several contracts at once and scrolling stops being practical. Your filters stay in the page URL, so you can share a filtered view or come back to it later.',
       },
       {
         target: '[data-tour="projects-grid"]',
-        title: 'Your projects',
-        description: 'Each card opens that project workspace: contracts, commercial, programme, RFIs and site records, all scoped to that job so nothing from one project bleeds into another.',
+        title: 'Comparing projects',
+        description: 'Each row shows status, attention state, and outstanding balance side by side, so you can spot which project needs opening first before you commit to one. Selecting a project takes you straight into its workspace.',
       },
       {
         target: '[data-tour="projects-new"]',

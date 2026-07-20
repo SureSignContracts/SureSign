@@ -64,12 +64,20 @@ class ProjectController extends Controller
             'city'                      => 'nullable|string',
             'state'                     => 'nullable|string',
             'postcode'                  => 'nullable|string',
+            // Optional explicit override — never inferred from country/location.
+            // Omitted (null) means "inherit from organisation, then platform,
+            // then GBP" (see CurrencyService::resolveCode). Explicitly included
+            // in the create() array below (even when null) so it always wins
+            // over the `projects.currency` column's own default, regardless of
+            // database driver.
+            'currency'                  => 'nullable|string|size:3',
         ]);
 
         $project = Project::create(array_merge($validated, [
             'organization_id' => $request->user()->organization_id,
             'created_by'      => $request->user()->id,
             'status'          => $validated['status'] ?? 'active',
+            'currency'        => isset($validated['currency']) ? strtoupper($validated['currency']) : null,
         ]));
 
         // Auto-create standard folder structure (DB records)
@@ -115,12 +123,14 @@ class ProjectController extends Controller
             'state'            => 'nullable|string',
             'postcode'         => 'nullable|string',
             'country'          => 'nullable|string',
+            'currency'         => 'nullable|string|size:3',
         ]);
 
         $project = Project::create(array_merge($validated, [
             'organization_id' => $organization->id,
             'created_by'      => $admin->id,
             'status'          => $validated['status'] ?? 'active',
+            'currency'        => isset($validated['currency']) ? strtoupper($validated['currency']) : null,
         ]));
 
         $this->createDefaultFolders($project);
@@ -163,7 +173,16 @@ class ProjectController extends Controller
             'end_date'                 => 'nullable|date',
             'practical_completion_date'=> 'nullable|date',
             'address'                  => 'nullable|string',
+            // 'sometimes' — omitting `currency` entirely from an update
+            // request (e.g. editing only the name) must leave the project's
+            // existing currency untouched, not reset it to null/inherited.
+            // Explicitly sending `currency: null` clears the override back to
+            // "inherit from organisation".
+            'currency'                 => 'sometimes|nullable|string|size:3',
         ]);
+        if (array_key_exists('currency', $validated) && $validated['currency'] !== null) {
+            $validated['currency'] = strtoupper($validated['currency']);
+        }
         $project->update($validated);
         return response()->json($project->fresh());
     }

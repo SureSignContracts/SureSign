@@ -206,6 +206,13 @@ class OrganizationController extends Controller
             'postcode'     => 'nullable|string|max:20',
             'country'      => 'nullable|string|max:100',
             'abn'          => 'nullable|string|max:50',
+            // Organisation default currency — projects with no explicit
+            // override inherit this (see CurrencyService::resolveCode).
+            // Changing it never touches projects that already have their own
+            // explicit currency; it only changes what un-overridden projects
+            // resolve to going forward, since resolution reads live from
+            // organization.currency rather than being copied onto projects.
+            'currency'     => 'nullable|string|size:3',
             // 'sometimes' (not 'nullable') — timezone is a required, non-null
             // column, so a request may omit it to leave the current value
             // untouched, but if the key IS present it must be a real IANA
@@ -213,6 +220,9 @@ class OrganizationController extends Controller
             // "UTC+8"/"GMT+1"/raw offsets), never blank.
             'timezone'     => 'sometimes|required|timezone',
         ]);
+        if (!empty($validated['currency'])) {
+            $validated['currency'] = strtoupper($validated['currency']);
+        }
         $org->update($validated);
         return response()->json($org->fresh());
     }
@@ -267,6 +277,8 @@ class OrganizationController extends Controller
             'country'        => '',
             'vat_number'     => '',
             'timezone'       => TimezoneResolver::platformTimezone(),
+            'currency'           => null,
+            'effective_currency' => \App\Services\CurrencyService::platformCode(),
         ];
     }
 
@@ -428,6 +440,11 @@ class OrganizationController extends Controller
             'country'        => $org->country  ?? '',
             'vat_number'     => $org->abn      ?? '',
             'timezone'       => $org->timezone,
+            // `currency` is the raw override (null = inheriting the platform
+            // default). `effective_currency` is what actually applies right
+            // now — see CurrencyService::resolveOrganizationCode.
+            'currency'           => $org->currency,
+            'effective_currency' => \App\Services\CurrencyService::resolveOrganizationCode($org),
         ];
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\User;
+use App\Services\CurrencyService;
 use App\Services\EmailVerificationService;
 use App\Services\TimezoneResolver;
 use Illuminate\Http\Request;
@@ -265,6 +266,14 @@ class AuthController extends Controller
                 'is_onboarded' => (bool) $user->organization->is_onboarded,
                 'timezone'     => $user->organization->timezone,
                 'branding'     => $user->organization->branding,
+                // `currency` is the raw override (null = inheriting the
+                // platform default). `effective_currency` is what actually
+                // applies right now — organisation's own, else platform, else
+                // GBP — so clients (e.g. "Use organisation default — GBP" on
+                // the project creation form) don't have to reimplement
+                // CurrencyService's resolution themselves.
+                'currency'            => $user->organization->currency,
+                'effective_currency'  => CurrencyService::resolveOrganizationCode($user->organization),
             ] : null,
         ];
     }

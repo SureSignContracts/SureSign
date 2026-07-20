@@ -2,13 +2,17 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ProjectController;
+use App\Http\Controllers\Api\ProjectPortfolioController;
 use App\Http\Controllers\Api\ContractController;
 use App\Http\Controllers\Api\RfiController;
 use App\Http\Controllers\Api\VariationController;
 use App\Http\Controllers\Api\PaymentApplicationController;
 use App\Http\Controllers\Api\DocumentController;
+use App\Http\Controllers\Api\OrganisationDocumentController;
 use App\Http\Controllers\Api\AiController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\CommercialOverviewController;
+use App\Http\Controllers\Api\SiteAdministrationController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\OrganizationController;
 use App\Http\Controllers\Api\ClientController;
@@ -99,6 +103,7 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current'])->group
 
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index']);
+    Route::get('/dashboard/action-centre', [DashboardController::class, 'actionCentre']);
 
     // Support tickets — any authenticated user can submit one for their org
     Route::post('/support-tickets', [SupportTicketController::class, 'store'])->middleware('throttle:support-ticket');
@@ -133,11 +138,23 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current'])->group
     // Cross-project reports
     Route::get('/reports/summary', [ReportController::class, 'summary']);
     Route::get('/reports/commercial-summary', [ReportController::class, 'commercialSummary']);
+    Route::get('/reports/commercial-summary-report', [ReportController::class, 'commercialSummaryReport']);
+    Route::get('/reports/commercial-summary-report/export/pdf', [ReportController::class, 'exportCommercialSummaryPdf']);
+    Route::get('/reports/commercial-summary-report/export/excel', [ReportController::class, 'exportCommercialSummaryExcel']);
+
+    // Global Commercial — organisation-wide commercial monitoring/triage (read-only)
+    Route::get('/commercial/overview', [CommercialOverviewController::class, 'overview']);
+
+    // Site Admin — organisation-wide RFI/Site Instruction/Site Diary/Meeting/EOT monitoring (read-only)
+    Route::get('/site-administration/overview', [SiteAdministrationController::class, 'overview']);
 
     // Site settings (public read — all authenticated users)
     Route::get('/settings', [SuresignSettingController::class, 'publicShow']);
 
     // Projects
+    // Registered before the apiResource below so this literal path is
+    // matched first, not swallowed by the {project} wildcard binding.
+    Route::get('/projects/portfolio', [ProjectPortfolioController::class, 'index']);
     Route::apiResource('projects', ProjectController::class);
 
     // Contracts (nested under projects)
@@ -299,6 +316,11 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current'])->group
         Route::post('/adjudication-deadlines/{adjudicationDeadline}/complete',   [AdjudicationDeadlineController::class, 'markComplete']);
         Route::delete('/adjudication-deadlines/{adjudicationDeadline}',          [AdjudicationDeadlineController::class, 'destroy']);
     });
+
+    // Global Documents — organisation-wide document search (read-only)
+    // Registered before the apiResource below so this literal path is
+    // matched first, not swallowed by the {document} wildcard binding.
+    Route::get('/documents/portfolio', [OrganisationDocumentController::class, 'index']);
 
     // Documents (generated)
     Route::apiResource('projects.documents', DocumentController::class)->shallow();

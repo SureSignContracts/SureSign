@@ -47,4 +47,4 @@ contract — check your contract's requirements before issuing.
 - [Payment Applications](payment-applications.md)
 - [Payment Notices](payment-notices.md)
 - [Notices](../notices/overview.md) — where a Pay Less Notice is issued from,
-  alongside EOT Requests, Delay Notices, and Site Instructions.
+  alongside EOT Requests and Site Instructions.

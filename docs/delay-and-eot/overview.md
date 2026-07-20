@@ -38,8 +38,9 @@ separately, a loss and expense claim (asking for the cost impact).
 ## Related
 
 - [Programme](../programme/overview.md)
-- [Notices](../notices/overview.md) — where EOT Requests and Delay Notices are
-  issued from, alongside Pay Less Notices and Site Instructions.
+- [Notices](../notices/overview.md) — where EOT Requests are issued from,
+  alongside Pay Less Notices and Site Instructions. Delay events themselves
+  are recorded here on the Delay and Extension of Time page, not in Notices.
 - [Glossary](../reference/glossary.md)
 - [Variations](../variations/overview.md) — a delay may also relate to a
   variation

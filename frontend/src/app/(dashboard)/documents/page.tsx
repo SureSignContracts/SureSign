@@ -1,647 +1,639 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
-  Box, ChevronRight, ClipboardList, Download, Eye, FileText, Folder, FolderOpen,
-  Home, LayoutGrid, LayoutList, MoreVertical, Settings2, Trash2, Upload, Wand2,
+  Search, FileText, Sparkles, Upload, X, ArrowRight, AlertTriangle,
+  Eye, Download, ExternalLink, ChevronLeft, ChevronRight, ChevronDown,
+  Table2, FolderTree, Folder, FolderKanban,
 } from 'lucide-react';
 import api from '@/lib/api';
-import { formatDate } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import DocumentPreviewModal, { type PreviewTarget } from '@/components/documents/DocumentPreviewModal';
-import GeneratePackageModal from '@/components/documents/GeneratePackageModal';
-import GenerateTradePackageFolderModal from '@/components/documents/GenerateTradePackageFolderModal';
+import EmptyState from '@/components/ui/EmptyState';
+import Select from '@/components/ui/Select';
+import { EASE, staggerDelay } from '@/lib/motion';
 
-// ── helpers ────────────────────────────────────────────────────────────────
+// ── Types (mirrors OrganisationDocumentService::build()) ──────────────────
 
-function formatBytes(bytes: number): string {
+type DocumentRow = {
+  source: 'document' | 'file_upload';
+  id: number;
+  composite_id: string;
+  filename: string;
+  title: string | null;
+  reference: string | null;
+  project_id: number;
+  project_name: string;
+  trade_package: string | null;
+  module: string | null;
+  document_type: string | null;
+  status: string | null;
+  origin: 'uploaded' | 'generated';
+  ai_generated: boolean;
+  created_at: string | null;
+  uploaded_by: string | null;
+  file_size: number | null;
+  mime_type: string | null;
+  file_type: string | null;
+  action_url: string | null;
+  preview_url: string;
+  download_url: string;
+};
+
+type DocumentPortfolioData = {
+  summary: { total_documents: number; uploaded: number; generated: number; ai_generated: number };
+  documents: { data: DocumentRow[]; pagination: { current_page: number; last_page: number; per_page: number; total: number } };
+  filters: {
+    projects: { id: number; name: string }[];
+    modules: string[];
+    document_types: string[];
+    file_types: string[];
+    origins: string[];
+  };
+  meta: { effective_timezone: string; generated_at: string };
+};
+
+type View = 'table' | 'explorer';
+
+function formatBytes(bytes: number | null): string {
   if (!bytes) return '—';
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function formatDateShort(iso: string | null): string {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
 const TYPE_COLOR: Record<string, string> = {
-  pdf: '#f87171', docx: '#60a5fa', doc: '#60a5fa',
-  xlsx: '#4ade80', xls: '#4ade80', csv: '#4ade80',
-  png: '#c084fc', jpg: '#c084fc', jpeg: '#c084fc', gif: '#c084fc', webp: '#c084fc',
+  PDF: '#f87171', DOCX: '#60a5fa', DOC: '#60a5fa', XLSX: '#4ade80', XLS: '#4ade80',
+  CSV: '#4ade80', Image: '#c084fc', Text: '#9a9490', File: '#9a9490',
 };
 
-function FileTypeBadge({ name, mimeType }: { name?: string; mimeType?: string }) {
-  const ext = name?.split('.').pop()?.toLowerCase() ?? '';
-  const mime = mimeType?.includes('pdf') ? 'pdf'
-    : mimeType?.includes('word') || mimeType?.includes('document') ? 'docx'
-    : mimeType?.includes('sheet') || mimeType?.includes('excel') ? 'xlsx'
-    : mimeType?.includes('image') ? 'img' : '';
-  const key = ext || mime || 'doc';
-  const color = TYPE_COLOR[key] || '#9a9490';
+function FileTypeBadge({ fileType }: { fileType: string | null }) {
+  const key = fileType ?? 'File';
+  const color = TYPE_COLOR[key] ?? '#9a9490';
   return (
-    <div className="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 text-[10px] font-bold uppercase"
+    <div className="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 text-[9px] font-bold uppercase"
       style={{ backgroundColor: `${color}20`, color }}>
       {key.substring(0, 3)}
     </div>
   );
 }
 
-// ── types ──────────────────────────────────────────────────────────────────
-
-type Level = 'projects' | 'modules' | 'files';
-
-interface ProjectItem { id: number; name: string; code?: string | null; status?: string; }
-interface ModuleFolder { key: string; name: string; files_count: number; last_updated?: string | null; }
-interface TradePackageItem {
-  id: number; key: string; name: string; files_count: number;
-  package_code?: string | null; package_reference?: string | null;
-  contractor_name?: string | null; description?: string | null;
-}
-interface FileItem {
-  id: number; original_name: string; mime_type: string; file_size: number;
-  created_at: string; uploader?: { id: number; name: string };
-}
-interface Crumb { label: string; level: Level; packagePath?: string; }
-
-// ── URL state helpers ──────────────────────────────────────────────────────
-
-function buildUrl(viewMode: 'folder' | 'list', projectId?: number, moduleKey?: string, _moduleKeyPath?: string, packageId?: string): string {
-  const p = new URLSearchParams();
-  if (viewMode !== 'folder') p.set('view', viewMode);
-  if (projectId) p.set('projectId', String(projectId));
-  if (moduleKey) p.set('module', moduleKey);
-  if (packageId) p.set('packageId', packageId);
-  const qs = p.toString();
-  return qs ? `/app/documents?${qs}` : '/app/documents';
-}
-
-// ── Shared UI components ───────────────────────────────────────────────────
-
-function FolderCard({ icon, title, subtitle, meta, fileCount, onClick }: {
-  icon?: React.ReactNode; title: string; subtitle?: string; meta?: string;
-  fileCount?: number; onClick: () => void;
-}) {
+function OriginBadge({ row }: { row: DocumentRow }) {
+  if (row.ai_generated) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(168,85,247,0.15)', color: '#c084fc' }}>
+        <Sparkles size={10} /> AI Generated
+      </span>
+    );
+  }
+  if (row.origin === 'generated') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(99,102,241,0.15)', color: '#818cf8' }}>
+        <FileText size={10} /> Generated
+      </span>
+    );
+  }
   return (
-    <button onClick={onClick}
-      className="w-full text-left rounded-xl group transition-all duration-150"
-      style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
-      onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--gold-50)'; el.style.boxShadow = '0 4px 12px var(--gold-15)'; el.style.transform = 'translateY(-1px)'; }}
-      onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border)'; el.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)'; el.style.transform = 'translateY(0)'; }}
-    >
-      <div className="p-4">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: 'var(--gold-15)', border: '1px solid var(--gold-15)' }}>
-            {icon ?? <Folder size={20} style={{ color: 'var(--gold)' }} />}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold truncate leading-snug" style={{ color: 'var(--text-primary)' }}>{title}</p>
-            {subtitle && <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-secondary)' }}>{subtitle}</p>}
-          </div>
-          <ChevronRight size={14} className="mt-0.5 flex-shrink-0 opacity-40 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-150" style={{ color: 'var(--gold)' }} />
-        </div>
-        {(meta || fileCount !== undefined) && (
-          <div className="mt-3 pt-3 flex items-center gap-3" style={{ borderTop: '1px solid var(--border)' }}>
-            {fileCount !== undefined && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                style={{ backgroundColor: fileCount > 0 ? 'var(--gold-15)' : 'var(--bg-elevated)', color: fileCount > 0 ? 'var(--gold)' : 'var(--text-muted)' }}>
-                <FileText size={9} />{fileCount} file{fileCount !== 1 ? 's' : ''}
-              </span>
-            )}
-            {meta && <span className="text-[10px] ml-auto truncate" style={{ color: 'var(--text-muted)' }}>{meta}</span>}
-          </div>
-        )}
-      </div>
-    </button>
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
+      <Upload size={10} /> Uploaded
+    </span>
   );
 }
 
-function Breadcrumbs({ crumbs, onNavigate }: { crumbs: Crumb[]; onNavigate: (crumb: Crumb) => void }) {
+function MetadataModal({ row, onClose, onPreview }: { row: DocumentRow; onClose: () => void; onPreview: () => void }) {
+  const fields: [string, string][] = [
+    ['Project', row.project_name],
+    ...(row.module ? [['Module', row.module] as [string, string]] : []),
+    ...(row.document_type ? [['Document Type', row.document_type] as [string, string]] : []),
+    ...(row.trade_package ? [['Trade Package', row.trade_package] as [string, string]] : []),
+    ['Created', formatDateShort(row.created_at)],
+    ['Uploaded By', row.uploaded_by ?? 'System'],
+    ['File Type', row.file_type ?? 'Unknown'],
+    ['Size', formatBytes(row.file_size)],
+    ['AI Generated', row.ai_generated ? 'Yes' : 'No'],
+    ['Origin', row.origin === 'generated' ? 'Generated by a workflow' : 'Manually uploaded'],
+  ];
+
   return (
-    <nav className="flex items-center gap-0.5 flex-wrap min-w-0">
-      {crumbs.map((crumb, i) => (
-        <span key={i} className="flex items-center gap-0.5 min-w-0">
-          {i > 0 && <ChevronRight size={12} className="flex-shrink-0 mx-0.5" style={{ color: 'var(--text-muted)', opacity: 0.4 }} />}
-          {i < crumbs.length - 1 ? (
-            <button onClick={() => onNavigate(crumb)}
-              className="flex items-center gap-1 rounded-md px-1.5 py-1 text-xs transition-colors hover:bg-[var(--bg-hover)] max-w-[140px] truncate"
-              style={{ color: 'var(--text-muted)' }}>
-              {i === 0 ? <Home size={12} className="flex-shrink-0" /> : <span className="truncate">{crumb.label}</span>}
-            </button>
-          ) : (
-            <span className="text-xs font-semibold px-1.5 py-1 truncate max-w-[200px]" style={{ color: 'var(--text-primary)' }}>
-              {crumb.label}
-            </span>
+    <div className="ss-animate-in fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="w-full max-w-md rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
+        <div className="flex items-start justify-between gap-3 px-5 py-4" style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-elevated)' }}>
+          <p className="text-sm font-semibold truncate" title={row.filename} style={{ color: 'var(--text-primary)' }}>{row.filename}</p>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[var(--bg-surface)] transition-colors" aria-label="Close"><X size={16} style={{ color: 'var(--text-muted)' }} /></button>
+        </div>
+        <div className="px-5 py-4 space-y-3">
+          {fields.map(([label, value]) => (
+            <div key={label} className="flex items-center justify-between gap-3">
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}</span>
+              <span className="text-sm font-medium text-right" style={{ color: 'var(--text-primary)' }}>{value}</span>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center gap-2 px-5 py-4" style={{ borderTop: '1px solid var(--border)' }}>
+          <button onClick={onPreview} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-transform duration-150 active:scale-[0.97]`} style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+            <Eye size={12} /> Preview
+          </button>
+          {row.action_url && (
+            <a href={row.action_url} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors hover:bg-[var(--bg-hover)]" style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+              <ExternalLink size={12} /> Open Source
+            </a>
           )}
-        </span>
-      ))}
-    </nav>
-  );
-}
-
-function EmptyState({ title, body }: { title: string; body?: string }) {
-  return (
-    <div className="py-20 text-center">
-      <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'var(--bg-elevated)' }}>
-        <FolderOpen size={24} style={{ color: 'var(--text-muted)' }} />
+        </div>
       </div>
-      <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>{title}</p>
-      {body && <p className="text-xs max-w-sm mx-auto" style={{ color: 'var(--text-muted)' }}>{body}</p>}
     </div>
   );
 }
 
-function SkeletonCards({ count = 6, cols = 3 }: { count?: number; cols?: number }) {
-  const cls = cols === 4 ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3';
-  return (
-    <div className={`grid ${cls} gap-4`}>
-      {[...Array(count)].map((_, i) => (
-        <div key={i} className="h-20 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
-      ))}
-    </div>
-  );
-}
+// ── Row actions (shared by Table and Explorer — same resolver-driven URLs) ──
 
-function DeleteConfirmModal({ fileName, onClose, onConfirm, deleting }: {
-  fileName: string; onClose: () => void; onConfirm: () => void; deleting: boolean;
+function RowActions({ row, onPreview, onDownload, onOpenSource }: {
+  row: DocumentRow;
+  onPreview: () => void;
+  onDownload: () => void;
+  onOpenSource: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-sm rounded-2xl shadow-xl p-6 space-y-4"
-        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
-        <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Delete Document</h2>
-        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Are you sure you want to delete this document?</p>
-        <div className="rounded-lg px-3 py-2 text-sm font-medium truncate"
-          style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
-          {fileName}
-        </div>
-        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>This action can be restored later.</p>
-        <div className="flex justify-end gap-2 pt-1">
-          <button onClick={onClose} disabled={deleting} className="px-4 py-2 rounded-lg text-sm"
-            style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
-            Cancel
-          </button>
-          <button onClick={onConfirm} disabled={deleting} className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60"
-            style={{ backgroundColor: '#ef4444', color: '#fff' }}>
-            {deleting ? 'Deleting…' : 'Delete File'}
-          </button>
-        </div>
-      </div>
+    <div className="flex items-center justify-end gap-1">
+      <button onClick={onPreview} title="Preview" aria-label={`Preview ${row.filename}`} className="p-1.5 rounded-lg hover:bg-[var(--bg-hover)] transition-colors"><Eye size={13} style={{ color: 'var(--text-muted)' }} /></button>
+      <button onClick={onDownload} title="Download" aria-label={`Download ${row.filename}`} className="p-1.5 rounded-lg hover:bg-[var(--bg-hover)] transition-colors"><Download size={13} style={{ color: 'var(--text-muted)' }} /></button>
+      {row.action_url && (
+        <button onClick={onOpenSource} title="Open source record" aria-label={`Open source record for ${row.filename}`} className="p-1.5 rounded-lg hover:bg-[var(--bg-hover)] transition-colors">
+          <ArrowRight size={13} style={{ color: 'var(--gold)' }} />
+        </button>
+      )}
     </div>
   );
 }
 
-// ── Main page ──────────────────────────────────────────────────────────────
+// ── Explorer view — a virtual hierarchy over the current (filtered, paginated)
+// result set only. Grouped by project, then by module/source area, using
+// metadata already present on each row (project_name, module) — no new
+// backend query, no unbounded fetch, nothing fabricated. Because the
+// hierarchy is built from whatever page of results is currently loaded, a
+// project's documents that span more than one page of the underlying
+// /documents/portfolio results will appear split across pages here too,
+// same as Table view — pagination controls stay visible in both views so
+// that's never hidden from the user. ──
+
+type ModuleGroup = { module: string; rows: DocumentRow[] };
+type ProjectGroup = { projectId: number; projectName: string; modules: ModuleGroup[]; total: number };
+
+function buildExplorerGroups(rows: DocumentRow[]): ProjectGroup[] {
+  const projects = new Map<number, ProjectGroup>();
+  for (const row of rows) {
+    let project = projects.get(row.project_id);
+    if (!project) {
+      project = { projectId: row.project_id, projectName: row.project_name, modules: [], total: 0 };
+      projects.set(row.project_id, project);
+    }
+    const moduleName = row.module ?? 'General';
+    let group = project.modules.find(m => m.module === moduleName);
+    if (!group) {
+      group = { module: moduleName, rows: [] };
+      project.modules.push(group);
+    }
+    group.rows.push(row);
+    project.total += 1;
+  }
+  return Array.from(projects.values());
+}
+
+function ExplorerDocRow({ row, onPreview, onDownload, onOpenSource }: {
+  row: DocumentRow;
+  onPreview: () => void;
+  onDownload: () => void;
+  onOpenSource: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-2.5 pl-4 pr-3 py-2 rounded-lg transition-colors hover:bg-[var(--bg-hover)]">
+      <FileTypeBadge fileType={row.file_type} />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm truncate" title={row.filename} style={{ color: 'var(--text-primary)' }}>{row.filename}</p>
+        <div className="flex items-center gap-2 mt-0.5">
+          <OriginBadge row={row} />
+          <span className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>{formatDateShort(row.created_at)}</span>
+          <span className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>{formatBytes(row.file_size)}</span>
+        </div>
+      </div>
+      <RowActions row={row} onPreview={onPreview} onDownload={onDownload} onOpenSource={onOpenSource} />
+    </div>
+  );
+}
+
+function DocumentExplorer({ rows, onPreview, onDownload, onOpenSource }: {
+  rows: DocumentRow[];
+  onPreview: (row: DocumentRow) => void;
+  onDownload: (row: DocumentRow) => void;
+  onOpenSource: (row: DocumentRow) => void;
+}) {
+  const groups = useMemo(() => buildExplorerGroups(rows), [rows]);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+
+  const toggle = (key: string) => setCollapsed(prev => {
+    const next = new Set(prev);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
+
+  return (
+    <div className="space-y-3">
+      {groups.map((project, i) => {
+        const projectKey = `project-${project.projectId}`;
+        const projectOpen = !collapsed.has(projectKey);
+        return (
+          <div
+            key={project.projectId}
+            className="ss-animate-in rounded-xl overflow-hidden"
+            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', animationDelay: staggerDelay(i) }}
+          >
+            <button
+              onClick={() => toggle(projectKey)}
+              aria-expanded={projectOpen}
+              className="w-full flex items-center gap-2 px-4 py-3 text-left transition-colors hover:bg-[var(--bg-hover)]"
+            >
+              <ChevronDown size={14} className={`transition-transform duration-200 ${EASE} ${projectOpen ? '' : '-rotate-90'}`} style={{ color: 'var(--text-muted)' }} />
+              <Folder size={15} style={{ color: 'var(--gold)' }} />
+              <span className="text-sm font-semibold flex-1 truncate" style={{ color: 'var(--text-primary)' }}>{project.projectName}</span>
+              <span className="text-xs tabular-nums flex-shrink-0" style={{ color: 'var(--text-muted)' }}>
+                {project.total} document{project.total === 1 ? '' : 's'}
+              </span>
+            </button>
+
+            {projectOpen && (
+              <div className="ss-animate-in border-t" style={{ borderColor: 'var(--border)' }}>
+                {project.modules.map(group => {
+                  const moduleKey = `module-${project.projectId}-${group.module}`;
+                  const moduleOpen = !collapsed.has(moduleKey);
+                  return (
+                    <div key={group.module} className="border-b last:border-b-0" style={{ borderColor: 'var(--border)' }}>
+                      <button
+                        onClick={() => toggle(moduleKey)}
+                        aria-expanded={moduleOpen}
+                        className="w-full flex items-center gap-2 pl-8 pr-3 py-2 text-left transition-colors hover:bg-[var(--bg-hover)]"
+                      >
+                        <ChevronDown size={12} className={`transition-transform duration-200 ${EASE} ${moduleOpen ? '' : '-rotate-90'}`} style={{ color: 'var(--text-muted)' }} />
+                        <span className="text-xs font-semibold flex-1" style={{ color: 'var(--text-secondary)' }}>{group.module}</span>
+                        <span className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>{group.rows.length}</span>
+                      </button>
+                      {moduleOpen && (
+                        <div className="ss-animate-in pb-1.5 space-y-0.5">
+                          {group.rows.map(row => (
+                            <ExplorerDocRow
+                              key={row.composite_id}
+                              row={row}
+                              onPreview={() => onPreview(row)}
+                              onDownload={() => onDownload(row)}
+                              onOpenSource={() => onOpenSource(row)}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function DocumentsPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const queryClient = useQueryClient();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [viewMode, setViewMode] = useState<'folder' | 'list'>(() =>
-    (searchParams.get('view') as 'folder' | 'list') ?? 'folder'
-  );
-  const [uploading, setUploading] = useState(false);
+  const view = (searchParams.get('view') === 'explorer' ? 'explorer' : 'table') as View;
+  const setView = (v: View) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (v === 'table') params.delete('view'); else params.set('view', v);
+    router.replace(`${pathname}${params.toString() ? `?${params.toString()}` : ''}`, { scroll: false });
+  };
 
-  const [selectedProject, setSelectedProject] = useState<ProjectItem | null>(() => {
-    const id = parseInt(searchParams.get('projectId') ?? '');
-    return id ? { id, name: '' } : null;
-  });
-  const [selectedModule, setSelectedModule] = useState<ModuleFolder | null>(() => {
-    const key = searchParams.get('module');
-    return key ? { key, name: '', files_count: 0 } : null;
-  });
-  const [moduleKeyPath, setModuleKeyPath] = useState<string>(() => {
-    const module = searchParams.get('module');
-    const pkg = searchParams.get('packageId');
-    if (!module) return '';
-    return pkg ? `${module}/package/${pkg}` : module;
-  });
-
-  const level: Level = !selectedProject ? 'projects' : !selectedModule ? 'modules' : 'files';
-
+  const [search, setSearch] = useState('');
+  const [projectId, setProjectId] = useState('');
+  const [module, setModule] = useState('');
+  const [documentType, setDocumentType] = useState('');
+  const [origin, setOrigin] = useState('');
+  const [aiOnly, setAiOnly] = useState(false);
+  const [fileType, setFileType] = useState('');
+  const [sort, setSort] = useState('newest');
+  const [page, setPage] = useState(1);
   const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
-  const [activeMenu, setActiveMenu] = useState<number | null>(null);
-  const [showGenerateModal, setShowGenerateModal] = useState(false);
-  const [showFolderModal, setShowFolderModal] = useState(false);
-  const [showOptionsMenu, setShowOptionsMenu] = useState(false);
-  const optionsRef = useRef<HTMLDivElement>(null);
+  const [metadataTarget, setMetadataTarget] = useState<DocumentRow | null>(null);
 
-  // Sync URL
-  useEffect(() => {
-    const pkg = moduleKeyPath.match(/^.+\/package\/(\d+)$/)?.[1];
-    const url = buildUrl(viewMode, selectedProject?.id, selectedModule?.key, moduleKeyPath, pkg);
-    router.replace(url, { scroll: false });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode, selectedProject?.id, selectedModule?.key, moduleKeyPath]);
+  const hasActiveFilters = !!(search || projectId || module || documentType || origin || aiOnly || fileType);
 
-  // Close menus on outside click
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (activeMenu) setActiveMenu(null);
-      if (showOptionsMenu && optionsRef.current && !optionsRef.current.contains(e.target as Node)) {
-        setShowOptionsMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [activeMenu, showOptionsMenu]);
-
-  // ── Queries ──
-
-  const { data: projectsData, isLoading: projectsLoading } = useQuery({
-    queryKey: ['client-doc-projects'],
-    queryFn: () => api.get('/projects').then(r => r.data),
-    enabled: viewMode === 'folder' && level === 'projects',
-  });
-
-  const { data: modulesData, isLoading: modulesLoading } = useQuery({
-    queryKey: ['client-doc-modules', selectedProject?.id],
-    queryFn: () => api.get(`/projects/${selectedProject!.id}/documents/explorer`).then(r => r.data),
-    enabled: viewMode === 'folder' && !!selectedProject?.id,
-  });
-
-  const { data: moduleFilesData, isLoading: moduleFilesLoading } = useQuery({
-    queryKey: ['client-doc-files', selectedProject?.id, moduleKeyPath],
-    queryFn: () => api.get(`/projects/${selectedProject!.id}/documents/module/${moduleKeyPath}`).then(r => r.data),
-    enabled: viewMode === 'folder' && level === 'files' && !!selectedProject?.id && !!moduleKeyPath,
-  });
-
-  // List view uses the same folder-view queries — it's just a layout preference, not a separate data source.
-
-  // Hydrate project name from module explorer response
-  useEffect(() => {
-    const p = modulesData?.project;
-    if (p && selectedProject) setSelectedProject(prev => prev ? { ...prev, name: p.name, code: p.code } : null);
-    if (selectedModule?.key && !selectedModule.name) {
-      const match = (modulesData?.folders ?? []).find((f: ModuleFolder) => f.key === selectedModule.key);
-      if (match) setSelectedModule(match);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modulesData]);
-
-  // ── Derived data ──
-
-  const projects: ProjectItem[]            = projectsData?.data ?? [];
-  const modules: ModuleFolder[]            = modulesData?.folders ?? [];
-  const subfolders: ModuleFolder[]         = moduleFilesData?.folders ?? [];
-  const tradePackages: TradePackageItem[]  = moduleFilesData?.trade_packages ?? [];
-  const files: FileItem[]                  = moduleFilesData?.data ?? [];
-  const currentTradePackage: TradePackageItem | null = moduleFilesData?.trade_package ?? null;
-
-  const isShowingFolders      = moduleFilesData?.type === 'folders';
-  const isShowingTradePackages = moduleFilesData?.type === 'trade_packages';
-
-  // ── Breadcrumbs ──
-  const crumbs: Crumb[] = [{ label: 'Documents', level: 'projects' }];
-  if (selectedProject?.name) crumbs.push({ label: selectedProject.name, level: 'modules' });
-  if (selectedModule?.name)  crumbs.push({ label: selectedModule.name, level: 'files' });
-  if (currentTradePackage && !crumbs.some(c => c.label === currentTradePackage.name)) {
-    crumbs.push({ label: currentTradePackage.name, level: 'files', packagePath: currentTradePackage.key });
-  }
-
-  // ── Navigation ──
-  const navigateTo = useCallback((crumb: Crumb) => {
-    if (crumb.level === 'projects') {
-      setSelectedProject(null); setSelectedModule(null); setModuleKeyPath('');
-    } else if (crumb.level === 'modules') {
-      setSelectedModule(null); setModuleKeyPath('');
-    } else if (crumb.level === 'files') {
-      if (crumb.packagePath) setModuleKeyPath(crumb.packagePath);
-      else setModuleKeyPath(selectedModule?.key ?? '');
-    }
-  }, [selectedModule?.key]);
-
-  // ── Upload ──
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !selectedProject) return;
-    setUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      if (selectedModule?.key) fd.append('module_key', selectedModule.key);
-      await api.post(`/projects/${selectedProject.id}/files`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-      queryClient.invalidateQueries({ queryKey: ['client-doc-files', selectedProject.id] });
-      queryClient.invalidateQueries({ queryKey: ['client-doc-modules', selectedProject.id] });
-      toast.success('File uploaded');
-    } catch {
-      toast.error('Upload failed');
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
+  const clearFilters = () => {
+    setSearch(''); setProjectId(''); setModule(''); setDocumentType('');
+    setOrigin(''); setAiOnly(false); setFileType(''); setPage(1);
   };
 
-  // ── Download ──
-  const downloadFile = (fileId: number, fileName: string) => {
-    api.get(`/file-uploads/${fileId}/download`, { responseType: 'blob' }).then(res => {
-      const url = window.URL.createObjectURL(new Blob([res.data]));
-      const a = document.createElement('a'); a.href = url; a.download = fileName; a.click();
-      window.URL.revokeObjectURL(url);
-    }).catch(() => toast.error('Download failed'));
-  };
+  const queryParams = useMemo(() => ({
+    search: search || undefined,
+    project_id: projectId || undefined,
+    module: module || undefined,
+    document_type: documentType || undefined,
+    origin: origin || undefined,
+    ai_generated: aiOnly ? '1' : undefined,
+    file_type: fileType || undefined,
+    sort,
+    page,
+  }), [search, projectId, module, documentType, origin, aiOnly, fileType, sort, page]);
 
-  // ── Delete ──
-  const deleteMutation = useMutation({
-    mutationFn: (fileId: number) => api.delete(`/file-uploads/${fileId}`).then(r => r.data),
-    onSuccess: () => {
-      toast.success('Document deleted.');
-      setDeleteTarget(null);
-      queryClient.invalidateQueries({ queryKey: ['client-doc-files', selectedProject?.id] });
-      queryClient.invalidateQueries({ queryKey: ['client-doc-modules', selectedProject?.id] });
-    },
-    onError: () => toast.error('Failed to delete document.'),
+  const { data, isLoading, isError, refetch, isFetching } = useQuery<DocumentPortfolioData>({
+    queryKey: ['documents-portfolio', queryParams],
+    queryFn: () => api.get('/documents/portfolio', { params: queryParams }).then(r => r.data),
+    placeholderData: (prev) => prev,
   });
 
+  const rows = data?.documents.data ?? [];
+  const pagination = data?.documents.pagination;
+
+  const openPreview = (row: DocumentRow) => {
+    setPreviewTarget({
+      id: row.id, name: row.filename, mimeType: row.mime_type ?? undefined,
+      previewEndpoint: row.preview_url, downloadEndpoint: row.download_url,
+    });
+  };
+
+  const downloadRow = (row: DocumentRow) => {
+    api.get(row.download_url, { responseType: 'blob' }).then(res => {
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url; a.download = row.filename; a.click();
+      URL.revokeObjectURL(url);
+    }).catch(() => toast.error('Download failed.'));
+  };
+
+  const openSource = (row: DocumentRow) => { if (row.action_url) router.push(row.action_url); };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-5">
-
-      {/* ── Header ── */}
-      <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Documents</h1>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Browse documents by project and module</p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* Generate Trade Packages — visible standalone when at trade packages level */}
-          {isShowingTradePackages && selectedProject && (
-            <button onClick={() => setShowFolderModal(true)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90"
-              style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
-              <Box size={13} />
-              Generate Trade Packages
-            </button>
-          )}
-
-          {/* Generate Document — visible standalone when inside a trade package */}
-          {currentTradePackage && selectedProject && (
-            <button onClick={() => setShowGenerateModal(true)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90"
-              style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
-              <Wand2 size={13} />
-              Generate Document
-            </button>
-          )}
-
-          {/* Options dropdown */}
-          <div ref={optionsRef} className="relative">
-            <button
-              onClick={() => setShowOptionsMenu(v => !v)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-colors hover:bg-[var(--bg-hover)]"
-              style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
-              <Settings2 size={13} />
-              Options
-            </button>
-
-            {showOptionsMenu && (
-              <div className="absolute right-0 top-full mt-1 z-50 w-56 rounded-xl shadow-xl overflow-hidden"
-                style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
-
-                {/* View toggle */}
-                <div className="px-4 py-2 border-b" style={{ borderColor: 'var(--border)' }}>
-                  <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-muted)' }}>View</p>
-                  <div className="flex overflow-hidden rounded-lg" style={{ border: '1px solid var(--border)' }}>
-                    {(['folder', 'list'] as const).map(mode => (
-                      <button key={mode} onClick={() => setViewMode(mode)}
-                        className="flex flex-1 items-center justify-center gap-1.5 py-1.5 text-xs font-medium transition-colors"
-                        style={{
-                          backgroundColor: viewMode === mode ? 'var(--gold)' : 'transparent',
-                          color: viewMode === mode ? 'var(--accent-fg)' : 'var(--text-muted)',
-                        }}>
-                        {mode === 'folder' ? <LayoutGrid size={12} /> : <LayoutList size={12} />}
-                        {mode === 'folder' ? 'Folders' : 'List'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Upload file — only inside a project */}
-                {selectedProject?.id && (
-                  <button onClick={() => { fileInputRef.current?.click(); setShowOptionsMenu(false); }}
-                    disabled={uploading}
-                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-[var(--bg-hover)] transition-colors disabled:opacity-50"
-                    style={{ color: 'var(--text-primary)' }}>
-                    <Upload size={14} style={{ color: 'var(--gold)' }} />
-                    {uploading ? 'Uploading…' : 'Upload File'}
-                  </button>
-                )}
-
-                {/* Document Register */}
-                {selectedProject?.id && (
-                  <>
-                    <div style={{ borderTop: '1px solid var(--border)' }} />
-                    <Link href={`/app/documents/register?projectId=${selectedProject.id}`}
-                      onClick={() => setShowOptionsMenu(false)}
-                      className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-[var(--bg-hover)] transition-colors"
-                      style={{ color: 'var(--text-primary)' }}>
-                      <ClipboardList size={14} style={{ color: 'var(--gold)' }} />
-                      Document Register
-                    </Link>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Hidden file input */}
-          <input ref={fileInputRef} type="file" className="hidden" onChange={handleUpload} />
-        </div>
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
+      <div className="ss-animate-in">
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Documents</h1>
+        <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
+          Search and discover documents across every project in your organisation
+        </p>
       </div>
 
-      {/* ── FOLDER / LIST VIEW (same hierarchy, different layout) ── */}
-      <>
-          {/* Breadcrumbs */}
-          <Breadcrumbs crumbs={crumbs} onNavigate={navigateTo} />
+      {isError ? (
+        <div className="ss-animate-in flex flex-col items-center justify-center py-16 gap-3 rounded-xl" style={{ border: '1px solid var(--border)' }}>
+          <AlertTriangle size={28} style={{ color: '#f87171' }} />
+          <p className="text-sm font-medium" style={{ color: '#f87171' }}>Could not load the document centre</p>
+          <button onClick={() => refetch()} className={`mt-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-transform duration-150 active:scale-[0.98]`} style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+            Retry
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* Summary */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: 'Total Documents', value: data?.summary.total_documents, color: 'var(--text-primary)' },
+              { label: 'Uploaded', value: data?.summary.uploaded, color: 'var(--text-muted)' },
+              { label: 'Generated', value: data?.summary.generated, color: '#818cf8' },
+              { label: 'AI Generated', value: data?.summary.ai_generated, color: '#c084fc' },
+            ].map((stat, i) => (
+              <div
+                key={stat.label}
+                className="ss-animate-in rounded-xl p-3.5 transition-shadow duration-200 hover:shadow-[var(--shadow-card)]"
+                style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', animationDelay: staggerDelay(i) }}
+              >
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{stat.label}</p>
+                <p className="text-xl font-bold mt-1 tabular-nums" style={{ color: stat.color }}>{isLoading ? '–' : stat.value}</p>
+              </div>
+            ))}
+          </div>
 
-          {/* Projects level */}
-          {level === 'projects' && (
-            projectsLoading ? <SkeletonCards /> :
-            projects.length === 0 ? (
-              <EmptyState title="No projects found" body="Projects will appear here once they have been created." />
+          {/* Search and filters */}
+          <div className="flex gap-3 flex-wrap items-center">
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+              <input
+                value={search}
+                onChange={e => { setSearch(e.target.value); setPage(1); }}
+                placeholder="Search filename, title, reference, project..."
+                aria-label="Search documents"
+                className="pl-9 pr-4 py-2 rounded-xl text-sm outline-none border border-[var(--border)] focus:border-[var(--gold)] transition-colors duration-200"
+                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-primary)', minWidth: '260px' }}
+              />
+            </div>
+
+            <Select value={projectId} onChange={e => { setProjectId(e.target.value); setPage(1); }} aria-label="Filter by project">
+              <option value="">All projects</option>
+              {(data?.filters.projects ?? []).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </Select>
+
+            <Select value={module} onChange={e => { setModule(e.target.value); setPage(1); }} aria-label="Filter by module">
+              <option value="">All modules</option>
+              {(data?.filters.modules ?? []).map(m => <option key={m} value={m}>{m}</option>)}
+            </Select>
+
+            <Select value={documentType} onChange={e => { setDocumentType(e.target.value); setPage(1); }} aria-label="Filter by document type">
+              <option value="">All document types</option>
+              {(data?.filters.document_types ?? []).map(t => <option key={t} value={t}>{t}</option>)}
+            </Select>
+
+            <Select value={origin} onChange={e => { setOrigin(e.target.value); setPage(1); }} aria-label="Filter by origin">
+              <option value="">Uploaded or generated</option>
+              <option value="uploaded">Uploaded</option>
+              <option value="generated">Generated</option>
+            </Select>
+
+            <Select value={fileType} onChange={e => { setFileType(e.target.value); setPage(1); }} aria-label="Filter by file type">
+              <option value="">All file types</option>
+              {(data?.filters.file_types ?? []).map(t => <option key={t} value={t}>{t}</option>)}
+            </Select>
+
+            <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm" style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+              <input type="checkbox" checked={aiOnly} onChange={e => { setAiOnly(e.target.checked); setPage(1); }} />
+              AI Generated only
+            </label>
+
+            <Select value={sort} onChange={e => setSort(e.target.value)} aria-label="Sort documents">
+              <option value="newest">Sort: Newest</option>
+              <option value="oldest">Sort: Oldest</option>
+              <option value="filename">Sort: Filename</option>
+              <option value="project">Sort: Project</option>
+              <option value="module">Sort: Module</option>
+            </Select>
+
+            {hasActiveFilters && (
+              <button onClick={clearFilters} className="flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-medium transition-colors hover:bg-[var(--bg-hover)]" style={{ color: 'var(--text-muted)' }}>
+                <X size={13} /> Clear filters
+              </button>
+            )}
+
+            {/* View toggle — Table for searching/auditing, Explorer for browsing by
+                project/module. Table stays the default: this page is primarily used
+                for cross-project search and audit (per the filter bar above), which
+                Table already serves well; Explorer is the better mode for browsing
+                by context, not the safer first-use default. */}
+            <div className="flex gap-1 p-1 rounded-full ml-auto" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+              {(['table', 'explorer'] as const).map(mode => (
+                <button
+                  key={mode}
+                  onClick={() => setView(mode)}
+                  aria-label={mode === 'table' ? 'Table view' : 'Explorer view'}
+                  aria-pressed={view === mode}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${EASE} active:scale-[0.97]`}
+                  style={view === mode
+                    ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', boxShadow: 'var(--shadow-card)' }
+                    : { color: 'var(--text-secondary)' }
+                  }
+                >
+                  {mode === 'table' ? <Table2 size={13} /> : <FolderTree size={13} />}
+                  {mode === 'table' ? 'Table' : 'Explorer'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Results */}
+          {isLoading ? (
+            view === 'explorer' ? (
+              <div className="space-y-3">
+                {[...Array(3)].map((_, i) => <div key={i} className="h-14 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-surface)' }} />)}
+              </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {projects.map(proj => (
-                  <FolderCard key={proj.id}
-                    title={proj.name}
-                    subtitle={proj.code ?? undefined}
-                    meta={proj.status ?? undefined}
-                    onClick={() => setSelectedProject(proj)} />
-                ))}
-              </div>
-            )
-          )}
-
-          {/* Modules level */}
-          {level === 'modules' && (
-            modulesLoading ? <SkeletonCards cols={4} count={13} /> : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                {modules.map(mod => (
-                  <FolderCard key={mod.key}
-                    title={mod.name}
-                    fileCount={mod.files_count}
-                    meta={mod.last_updated ? formatDate(mod.last_updated) : undefined}
-                    onClick={() => { setSelectedModule(mod); setModuleKeyPath(mod.key); }} />
-                ))}
-              </div>
-            )
-          )}
-
-          {/* Files level */}
-          {level === 'files' && (
-            moduleFilesLoading ? (
               <div className="space-y-2">
-                {[...Array(5)].map((_, i) => <div key={i} className="h-16 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />)}
+                {[...Array(6)].map((_, i) => <div key={i} className="h-16 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-surface)' }} />)}
               </div>
-            ) : isShowingFolders ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                {subfolders.map(folder => (
-                  <FolderCard key={folder.key} title={folder.name} fileCount={folder.files_count}
-                    onClick={() => setModuleKeyPath(folder.key)} />
-                ))}
+            )
+          ) : (data?.summary.total_documents ?? 0) === 0 ? (
+            <EmptyState
+              surface
+              icon={FileText}
+              title="No documents yet"
+              description="Documents will appear here once they are uploaded or generated inside a project. Open a project's Documents workspace to add the first one."
+              action={
+                <Link href="/app/projects" className="inline-flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--gold)' }}>
+                  <FolderKanban size={14} /> Go to Projects
+                </Link>
+              }
+            />
+          ) : rows.length === 0 ? (
+            <EmptyState surface icon={Search} title="No documents match the current filters" description="Try a different search term or clear your filters."
+              action={<button onClick={clearFilters} className="text-sm font-medium" style={{ color: 'var(--gold)' }}>Clear filters</button>} />
+          ) : view === 'explorer' ? (
+            <>
+              <div style={{ opacity: isFetching ? 0.6 : 1 }}>
+                <DocumentExplorer rows={rows} onPreview={openPreview} onDownload={downloadRow} onOpenSource={openSource} />
               </div>
-            ) : isShowingTradePackages ? (
-              tradePackages.length === 0 ? (
-                <EmptyState title="No trade packages yet" body="Trade package folders will appear here once they are created." />
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {tradePackages.map(pkg => (
-                    <FolderCard key={pkg.key}
-                      title={pkg.name}
-                      fileCount={pkg.files_count}
-                      subtitle={pkg.package_reference ?? pkg.package_code ?? undefined}
-                      meta={pkg.contractor_name ?? undefined}
-                      onClick={() => setModuleKeyPath(pkg.key)} />
-                  ))}
-                </div>
-              )
-            ) : (
-              <div className="space-y-4">
-                {/* Trade package header with Generate button */}
-                {currentTradePackage && (
-                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl p-4"
-                    style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
-                    <div>
-                      <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{currentTradePackage.name}</p>
-                      <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {currentTradePackage.package_reference || currentTradePackage.package_code || 'Trade package folder'}
-                      </p>
-                    </div>
-                    <button onClick={() => setShowGenerateModal(true)}
-                      className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-opacity hover:opacity-90"
-                      style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
-                      <Wand2 size={14} />
-                      Generate Package
+              {pagination && pagination.last_page > 1 && (
+                <div className="flex items-center justify-between pt-2">
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    Page {pagination.current_page} of {pagination.last_page} ({pagination.total} documents) — Explorer shows this page&apos;s documents, grouped by project and module.
+                  </p>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <button disabled={pagination.current_page <= 1} onClick={() => setPage(pagination.current_page - 1)}
+                      className="p-2 rounded-lg disabled:opacity-40 transition-colors hover:bg-[var(--bg-hover)]" style={{ border: '1px solid var(--border)' }} aria-label="Previous page">
+                      <ChevronLeft size={14} />
+                    </button>
+                    <button disabled={pagination.current_page >= pagination.last_page} onClick={() => setPage(pagination.current_page + 1)}
+                      className="p-2 rounded-lg disabled:opacity-40 transition-colors hover:bg-[var(--bg-hover)]" style={{ border: '1px solid var(--border)' }} aria-label="Next page">
+                      <ChevronRight size={14} />
                     </button>
                   </div>
-                )}
-
-                {files.length === 0 ? (
-                  <EmptyState
-                    title={currentTradePackage ? `No files in ${currentTradePackage.name}` : `No files in ${selectedModule?.name ?? 'this folder'}`}
-                    body={currentTradePackage ? 'Generate a package from a template or upload files directly.' : undefined} />
-                ) : (
-                  <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
-                    <div className="grid grid-cols-[2.5fr_1.5fr_0.8fr_1fr_auto] gap-4 px-5 py-3 text-xs font-semibold uppercase tracking-wider rounded-t-2xl"
-                      style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>
-                      <span>File Name</span><span>Uploaded by</span><span>Size</span><span>Date</span><span />
-                    </div>
-                    <div>
-                      {files.map((file, idx) => (
-                        <div key={file.id}
-                          className="group grid grid-cols-[2.5fr_1.5fr_0.8fr_1fr_auto] gap-4 items-center px-5 py-3 transition-colors hover:bg-[var(--bg-hover)]"
-                          style={{ borderBottom: idx < files.length - 1 ? '1px solid var(--border)' : undefined }}>
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <FileTypeBadge name={file.original_name} mimeType={file.mime_type} />
-                            <span className="text-sm truncate font-medium" style={{ color: 'var(--text-primary)' }}>{file.original_name}</span>
-                          </div>
-                          <span className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>{file.uploader?.name ?? '—'}</span>
-                          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{formatBytes(file.file_size)}</span>
-                          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{formatDate(file.created_at)}</span>
-
-                          {/* Actions dropdown */}
-                          <div className="relative" onClick={e => e.stopPropagation()}>
-                            <button onClick={() => setActiveMenu(activeMenu === file.id ? null : file.id)}
-                              className="p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100 hover:bg-[var(--bg-hover)]"
-                              title="Actions">
-                              <MoreVertical size={13} style={{ color: 'var(--text-muted)' }} />
-                            </button>
-                            {activeMenu === file.id && (
-                              <div className="absolute right-0 top-full mt-1 z-50 w-40 rounded-xl shadow-lg overflow-hidden"
-                                style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
-                                <button onClick={() => { setPreviewTarget({ id: file.id, name: file.original_name, mimeType: file.mime_type, previewEndpoint: `/file-uploads/${file.id}/preview`, downloadEndpoint: `/file-uploads/${file.id}/download` }); setActiveMenu(null); }}
-                                  className="flex w-full items-center gap-2 px-3 py-2.5 text-sm hover:bg-[var(--bg-hover)] transition-colors"
-                                  style={{ color: 'var(--text-primary)' }}>
-                                  <Eye size={13} /> Preview
-                                </button>
-                                <button onClick={() => { downloadFile(file.id, file.original_name); setActiveMenu(null); }}
-                                  className="flex w-full items-center gap-2 px-3 py-2.5 text-sm hover:bg-[var(--bg-hover)] transition-colors"
-                                  style={{ color: 'var(--text-primary)' }}>
-                                  <Download size={13} /> Download
-                                </button>
-                                <button onClick={() => { setDeleteTarget({ id: file.id, name: file.original_name }); setActiveMenu(null); }}
-                                  className="flex w-full items-center gap-2 px-3 py-2.5 text-sm hover:bg-[rgba(239,68,68,0.06)] transition-colors"
-                                  style={{ color: '#ef4444' }}>
-                                  <Trash2 size={13} /> Delete
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {/* Desktop table */}
+              <div className="hidden md:block rounded-xl overflow-x-auto" style={{ border: '1px solid var(--border)', opacity: isFetching ? 0.6 : 1 }}>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
+                      {['Name', 'Project', 'Module', 'Document Type', 'Origin', 'File Type', 'Date', 'Size', ''].map(h => (
+                        <th key={h} scope="col" className="text-left px-3 py-2.5 text-xs font-semibold whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>{h}</th>
                       ))}
-                    </div>
-                    {moduleFilesData?.total > moduleFilesData?.per_page && (
-                      <div className="px-5 py-3 text-xs" style={{ borderTop: '1px solid var(--border)', color: 'var(--text-muted)' }}>
-                        Showing {moduleFilesData.from}–{moduleFilesData.to} of {moduleFilesData.total} files
-                      </div>
-                    )}
-                  </div>
-                )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row, i) => (
+                      <tr key={row.composite_id} style={{ borderBottom: '1px solid var(--border)', animationDelay: staggerDelay(i) }} className="ss-animate-in hover:bg-[var(--bg-hover)] transition-colors">
+                        <td className="px-3 py-3">
+                          <button onClick={() => setMetadataTarget(row)} className="flex items-center gap-2.5 min-w-0 text-left">
+                            <FileTypeBadge fileType={row.file_type} />
+                            <span className="text-sm font-medium truncate max-w-[220px]" title={row.filename} style={{ color: 'var(--text-primary)' }}>{row.filename}</span>
+                          </button>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap truncate max-w-[160px]" title={row.project_name} style={{ color: 'var(--text-secondary)' }}>{row.project_name}</td>
+                        <td className="px-3 py-3 whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>{row.module ?? '—'}</td>
+                        <td className="px-3 py-3 whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>{row.document_type ?? '—'}</td>
+                        <td className="px-3 py-3 whitespace-nowrap"><OriginBadge row={row} /></td>
+                        <td className="px-3 py-3 whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>{row.file_type ?? '—'}</td>
+                        <td className="px-3 py-3 whitespace-nowrap tabular-nums" style={{ color: 'var(--text-secondary)' }}>{formatDateShort(row.created_at)}</td>
+                        <td className="px-3 py-3 whitespace-nowrap tabular-nums" style={{ color: 'var(--text-muted)' }}>{formatBytes(row.file_size)}</td>
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          <RowActions row={row} onPreview={() => openPreview(row)} onDownload={() => downloadRow(row)} onOpenSource={() => openSource(row)} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            )
+
+              {/* Mobile compact list — the full table is too dense to use below md */}
+              <div className="md:hidden space-y-2" style={{ opacity: isFetching ? 0.6 : 1 }}>
+                {rows.map((row, i) => (
+                  <div
+                    key={row.composite_id}
+                    className="ss-animate-in rounded-xl p-3 flex items-center gap-3"
+                    style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', animationDelay: staggerDelay(i) }}
+                  >
+                    <FileTypeBadge fileType={row.file_type} />
+                    <button onClick={() => setMetadataTarget(row)} className="min-w-0 flex-1 text-left">
+                      <p className="text-sm font-medium truncate" title={row.filename} style={{ color: 'var(--text-primary)' }}>{row.filename}</p>
+                      <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{row.project_name} · {formatDateShort(row.created_at)}</p>
+                    </button>
+                    <RowActions row={row} onPreview={() => openPreview(row)} onDownload={() => downloadRow(row)} onOpenSource={() => openSource(row)} />
+                  </div>
+                ))}
+              </div>
+
+              {pagination && pagination.last_page > 1 && (
+                <div className="flex items-center justify-between pt-2">
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    Page {pagination.current_page} of {pagination.last_page} ({pagination.total} documents)
+                  </p>
+                  <div className="flex gap-2">
+                    <button disabled={pagination.current_page <= 1} onClick={() => setPage(pagination.current_page - 1)}
+                      className="p-2 rounded-lg disabled:opacity-40 transition-colors hover:bg-[var(--bg-hover)]" style={{ border: '1px solid var(--border)' }} aria-label="Previous page">
+                      <ChevronLeft size={14} />
+                    </button>
+                    <button disabled={pagination.current_page >= pagination.last_page} onClick={() => setPage(pagination.current_page + 1)}
+                      className="p-2 rounded-lg disabled:opacity-40 transition-colors hover:bg-[var(--bg-hover)]" style={{ border: '1px solid var(--border)' }} aria-label="Next page">
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
-      </>
-
-      {/* ── Modals ── */}
-      {deleteTarget && (
-        <DeleteConfirmModal
-          fileName={deleteTarget.name}
-          onClose={() => setDeleteTarget(null)}
-          onConfirm={() => deleteMutation.mutate(deleteTarget.id)}
-          deleting={deleteMutation.isPending} />
+        </>
       )}
 
-      {previewTarget && (
-        <DocumentPreviewModal target={previewTarget} onClose={() => setPreviewTarget(null)} />
-      )}
-
-      {showGenerateModal && currentTradePackage && selectedProject && (
-        <GeneratePackageModal
-          projectId={String(selectedProject.id)}
-          tradePackage={currentTradePackage}
-          onClose={() => setShowGenerateModal(false)}
-          onViewInPackage={() => {
-            setShowGenerateModal(false);
-            queryClient.invalidateQueries({ queryKey: ['client-doc-files', selectedProject.id, moduleKeyPath] });
-          }} />
-      )}
-
-      {showFolderModal && selectedProject && (
-        <GenerateTradePackageFolderModal
-          isOpen={showFolderModal}
-          onClose={() => setShowFolderModal(false)}
-          projectId={selectedProject.id}
-          projectReference={selectedProject.code ?? ''}
-          existingPackageNames={tradePackages.map(p => p.name)}
-          apiPath={`/projects/${selectedProject.id}/subcontracts/generate-trade-packages`}
-          onSuccess={() => {
-            setShowFolderModal(false);
-            queryClient.invalidateQueries({ queryKey: ['client-doc-files', selectedProject.id, moduleKeyPath] });
-          }} />
+      {previewTarget && <DocumentPreviewModal target={previewTarget} onClose={() => setPreviewTarget(null)} />}
+      {metadataTarget && (
+        <MetadataModal
+          row={metadataTarget}
+          onClose={() => setMetadataTarget(null)}
+          onPreview={() => { openPreview(metadataTarget); setMetadataTarget(null); }}
+        />
       )}
     </div>
   );

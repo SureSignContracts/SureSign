@@ -38,6 +38,31 @@ records, programme, risk register, communications (RFIs, meetings), delivery
 records (QA, snagging, site reports, delivery documents, closeout), documents,
 and calendar.
 
+## The portfolio page
+
+The **Projects** page itself is the organisation-wide portfolio, for finding,
+comparing, and opening projects rather than doing the actual project work.
+It shows:
+
+- A **portfolio summary**: Total Projects, Active Projects, Requires
+  Attention, and Completed or Closed, all counted across your accessible
+  projects regardless of any filter you have applied.
+- **Search and filters**: by name, reference, or location, and by status,
+  attention state, or currency. Your search and filters are kept in the page
+  URL, so a filtered view can be shared or bookmarked and returns you to the
+  same view when you come back.
+- A **portfolio list** (a table on desktop, cards on narrow screens) with
+  each project's status, attention state, outstanding balance, and retention
+  held, so projects can be compared without opening each one individually.
+- An **attention indicator**, showing whether a project has at least one
+  overdue or due-today item. This uses the same rule as the Dashboard's
+  Needs Attention queue, so the two pages always agree on which projects
+  need attention.
+
+Detailed commercial figures, deadlines, and record editing all remain inside
+the project's own workspace or [Global Commercial](../commercial/global-overview.md);
+the portfolio page only shows a compact summary of each.
+
 ## Statuses
 
 Projects carry a status (for example Active, On Hold, Completed, Cancelled)
@@ -46,9 +71,11 @@ project's settings/edit form.
 
 ## Related modules
 
+- [Dashboard](../dashboard/overview.md): the organisation-wide action queue this page's attention indicator shares its rule with.
 - [Contracts](../contracts/overview.md)
 - [Trade Packages](../trade-packages/overview.md)
 - [Commercial](../commercial/overview.md)
+- [Global Commercial](../commercial/global-overview.md): detailed commercial figures beyond this page's compact summary.
 - [Documents](../documents/overview.md)
 
 ## Common mistakes to avoid

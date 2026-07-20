@@ -154,7 +154,7 @@ class AdminController extends Controller
 
     public function projects(Request $request)
     {
-        $query = Project::with('organization:id,name')
+        $query = Project::with('organization:id,name,currency')
             ->select('id', 'organization_id', 'name', 'code', 'status', 'type', 'contract_type',
                      'contract_value', 'currency', 'start_date', 'end_date', 'created_at');
 
@@ -174,6 +174,11 @@ class AdminController extends Controller
         }
 
         $projects = $query->latest()->paginate(25);
+        // `currency` on its own is the raw, possibly-null explicit override —
+        // append the resolved (project -> organisation -> platform -> GBP)
+        // value so this Super Admin listing shows what actually applies,
+        // same as every other project listing in the app.
+        $projects->getCollection()->each->append('resolved_currency');
 
         return response()->json($projects);
     }
@@ -445,18 +450,44 @@ class AdminController extends Controller
         // Special handling for contracts module — show subfolders instead of files
         if ($moduleKey === 'contracts') {
             $contractSubfolders = [
-                ['key' => 'contracts/main_contract',        'name' => 'Main Contract',          'type' => 'folder', 'files_count' => 0],
-                ['key' => 'contracts/consultant_agreement',  'name' => 'Consultant Agreements',  'type' => 'folder', 'files_count' => 0],
-                ['key' => 'contracts/supplier_agreement',    'name' => 'Supplier Agreements',    'type' => 'folder', 'files_count' => 0],
+                ['key' => 'contracts/main_contract',        'name' => 'Main Contract',           'type' => 'folder', 'files_count' => 0],
+                ['key' => 'contracts/consultant_agreement', 'name' => 'Consultant Agreements',   'type' => 'folder', 'files_count' => 0],
+                ['key' => 'contracts/supplier_agreement',   'name' => 'Supplier Agreements',     'type' => 'folder', 'files_count' => 0],
+                ['key' => 'contracts/subcontract',          'name' => 'Subcontract Agreements',  'type' => 'folder', 'files_count' => 0],
             ];
 
             // Get file counts for each subfolder
             foreach ($contractSubfolders as &$subfolder) {
-                $count = FileUpload::where('project_id', $project->id)
-                    ->where('folder_key', $subfolder['key'])
-                    ->count();
-                $subfolder['files_count'] = $count;
+                if ($subfolder['key'] === 'contracts/main_contract') {
+                    // Backward-compat: ProjectDocumentsExplorer's upload modal tags a file
+                    // with folder_key='contracts' (the bare module key) whenever it's
+                    // uploaded from the "Contracts" folder itself rather than from inside
+                    // a specific subfolder — resolveUploadContext() only returns a real
+                    // subfolder folder_key once the user has actually navigated into one.
+                    // Those uploads are real, visible files, not orphaned data — matching
+                    // DocumentController::projectModuleFiles's identical fallback so the
+                    // Super Admin explorer and the project-level Client explorer never
+                    // disagree about which files exist.
+                    $subfolder['files_count'] = FileUpload::where('project_id', $project->id)
+                        ->where(function ($q) {
+                            $q->where('folder_key', 'contracts/main_contract')
+                              ->orWhere(function ($q2) {
+                                  $q2->where('module_key', 'contracts')
+                                     ->where(function ($q3) {
+                                         $q3->where('folder_key', 'contracts')
+                                            ->orWhere('folder_key', '')
+                                            ->orWhereNull('folder_key');
+                                     });
+                              });
+                        })
+                        ->count();
+                } else {
+                    $subfolder['files_count'] = FileUpload::where('project_id', $project->id)
+                        ->where('folder_key', $subfolder['key'])
+                        ->count();
+                }
             }
+            unset($subfolder);
 
             return response()->json([
                 'type' => 'folders',
@@ -580,6 +611,25 @@ class AdminController extends Controller
         }
 
         // Handle other contract subfolder files (e.g., 'contracts/main_contract', 'contracts/consultant_agreement')
+        if ($moduleKey === 'contracts/main_contract') {
+            // Same backward-compat match as the folder-count loop above — see its
+            // comment for why folder_key='contracts' (or blank/null) belongs here too.
+            $query = FileUpload::where('project_id', $project->id)
+                ->where(function ($q) {
+                    $q->where('folder_key', 'contracts/main_contract')
+                      ->orWhere(function ($q2) {
+                          $q2->where('module_key', 'contracts')
+                             ->where(function ($q3) {
+                                 $q3->where('folder_key', 'contracts')
+                                    ->orWhere('folder_key', '')
+                                    ->orWhereNull('folder_key');
+                             });
+                      });
+                })
+                ->with(['uploader:id,name', 'project:id,name,code', 'organization:id,name']);
+            return response()->json($query->latest()->paginate(50));
+        }
+
         if (str_starts_with($moduleKey, 'contracts/')) {
             $query = FileUpload::where('project_id', $project->id)
                 ->where('folder_key', $moduleKey)

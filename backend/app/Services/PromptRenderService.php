@@ -56,7 +56,7 @@ class PromptRenderService
             'client_name'       => $client?->name,
             'contract_value'    => $project->contract_value ? number_format((float) $project->contract_value, 2) : null,
             'contract_type'     => $project->contract_type,
-            'currency'          => $project->currency ?? 'GBP',
+            'currency'          => $project->resolved_currency,
             'start_date'        => $project->start_date?->format('d F Y'),
             'end_date'          => $project->end_date?->format('d F Y'),
             'completion_date'   => $project->end_date?->format('d F Y'),

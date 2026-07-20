@@ -8,6 +8,13 @@ interface Organization {
   slug: string;
   is_onboarded: boolean;
   timezone?: string;
+  // `currency` is the organisation's own raw override (null = inheriting the
+  // platform default). `effective_currency` is what actually applies right
+  // now — organisation's own, else platform, else GBP. Prefer this for any
+  // display or "default to organisation currency" logic; never infer a
+  // currency from `country`/`address` instead.
+  currency?: string | null;
+  effective_currency?: string;
   branding?: {
     primary_color: string;
     logo_path: string | null;

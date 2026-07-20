@@ -8,6 +8,7 @@ import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import PasswordStrengthChecker, { checkPassword, isPasswordValid } from '@/components/ui/PasswordStrengthChecker';
 import { getIanaTimezones } from '@/lib/timezones';
+import { SUPPORTED_CURRENCIES, currencyLabel } from '@/lib/currency';
 import { useAuthStore } from '@/store/authStore';
 
 type Tab = 'branding' | 'information' | 'preferences' | 'password';
@@ -32,6 +33,10 @@ interface BrandingData {
   country: string;
   vat_number: string;
   timezone: string;
+  // `currency` is the raw override (null/empty = inheriting the platform
+  // default). `effective_currency` is what actually applies right now.
+  currency: string | null;
+  effective_currency: string;
 }
 
 function TimezoneSelect({ value, onChange, id }: { value: string; onChange: (v: string) => void; id?: string }) {
@@ -146,6 +151,8 @@ export default function SettingsPage() {
   });
   const [infoForm, setInfoForm] = useState({
     contact_email: '', contact_phone: '', website: '', address: '', city: '', state: '', postcode: '', country: '', vat_number: '', timezone: 'Europe/London',
+    // '' means "use the platform default" — never pre-filled from country.
+    currency: '',
   });
 
   useEffect(() => {
@@ -168,6 +175,7 @@ export default function SettingsPage() {
       country:       b.country       ?? '',
       vat_number:    b.vat_number    ?? '',
       timezone:      b.timezone      ?? 'Europe/London',
+      currency:      b.currency      ?? '',
     });
     // Apply accent colour for this session only — NOT stored in localStorage
     if (b.primary_color) {
@@ -214,6 +222,9 @@ export default function SettingsPage() {
       country: p.country,
       abn: p.vat_number,
       timezone: p.timezone,
+      // '' means "use the platform default" in the UI — send null, not '',
+      // since the backend's `size:3` validation rejects an empty string.
+      currency: p.currency || null,
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['branding'] });
@@ -472,6 +483,25 @@ export default function SettingsPage() {
                 <TimezoneSelect value={infoForm.timezone} onChange={v => setInfoForm(f => ({ ...f, timezone: v }))} />
                 <p className="mt-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>
                   Applies to every user in your organisation unless they set their own override under My Preferences.
+                </p>
+              </div>
+
+              <div className="mt-4">
+                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Organisation Default Currency</label>
+                <select
+                  value={infoForm.currency}
+                  onChange={e => setInfoForm(f => ({ ...f, currency: e.target.value }))}
+                  className="w-full rounded-lg px-3 py-2 text-sm outline-none border border-[var(--border)] focus:border-[var(--gold)] transition-colors duration-200"
+                  style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-primary)' }}
+                >
+                  <option value="">Use platform default ({b?.effective_currency ?? 'GBP'})</option>
+                  {SUPPORTED_CURRENCIES.map(code => (
+                    <option key={code} value={code}>{code} — {currencyLabel(code)}</option>
+                  ))}
+                </select>
+                <p className="mt-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>
+                  Applies to every project in your organisation that doesn&apos;t have its own currency override set.
+                  Changing this never affects a project that already has an explicit currency.
                 </p>
               </div>
             </div>

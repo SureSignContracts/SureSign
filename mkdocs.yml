@@ -96,6 +96,7 @@ nav:
       - trade-packages/workspace.md
   - Commercial:
       - commercial/overview.md
+      - commercial/global-overview.md
       - commercial/payment-applications.md
       - commercial/application-valuations.md
       - commercial/payment-notices.md
@@ -156,6 +157,7 @@ nav:
       - closeout/overview.md
   - Documents:
       - documents/overview.md
+      - documents/global-search.md
       - documents/uploading.md
       - documents/folders.md
       - documents/previewing.md

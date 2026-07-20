@@ -28,13 +28,14 @@ class WorkspaceNavigationResolver
         'contract_risk'          => ['tab' => 'compliance', 'subtab' => 'risks'],
         'delivery_document'      => ['tab' => 'compliance', 'subtab' => 'delivery-documents'],
         'trade_package'          => ['tab' => 'overview'],
-        // RFIs, meetings, site diaries and QA reports have no trade_package_id
-        // column — these entries are only exercised if that ever changes;
+        // RFIs, meetings, site diaries, site instructions and QA reports have
+        // no trade_package_id column — these entries are only exercised if that ever changes;
         // today target() just needs a non-null match so actionUrl() falls
         // through to PROJECT_FALLBACK below.
         'rfi'                     => ['tab' => 'communication', 'subtab' => 'rfis'],
         'meeting'                 => ['tab' => 'communication', 'subtab' => 'meetings'],
         'site_diary'              => ['tab' => 'compliance', 'subtab' => 'site-reports'],
+        'site_instruction'        => ['tab' => 'communication', 'subtab' => 'site-instructions'],
         'qa_report'               => ['tab' => 'compliance', 'subtab' => 'qa'],
         // Contract AI analyses belong to a main Contract, never a trade
         // package (subcontract AI uses the separate 'trade_package_ai_analysis'
@@ -65,6 +66,12 @@ class WorkspaceNavigationResolver
         'variation'              => '/variations',
         'meeting'                => '/meetings',
         'site_diary'             => '/site-reports',
+        // Site Instructions is a tab within the Notices page rather than its
+        // own route (see notices/page.tsx) — that page doesn't read a `tab`
+        // query param, so landing on the page itself (defaulting to its EOT
+        // tab) is the same best-effort precedent as contract_ai_analysis and
+        // file_upload below, not a broken link.
+        'site_instruction'       => '/notices',
         'qa_report'              => '/qa',
         // No dedicated AI review/history or Contract Intelligence route
         // exists yet — the AI analysis review UI is embedded directly in the

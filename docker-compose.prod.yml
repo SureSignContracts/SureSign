@@ -12,8 +12,14 @@ services:
     image: suresign-backend:latest
     container_name: suresign_backend
     restart: unless-stopped
-    ports:
-      - "8000:8000"
+    # No host-published port. nginx reaches this container over the internal
+    # `suresign` Docker network by service name (`backend:8000`) regardless
+    # of whether the port is also published to the host — publishing 8000
+    # only ever exposed the app directly, bypassing nginx (the trusted-proxy
+    # IP handling in bootstrap/app.php was already written anticipating
+    # exactly that gap). Removed as part of the production-readiness audit;
+    # takes effect on the next deploy, not live until then.
+    stop_grace_period: 30s
     volumes:
       # Only genuinely persistent data survives container recreation —
       # user-uploaded and generated files (logos, letterheads, contracts,
@@ -36,8 +42,19 @@ services:
       - APP_FAKER_LOCALE=en_US
       - APP_MAINTENANCE_DRIVER=file
       - BCRYPT_ROUNDS=12
+      # stderr, not single alone: `storage/logs/laravel.log` is not on the
+      # `backend_storage` volume (that only covers storage/app), so file-only
+      # logs were invisible to `docker logs` and lost on every container
+      # replacement — the exact gap flagged in production-readiness-audit.md
+      # Section 5.4. stderr is captured by Docker's own log driver (same as
+      # nginx/mysql/redis's official images, which already log to
+      # stdout/stderr by default) and survives container replacement via
+      # whatever log retention the host/Dokploy keeps. `single` stays too, for
+      # a quick `docker exec ... tail -f storage/logs/laravel.log` during a
+      # live incident without needing docker log access — see
+      # production-operations.md's Logging section.
       - LOG_CHANNEL=stack
-      - LOG_STACK=single
+      - LOG_STACK=stderr,single
       - LOG_DEPRECATIONS_CHANNEL=null
       - LOG_LEVEL=${LOG_LEVEL:-error}
       - DB_CONNECTION=mysql
@@ -46,15 +63,34 @@ services:
       - DB_DATABASE=suresign
       - DB_USERNAME=suresign
       - DB_PASSWORD=${DB_PASSWORD}
-      - SESSION_DRIVER=file
+      # database, not file: SureSign authenticates via Sanctum bearer tokens
+      # (routes/api.php uses auth:sanctum; no EnsureFrontendRequestsAreStateful
+      # middleware is registered), so server-side sessions aren't materially
+      # used — but `file` sessions are container-local state, a real rolling-
+      # deployment blocker if anything under the `web` middleware group ever
+      # starts one. `database` is already a shared store (the `sessions`
+      # table already exists via the users-table migration) at zero added
+      # infrastructure cost, unlike moving unused sessions to Redis.
+      - SESSION_DRIVER=database
       - SESSION_LIFETIME=120
       - SESSION_ENCRYPT=false
       - SESSION_PATH=/
       - SESSION_DOMAIN=null
       - BROADCAST_CONNECTION=log
       - FILESYSTEM_DISK=local
+      # database, not redis: queue jobs (AI analysis, document generation)
+      # already have carefully-tuned retry_after/timeout relationships against
+      # the database driver (see config/queue.php) — moving to Redis needs its
+      # own isolated retry_after review, deferred to a separate phase.
       - QUEUE_CONNECTION=database
-      - CACHE_STORE=database
+      # redis, not database: cache reads/writes no longer hit MySQL, and this
+      # is also what Laravel's default RateLimiter and the scheduler's
+      # withoutOverlapping() lock use (both read config('cache.default')) —
+      # one change gets cache, rate limiting, and scheduler locking onto a
+      # store actually designed for high-frequency ephemeral writes. Cache
+      # data was never authoritative, so a Redis outage degrades to cache
+      # misses, not data loss — MySQL remains the source of truth.
+      - CACHE_STORE=redis
       - REDIS_CLIENT=phpredis
       - REDIS_HOST=redis
       - REDIS_PASSWORD=null
@@ -88,21 +124,43 @@ services:
     security_opt:
       - no-new-privileges:true
     healthcheck:
-      # Laravel's own built-in /up route (registered via the `health:` param
-      # in bootstrap/app.php) — no auth, no throttle:api middleware, no DB
-      # query, no tenant data. It only proves the PHP process is up and
-      # Laravel can bootstrap/dispatch an event (liveness), which is exactly
-      # what's needed here since MySQL readiness is already covered by its
-      # own healthcheck + this service's `depends_on: mysql: service_healthy`.
-      test: ["CMD", "curl", "-f", "http://localhost:8000/up"]
+      # /readyz (routes/web.php), not Laravel's built-in /up: /up only proves
+      # the process booted (liveness) — it never touches the database. Since
+      # entrypoint.sh no longer runs `migrate --force` before `artisan serve`
+      # starts (migrations are now a deliberate, separate release step — see
+      # entrypoint.sh), a booted process is no longer proof the database is
+      # reachable, and every real request needs it. /readyz does one cheap
+      # PDO check, no query, and this is exactly the distinction a future
+      # start-first rolling update needs: don't route traffic to the new
+      # container until it can actually serve, not just until it's alive.
+      test: ["CMD", "curl", "-f", "http://localhost:8000/readyz"]
       interval: 20s
       timeout: 5s
       retries: 3
-      # entrypoint.sh runs `migrate --force` before `artisan serve` starts
-      # listening — give that a real window before failures count.
-      start_period: 30s
+      start_period: 15s
     networks:
       - suresign
+    # Forward-looking only — Dokploy's plain Compose mode ignores `deploy:`
+    # entirely (confirmed: https://github.com/Dokploy/dokploy/issues/2497),
+    # so this has no live effect today. Kept here so a later Stack-mode
+    # conversion is a config-flip, not a from-scratch design exercise.
+    # Values are intentionally conservative and unmeasured: no memory
+    # limit/reservation is set because no real production memory metrics
+    # have been captured yet (see Docs → Production Readiness Audit) — set
+    # those from Dokploy's Monitoring tab data before relying on this in a
+    # real Stack deployment, not from a guess.
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        order: start-first
+        failure_action: rollback
+        delay: 5s
+      rollback_config:
+        parallelism: 1
+        order: stop-first
+      restart_policy:
+        condition: any
 
   # Next.js Frontend (production build)
   frontend:
@@ -114,8 +172,11 @@ services:
     image: suresign-frontend:latest
     container_name: suresign_frontend
     restart: unless-stopped
-    ports:
-      - "3001:3000"
+    # No host-published port, same rationale as `backend` above: nginx
+    # reaches this container over the internal `suresign` network by service
+    # name (`frontend:3000`), so publishing 3001 to the host only added
+    # unnecessary direct exposure.
+    stop_grace_period: 15s
     environment:
       # Server-side only (not NEXT_PUBLIC_) — reaches the backend over the
       # internal docker network, unlike NEXT_PUBLIC_API_URL which is the
@@ -151,6 +212,20 @@ services:
       start_period: 20s
     networks:
       - suresign
+    # Forward-looking only, no live effect under Compose mode — see the
+    # `backend` service's `deploy:` block above for the full rationale.
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        order: start-first
+        failure_action: rollback
+        delay: 5s
+      rollback_config:
+        parallelism: 1
+        order: stop-first
+      restart_policy:
+        condition: any
 
   # MySQL
   mysql:
@@ -218,16 +293,27 @@ services:
     volumes:
       - backend_storage:/var/www/html/storage/app
     environment: *backend_env
+    # AnalyseContractWithAiJob's timeout is 480s (see backend/config/queue.php
+    # comment: must stay under DB_QUEUE_RETRY_AFTER=600s so a still-running
+    # job is never re-reserved and re-executed — that would double-bill
+    # Claude). Docker's default stop_grace_period is 10s: SIGTERM, then
+    # SIGKILL if the process hasn't exited. `queue:work` handles SIGTERM
+    # gracefully (finish the current job, then stop — pcntl is installed in
+    # backend/Dockerfile) but only if it's actually given the time; without
+    # this, every deploy or restart hard-kills whatever job happens to be
+    # running, mid-AI-analysis or mid-document-generation. 490s covers the
+    # longest job (480s) plus a small margin for the worker to notice SIGTERM
+    # and exit cleanly.
+    stop_grace_period: 490s
     depends_on:
-      # Upgraded from service_started: entrypoint.sh only runs `migrate
-      # --force` in backend's own default branch (queue/scheduler never run
-      # migrations themselves — confirmed, no concurrent-migration race
-      # exists) — but service_started only meant "the container process
-      # launched," not "migrations finished." On a cold deploy with ~115
-      # migrations, queue/scheduler could start and hit the database before
-      # backend's schema is ready. service_healthy waits for backend's own
-      # /up healthcheck, which only succeeds once migrate + storage:link +
-      # artisan serve have all completed.
+      # Migrations are no longer run automatically on `backend`'s startup
+      # (see entrypoint.sh) — they're now a deliberate, separate release
+      # step, so `backend: service_healthy` no longer implies "schema is
+      # ready" the way it did before this audit. It still correctly implies
+      # "backend can reach MySQL" (via /readyz) and "the image booted", which
+      # is the ordering guarantee actually needed here. Operationally: run
+      # the `migrate` release step before or as the first step of a deploy,
+      # not after — queue/scheduler do not wait for it.
       backend:
         condition: service_healthy
       mysql:
@@ -261,16 +347,15 @@ services:
     volumes:
       - backend_storage:/var/www/html/storage/app
     environment: *backend_env
+    # schedule:work dispatches jobs rather than running long business logic
+    # itself, so it needs far less grace than `queue`, but a small window
+    # still lets an in-flight dispatch finish cleanly instead of being cut off
+    # mid-tick.
+    stop_grace_period: 30s
     depends_on:
-      # Upgraded from service_started: entrypoint.sh only runs `migrate
-      # --force` in backend's own default branch (queue/scheduler never run
-      # migrations themselves — confirmed, no concurrent-migration race
-      # exists) — but service_started only meant "the container process
-      # launched," not "migrations finished." On a cold deploy with ~115
-      # migrations, queue/scheduler could start and hit the database before
-      # backend's schema is ready. service_healthy waits for backend's own
-      # /up healthcheck, which only succeeds once migrate + storage:link +
-      # artisan serve have all completed.
+      # Migrations are no longer run automatically on `backend`'s startup —
+      # see the `queue` service's depends_on comment above for the full
+      # rationale, which applies identically here.
       backend:
         condition: service_healthy
       mysql:

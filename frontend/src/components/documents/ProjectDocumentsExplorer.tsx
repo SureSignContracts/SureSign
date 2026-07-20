@@ -111,6 +111,18 @@ function resolveUploadContext(moduleKeyPath: string | null): { moduleKey: string
     return { moduleKey: 'contracts', folderKey: moduleKeyPath, moduleLabel: 'Contracts', folderLabel: FOLDER_LABELS[moduleKeyPath] };
   }
 
+  // Uploading from the bare "Contracts" folder itself, not yet inside a
+  // named subfolder (e.g. Main Contract) — the backend only ever displays
+  // Contracts as subfolders, never a flat file list at this level, so
+  // tagging the file with folder_key='contracts' (the module key) would
+  // silently orphan it: invisible in every subfolder view, admin included,
+  // even though the module-level file count still includes it. Default to
+  // Main Contract, the subfolder every other upload path already treats as
+  // the sensible default for an untargeted contract file.
+  if (moduleKeyPath === 'contracts') {
+    return { moduleKey: 'contracts', folderKey: 'contracts/main_contract', moduleLabel: 'Contracts', folderLabel: 'Main Contract' };
+  }
+
   const moduleLabel = MODULE_LABELS[moduleKeyPath] ?? moduleKeyPath;
   return { moduleKey: moduleKeyPath, folderKey: moduleKeyPath, moduleLabel, folderLabel: moduleLabel };
 }

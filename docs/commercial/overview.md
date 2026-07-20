@@ -31,8 +31,14 @@ flowchart LR
     F --> G[Retention Release]
 ```
 
+!!! note "Looking for the organisation-wide view?"
+    This page covers Commercial *inside a project*. For a read-only summary of
+    commercial position and deadlines across every project, see
+    [Global Commercial](global-overview.md).
+
 ## In this section
 
+- [Global Commercial](global-overview.md): organisation-wide monitoring across all projects
 - [Payment Applications](payment-applications.md)
 - [Application Valuations](application-valuations.md)
 - [Payment Notices](payment-notices.md)

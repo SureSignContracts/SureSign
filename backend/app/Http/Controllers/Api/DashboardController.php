@@ -8,11 +8,27 @@ use App\Models\Rfi;
 use App\Models\Variation;
 use App\Models\PaymentApplication;
 use App\Models\Document;
+use App\Services\Dashboard\OrganisationDashboardService;
 use App\Services\TimezoneResolver;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
+    public function __construct(private OrganisationDashboardService $organisationDashboard) {}
+
+    /**
+     * GET /dashboard/action-centre — Phase 2's Organisation Action Centre:
+     * organisation-wide Needs Attention queue, Portfolio Health, Commercial
+     * Snapshot, and Recent Activity. Kept as a separate endpoint from
+     * index() below (which still backs the pre-Phase-2 stat cards) rather
+     * than changing index()'s existing response shape underneath any other
+     * consumer that might depend on it.
+     */
+    public function actionCentre(Request $request)
+    {
+        return response()->json($this->organisationDashboard->build($request->user()));
+    }
+
     public function index(Request $request)
     {
         $user  = $request->user();

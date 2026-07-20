@@ -1,245 +1,352 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import api from '@/lib/api';
-import { formatDate } from '@/lib/utils';
-import CountUp from '@/components/ui/CountUp';
-import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
+import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import EmptyState from '@/components/ui/EmptyState';
+import Select from '@/components/ui/Select';
 import PageTourButton from '@/components/tours/PageTourButton';
+import { staggerDelay } from '@/lib/motion';
 import {
-  FolderKanban, AlertCircle, FileText, DollarSign, TrendingUp, Clock,
-  ArrowRight, Activity, Inbox,
+  AlertTriangle, CheckCircle2, Clock, DollarSign, GitBranch, MessageSquare,
+  ShieldAlert, FileText, Milestone, FolderKanban, Activity, ArrowRight, Search,
 } from 'lucide-react';
 
-interface DashboardStats {
-  stats: {
-    total_projects: number;
-    active_projects: number;
-    open_rfis: number;
-    pending_variations: number;
-    documents_this_month: number;
-    payment_apps_pending: number;
+// ── Types (mirrors OrganisationDashboardService::build()) ────────────────
+
+type ItemStatus = 'overdue' | 'due_today' | 'due_soon' | 'upcoming';
+
+type NeedsAttentionItem = {
+  type: string;
+  project_id: number;
+  project_name: string;
+  source_id: number;
+  reference: string;
+  summary: string;
+  due_date: string;
+  status: ItemStatus;
+  days: number;
+  record_status: string;
+  amount: number | null;
+  currency: string | null;
+  action_url: string;
+};
+
+type CashBlock = { currency: string; outstanding_total: number; retention_total: number };
+
+type DashboardData = {
+  needs_attention: {
+    items: NeedsAttentionItem[];
+    counts: { overdue: number; due_today: number; due_soon: number; upcoming: number };
   };
-  recent_projects: any[];
-  recent_rfis: any[];
-  recent_documents: any[];
-}
+  portfolio_health: {
+    active_projects: number;
+    projects_with_overdue_items: number;
+    total_overdue_items: number;
+    items_due_soon: number;
+  };
+  commercial_snapshot: {
+    by_currency: CashBlock[];
+    awaiting_certification_count: number;
+    commercial_deadline_count: number;
+    action_url: string;
+  };
+  recent_activity: {
+    id: number;
+    description: string;
+    project_id: number;
+    project_name: string | null;
+    actor: string;
+    timestamp: string;
+    action_url: string | null;
+  }[];
+  meta: { effective_timezone: string; due_soon_threshold_days: number; generated_at: string; has_projects: boolean };
+};
 
-function StatCard({ label, value, icon: Icon, accent, href, index = 0 }: {
-  label: string; value: number | string; icon: any; accent?: boolean; href?: string; index?: number;
-}) {
-  const delay = index * 70;
-  const inner = (
-    <div
-      className="group relative ss-animate-in rounded-2xl p-5 flex flex-col justify-between overflow-hidden transition-all hover:scale-[1.01]"
-      style={{
-        backgroundColor: accent ? 'var(--gold-8)' : 'var(--bg-surface)',
-        border: `1px solid ${accent ? 'var(--gold-30)' : 'var(--border)'}`,
-        boxShadow: 'var(--shadow-card)',
-        minHeight: '110px',
-        animationDelay: `${delay}ms`,
-      }}
-    >
-      {accent && (
-        <div className="absolute inset-0 pointer-events-none"
-             style={{ background: 'radial-gradient(ellipse at top right, var(--gold-15) 0%, transparent 70%)' }} />
-      )}
-      <div className="flex items-start justify-between mb-3">
-        <p className="text-xs font-medium uppercase tracking-widest"
-           style={{ color: accent ? 'color-mix(in srgb, var(--gold) 80%, transparent)' : 'var(--text-muted)' }}>
-          {label}
-        </p>
-        <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-             style={{ backgroundColor: accent ? 'var(--gold-15)' : 'var(--bg-elevated)' }}>
-          <Icon size={15} style={{ color: accent ? 'var(--gold)' : 'var(--text-secondary)' }} />
-        </div>
-      </div>
-      <p className="text-3xl font-bold tracking-tight"
-         style={{ color: accent ? 'var(--gold)' : 'var(--text-primary)' }}>
-        {typeof value === 'number' ? <CountUp value={value} delay={delay} /> : value}
-      </p>
-    </div>
-  );
-  return href ? <a href={href}>{inner}</a> : inner;
-}
+const STATUS_STYLE: Record<ItemStatus, { bg: string; text: string; label: string; icon: typeof AlertTriangle }> = {
+  overdue:    { bg: 'rgba(239,68,68,0.15)',  text: '#f87171', label: 'Overdue',   icon: AlertTriangle },
+  due_today:  { bg: 'rgba(249,115,22,0.15)', text: '#fb923c', label: 'Due Today', icon: Clock },
+  due_soon:   { bg: 'rgba(234,179,8,0.15)',  text: '#facc15', label: 'Due Soon',  icon: Clock },
+  upcoming:   { bg: 'rgba(90,86,82,0.3)',    text: '#9a9490', label: 'Upcoming',  icon: Clock },
+};
 
-function FeaturedStat({ label, value, sublabel, icon: Icon, href }: {
-  label: string; value: number; sublabel: string; icon: any; href: string;
-}) {
-  return (
-    <a
-      href={href}
-      className="group relative ss-animate-in rounded-2xl p-6 flex flex-col justify-between overflow-hidden transition-all hover:scale-[1.005] sm:col-span-2 sm:row-span-2"
-      style={{
-        backgroundColor: 'var(--gold-8)',
-        border: '1px solid var(--gold-30)',
-        boxShadow: 'var(--shadow-card)',
-        minHeight: '220px',
-      }}
-    >
-      <div className="absolute inset-0 pointer-events-none"
-           style={{ background: 'radial-gradient(ellipse at top right, var(--gold-15) 0%, transparent 70%)' }} />
-      <div className="flex items-start justify-between">
-        <p className="text-xs font-medium uppercase tracking-widest" style={{ color: 'color-mix(in srgb, var(--gold) 80%, transparent)' }}>
-          {label}
-        </p>
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--gold-15)' }}>
-          <Icon size={18} style={{ color: 'var(--gold)' }} />
-        </div>
-      </div>
-      <div>
-        <p className="text-6xl font-bold tracking-tight tabular-nums" style={{ color: 'var(--gold)' }}>
-          <CountUp value={value} />
-        </p>
-        <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>{sublabel}</p>
-      </div>
-    </a>
-  );
-}
+const TYPE_META: Record<string, { label: string; icon: typeof AlertTriangle }> = {
+  rfi:                  { label: 'RFI', icon: MessageSquare },
+  variation:            { label: 'Variation', icon: GitBranch },
+  payment_application:  { label: 'Payment Application', icon: DollarSign },
+  contract_risk:        { label: 'Risk', icon: ShieldAlert },
+  delivery_document:    { label: 'Delivery Document', icon: FileText },
+  programme_milestone:  { label: 'Milestone', icon: Milestone },
+};
 
-function SectionCard({ title, href, children }: { title: string; href: string; children: React.ReactNode }) {
-  return (
-    <Card className="overflow-hidden flex flex-col">
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <a href={href}
-           className="flex items-center gap-1 text-xs font-medium hover:opacity-80 transition-opacity"
-           style={{ color: 'var(--gold)' }}>
-          View all <ArrowRight size={11} />
-        </a>
-      </CardHeader>
-      <div className="flex-1 divide-y" style={{ '--tw-divide-opacity': 1, borderColor: 'var(--border)' } as any}>
-        {children}
-      </div>
-    </Card>
-  );
-}
-
-function getGreeting() {
-  const h = new Date().getHours();
-  if (h < 12) return 'morning';
-  if (h < 17) return 'afternoon';
-  return 'evening';
+function dayLabel(days: number): string {
+  if (days < 0) return `${Math.abs(days)}d overdue`;
+  if (days === 0) return 'Due today';
+  return `${days}d remaining`;
 }
 
 export default function AppDashboardPage() {
   const user = useAuthStore((s) => s.user);
+  const router = useRouter();
+  const formatCurrency = useCurrencyFormatter();
 
-  const { data, isLoading } = useQuery<DashboardStats>({
-    queryKey: ['dashboard'],
-    queryFn: () => api.get('/dashboard').then((r) => r.data),
+  const [urgencyFilter, setUrgencyFilter] = useState<'all' | ItemStatus>('all');
+  const [projectFilter, setProjectFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+
+  const { data, isLoading, isError, refetch } = useQuery<DashboardData>({
+    queryKey: ['dashboard-action-centre'],
+    queryFn: () => api.get('/dashboard/action-centre').then((r) => r.data),
   });
+
+  const items = useMemo(() => data?.needs_attention.items ?? [], [data]);
+
+  const projectOptions = useMemo(
+    () => Array.from(new Map(items.map(i => [i.project_id, i.project_name])).entries()),
+    [items]
+  );
+  const typeOptions = useMemo(
+    () => Array.from(new Set(items.map(i => i.type))),
+    [items]
+  );
+
+  const filteredItems = items.filter(i =>
+    (urgencyFilter === 'all' || i.status === urgencyFilter) &&
+    (projectFilter === 'all' || String(i.project_id) === projectFilter) &&
+    (typeFilter === 'all' || i.type === typeFilter)
+  );
+
+  const firstName = user?.name?.split(' ')[0] ?? 'there';
+  const totalUrgent = (data?.needs_attention.counts.overdue ?? 0) + (data?.needs_attention.counts.due_today ?? 0);
 
   if (isLoading) {
     return (
-      <div className="p-6 max-w-7xl mx-auto space-y-6">
-        <div className="h-8 w-64 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="h-[220px] rounded-2xl animate-pulse sm:col-span-2 sm:row-span-2" style={{ backgroundColor: 'var(--bg-surface)' }} />
+      <div className="p-6 max-w-6xl mx-auto space-y-6">
+        <div className="h-8 w-72 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+        <div className="space-y-3">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-28 rounded-2xl animate-pulse" style={{ backgroundColor: 'var(--bg-surface)' }} />
+            <div key={i} className="h-16 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+          ))}
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-20 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-surface)' }} />
           ))}
         </div>
       </div>
     );
   }
 
-  const stats = data?.stats;
-  const firstName = user?.name?.split(' ')[0] ?? 'there';
+  if (isError) {
+    return (
+      <div className="p-6 max-w-6xl mx-auto">
+        <div className="flex flex-col items-center justify-center py-16 gap-3 rounded-xl" style={{ border: '1px solid var(--border)' }}>
+          <AlertTriangle size={28} style={{ color: '#f87171' }} />
+          <p className="text-sm font-medium" style={{ color: '#f87171' }}>Could not load the organisation action centre</p>
+          <button
+            onClick={() => refetch()}
+            className="mt-1 px-3 py-1.5 rounded-lg text-xs font-medium active:scale-[0.98]"
+            style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-7">
+    <div className="p-6 max-w-6xl mx-auto space-y-8">
       {/* Header */}
-      <div className="flex items-start justify-between" data-tour="dashboard-header">
+      <div className="ss-animate-in flex items-start justify-between" data-tour="dashboard-header">
         <div>
           <div className="flex items-center gap-1.5">
-            <h1 className="text-[2rem] font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
-              Good {getGreeting()}, {firstName}
+            <h1 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+              Good day, {firstName}
             </h1>
             <PageTourButton tourKey="page-dashboard" label="Take a tour of this page" />
           </div>
-          <p className="mt-1.5 text-sm" style={{ color: 'var(--text-secondary)' }}>
-            Here's what needs attention across your projects today.
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+            {totalUrgent > 0
+              ? `${totalUrgent} item${totalUrgent === 1 ? '' : 's'} need${totalUrgent === 1 ? 's' : ''} attention across your organisation.`
+              : 'What requires attention across your organisation today.'}
           </p>
         </div>
-        <div
-          className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs"
-          style={{ backgroundColor: 'rgba(34,197,94,0.1)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.2)' }}
-        >
-          <Activity size={11} />
-          Live
-        </div>
       </div>
 
-      {/* Stats grid — one featured tile carries the visual weight, the rest support it */}
-      {stats && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4" data-tour="dashboard-stats">
-          <FeaturedStat
-            label="Active Projects"
-            value={stats.active_projects}
-            sublabel={`of ${stats.total_projects} total projects`}
-            icon={TrendingUp}
-            href="/app/projects"
-          />
-          <StatCard label="Open RFIs"          value={stats.open_rfis}            icon={AlertCircle}  href="/app/site"       index={0} />
-          <StatCard label="Pending Variations" value={stats.pending_variations}   icon={DollarSign}   href="/app/commercial" index={1} />
-          <StatCard label="Docs This Month"    value={stats.documents_this_month} icon={FileText}     href="/app/documents"  index={2} />
-          <StatCard label="Payment Apps"       value={stats.payment_apps_pending} icon={Clock}        accent href="/app/commercial" index={3} />
-        </div>
-      )}
-
-      <div className="grid lg:grid-cols-2 gap-5" data-tour="dashboard-recent">
-        {/* Recent Projects */}
-        <SectionCard title="Recent Projects" href="/app/projects">
-          {!data?.recent_projects?.length ? (
-            <EmptyState icon={FolderKanban} title="No projects yet" description="Projects you create will show up here." />
-          ) : data.recent_projects.map((p: any) => (
-            <a
-              key={p.id}
-              href={`/app/projects/${p.id}/overview`}
-              className="flex items-center justify-between px-5 py-3 hover:bg-[var(--bg-hover)] transition-colors"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
-                  style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}
-                >
-                  {p.name?.charAt(0).toUpperCase()}
+      {!data?.meta.has_projects ? (
+        <EmptyState
+          surface
+          icon={FolderKanban}
+          title="No projects yet"
+          description="Dashboard intelligence will appear here once projects are created."
+        />
+      ) : (
+        <>
+          {/* 1. Needs Attention */}
+          <section data-tour="dashboard-needs-attention">
+            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+              <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Needs Attention</h2>
+              {items.length > 0 && (
+                <div className="flex gap-2 flex-wrap">
+                  <Select aria-label="Filter by urgency" value={urgencyFilter} onChange={e => setUrgencyFilter(e.target.value as 'all' | ItemStatus)}
+                    className="text-xs py-1.5" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+                    <option value="all">All urgency</option>
+                    <option value="overdue">Overdue</option>
+                    <option value="due_today">Due Today</option>
+                    <option value="due_soon">Due Soon</option>
+                    <option value="upcoming">Upcoming</option>
+                  </Select>
+                  <Select aria-label="Filter by project" value={projectFilter} onChange={e => setProjectFilter(e.target.value)}
+                    className="text-xs py-1.5" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+                    <option value="all">All projects</option>
+                    {projectOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+                  </Select>
+                  <Select aria-label="Filter by record type" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
+                    className="text-xs py-1.5" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+                    <option value="all">All record types</option>
+                    {typeOptions.map(t => <option key={t} value={t}>{TYPE_META[t]?.label ?? t}</option>)}
+                  </Select>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{p.name}</p>
-                  <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
-                    {p.code || 'No code'} · {formatDate(p.created_at)}
-                  </p>
-                </div>
-              </div>
-              <Badge status={p.status} />
-            </a>
-          ))}
-        </SectionCard>
-
-        {/* Recent RFIs */}
-        <SectionCard title="Open RFIs" href="/app/site">
-          {!data?.recent_rfis?.length ? (
-            <EmptyState icon={Inbox} title="No open RFIs" description="Requests for information will show up here once raised." />
-          ) : data.recent_rfis.map((r: any) => (
-            <div key={r.id} className="flex items-center justify-between px-5 py-3">
-              <div className="min-w-0">
-                <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
-                  RFI #{r.rfi_number} – {r.subject}
-                </p>
-                <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
-                  {r.project?.name} · {formatDate(r.date_raised)}
-                </p>
-              </div>
-              <Badge status={r.status} />
+              )}
             </div>
-          ))}
-        </SectionCard>
-      </div>
+
+            {items.length === 0 ? (
+              <EmptyState surface icon={CheckCircle2} title="All caught up" description="No urgent actions across your projects." />
+            ) : filteredItems.length === 0 ? (
+              <EmptyState surface icon={Search} title="No items match the current filters" description="Try a different urgency, project, or record type filter." />
+            ) : (
+              <div className="space-y-2">
+                {filteredItems.map((item, i) => {
+                  const s = STATUS_STYLE[item.status];
+                  const t = TYPE_META[item.type] ?? { label: item.type, icon: FileText };
+                  const StatusIcon = s.icon;
+                  const TypeIcon = t.icon;
+                  return (
+                    <div
+                      key={`${item.type}-${item.project_id}-${item.source_id}-${i}`}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => router.push(item.action_url)}
+                      onKeyDown={e => e.key === 'Enter' && router.push(item.action_url)}
+                      className="ss-animate-in flex items-center gap-3 p-3.5 rounded-xl border cursor-pointer transition-all duration-200 hover:border-[var(--gold)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
+                      style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', animationDelay: staggerDelay(i) }}
+                    >
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: s.bg }}>
+                        <StatusIcon size={16} style={{ color: s.text }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <TypeIcon size={12} style={{ color: 'var(--text-muted)' }} />
+                          <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+                            {t.label}: {item.reference}
+                          </p>
+                          <span className="text-xs px-2 py-0.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.bg, color: s.text }}>
+                            {s.label}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                          <span className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{item.project_name}</span>
+                          <span className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{item.summary}</span>
+                          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{dayLabel(item.days)}</span>
+                          {item.amount !== null && item.currency && (
+                            <span className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>{formatCurrency(item.amount, item.currency)}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          {/* 2. Portfolio Health */}
+          <section data-tour="dashboard-portfolio-health">
+            <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>Portfolio Health</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {[
+                { label: 'Active Projects', value: data?.portfolio_health.active_projects ?? 0, color: 'var(--text-primary)' },
+                { label: 'Projects With Overdue Items', value: data?.portfolio_health.projects_with_overdue_items ?? 0, color: '#f87171' },
+                { label: 'Total Overdue Items', value: data?.portfolio_health.total_overdue_items ?? 0, color: '#f87171' },
+                { label: 'Items Due Soon', value: data?.portfolio_health.items_due_soon ?? 0, color: '#facc15' },
+              ].map((stat, i) => (
+                <div
+                  key={stat.label}
+                  className="ss-animate-in rounded-xl p-4 transition-shadow duration-200 hover:shadow-[var(--shadow-card)]"
+                  style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', animationDelay: staggerDelay(i) }}
+                >
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{stat.label}</p>
+                  <p className="text-2xl font-bold mt-1 tabular-nums" style={{ color: stat.color }}>{stat.value}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* 3. Commercial Snapshot */}
+          <section data-tour="dashboard-commercial-snapshot">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Commercial Snapshot</h2>
+              <a href={data?.commercial_snapshot.action_url ?? '/app/commercial'} className="flex items-center gap-1 text-xs font-medium hover:opacity-80" style={{ color: 'var(--gold)' }}>
+                Open Global Commercial <ArrowRight size={11} />
+              </a>
+            </div>
+            {(data?.commercial_snapshot.by_currency.length ?? 0) === 0 ? (
+              <EmptyState surface icon={DollarSign} title="No commercial data yet" description="Commercial figures will appear here once payment applications exist." />
+            ) : (
+              <div className="space-y-3">
+                {data!.commercial_snapshot.by_currency.map((block, i) => (
+                  <div key={block.currency} className="grid grid-cols-2 gap-3 ss-animate-in" style={{ animationDelay: staggerDelay(i) }}>
+                    <div className="rounded-xl p-3.5 transition-shadow duration-200 hover:shadow-[var(--shadow-card)]" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Outstanding {data!.commercial_snapshot.by_currency.length > 1 ? `(${block.currency})` : ''}</p>
+                      <p className="text-lg font-bold mt-1 tabular-nums" style={{ color: '#fb923c' }}>{formatCurrency(block.outstanding_total, block.currency)}</p>
+                    </div>
+                    <div className="rounded-xl p-3.5 transition-shadow duration-200 hover:shadow-[var(--shadow-card)]" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Retention Held {data!.commercial_snapshot.by_currency.length > 1 ? `(${block.currency})` : ''}</p>
+                      <p className="text-lg font-bold mt-1 tabular-nums" style={{ color: '#a78bfa' }}>{formatCurrency(block.retention_total, block.currency)}</p>
+                    </div>
+                  </div>
+                ))}
+                <div className="grid grid-cols-2 gap-3 ss-animate-in" style={{ animationDelay: staggerDelay(data!.commercial_snapshot.by_currency.length) }}>
+                  <div className="rounded-xl p-3.5" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Awaiting Certification</p>
+                    <p className="text-lg font-bold mt-1 tabular-nums" style={{ color: 'var(--text-primary)' }}>{data?.commercial_snapshot.awaiting_certification_count ?? 0}</p>
+                  </div>
+                  <div className="rounded-xl p-3.5" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Commercial Deadlines Due</p>
+                    <p className="text-lg font-bold mt-1 tabular-nums" style={{ color: 'var(--text-primary)' }}>{data?.commercial_snapshot.commercial_deadline_count ?? 0}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* 4. Recent Activity */}
+          {(data?.recent_activity.length ?? 0) > 0 && (
+            <section data-tour="dashboard-recent-activity">
+              <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>Recent Activity</h2>
+              <div className="rounded-xl divide-y ss-animate-in" style={{ border: '1px solid var(--border)', borderColor: 'var(--border)' }}>
+                {data!.recent_activity.map(activity => (
+                  <div key={activity.id} className="flex items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-[var(--bg-hover)]">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+                      <Activity size={13} style={{ color: 'var(--text-muted)' }} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm truncate" style={{ color: 'var(--text-primary)' }}>{activity.description}</p>
+                      <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
+                        {activity.project_name} · {activity.actor} · {new Date(activity.timestamp).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      )}
     </div>
   );
 }

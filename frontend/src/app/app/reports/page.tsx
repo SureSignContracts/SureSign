@@ -3,61 +3,298 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { BarChart2, TrendingUp, DollarSign, FileText, AlertCircle, Download, ChevronDown, ChevronUp } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { BarChart2, TrendingUp, DollarSign, FileText, AlertCircle, Download, ChevronDown, ChevronUp, FileDown, FileSpreadsheet, Loader2 } from 'lucide-react';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import Button from '@/components/ui/Button';
+import { staggerDelay } from '@/lib/motion';
 
-type CommercialRow = {
-  project_id: number;
-  project_name: string;
-  contract_value: number;
-  certified_to_date: number;
-  paid_to_date: number;
-  outstanding_balance: number;
-  retention_held: number;
-  approved_variations_value: number;
-  pending_variations_value: number;
+// ── Types (mirrors CommercialReportService::build()) ─────────────────────
+
+type ReportPeriodKey = 'today' | 'last_7_days' | 'this_month' | 'last_month' | 'quarter' | 'year' | 'custom';
+
+const PERIOD_OPTIONS: { key: ReportPeriodKey; label: string }[] = [
+  { key: 'today', label: 'Today' },
+  { key: 'last_7_days', label: 'Last 7 Days' },
+  { key: 'this_month', label: 'This Month' },
+  { key: 'last_month', label: 'Last Month' },
+  { key: 'quarter', label: 'Quarter' },
+  { key: 'year', label: 'Year' },
+  { key: 'custom', label: 'Custom Range' },
+];
+
+type ReportMetadata = {
+  report_type: string;
+  organisation: string;
+  period: { key: string; label: string; from: string; to: string };
+  generated_date: string;
+  generated_time: string;
+  effective_timezone: string;
+  generated_by: string;
+  currency_context: string;
 };
 
-function CommercialSummaryTable() {
+type CurrencySection = {
+  currency: string;
+  project_count: number;
+  financial_position: { certified_total: number; paid_total: number; outstanding_total: number };
+  retention_position: { retention_total: number };
+  commercial_pipeline: {
+    awaiting_submission: { count: number; value: number };
+    awaiting_certification: { count: number; value: number };
+    certified_unpaid: { count: number; value: number };
+  };
+  variation_position: { approved_variation_value: number; pending_variation_value: number };
+  narrative: string;
+};
+
+type ReportProjectRow = {
+  project_id: number;
+  project_name: string;
+  currency: string;
+  status: string;
+  contract_value: number;
+  certified: number;
+  paid: number;
+  outstanding: number;
+  retention: number;
+  approved_variation_value: number;
+  pending_variation_value: number;
+};
+
+type CommercialSummaryReportData = {
+  metadata: ReportMetadata;
+  currency_sections: CurrencySection[];
+  projects: ReportProjectRow[];
+};
+
+function downloadBlob(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
+  const a = window.document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function CommercialSummaryReport() {
   const formatCurrency = useCurrencyFormatter();
-  const { data, isLoading } = useQuery<{ data: CommercialRow[] }>({
-    queryKey: ['reports-commercial-summary'],
-    queryFn: () => api.get('/reports/commercial-summary').then(r => r.data),
+  const [period, setPeriod] = useState<ReportPeriodKey>('this_month');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
+  const [exporting, setExporting] = useState<'pdf' | 'excel' | null>(null);
+
+  const params = new URLSearchParams({ period });
+  if (period === 'custom' && customFrom && customTo) {
+    params.set('from', customFrom);
+    params.set('to', customTo);
+  }
+
+  const { data, isLoading, isError } = useQuery<CommercialSummaryReportData>({
+    queryKey: ['reports-commercial-summary-report', period, customFrom, customTo],
+    queryFn: () => api.get(`/reports/commercial-summary-report?${params.toString()}`).then(r => r.data),
+    enabled: period !== 'custom' || (!!customFrom && !!customTo),
   });
 
-  const rows = data?.data ?? [];
+  const handleExport = async (format: 'pdf' | 'excel') => {
+    setExporting(format);
+    try {
+      const res = await api.get(`/reports/commercial-summary-report/export/${format}?${params.toString()}`, { responseType: 'blob' });
+      downloadBlob(res.data, `commercial-summary-report.${format === 'pdf' ? 'pdf' : 'xlsx'}`);
+    } catch {
+      toast.error(`Failed to export ${format.toUpperCase()}`);
+    } finally {
+      setExporting(null);
+    }
+  };
 
   return (
-    <div className="rounded-xl overflow-hidden mt-3" style={{ border: '1px solid var(--border)' }}>
-      <table className="w-full text-sm">
-        <thead>
-          <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
-            {['Project', 'Contract Value', 'Certified', 'Paid', 'Outstanding', 'Retention Held', 'Approved Variations'].map(h => (
-              <th key={h} className="text-left px-3 py-2.5 text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {isLoading && (
-            <tr><td colSpan={7} className="text-center py-8 text-sm" style={{ color: 'var(--text-muted)' }}>Loading…</td></tr>
-          )}
-          {!isLoading && rows.length === 0 && (
-            <tr><td colSpan={7} className="text-center py-8 text-sm" style={{ color: 'var(--text-muted)' }}>No projects to report on.</td></tr>
-          )}
-          {rows.map(row => (
-            <tr key={row.project_id} style={{ borderBottom: '1px solid var(--border)' }}>
-              <td className="px-3 py-2.5 font-medium" style={{ color: 'var(--text-primary)' }}>{row.project_name}</td>
-              <td className="px-3 py-2.5 tabular-nums" style={{ color: 'var(--text-secondary)' }}>{formatCurrency(row.contract_value)}</td>
-              <td className="px-3 py-2.5 tabular-nums" style={{ color: 'var(--text-secondary)' }}>{formatCurrency(row.certified_to_date)}</td>
-              <td className="px-3 py-2.5 tabular-nums" style={{ color: 'var(--text-secondary)' }}>{formatCurrency(row.paid_to_date)}</td>
-              <td className="px-3 py-2.5 tabular-nums font-semibold" style={{ color: row.outstanding_balance > 0 ? '#fb923c' : 'var(--text-secondary)' }}>{formatCurrency(row.outstanding_balance)}</td>
-              <td className="px-3 py-2.5 tabular-nums" style={{ color: 'var(--text-secondary)' }}>{formatCurrency(row.retention_held)}</td>
-              <td className="px-3 py-2.5 tabular-nums" style={{ color: 'var(--text-secondary)' }}>{formatCurrency(row.approved_variations_value)}</td>
-            </tr>
+    <div className="mt-3 space-y-6">
+      {/* Period selector + export */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex gap-1 p-1 rounded-full w-fit flex-wrap" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+          {PERIOD_OPTIONS.map(opt => (
+            <button
+              key={opt.key}
+              onClick={() => setPeriod(opt.key)}
+              className="px-3 py-1.5 rounded-full text-xs font-medium transition-all active:scale-[0.97]"
+              style={period === opt.key ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' } : { color: 'var(--text-secondary)' }}
+            >
+              {opt.label}
+            </button>
           ))}
-        </tbody>
-      </table>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="secondary" size="sm" className="gap-1.5 transition-opacity" disabled={!data || exporting !== null} onClick={() => handleExport('pdf')}>
+            {exporting === 'pdf' ? <Loader2 size={12} className="animate-spin" /> : <FileDown size={12} />}
+            {exporting === 'pdf' ? 'Exporting…' : 'Export PDF'}
+          </Button>
+          <Button variant="secondary" size="sm" className="gap-1.5 transition-opacity" disabled={!data || exporting !== null} onClick={() => handleExport('excel')}>
+            {exporting === 'excel' ? <Loader2 size={12} className="animate-spin" /> : <FileSpreadsheet size={12} />}
+            {exporting === 'excel' ? 'Exporting…' : 'Export Excel'}
+          </Button>
+        </div>
+      </div>
+
+      {period === 'custom' && (
+        <div className="flex items-center gap-3">
+          <label className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            From <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)}
+              className="ml-1.5 px-2 py-1 rounded-lg text-xs" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
+          </label>
+          <label className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            To <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)}
+              className="ml-1.5 px-2 py-1 rounded-lg text-xs" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
+          </label>
+        </div>
+      )}
+
+      {isLoading && (
+        <div className="space-y-3">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-16 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+          ))}
+        </div>
+      )}
+
+      {isError && (
+        <div className="flex items-center justify-center py-6 rounded-xl" style={{ border: '1px solid var(--border)' }}>
+          <p className="text-sm" style={{ color: '#f87171' }}>Could not load the report. Please try again.</p>
+        </div>
+      )}
+
+      {!isLoading && !isError && data && (
+        <>
+          {/* Report metadata */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 rounded-xl p-4" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+            <MetaItem label="Organisation" value={data.metadata.organisation} />
+            <MetaItem label="Reporting Period" value={`${data.metadata.period.label} (${data.metadata.period.from} – ${data.metadata.period.to})`} />
+            <MetaItem label="Generated" value={`${data.metadata.generated_date} at ${data.metadata.generated_time}`} />
+            <MetaItem label="Effective Timezone" value={data.metadata.effective_timezone} />
+            <MetaItem label="Generated By" value={data.metadata.generated_by} />
+            <MetaItem label="Currency Context" value={data.metadata.currency_context} />
+            <MetaItem label="Report Type" value={data.metadata.report_type} />
+          </div>
+
+          {data.currency_sections.length === 0 && (
+            <div className="ss-animate-in rounded-2xl py-8 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No commercial data yet for this reporting period.</p>
+            </div>
+          )}
+
+          {data.currency_sections.map(section => (
+            <div key={section.currency} className="space-y-4">
+              <h3 className="text-sm font-semibold flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
+                Executive Summary
+                {data.currency_sections.length > 1 && (
+                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}>{section.currency}</span>
+                )}
+              </h3>
+              <p className="text-sm rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+                {section.narrative}
+              </p>
+
+              <div>
+                <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-muted)' }}>Financial Position</p>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  <StatTile label="Certified to Date" value={formatCurrency(section.financial_position.certified_total, section.currency)} color="#3b82f6" />
+                  <StatTile label="Paid to Date" value={formatCurrency(section.financial_position.paid_total, section.currency)} color="#10b981" />
+                  <StatTile label="Outstanding" value={formatCurrency(section.financial_position.outstanding_total, section.currency)} color="#fb923c" />
+                  <StatTile label="Retention Held" value={formatCurrency(section.retention_position.retention_total, section.currency)} color="#a78bfa" />
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-muted)' }}>Commercial Pipeline</p>
+                <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
+                        {['Status', 'Count', 'Value'].map(h => (
+                          <th key={h} className="text-left px-3 py-2 text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {([
+                        { label: 'Awaiting Submission', bucket: section.commercial_pipeline.awaiting_submission },
+                        { label: 'Awaiting Certification', bucket: section.commercial_pipeline.awaiting_certification },
+                        { label: 'Certified but Unpaid', bucket: section.commercial_pipeline.certified_unpaid },
+                      ]).map(({ label, bucket }) => (
+                        <tr key={label} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td className="px-3 py-2" style={{ color: 'var(--text-primary)' }}>{label}</td>
+                          <td className="px-3 py-2 tabular-nums" style={{ color: 'var(--text-secondary)' }}>{bucket.count}</td>
+                          <td className="px-3 py-2 tabular-nums" style={{ color: 'var(--text-secondary)' }}>{formatCurrency(bucket.value, section.currency)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-muted)' }}>Variation Position</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <StatTile label="Approved Variation Value" value={formatCurrency(section.variation_position.approved_variation_value, section.currency)} color="#4ade80" />
+                  <StatTile label="Pending Variation Value" value={formatCurrency(section.variation_position.pending_variation_value, section.currency)} color="#facc15" />
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {/* Per Project Summary */}
+          <div>
+            <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-muted)' }}>Per Project Summary</p>
+            <div className="rounded-xl overflow-x-auto" style={{ border: '1px solid var(--border)' }}>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
+                    {['Project', 'Contract Value', 'Certified', 'Paid', 'Outstanding', 'Retention', 'Approved Var.', 'Pending Var.', 'Status'].map(h => (
+                      <th key={h} className="text-left px-3 py-2.5 text-xs font-semibold whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.projects.length === 0 && (
+                    <tr><td colSpan={9} className="text-center py-8 text-sm" style={{ color: 'var(--text-muted)' }}>No projects to report on.</td></tr>
+                  )}
+                  {data.projects.map(row => (
+                    <tr key={row.project_id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td className="px-3 py-2.5 font-medium whitespace-nowrap" style={{ color: 'var(--text-primary)' }}>{row.project_name}</td>
+                      <td className="px-3 py-2.5 tabular-nums whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>{formatCurrency(row.contract_value, row.currency)}</td>
+                      <td className="px-3 py-2.5 tabular-nums whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>{formatCurrency(row.certified, row.currency)}</td>
+                      <td className="px-3 py-2.5 tabular-nums whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>{formatCurrency(row.paid, row.currency)}</td>
+                      <td className="px-3 py-2.5 tabular-nums font-semibold whitespace-nowrap" style={{ color: row.outstanding > 0 ? '#fb923c' : 'var(--text-secondary)' }}>{formatCurrency(row.outstanding, row.currency)}</td>
+                      <td className="px-3 py-2.5 tabular-nums whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>{formatCurrency(row.retention, row.currency)}</td>
+                      <td className="px-3 py-2.5 tabular-nums whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>{formatCurrency(row.approved_variation_value, row.currency)}</td>
+                      <td className="px-3 py-2.5 tabular-nums whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>{formatCurrency(row.pending_variation_value, row.currency)}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap capitalize" style={{ color: 'var(--text-muted)' }}>{row.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function MetaItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}</p>
+      <p className="text-xs font-semibold mt-0.5" style={{ color: 'var(--text-primary)' }}>{value}</p>
+    </div>
+  );
+}
+
+function StatTile({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div className="rounded-xl p-3.5 transition-shadow duration-200 hover:shadow-[var(--shadow-card)]" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}</p>
+      <p className="text-lg font-bold mt-1 tabular-nums" style={{ color }}>{value}</p>
     </div>
   );
 }
@@ -99,8 +336,8 @@ export default function AppReportsPage() {
         ].map((stat, i) => (
           <div
             key={stat.label}
-            className="rounded-xl p-4 ss-animate-in"
-            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: `${Math.min(i * 45, 360)}ms` }}
+            className="rounded-xl p-4 ss-animate-in transition-shadow duration-200 hover:shadow-[var(--shadow-pop)]"
+            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: staggerDelay(i) }}
           >
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{stat.label}</p>
             <p className="text-xl font-bold mt-1 tabular-nums" style={{ color: stat.color }}>{stat.value}</p>
@@ -133,8 +370,8 @@ export default function AppReportsPage() {
           {reportTypes.map((report, i) => (
             <div
               key={report.key}
-              className="ss-animate-in rounded-xl"
-              style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: `${Math.min(i * 45, 360)}ms` }}
+              className="ss-animate-in rounded-xl transition-shadow duration-200 hover:shadow-[var(--shadow-pop)]"
+              style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: staggerDelay(i) }}
             >
               <div className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-4">
@@ -171,7 +408,7 @@ export default function AppReportsPage() {
               </div>
               {report.key === 'commercial' && expanded === 'commercial' && (
                 <div className="px-4 pb-4">
-                  <CommercialSummaryTable />
+                  <CommercialSummaryReport />
                 </div>
               )}
             </div>

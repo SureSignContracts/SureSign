@@ -31,6 +31,12 @@ services:
     # is how it already behaved before this change — this override exists
     # only so a future Dockerfile-level USER doesn't silently break it.
     user: root
+    # prod's entrypoint.sh no longer auto-runs migrate/seed on every boot
+    # (production-readiness audit: a future multi-replica rolling deploy
+    # could otherwise race two concurrent `migrate --force` runs). Local dev
+    # has no such concern and wants the old always-migrate-and-seed
+    # convenience back — see entrypoint.sh's `dev` branch.
+    command: ["dev"]
     # !override replaces (not appends to) prod's `backend_storage` volume —
     # dev wants the host directory fully live, not the prod-only named volume.
     volumes: !override

@@ -15,12 +15,15 @@ view and download them.
 ## Where to find it
 
 - Project level: Project → **Documents**, with an **Uploaded Files** view and a
-  **Generated Documents** view.
-- Organisation-wide: **Documents** in the tenant workspace Workspace menu shows
-  your organisation's documents across all projects.
+  **Generated Documents** view. Uploading, folders, and generating documents
+  all happen here.
+- Organisation-wide: **Documents** in the tenant workspace Workspace menu is a
+  search and discovery page across every project you can access. See
+  [Global Documents](global-search.md).
 
 ## In this section
 
+- [Global Documents](global-search.md): organisation-wide search across all projects
 - [Uploading](uploading.md)
 - [Folders](folders.md)
 - [Previewing](previewing.md)

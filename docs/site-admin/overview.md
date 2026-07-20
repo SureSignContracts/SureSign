@@ -13,8 +13,13 @@ Diaries, Meeting Minutes, and EOTs (Extensions of Time).
 ## How to use it
 
 Select a tab (RFIs, Site Instructions, Site Diaries, Meeting Minutes, or
-EOTs) to see that record type across all your projects, then use the search
-box to narrow the list. Each entry shows which project it belongs to.
+EOTs) to see that record type across all your projects, along with a
+summary of counts by status. Use the search box to narrow the list, then
+select an entry to jump straight into that record inside its project.
+Each entry shows which project it belongs to.
+
+Site Admin is a browsing and monitoring surface only — records are still
+created and edited from within each project, exactly as before.
 
 ## Where these records also live
 

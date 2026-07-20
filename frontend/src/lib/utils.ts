@@ -2,15 +2,25 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { parseDateOnly } from './dateTime';
 import { useAuthStore } from '@/store/authStore';
+import { formatMoney } from './currency';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * @deprecated Prefer `useCurrencyFormatter()` (defaults to the platform
+ * currency when no code is passed, and stays in sync with settings). Kept
+ * here, delegating to lib/currency's formatMoney, only because ~15 existing
+ * call sites pass an explicit per-row currency and don't need the hook's
+ * platform-default behaviour — this is not a second implementation, just a
+ * thin compatibility alias so those call sites don't all need touching.
+ * Never re-add a raw `Intl.NumberFormat(locale, { style: 'currency' })` call
+ * here or anywhere else — see lib/currency.ts for why that renders the wrong
+ * symbol for USD/CAD/SGD/JPY.
+ */
 export function formatCurrency(amount: number | string, currency = 'GBP'): string {
-  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-  if (isNaN(num)) return '—';
-  return new Intl.NumberFormat('en-GB', { style: 'currency', currency }).format(num);
+  return formatMoney(amount, currency);
 }
 
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;

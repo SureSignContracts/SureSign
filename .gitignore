@@ -45,3 +45,11 @@ site/
 Thumbs.db
 *.swp
 *.swo
+
+# ──────────────────────────────────────────
+# ops/ generated output — local backups and diagnostics reports may contain
+# operational detail (table sizes, container names, log excerpts); never
+# committed. The directories themselves stay tracked via .gitkeep.
+# ──────────────────────────────────────────
+/backups/
+ops/reports/*.txt

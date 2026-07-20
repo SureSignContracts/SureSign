@@ -32,4 +32,18 @@ class Project extends Model {
     public function closeouts()          { return $this->hasMany(Closeout::class); }
     public function adjudicationCases()  { return $this->hasMany(AdjudicationCase::class); }
     public function documentRegister()   { return $this->hasMany(DocumentRegister::class); }
+
+    /**
+     * The project's authoritative currency code, following the full
+     * project -> organisation -> platform -> GBP hierarchy (CurrencyService).
+     * Use this everywhere a project's currency is displayed, grouped, or
+     * compared — `currency` (the raw column) is nullable and only holds an
+     * explicit per-project override, so reading it directly gives the wrong
+     * answer for any project that inherits. Eager-load `organization:id,currency`
+     * to avoid an N+1 query when resolving this across a collection.
+     */
+    public function getResolvedCurrencyAttribute(): string
+    {
+        return \App\Services\CurrencyService::resolveCode($this);
+    }
 }
