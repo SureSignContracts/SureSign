@@ -14,12 +14,14 @@ export default function SureSignLoader({
     >
       <div className="relative flex items-center justify-center">
         <div
-          className="absolute w-16 h-16 rounded-full border-2 animate-spin"
+          className="absolute w-16 h-16 rounded-full border-2 animate-spin motion-reduce:animate-none"
           style={{ borderColor: 'var(--border)', borderTopColor: 'var(--gold)' }}
         />
         <img
-          src="/logo_black/SureSign_BLOGO.png"
+          src="/logo_black/SureSign_BLOGO.webp"
           alt="SureSign"
+          width={32}
+          height={32}
           className="w-8 h-8 object-contain"
           style={{ filter: 'var(--logo-filter, none)' }}
         />

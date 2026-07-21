@@ -57,6 +57,7 @@ use App\Http\Controllers\Api\KnowledgeBaseController;
 use App\Http\Controllers\Api\SystemStatusController;
 use App\Http\Controllers\Api\PlatformAnnouncementController;
 use App\Http\Controllers\Api\TourMilestoneController;
+use App\Http\Controllers\Api\ApplicationMonitoringController;
 use App\Models\FileUpload;
 use Illuminate\Support\Facades\Route;
 
@@ -89,7 +90,7 @@ Route::post('/demo-requests', [DemoRequestController::class, 'store'])->middlewa
 // everything except the handful of routes named below while a forced
 // password change is pending. Order matters: an inactive/banned account is
 // blocked before the password-change gate is even considered.
-Route::middleware(['auth:sanctum', 'account.status', 'password.current'])->group(function () {
+Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.usage'])->group(function () {
 
     // Auth
     Route::prefix('auth')->group(function () {
@@ -423,6 +424,11 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current'])->group
         Route::post('users/{id}/set-password',         [UserController::class, 'setPassword']);
         Route::post('users/{id}/revoke-tokens',        [UserController::class, 'revokeTokens']);
         Route::post('users/{id}/reset-tours',          [UserController::class, 'resetTours']);
+
+        // Application Monitoring — cross-organization presence/usage/operational
+        // data. Super Admin only; deliberately not in the 'Super Admin|Admin'
+        // group below (see internal-docs/super-admin/application-monitoring.md).
+        Route::get('/admin/application-monitoring', [ApplicationMonitoringController::class, 'index']);
     });
 
     Route::middleware('role:Super Admin|Admin')->group(function () {

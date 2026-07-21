@@ -7,7 +7,7 @@ export default function NotFound() {
       style={{ backgroundColor: 'var(--bg-base)' }}
     >
       <img
-        src="/logo_black/SureSign_BLOGO.png"
+        src="/logo_black/SureSign_BLOGO.webp"
         alt="SureSign"
         className="w-9 h-9 object-contain"
         style={{ filter: 'var(--logo-filter, none)' }}

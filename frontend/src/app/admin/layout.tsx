@@ -4,25 +4,19 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Menu } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import { useAuthSplash } from '@/hooks/useAuthSplash';
 import AdminSidebar from '@/components/layout/AdminSidebar';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import SureSignLoader from '@/components/ui/SureSignLoader';
 import ForcePasswordChangeGate from '@/components/auth/ForcePasswordChangeGate';
 
-const MIN_SPLASH_MS = 1800;
-
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, token, _hasHydrated } = useAuthStore();
-  const [splashDone, setSplashDone] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
 
   const isSystemUser = user?.roles?.includes('Super Admin') || user?.roles?.includes('Admin');
-
-  useEffect(() => {
-    const t = setTimeout(() => setSplashDone(true), MIN_SPLASH_MS);
-    return () => clearTimeout(t);
-  }, []);
+  const showSplash = useAuthSplash(_hasHydrated && !!token && !!user);
 
   useEffect(() => {
     if (_hasHydrated) {
@@ -34,11 +28,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, [_hasHydrated, token, isSystemUser, router]);
 
-  if (!_hasHydrated || !token || !user || !splashDone) {
+  if (showSplash) {
     return <SureSignLoader />;
   }
 
-  if (!isSystemUser) {
+  // `user` is guaranteed non-null here since showSplash is false only once
+  // useAuthSplash's isReady (which includes !!user) has been true — this
+  // check is TypeScript narrowing, not new runtime behaviour.
+  if (!user || !isSystemUser) {
     return null;
   }
 

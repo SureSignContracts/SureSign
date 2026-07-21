@@ -255,6 +255,36 @@ Never `redis-cli FLUSHALL` / `FLUSHDB` to "fix" a rate limit — that also
 clears the application cache and scheduler locks for everything else,
 system-wide, not just the one throttle you're troubleshooting.
 
+### Application Monitoring troubleshooting
+
+Full feature write-up:
+[internal-docs/super-admin/application-monitoring.md](internal-docs/super-admin/application-monitoring.md).
+Quick checks:
+
+- **"Presence unavailable" / no online users showing, but users are clearly
+  active**: this means Redis, not the platform, is the problem. Confirm
+  Redis is up first (`docker exec suresign_redis redis-cli ping`) before
+  assuming a bug — the monitoring page is designed to degrade to
+  "unavailable" rather than fail the request, so this is expected behaviour
+  during a Redis outage, not a defect.
+- **Inspect presence keys directly**: `docker exec suresign_redis redis-cli
+  zrange monitoring:presence:index 0 -1 withscores` lists currently-tracked
+  user ids and their last-activity unix timestamps;
+  `redis-cli hgetall monitoring:presence:data` shows the denormalized
+  per-user payload (name/email/role/org/module — never tokens or IPs).
+- **Inspect daily module aggregates**: `SELECT * FROM module_usage_daily
+  WHERE usage_date = CURDATE() ORDER BY total_visits DESC;` — one row per
+  organization/module/day; there is no platform-wide row (see the doc for
+  why), so sum across organizations for a platform total.
+- **Confirm a monitoring failure isn't affecting the main application**:
+  `TrackApplicationUsage` and every Monitoring service method are
+  try/catch-wrapped and log via `Log::warning`, never let an exception
+  propagate — `docker logs suresign_backend | grep -i "UserPresenceService\|ModuleUsageService\|ApplicationMonitoringService"`
+  shows monitoring-specific failures distinctly from real request errors. If
+  ordinary pages are failing at the same time, the cause is not this
+  feature — monitoring failures are logged and swallowed, not surfaced as
+  user-facing errors.
+
 ---
 
 ## Logging
@@ -297,7 +327,7 @@ monitoring is set up.
 | Disk | `df -h` on the host; `docker system df` for Docker's own usage |
 | MySQL health | `suresign_mysql`'s own healthcheck (`mysqladmin ping`) already gates `depends_on` for every dependent service |
 | Redis health | `suresign_redis`'s own healthcheck (`redis-cli ping`) |
-| Queue depth / failed jobs | `docker exec suresign_queue php artisan queue:failed` (failed count); depth itself would need a `SELECT COUNT(*) FROM jobs` — no dashboard for this yet |
+| Queue depth / failed jobs, AI analysis status, document activity, module usage, DAU/WAU/MAU | Super Admin → Application Monitoring (`/admin/application-monitoring`) — see [internal-docs/super-admin/application-monitoring.md](internal-docs/super-admin/application-monitoring.md). This is application-level monitoring (who's using SureSign, what's slow/stuck inside it), not infrastructure monitoring — it does not replace anything else in this table |
 | Scheduler running | `suresign_scheduler`'s own healthcheck (`pgrep -f 'artisan schedule:work'`) |
 | Application readiness | `GET /readyz` (backend), `GET /login` (frontend) — both already used as Docker healthchecks, both externally curl-able too |
 | Storage usage | `docker exec suresign_backend du -sh storage/app` (the `backend_storage` volume) |

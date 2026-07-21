@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
+import { useAuthSplash } from '@/hooks/useAuthSplash';
 import { useQuery } from '@tanstack/react-query';
 import AppSidebar from '@/components/layout/AppSidebar';
 import MobileTopBar from '@/components/layout/MobileTopBar';
@@ -23,22 +24,11 @@ function isLightColor(hex: string): boolean {
   return (r * 299 + g * 587 + b * 114) / 1000 > 128;
 }
 
-const MIN_SPLASH_MS = 1800;
-
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, token, _hasHydrated } = useAuthStore();
-  // Skip splash if we already have a token in localStorage (returning user / new tab)
-  const alreadyAuthed = typeof window !== 'undefined' && !!localStorage.getItem('suresign_token');
-  const [splashDone, setSplashDone] = useState(alreadyAuthed);
   const [navOpen, setNavOpen] = useState(false);
-
-  useEffect(() => {
-    if (alreadyAuthed) return; // skip timer — already showing app
-    const t = setTimeout(() => setSplashDone(true), MIN_SPLASH_MS);
-    return () => clearTimeout(t);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch branding to apply client-specific accent colour
   const { data: branding, isFetched: brandingFetched } = useQuery({
@@ -94,7 +84,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // otherwise --gold briefly renders at its CSS default (SureSign's own
   // colour) before the org's custom accent colour effect gets a chance to
   // run, flashing on every hard reload for orgs with custom branding.
-  if (!_hasHydrated || !token || !user || !splashDone || !brandingFetched) {
+  // brandingFetched flips true on either success or failure (React Query's
+  // isFetched), so a slow/failing branding request delays the splash but
+  // never blocks it indefinitely.
+  const showSplash = useAuthSplash(_hasHydrated && !!token && !!user && brandingFetched);
+  // `user` is guaranteed non-null here since showSplash is false only once
+  // isReady (which includes !!user) has been true — TypeScript narrowing,
+  // not new runtime behaviour.
+  if (showSplash || !user) {
     return <SureSignLoader />;
   }
 

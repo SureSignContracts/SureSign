@@ -113,7 +113,7 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div className="relative z-10 flex items-center gap-3 ss-animate-in">
-          <img src="/logo_white/SureSign_WLOGO.png" alt="SureSign" className="w-8 h-8 object-contain flex-shrink-0" />
+          <img src="/logo_white/SureSign_WLOGO.webp" alt="SureSign" className="w-8 h-8 object-contain flex-shrink-0" />
           <span className="text-base font-semibold tracking-tight" style={{ color: '#f5f5f5' }}>SureSign</span>
         </div>
 
@@ -226,7 +226,7 @@ export default function LoginPage() {
 
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-3 ss-animate-in">
-            <img src="/logo_black/SureSign_BLOGO.png" alt="SureSign" className="w-8 h-8 object-contain" />
+            <img src="/logo_black/SureSign_BLOGO.webp" alt="SureSign" className="w-8 h-8 object-contain" />
             <span className="text-lg font-semibold tracking-tight" style={{ color: '#0f0f0f' }}>SureSign</span>
           </div>
 

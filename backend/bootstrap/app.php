@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission'        => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'account.status'    => \App\Http\Middleware\EnsureAccountIsActive::class,
             'password.current'  => \App\Http\Middleware\EnsurePasswordIsCurrent::class,
+            'track.usage'       => \App\Http\Middleware\TrackApplicationUsage::class,
         ]);
 
         // The app is only ever reached through the nginx container (which sets

@@ -798,6 +798,7 @@ export default function AdminSureSignPage() {
                 // Super Admin-only pages — only show to Super Admins
                 { key: 'billing',           label: 'Billing',        superAdminOnly: true },
                 { key: 'ai-configurations', label: 'AI Config',      superAdminOnly: true },
+                { key: 'application-monitoring', label: 'Application Monitoring', superAdminOnly: true },
                 { key: 'storage',           label: 'Storage',        superAdminOnly: true },
                 { key: 'support',           label: 'Support',        superAdminOnly: true },
                 { key: 'system-logs',       label: 'System Logs',    superAdminOnly: true },

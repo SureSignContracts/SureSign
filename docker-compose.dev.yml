@@ -37,6 +37,15 @@ services:
     # has no such concern and wants the old always-migrate-and-seed
     # convenience back — see entrypoint.sh's `dev` branch.
     command: ["dev"]
+    # Prod deliberately does NOT publish this port (see docker-compose.prod.yml
+    # — nginx reaches backend:8000 over the internal Docker network only, and
+    # publishing it there would bypass nginx's trusted-proxy IP handling).
+    # That concern doesn't apply to a developer's own machine, and the
+    # frontend's NEXT_PUBLIC_API_URL below points directly at localhost:8000
+    # (not through nginx), so local dev needs it published — dev-only, never
+    # merged into prod.
+    ports:
+      - "8000:8000"
     # !override replaces (not appends to) prod's `backend_storage` volume —
     # dev wants the host directory fully live, not the prod-only named volume.
     volumes: !override

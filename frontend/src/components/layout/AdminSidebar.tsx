@@ -14,7 +14,7 @@ import api from '@/lib/api';
 import {
   LayoutDashboard, Building2, FolderKanban, FileText, LayoutTemplate,
   Brain, HardDrive, CreditCard, Users, LifeBuoy, ScrollText, ClipboardList,
-  Settings, LogOut, Sun, Moon, Gem, BookOpen, Search, Megaphone,
+  Settings, LogOut, Sun, Moon, Gem, BookOpen, Search, Megaphone, Activity,
   PanelLeftClose, PanelLeftOpen, ChevronRight,
 } from 'lucide-react';
 import { APP_VERSION_LABEL } from '@/config/app-version';
@@ -52,6 +52,7 @@ const NAV_GROUPS = [
     superAdminOnly: true,
     items: [
       { href: '/admin/ai-configurations', label: 'AI Config',   icon: Brain,         pageKey: 'ai-configurations', superAdminOnly: true },
+      { href: '/admin/application-monitoring', label: 'Application Monitoring', icon: Activity, pageKey: 'application-monitoring', superAdminOnly: true },
       { href: '/admin/storage',           label: 'Storage',     icon: HardDrive,     pageKey: 'storage',           superAdminOnly: true },
       { href: '/admin/support',           label: 'Support',     icon: LifeBuoy,      pageKey: 'support',           superAdminOnly: true },
       { href: '/admin/announcements',     label: 'Announcements', icon: Megaphone,   pageKey: 'announcements',     superAdminOnly: true },
@@ -534,7 +535,7 @@ export default function AdminSidebar({
           /* Collapsed: icon perfectly centred */
           <div className="w-full flex items-center justify-center">
             <img
-              src={theme === 'dark' ? '/logo_white/SureSign_WLOGO.png' : '/logo_black/SureSign_BLOGO.png'}
+              src={theme === 'dark' ? '/logo_white/SureSign_WLOGO.webp' : '/logo_black/SureSign_BLOGO.webp'}
               alt="SureSign"
               style={{ width: '36px', height: '36px', objectFit: 'contain' }}
             />
@@ -543,7 +544,7 @@ export default function AdminSidebar({
           /* Expanded: logo + wordmark + collapse button — logo nudged to sit over the nav icon column */
           <div className="w-full flex items-center gap-2.5 pl-[14px] pr-3">
             <img
-              src={theme === 'dark' ? '/logo_white/SureSign_WLOGO.png' : '/logo_black/SureSign_BLOGO.png'}
+              src={theme === 'dark' ? '/logo_white/SureSign_WLOGO.webp' : '/logo_black/SureSign_BLOGO.webp'}
               alt="SureSign"
               style={{ width: '36px', height: '36px', objectFit: 'contain', flexShrink: 0 }}
             />

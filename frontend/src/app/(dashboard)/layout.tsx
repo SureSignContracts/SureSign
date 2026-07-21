@@ -1,24 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
+import { useAuthSplash } from '@/hooks/useAuthSplash';
 import Sidebar from '@/components/layout/Sidebar';
 import SureSignLoader from '@/components/ui/SureSignLoader';
-
-const MIN_SPLASH_MS = 1800;
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, token, _hasHydrated } = useAuthStore();
-  const alreadyAuthed = typeof window !== 'undefined' && !!localStorage.getItem('suresign_token');
-  const [splashDone, setSplashDone] = useState(alreadyAuthed);
-
-  useEffect(() => {
-    if (alreadyAuthed) return;
-    const t = setTimeout(() => setSplashDone(true), MIN_SPLASH_MS);
-    return () => clearTimeout(t);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const showSplash = useAuthSplash(_hasHydrated && !!token && !!user);
 
   useEffect(() => {
     if (_hasHydrated && !token) {
@@ -26,7 +18,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [_hasHydrated, token, router]);
 
-  if (!_hasHydrated || !token || !user || !splashDone) {
+  if (showSplash) {
     return <SureSignLoader />;
   }
 
