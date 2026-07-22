@@ -129,6 +129,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             PromptCategorySeeder::class,
             PromptTemplateSeeder::class,
+            AppointmentTypeSeeder::class,
         ]);
     }
 }

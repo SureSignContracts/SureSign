@@ -36,3 +36,15 @@ Schedule::command('calendar:sync')
     ->hourly()
     ->withoutOverlapping()
     ->runInBackground();
+
+// Appointments Phase 4 — every 15 minutes so a "1 hour before" reminder has
+// reasonable precision. Deliberately NOT tied to exact wall-clock slices:
+// "due" is `now() >= appointment.starts_at - offset`, so a late-running
+// tick just catches up on the next run rather than missing a gap — see
+// App\Console\Commands\SendAppointmentReminders for the full reasoning.
+// The appointment_reminder_sends unique constraint is the actual
+// duplicate-send guarantee, not this cadence.
+Schedule::command('suresign:send-appointment-reminders')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->runInBackground();

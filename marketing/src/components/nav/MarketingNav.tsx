@@ -109,7 +109,7 @@ export function MarketingNav() {
           </a>
           <ThemeToggle />
           <Link
-            href="/book-a-demo"
+            href="/book/demo?src=nav"
             className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg shadow-[var(--shadow-card)] transition-all duration-200 hover:shadow-[var(--shadow-pop)] active:translate-y-px"
           >
             Book a Demo
@@ -152,7 +152,7 @@ export function MarketingNav() {
               Log In
             </a>
             <Link
-              href="/book-a-demo"
+              href="/book/demo?src=nav"
               className="rounded-full bg-accent px-5 py-2.5 text-center text-sm font-medium text-accent-fg"
               onClick={() => setOpen(false)}
             >

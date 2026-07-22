@@ -24,6 +24,16 @@ powers reserved for Super Admin.
 - View and manage **support tickets** (`role:Super Admin|Admin` on the backend
   — see [Support Ticket Administration](../super-admin/support-and-announcements.md)),
   and manage the platform **announcement banner** the same way.
+- Create and manage **Appointments** — always assigned to themselves (Admin
+  cannot leave an appointment unassigned or assign one to someone else, and
+  can view but not manage a Super-Admin-created unassigned appointment);
+  unlike Support/Announcements above, this is enforced inside the
+  controller itself, not just at the route level. Admin can view the list
+  of Appointment Types but cannot create, edit, or delete one — that's
+  Super Admin only. Admin can view and manage **only their own** weekly
+  availability, date overrides, and blocked periods, and cannot use the
+  Super-Admin-only scheduling override. See
+  [Appointments & Scheduling](../super-admin/appointments.md).
 
 !!! note "Sidebar visibility vs. actual access — verified 2026-07-19"
     Support and Announcements are marked "Super Admin only" in the Admin

@@ -112,6 +112,16 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinutes(15, 5)->by($request->ip());
         });
 
+        // Public Appointments booking (Phase 3, no auth) — same per-IP-only
+        // rationale as demo-request above. Reads (type info, slot lookups as
+        // a visitor browses dates) get a looser limit than the write.
+        RateLimiter::for('public-booking-read', function (Request $request) {
+            return Limit::perMinutes(15, 30)->by($request->ip());
+        });
+        RateLimiter::for('public-booking', function (Request $request) {
+            return Limit::perMinutes(15, 5)->by($request->ip());
+        });
+
         // Forced password change — authenticated-only endpoint, so the risk is
         // limited to a compromised session hammering the endpoint rather than
         // credential guessing. A loose per-user limit avoids nuisance-blocking

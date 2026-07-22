@@ -106,7 +106,13 @@ class EmailNotificationService
      * aren't tied to an organization event or the notification_settings
      * toggle list that send() gates on.
      */
-    public static function sendDirect(string $toEmail, string $subject, string $bodyText): bool
+    /**
+     * $attachments (optional): array of ['name' => string, 'content' => raw
+     * (non-base64) bytes] — base64-encoded here, at the boundary, so every
+     * caller passes plain content and never has to know Brevo's wire format.
+     * Existing callers passing no third argument are entirely unaffected.
+     */
+    public static function sendDirect(string $toEmail, string $subject, string $bodyText, array $attachments = []): bool
     {
         try {
             $settings = SuresignSetting::instance();
@@ -119,11 +125,7 @@ class EmailNotificationService
             $bodyHtml = nl2br(e($bodyText));
             $html     = self::buildHtml($settings, $subject, $bodyHtml);
 
-            $response = Http::withHeaders([
-                'api-key'      => $settings->brevo_api_key,
-                'Content-Type' => 'application/json',
-                'Accept'       => 'application/json',
-            ])->post('https://api.brevo.com/v3/smtp/email', [
+            $payload = [
                 'sender'      => [
                     'name'  => $settings->email_sender_name ?: 'SureSign Contracts',
                     'email' => $settings->email_sender_email ?: ($settings->email_reply_to ?: 'noreply@suresign.io'),
@@ -132,7 +134,20 @@ class EmailNotificationService
                 'replyTo'     => ['email' => $settings->email_reply_to ?: ($settings->email_sender_email ?: 'noreply@suresign.io')],
                 'subject'     => $subject,
                 'htmlContent' => $html,
-            ]);
+            ];
+
+            if (!empty($attachments)) {
+                $payload['attachment'] = array_map(
+                    fn (array $a) => ['name' => $a['name'], 'content' => base64_encode($a['content'])],
+                    $attachments,
+                );
+            }
+
+            $response = Http::withHeaders([
+                'api-key'      => $settings->brevo_api_key,
+                'Content-Type' => 'application/json',
+                'Accept'       => 'application/json',
+            ])->post('https://api.brevo.com/v3/smtp/email', $payload);
 
             if (!$response->successful()) {
                 Log::warning("EmailNotificationService::sendDirect: Brevo returned {$response->status()} for '{$subject}' to {$toEmail}", [

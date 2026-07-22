@@ -31,6 +31,14 @@ Admin can perform:
   the public User Guide's "AI in SureSign" section).
 - View **Storage**, **System Logs**, and the **Audit Log**.
 - Access **Support** tools.
+- Manage **Appointment Types** and view/manage every **Appointment**
+  regardless of who it's assigned to, including leaving one unassigned;
+  view and manage **any eligible staff member's** weekly availability, date
+  overrides, and blocked periods (not just their own); and use the
+  scheduling override (with a required reason) to bypass availability
+  validation for a manually created/rescheduled/assigned appointment — never
+  same-staff overlap, which stays enforced regardless (see
+  [Appointments & Scheduling](../super-admin/appointments.md)).
 
 ## Safeguards that protect the platform
 

@@ -58,6 +58,11 @@ use App\Http\Controllers\Api\SystemStatusController;
 use App\Http\Controllers\Api\PlatformAnnouncementController;
 use App\Http\Controllers\Api\TourMilestoneController;
 use App\Http\Controllers\Api\ApplicationMonitoringController;
+use App\Http\Controllers\Api\AppointmentAvailabilityController;
+use App\Http\Controllers\Api\AppointmentController;
+use App\Http\Controllers\Api\AppointmentTypeController;
+use App\Http\Controllers\Api\PublicAppointmentActionController;
+use App\Http\Controllers\Api\PublicAppointmentController;
 use App\Models\FileUpload;
 use Illuminate\Support\Facades\Route;
 
@@ -82,7 +87,52 @@ Route::prefix('auth')->group(function () {
 Route::get('/guest-settings', [SuresignSettingController::class, 'guestShow']);
 
 // Public marketing-site lead capture (suresigncontracts.app/book-a-demo) — no auth.
+// Superseded by the public Appointments booking flow below (Phase 3) for
+// the marketing site's own CTA, but left in place/unused rather than
+// removed — see internal-docs/super-admin/appointments.md.
 Route::post('/demo-requests', [DemoRequestController::class, 'store'])->middleware('throttle:demo-request');
+
+// Public Appointments booking (suresigncontracts.app/book/{slug}) — no
+// auth. Only Appointment Types with is_public=true and is_active=true are
+// ever exposed; every field is treated as untrusted input server-side.
+Route::prefix('public')->middleware('throttle:public-booking-read')->group(function () {
+    Route::get('/appointment-types/{slug}', [PublicAppointmentController::class, 'showType']);
+    Route::get('/appointment-types/{slug}/slots', [PublicAppointmentController::class, 'slots']);
+    Route::get('/appointment-types/{slug}/availability', [PublicAppointmentController::class, 'availability']);
+});
+Route::post('/public/appointment-types/{slug}/book', [PublicAppointmentController::class, 'store'])
+    ->middleware('throttle:public-booking');
+
+// Signed public appointment actions (Phase 4) — cancel/reschedule links
+// sent in appointment emails. GET (show confirmation details) and POST
+// (perform the action) share the same signed URL — Laravel's `signed`
+// middleware validates the URL, not the HTTP verb, so one link a visitor
+// clicks serves both requests the marketing confirmation page makes.
+Route::middleware(['signed', 'throttle:public-booking-read'])->group(function () {
+    Route::get('/public/appointments/{token}/cancel', [PublicAppointmentActionController::class, 'showCancel'])->name('public.appointments.cancel');
+    Route::get('/public/appointments/{token}/reschedule', [PublicAppointmentActionController::class, 'showReschedule'])->name('public.appointments.reschedule');
+});
+Route::middleware(['signed', 'throttle:public-booking'])->group(function () {
+    Route::post('/public/appointments/{token}/cancel', [PublicAppointmentActionController::class, 'cancel']);
+    Route::post('/public/appointments/{token}/reschedule', [PublicAppointmentActionController::class, 'reschedule']);
+});
+// Signed via `signed:date,timezone` — Laravel validates the full signature
+// except the `date`/`timezone` keys, which are excluded from the hash on
+// both generation and validation (Laravel's own built-in mechanism for a
+// signed URL that must tolerate legitimately-varying parameters, the same
+// feature intended for stripping third-party tracking params like
+// `fbclid`). The frontend takes the base signed URL (no date/timezone)
+// from showReschedule()'s response and appends `&date=...&timezone=...`
+// freely as the visitor browses — no per-date/per-timezone signature
+// needed, and the endpoint is never unsigned. `timezone` only affects
+// which timezone returned slot labels are displayed in (see
+// AppointmentSchedulingService::generateAvailableSlots()) — it never
+// changes what's actually bookable, so excluding it from the signature
+// carries the same "purely a varying, non-security-relevant parameter"
+// justification as `date` already had.
+Route::get('/public/appointments/{token}/reschedule/slots', [PublicAppointmentActionController::class, 'rescheduleSlots'])
+    ->middleware(['signed:date,timezone', 'throttle:public-booking-read'])
+    ->name('public.appointments.reschedule.slots');
 
 // Authenticated routes — account.status re-checks is_active/banned_at on
 // every request (auth:sanctum only proves the token was valid at issuance,
@@ -434,6 +484,55 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
     Route::middleware('role:Super Admin|Admin')->group(function () {
         Route::apiResource('organizations', OrganizationController::class)->except(['show', 'update']);
 
+        // Appointments & Scheduling — Phase 1 (Foundation). Index/show +
+        // ordinary CRUD are open to both roles (finer-grained view/manage
+        // rules are enforced inside AppointmentController); Appointment
+        // Type mutation is Super-Admin-only (enforced inside
+        // AppointmentTypeController) per the approved architecture.
+        Route::apiResource('appointment-types', AppointmentTypeController::class);
+
+        // Registered before the apiResource below so this literal path
+        // ("check-availability") isn't swallowed by the {appointment}
+        // route-model-binding wildcard.
+        Route::post('/appointments/check-availability', [AppointmentController::class, 'checkAvailability']);
+        Route::apiResource('appointments', AppointmentController::class);
+        Route::post('/appointments/{appointment}/assign',    [AppointmentController::class, 'assign']);
+        Route::post('/appointments/{appointment}/reschedule', [AppointmentController::class, 'reschedule']);
+        Route::post('/appointments/{appointment}/confirm',   [AppointmentController::class, 'confirm']);
+        Route::post('/appointments/{appointment}/decline',   [AppointmentController::class, 'decline']);
+        Route::post('/appointments/{appointment}/cancel',    [AppointmentController::class, 'cancel']);
+        Route::post('/appointments/{appointment}/complete',  [AppointmentController::class, 'complete']);
+        Route::post('/appointments/{appointment}/no-show',   [AppointmentController::class, 'noShow']);
+
+        // Appointment Availability — Phase 2. "/me" routes MUST be
+        // registered before their "/{user}" counterparts, or the literal
+        // segment "me" gets swallowed by the {user} route-model-binding
+        // wildcard (the same collision risk as check-availability above).
+        // Both variants share the same controller actions — $user is
+        // simply null on the "/me" routes, and the controller resolves
+        // that to the acting user itself.
+        Route::get('/appointment-availability/me',                       [AppointmentAvailabilityController::class, 'showWeekly']);
+        Route::put('/appointment-availability/me',                       [AppointmentAvailabilityController::class, 'updateWeekly']);
+        Route::get('/appointment-availability/me/overrides',              [AppointmentAvailabilityController::class, 'indexOverrides']);
+        Route::post('/appointment-availability/me/overrides',             [AppointmentAvailabilityController::class, 'storeOverride']);
+        Route::put('/appointment-availability/me/overrides/{override}',   [AppointmentAvailabilityController::class, 'updateOverride']);
+        Route::delete('/appointment-availability/me/overrides/{override}', [AppointmentAvailabilityController::class, 'destroyOverride']);
+        Route::get('/appointment-availability/me/blocked-periods',                    [AppointmentAvailabilityController::class, 'indexBlockedPeriods']);
+        Route::post('/appointment-availability/me/blocked-periods',                   [AppointmentAvailabilityController::class, 'storeBlockedPeriod']);
+        Route::put('/appointment-availability/me/blocked-periods/{blockedPeriod}',    [AppointmentAvailabilityController::class, 'updateBlockedPeriod']);
+        Route::delete('/appointment-availability/me/blocked-periods/{blockedPeriod}', [AppointmentAvailabilityController::class, 'destroyBlockedPeriod']);
+
+        Route::get('/appointment-availability/{user}',                       [AppointmentAvailabilityController::class, 'showWeekly']);
+        Route::put('/appointment-availability/{user}',                       [AppointmentAvailabilityController::class, 'updateWeekly']);
+        Route::get('/appointment-availability/{user}/overrides',              [AppointmentAvailabilityController::class, 'indexOverrides']);
+        Route::post('/appointment-availability/{user}/overrides',             [AppointmentAvailabilityController::class, 'storeOverride']);
+        Route::put('/appointment-availability/{user}/overrides/{override}',   [AppointmentAvailabilityController::class, 'updateOverride']);
+        Route::delete('/appointment-availability/{user}/overrides/{override}', [AppointmentAvailabilityController::class, 'destroyOverride']);
+        Route::get('/appointment-availability/{user}/blocked-periods',                    [AppointmentAvailabilityController::class, 'indexBlockedPeriods']);
+        Route::post('/appointment-availability/{user}/blocked-periods',                   [AppointmentAvailabilityController::class, 'storeBlockedPeriod']);
+        Route::put('/appointment-availability/{user}/blocked-periods/{blockedPeriod}',    [AppointmentAvailabilityController::class, 'updateBlockedPeriod']);
+        Route::delete('/appointment-availability/{user}/blocked-periods/{blockedPeriod}', [AppointmentAvailabilityController::class, 'destroyBlockedPeriod']);
+
         // Super Admin dashboard & management
         Route::prefix('admin')->group(function () {
             Route::get('/dashboard', [AdminController::class, 'dashboard']);
@@ -491,6 +590,7 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
             Route::post('/suresign-settings/test-email',             [SuresignSettingController::class, 'testEmail']);
             Route::put('/suresign-settings/ai',                      [SuresignSettingController::class, 'updateAi']);
             Route::put('/suresign-settings/notifications',           [SuresignSettingController::class, 'updateNotifications']);
+            Route::put('/suresign-settings/appointments',            [SuresignSettingController::class, 'updateAppointments']);
 
             // Prompt Library
             Route::prefix('prompts')->group(function () {

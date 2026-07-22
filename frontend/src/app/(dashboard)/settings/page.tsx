@@ -7,7 +7,7 @@ import Link from 'next/link';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import PasswordStrengthChecker, { checkPassword, isPasswordValid } from '@/components/ui/PasswordStrengthChecker';
-import { getIanaTimezones } from '@/lib/timezones';
+import TimezoneSelect from '@/components/shared/TimezoneSelect';
 import { SUPPORTED_CURRENCIES, currencyLabel } from '@/lib/currency';
 import { useAuthStore } from '@/store/authStore';
 
@@ -37,22 +37,6 @@ interface BrandingData {
   // default). `effective_currency` is what actually applies right now.
   currency: string | null;
   effective_currency: string;
-}
-
-function TimezoneSelect({ value, onChange, id }: { value: string; onChange: (v: string) => void; id?: string }) {
-  const timezones = getIanaTimezones();
-  return (
-    <select
-      id={id}
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-      style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-    >
-      {!timezones.includes(value) && value && <option value={value}>{value}</option>}
-      {timezones.map(tz => <option key={tz} value={tz}>{tz}</option>)}
-    </select>
-  );
 }
 
 function Field({

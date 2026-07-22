@@ -42,6 +42,14 @@ class SuresignSetting extends Model
         'feature_document_generation',
         'feature_white_label',
         'feature_self_registration',
+        'appointment_reminders_enabled',
+        'appointment_reminder_offsets_minutes',
+        'appointment_cancel_link_ttl_hours',
+        'appointment_reschedule_link_ttl_hours',
+        'appointment_cancellation_cutoff_hours',
+        'appointment_reschedule_cutoff_hours',
+        'appointment_ics_enabled',
+        'appointment_default_meeting_instructions',
     ];
 
     protected $casts = [
@@ -54,7 +62,16 @@ class SuresignSetting extends Model
         'feature_document_generation'  => 'boolean',
         'feature_white_label'          => 'boolean',
         'feature_self_registration'    => 'boolean',
+        'appointment_reminders_enabled'         => 'boolean',
+        'appointment_reminder_offsets_minutes'  => 'array',
+        'appointment_ics_enabled'               => 'boolean',
     ];
+
+    /**
+     * [1440, 60] (24h + 1h before) — used whenever the platform-wide
+     * appointment_reminder_offsets_minutes column is null (unset).
+     */
+    public const DEFAULT_APPOINTMENT_REMINDER_OFFSETS_MINUTES = [1440, 60];
 
     // ─── Accessors — return public URLs ──────────────────────────────────────
 

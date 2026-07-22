@@ -477,6 +477,30 @@ class SuresignSettingController extends Controller
         return response()->json(['message' => 'Notification settings saved.']);
     }
 
+    // ─── PUT /admin/suresign-settings/appointments ─────────────────────────────
+
+    public function updateAppointments(Request $request)
+    {
+        $validated = $request->validate([
+            'appointment_reminders_enabled'            => 'nullable|boolean',
+            // Bounded, unique, ascending-or-not integer list — e.g. [1440, 60]
+            // for 24h + 1h before. Capped at 5 entries and a 7-day (10080 min)
+            // ceiling so this can't be turned into an unbounded spam vector.
+            'appointment_reminder_offsets_minutes'      => 'nullable|array|max:5',
+            'appointment_reminder_offsets_minutes.*'    => 'integer|min:5|max:10080|distinct',
+            'appointment_cancel_link_ttl_hours'         => 'nullable|integer|min:1|max:8760',
+            'appointment_reschedule_link_ttl_hours'     => 'nullable|integer|min:1|max:8760',
+            'appointment_cancellation_cutoff_hours'     => 'nullable|integer|min:0|max:720',
+            'appointment_reschedule_cutoff_hours'       => 'nullable|integer|min:0|max:720',
+            'appointment_ics_enabled'                   => 'nullable|boolean',
+            'appointment_default_meeting_instructions'  => 'nullable|string|max:2000',
+        ]);
+
+        SuresignSetting::instance()->update($validated);
+
+        return response()->json(['message' => 'Appointment settings saved.']);
+    }
+
     // ─── Private helpers ──────────────────────────────────────────────────────
 
     /**

@@ -46,7 +46,7 @@ export function Hero() {
             </p>
             <div data-reveal className="mt-8 flex flex-wrap items-center justify-center gap-7">
               <Link
-                href="/book-a-demo"
+                href="/book/demo?src=home"
                 className="rounded-full bg-accent px-7 py-3.5 text-sm font-medium text-accent-fg shadow-[var(--shadow-card)] transition-all duration-200 hover:shadow-[var(--shadow-pop)] active:translate-y-px"
               >
                 Book a Demo

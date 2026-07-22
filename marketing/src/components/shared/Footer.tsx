@@ -26,8 +26,8 @@ export function Footer() {
         <div>
           <div className="text-sm font-medium uppercase tracking-wide text-text-muted">Company</div>
           <ul className="mt-5 space-y-3.5 text-sm text-text-secondary">
-            <li><Link href="/book-a-demo" className="transition-colors duration-200 hover:text-text-primary">Book a Demo</Link></li>
-            <li><Link href="/book-a-demo" className="transition-colors duration-200 hover:text-text-primary">Contact</Link></li>
+            <li><Link href="/book/demo?src=nav" className="transition-colors duration-200 hover:text-text-primary">Book a Demo</Link></li>
+            <li><Link href="/book/demo?src=contact" className="transition-colors duration-200 hover:text-text-primary">Contact</Link></li>
           </ul>
         </div>
       </Container>

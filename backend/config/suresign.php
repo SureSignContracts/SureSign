@@ -39,4 +39,19 @@ return [
 
     'deadline_reminder_local_hour' => env('SURESIGN_DEADLINE_REMINDER_LOCAL_HOUR', 8),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Marketing site base URL
+    |--------------------------------------------------------------------------
+    |
+    | Same value CORS already trusts (config/cors.php reads MARKETING_URL
+    | directly, since that's a config file too) — used here to build the
+    | branded confirmation-page links appointment emails point to. env()
+    | is only ever called from within a config file, never in application
+    | code, per Laravel convention.
+    |
+    */
+
+    'marketing_url' => env('MARKETING_URL', 'http://localhost:3001'),
+
 ];

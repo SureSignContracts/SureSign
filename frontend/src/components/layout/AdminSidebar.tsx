@@ -15,7 +15,7 @@ import {
   LayoutDashboard, Building2, FolderKanban, FileText, LayoutTemplate,
   Brain, HardDrive, CreditCard, Users, LifeBuoy, ScrollText, ClipboardList,
   Settings, LogOut, Sun, Moon, Gem, BookOpen, Search, Megaphone, Activity,
-  PanelLeftClose, PanelLeftOpen, ChevronRight,
+  PanelLeftClose, PanelLeftOpen, ChevronRight, CalendarClock,
 } from 'lucide-react';
 import { APP_VERSION_LABEL } from '@/config/app-version';
 
@@ -34,6 +34,7 @@ const NAV_GROUPS = [
       { href: '/admin/companies', label: 'Companies',      icon: Building2,    pageKey: 'companies' },
       { href: '/admin/projects',  label: 'Projects',       icon: FolderKanban, pageKey: 'projects'  },
       { href: '/admin/documents', label: 'Documents',      icon: FileText,     pageKey: 'documents' },
+      { href: '/admin/appointments', label: 'Appointments', icon: CalendarClock, pageKey: 'appointments' },
       { href: '/admin/users',     label: 'Users',          icon: Users,        pageKey: 'users',     superAdminOnly: true },
     ],
   },

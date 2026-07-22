@@ -15,7 +15,7 @@ export function BookDemoCta() {
             handles it, end to end.
           </p>
           <Link
-            href="/book-a-demo"
+            href="/book/demo?src=home"
             className="mt-10 inline-block rounded-full bg-accent px-8 py-4 text-sm font-medium text-accent-fg shadow-[var(--shadow-card)] transition-all duration-200 hover:shadow-[var(--shadow-pop)] active:translate-y-px"
           >
             Book a Demo

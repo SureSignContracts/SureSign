@@ -6,8 +6,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { effectiveTodayYmd, formatTime } from '@/lib/dateTime';
-import { getIanaTimezones } from '@/lib/timezones';
 import { getErrorMessage } from '@/lib/getErrorMessage';
+import TimezoneSelect from '@/components/shared/TimezoneSelect';
 import { useAuthStore } from '@/store/authStore';
 import { Users2, Plus, Search, Calendar, Clock, X } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -30,21 +30,6 @@ function addOneHour(time: string): string {
  * selector below). */
 function defaultSchedulingTimezone(): string {
   return useAuthStore.getState().user?.organization?.timezone ?? 'Europe/London';
-}
-
-function TimezoneSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const timezones = getIanaTimezones();
-  return (
-    <select
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-      style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-    >
-      {!timezones.includes(value) && value && <option value={value}>{value}</option>}
-      {timezones.map(tz => <option key={tz} value={tz}>{tz}</option>)}
-    </select>
-  );
 }
 
 /** Shared "Add a specific time" block — date/type/status stay in the
@@ -105,7 +90,7 @@ function TimedScheduleFields({
           </div>
           <div className="col-span-2">
             <label className="block text-xs mb-1" style={labelStyle}>Timezone *</label>
-            <TimezoneSelect value={timezone} onChange={onTimezone} />
+            <TimezoneSelect value={timezone} onChange={onTimezone} background="var(--bg-base)" className="w-full px-3 py-2 rounded-lg text-sm outline-none" />
             <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
               Attendees each see this in their own timezone — this is just what you are scheduling against.
             </p>
