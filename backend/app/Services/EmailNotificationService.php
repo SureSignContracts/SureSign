@@ -112,7 +112,14 @@ class EmailNotificationService
      * caller passes plain content and never has to know Brevo's wire format.
      * Existing callers passing no third argument are entirely unaffected.
      */
-    public static function sendDirect(string $toEmail, string $subject, string $bodyText, array $attachments = []): bool
+    public static function sendDirect(
+        string $toEmail,
+        string $subject,
+        string $bodyText,
+        array $attachments = [],
+        ?string $replyToEmail = null,
+        string $category = 'Notification',
+    ): bool
     {
         try {
             $settings = SuresignSetting::instance();
@@ -123,7 +130,13 @@ class EmailNotificationService
             }
 
             $bodyHtml = nl2br(e($bodyText));
-            $html     = self::buildHtml($settings, $subject, $bodyHtml);
+            $html     = self::buildHtml(
+                $settings,
+                $subject,
+                $bodyHtml,
+                $category,
+                $replyToEmail !== null,
+            );
 
             $payload = [
                 'sender'      => [
@@ -131,7 +144,10 @@ class EmailNotificationService
                     'email' => $settings->email_sender_email ?: ($settings->email_reply_to ?: 'noreply@suresign.io'),
                 ],
                 'to'          => [['email' => trim($toEmail)]],
-                'replyTo'     => ['email' => $settings->email_reply_to ?: ($settings->email_sender_email ?: 'noreply@suresign.io')],
+                'replyTo'     => [
+                    'email' => $replyToEmail
+                        ?: ($settings->email_reply_to ?: ($settings->email_sender_email ?: 'noreply@suresign.io')),
+                ],
                 'subject'     => $subject,
                 'htmlContent' => $html,
             ];
@@ -163,9 +179,19 @@ class EmailNotificationService
         }
     }
 
-    private static function buildHtml(SuresignSetting $settings, string $subject, string $bodyHtml): string
+    private static function buildHtml(
+        SuresignSetting $settings,
+        string $subject,
+        string $bodyHtml,
+        string $category = 'Notification',
+        bool $canReply = false,
+    ): string
     {
         $senderName = e($settings->email_sender_name ?: 'SureSign Contracts');
+        $categoryLabel = e($category);
+        $replyGuidance = $canReply
+            ? 'Reply to this message to contact the sender.'
+            : 'Please do not reply directly to this message.';
 
         $headerSection = $settings->email_header_url
             ? '<img src="' . e($settings->email_header_url) . '" style="width:100%;max-width:600px;display:block;" alt="' . $senderName . '" />'
@@ -206,7 +232,7 @@ class EmailNotificationService
         <!-- Subject bar -->
         <tr>
           <td style="padding:24px 40px 0;">
-            <p style="margin:0;font-family:Arial,sans-serif;font-size:11px;font-weight:700;color:#c9a84c;letter-spacing:2px;text-transform:uppercase;">Notification</p>
+            <p style="margin:0;font-family:Arial,sans-serif;font-size:11px;font-weight:700;color:#c9a84c;letter-spacing:2px;text-transform:uppercase;">{$categoryLabel}</p>
             <h1 style="margin:6px 0 0;font-family:Georgia,serif;font-size:20px;font-weight:400;color:#1a1a1a;line-height:1.3;">{$subject}</h1>
           </td>
         </tr>
@@ -235,7 +261,7 @@ class EmailNotificationService
               <tr>
                 <td style="font-family:Arial,sans-serif;font-size:11px;color:#666666;line-height:1.5;">
                   This notification was sent by <span style="color:#c9a84c;">{$senderName}</span>.<br>
-                  Please do not reply directly to this message.
+                  {$replyGuidance}
                 </td>
                 <td align="right" style="font-family:Arial,sans-serif;font-size:11px;color:#444444;white-space:nowrap;">
                   &copy; {$year} {$senderName}

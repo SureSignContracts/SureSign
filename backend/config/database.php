@@ -69,6 +69,33 @@ return [
             ]) : [],
         ],
 
+        // Demo environment — deliberately isolated from the default
+        // connection so demo:seed/demo:reset can never touch real customer
+        // data. Defaults to the same MySQL server/credentials as the main
+        // connection but a different schema name, so no extra infrastructure
+        // is needed today; pointing DEMO_DB_HOST etc. at a genuinely separate
+        // server later (a dedicated demo deployment) requires no code change.
+        'demo' => [
+            'driver' => 'mysql',
+            'url' => env('DEMO_DB_URL'),
+            'host' => env('DEMO_DB_HOST', env('DB_HOST', '127.0.0.1')),
+            'port' => env('DEMO_DB_PORT', env('DB_PORT', '3306')),
+            'database' => env('DEMO_DB_DATABASE', 'suresign_demo'),
+            'username' => env('DEMO_DB_USERNAME', env('DB_USERNAME', 'root')),
+            'password' => env('DEMO_DB_PASSWORD', env('DB_PASSWORD', '')),
+            'unix_socket' => env('DB_SOCKET', ''),
+            'charset' => env('DB_CHARSET', 'utf8mb4'),
+            'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+            'timezone' => env('DB_TIMEZONE', '+00:00'),
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+            ]) : [],
+        ],
+
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),

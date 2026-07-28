@@ -11,6 +11,7 @@ Settings in the main menu).
 ## In this section
 
 - [Company Branding](company-branding.md)
+- [Billing](billing.md)
 
 ## Timezone
 

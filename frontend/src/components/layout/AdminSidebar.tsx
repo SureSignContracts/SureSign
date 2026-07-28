@@ -15,7 +15,7 @@ import {
   LayoutDashboard, Building2, FolderKanban, FileText, LayoutTemplate,
   Brain, HardDrive, CreditCard, Users, LifeBuoy, ScrollText, ClipboardList,
   Settings, LogOut, Sun, Moon, Gem, BookOpen, Search, Megaphone, Activity,
-  PanelLeftClose, PanelLeftOpen, ChevronRight, CalendarClock,
+  PanelLeftClose, PanelLeftOpen, ChevronRight, CalendarClock, Wallet,
 } from 'lucide-react';
 import { APP_VERSION_LABEL } from '@/config/app-version';
 
@@ -44,8 +44,17 @@ const NAV_GROUPS = [
       { href: '/admin/templates', label: 'Templates',      icon: LayoutTemplate, pageKey: 'templates' },
       { href: '/admin/prompts',   label: 'Prompt Library', icon: BookOpen,       pageKey: 'prompts'   },
       { href: '/admin/find',      label: 'Find Company',   icon: Search,         pageKey: 'find'      },
-      { href: '/admin/billing',   label: 'Billing',        icon: CreditCard,     pageKey: 'billing'   },
+      { href: '/admin/pricing',   label: 'Pricing',        icon: CreditCard,     pageKey: 'pricing',   superAdminOnly: true },
       { href: '/admin/suresign',  label: 'SureSign',       icon: Gem,            pageKey: 'suresign'  },
+    ],
+  },
+  {
+    label: 'AI Credits',
+    items: [
+      { href: '/admin/ai-credits', label: 'Dashboard', icon: Wallet, pageKey: 'ai-credits' },
+      { href: '/admin/ai-credits/organizations', label: 'Organisations', icon: Building2, pageKey: 'ai-credits' },
+      { href: '/admin/ai-credits/transactions', label: 'Transactions', icon: ScrollText, pageKey: 'ai-credits' },
+      { href: '/admin/ai-credits/shadow-activity', label: 'Shadow Activity', icon: Activity, pageKey: 'ai-credits' },
     ],
   },
   {
@@ -53,6 +62,7 @@ const NAV_GROUPS = [
     superAdminOnly: true,
     items: [
       { href: '/admin/ai-configurations', label: 'AI Config',   icon: Brain,         pageKey: 'ai-configurations', superAdminOnly: true },
+      { href: '/admin/ai-usage', label: 'AI Usage & Cost', icon: Brain, pageKey: 'ai-usage' },
       { href: '/admin/application-monitoring', label: 'Application Monitoring', icon: Activity, pageKey: 'application-monitoring', superAdminOnly: true },
       { href: '/admin/storage',           label: 'Storage',     icon: HardDrive,     pageKey: 'storage',           superAdminOnly: true },
       { href: '/admin/support',           label: 'Support',     icon: LifeBuoy,      pageKey: 'support',           superAdminOnly: true },

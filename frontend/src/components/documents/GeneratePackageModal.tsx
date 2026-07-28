@@ -1,11 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckSquare, Download, FileText, Square, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
 import Button from '@/components/ui/Button';
+import { cn } from '@/lib/utils';
 
 type TemplateItem = {
   id: number;
@@ -161,6 +162,24 @@ export default function GeneratePackageModal({
   onViewInPackage: () => void;
 }) {
   const queryClient = useQueryClient();
+  // Genuine exit animation before unmount, matching components/ui/Modal.tsx's
+  // own close() pattern — this modal stays a custom layout (max-w-5xl,
+  // multi-section form) rather than migrating to the shared <Modal>, which
+  // is fixed at max-w-md and far too narrow for this form.
+  const [closing, setClosing] = useState(false);
+  const close = () => {
+    if (closing) return;
+    setClosing(true);
+    window.setTimeout(onClose, 150);
+  };
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [generationType, setGenerationType] = useState<'complete_package' | 'separate_documents'>('complete_package');
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
   const [selectedDocTypes, setSelectedDocTypes] = useState<Set<string>>(
@@ -277,9 +296,15 @@ export default function GeneratePackageModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-2xl shadow-xl"
-        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+    <div
+      className={cn('fixed inset-0 z-50 flex items-center justify-center p-4', closing ? 'ss-modal-overlay-out' : 'ss-modal-overlay-in')}
+      style={{ backgroundColor: 'rgba(10,10,10,0.55)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)' }}
+      onClick={e => { if (e.target === e.currentTarget) close(); }}
+    >
+      <div
+        className={cn('max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-2xl', closing ? 'ss-modal-panel-out' : 'ss-modal-panel-in')}
+        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}
+      >
         <div className="flex items-center justify-between p-5" style={{ borderBottom: '1px solid var(--border)' }}>
           <div>
             <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Generate Package</h2>
@@ -287,7 +312,7 @@ export default function GeneratePackageModal({
               Only completed fields will replace placeholders. Empty fields will remain editable in the generated Word document.
             </p>
           </div>
-          <button onClick={onClose} aria-label="Close">
+          <button onClick={close} aria-label="Close" className="transition-opacity hover:opacity-70">
             <X size={18} style={{ color: 'var(--text-muted)' }} />
           </button>
         </div>
@@ -473,8 +498,8 @@ export default function GeneratePackageModal({
             ))}
 
             <div className="flex justify-end gap-3 pt-2">
-              <button type="button" onClick={onClose}
-                className="rounded-lg px-4 py-2 text-sm"
+              <button type="button" onClick={close}
+                className="rounded-lg px-4 py-2 text-sm transition-opacity hover:opacity-80"
                 style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
                 Cancel
               </button>

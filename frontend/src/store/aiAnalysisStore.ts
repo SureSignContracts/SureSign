@@ -8,15 +8,11 @@ export interface AiAnalysisRecord {
   project_id: number;
   status: AiAnalysisStatus;
   summary: string | null;
-  tokens_input: number | null;
-  tokens_output: number | null;
-  estimated_cost: number | null;
   started_at: string | null;
   completed_at: string | null;
   created_at: string;
   raw_response_json: any;
   confirmed_data_json: any;
-  model: string | null;
   error_message: string | null;
   creator?: { id: number; name: string; email: string };
   contract?: { id: number; title: string };

@@ -20,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'account.status'    => \App\Http\Middleware\EnsureAccountIsActive::class,
             'password.current'  => \App\Http\Middleware\EnsurePasswordIsCurrent::class,
             'track.usage'       => \App\Http\Middleware\TrackApplicationUsage::class,
+            'billing.enabled'   => \App\Http\Middleware\EnsureBillingIsEnabled::class,
         ]);
 
         // The app is only ever reached through the nginx container (which sets

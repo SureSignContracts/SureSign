@@ -130,6 +130,7 @@ class DatabaseSeeder extends Seeder
             PromptCategorySeeder::class,
             PromptTemplateSeeder::class,
             AppointmentTypeSeeder::class,
+            PricingSeeder::class,
         ]);
     }
 }

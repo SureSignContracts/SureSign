@@ -16,6 +16,7 @@ class SuresignSetting extends Model
         'ai_provider',
         'ai_model',
         'ai_effort',
+        'ai_credit_operating_mode',
         'anthropic_api_key',
         'logo_path',
         'favicon_path',

@@ -115,4 +115,6 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    'marketing_contact_to' => env('MARKETING_CONTACT_EMAIL', 'tech@suresigncontracts.com'),
+
 ];

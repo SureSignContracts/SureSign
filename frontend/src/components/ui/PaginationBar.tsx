@@ -9,11 +9,13 @@ interface PaginationBarProps {
   perPage: number;
   onPage: (p: number) => void;
   onPerPage: (n: number) => void;
+  /** Hide the per-page selector for an endpoint with a fixed, non-configurable page size (e.g. Billing's read-only lists). Defaults to shown, unchanged for every existing caller. */
+  showPerPageSelect?: boolean;
 }
 
 export default function PaginationBar({
   page, lastPage, total, perPage,
-  onPage, onPerPage,
+  onPage, onPerPage, showPerPageSelect = true,
 }: PaginationBarProps) {
   if (lastPage <= 1 && total <= PER_PAGE_OPTIONS[0]) return null;
 
@@ -37,6 +39,7 @@ export default function PaginationBar({
         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
           {from}–{to} of {total}
         </span>
+        {showPerPageSelect && (
         <select
           value={perPage}
           onChange={e => onPerPage(Number(e.target.value))}
@@ -51,6 +54,7 @@ export default function PaginationBar({
             <option key={n} value={n}>{n} per page</option>
           ))}
         </select>
+        )}
       </div>
       <div className="flex items-center gap-1">
         <button

@@ -4,8 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
-use App\Models\AiConversation;
-use App\Models\AiMessage;
+use App\Models\ContractAiAnalysis;
 use App\Models\Document;
 use App\Models\FileUpload;
 use App\Models\Organization;
@@ -13,6 +12,7 @@ use App\Models\Project;
 use App\Models\ProjectActivity;
 use App\Models\SuresignNotification;
 use App\Models\SuresignSetting;
+use App\Models\TradePackageAiAnalysis;
 use App\Models\User;
 use App\Services\TimezoneResolver;
 use Illuminate\Http\Request;
@@ -33,12 +33,19 @@ class AdminController extends Controller
         $storageUsedBytes = DB::table('file_uploads')->sum('file_size') ?? 0;
         $storageUsedGB    = round($storageUsedBytes / (1024 ** 3), 2);
 
-        // Monthly AI usage (conversations started this calendar month).
-        // This is a platform-wide (all-organisations) Super Admin view, not
-        // scoped to any single org — "this month" resolves to the platform
-        // default timezone, not the server's UTC calendar.
+        // Monthly AI usage — analyses started this calendar month, across both real
+        // provider-backed workflows (Contract AI Analysis, Trade Package AI
+        // Analysis). This previously counted AiConversation rows, a non-functional
+        // AI chat feature no working code path ever creates (see
+        // internal-docs/super-admin/ai-credits-architecture.md §3.4) — always zero
+        // in practice. This is a platform-wide (all-organisations) Super Admin
+        // view, not scoped to any single org — "this month" resolves to the
+        // platform default timezone, not the server's UTC calendar.
         $platformNow = TimezoneResolver::now();
-        $monthlyAiUsage = AiConversation::whereMonth('created_at', $platformNow->month)
+        $monthlyAiUsage = ContractAiAnalysis::whereMonth('created_at', $platformNow->month)
+            ->whereYear('created_at', $platformNow->year)
+            ->count()
+            + TradePackageAiAnalysis::whereMonth('created_at', $platformNow->month)
             ->whereYear('created_at', $platformNow->year)
             ->count();
 

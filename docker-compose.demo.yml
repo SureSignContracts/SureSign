@@ -1,0 +1,231 @@
+# Permanent SureSign Demo Environment — a separate Dokploy project/stack,
+# deployed alongside docker-compose.prod.yml (Production) and
+# docker-compose.dev.yml (Development). Serves demo.suresigncontracts.app.
+#
+# Architecture (see internal-docs/demo-environment/deployment.md for the
+# full rationale — this header only summarises):
+#   - Own frontend + backend + queue containers. No scheduler (see below).
+#   - Reuses Production's existing MySQL and Redis containers over the
+#     `suresign_shared` external network — no second database or cache
+#     server. Logical isolation only: a dedicated `suresign_demo` database,
+#     a dedicated least-privilege MySQL user scoped to it, a distinct Redis
+#     logical DB index, and a distinct cache/session key prefix.
+#   - Completely isolated storage: its own named Docker volume
+#     (`demo_backend_storage`), never the same volume as `backend_storage`.
+#   - MAIL_MAILER=log — no outbound email is technically possible from this
+#     stack. AI/OpenAI/Companies House integrations are disabled.
+#   - Its own Nginx (docker/nginx/demo.conf) terminates
+#     demo.suresigncontracts.app, published on a distinct host port so it
+#     never collides with Production's Nginx (docker-compose.prod.yml
+#     publishes 8080; this publishes 8081 — adjust in Dokploy if either
+#     port is already taken on the host).
+#
+# Reuses the exact same backend image as Production (`suresign-backend:latest`)
+# unmodified — Laravel's config is entirely runtime env, no build-time
+# baking. The frontend CANNOT reuse Production's built image: Next.js bakes
+# NEXT_PUBLIC_API_URL into the client bundle at build time (confirmed via
+# `frontend/src/lib/api.ts`), so a demo frontend needs its own build (same
+# Dockerfile, same source, different build args only) — see the `frontend`
+# service's `build:` block below.
+
+services:
+  demo-backend:
+    image: suresign-backend:latest
+    container_name: suresign_demo_backend
+    restart: unless-stopped
+    stop_grace_period: 30s
+    volumes:
+      # Isolated volume — structurally separate from Production's
+      # `backend_storage`, not merely a different subfolder of it.
+      - demo_backend_storage:/var/www/html/storage/app
+    environment: &demo_backend_env
+      - TZ=UTC
+      - APP_NAME=SureSign Demo
+      - APP_ENV=demo
+      - APP_DEMO=true
+      - APP_KEY=${DEMO_APP_KEY}
+      - APP_DEBUG=false
+      - APP_URL=${DEMO_APP_URL:-https://demo.suresigncontracts.app}
+      - FRONTEND_URL=${DEMO_APP_URL:-https://demo.suresigncontracts.app}
+      - APP_TIMEZONE=UTC
+      - APP_LOCALE=en
+      - APP_FALLBACK_LOCALE=en
+      - APP_FAKER_LOCALE=en_US
+      - APP_MAINTENANCE_DRIVER=file
+      - BCRYPT_ROUNDS=12
+      - LOG_CHANNEL=stack
+      - LOG_STACK=stderr,single
+      - LOG_DEPRECATIONS_CHANNEL=null
+      - LOG_LEVEL=warning
+      # Points at the SAME `suresign_demo` database Phase 1-4's demo:seed /
+      # demo:validate / demo:manifest tooling already targets — this
+      # container's default connection simply *is* the demo database, no
+      # special-casing needed. A dedicated, least-privilege MySQL user
+      # scoped only to suresign_demo (see deployment.md) — cannot read or
+      # write the real `suresign` database even if this container were
+      # compromised.
+      - DB_CONNECTION=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=suresign_demo
+      - DB_USERNAME=${DEMO_DB_USERNAME:-suresign_demo}
+      - DB_PASSWORD=${DEMO_DB_PASSWORD}
+      - SESSION_DRIVER=database
+      - SESSION_LIFETIME=120
+      - SESSION_ENCRYPT=false
+      - SESSION_PATH=/
+      - SESSION_DOMAIN=null
+      # Distinct cookie name — belt-and-braces alongside the distinct
+      # domain, so a demo session cookie can never be confused with a
+      # production one even if both were somehow viewed in the same browser.
+      - SESSION_COOKIE=suresign_demo_session
+      - BROADCAST_CONNECTION=log
+      - FILESYSTEM_DISK=local
+      - QUEUE_CONNECTION=database
+      # Shared Redis instance, logically isolated: a distinct logical DB
+      # index (Production implicitly uses index 0; demo uses 1) AND a
+      # distinct cache key prefix — either one alone would prevent
+      # collision, both together is defence in depth against a config
+      # mistake on one axis.
+      - CACHE_STORE=redis
+      - REDIS_CLIENT=phpredis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=null
+      - REDIS_CACHE_DB=1
+      - CACHE_PREFIX=suresign_demo_
+      # No real outbound email is technically possible from this stack.
+      - MAIL_MAILER=log
+      - MAIL_SCHEME=null
+      - MAIL_HOST=127.0.0.1
+      - MAIL_PORT=2525
+      - MAIL_USERNAME=null
+      - MAIL_PASSWORD=null
+      - MAIL_FROM_ADDRESS=noreply@demo.suresigncontracts.app
+      - MAIL_FROM_NAME=SureSign Demo
+      # Outbound integrations deliberately disabled/blank — the demo must
+      # never call a real third-party service. AI_ENABLED is also
+      # independently gated in suresign_settings per organisation (see
+      # AGENTS.md's AI Provider Architecture), so this is belt-and-braces,
+      # not the only control.
+      - AI_ENABLED=false
+      - AWS_ACCESS_KEY_ID=
+      - AWS_SECRET_ACCESS_KEY=
+      - AWS_BUCKET=
+      - OPENAI_API_KEY=
+      - COMPANIES_HOUSE_API_KEY=
+      - VITE_APP_NAME=SureSign Demo
+    depends_on: []
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/readyz"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - suresign_shared
+
+  demo-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${DEMO_NEXT_PUBLIC_API_URL:-https://demo.suresigncontracts.app/api}
+        NEXT_PUBLIC_DEMO_MODE: "true"
+        NEXT_PUBLIC_DEMO_VERSION: ${DEMO_VERSION:-1.0.0}
+    image: suresign-frontend-demo:latest
+    container_name: suresign_demo_frontend
+    restart: unless-stopped
+    stop_grace_period: 15s
+    environment:
+      - BACKEND_INTERNAL_URL=http://demo-backend:8000/api
+      - HOSTNAME=0.0.0.0
+      - TZ=UTC
+    depends_on:
+      - demo-backend
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:3000/login"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - suresign_shared
+
+  # Same image as demo-backend — a job dispatched via a real interactive
+  # action (e.g. regenerating a payment application workbook) needs
+  # somewhere to actually run, or it sits unprocessed forever and the demo
+  # silently breaks mid-interaction. Deliberately lightweight: idle almost
+  # all the time, since the demo dataset itself is pre-seeded, not
+  # generated by live queued jobs.
+  demo-queue:
+    image: suresign-backend:latest
+    container_name: suresign_demo_queue
+    restart: unless-stopped
+    command: ["queue"]
+    volumes:
+      - demo_backend_storage:/var/www/html/storage/app
+    environment: *demo_backend_env
+    stop_grace_period: 490s
+    depends_on: []
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'artisan queue:work' > /dev/null && php artisan --version > /dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - suresign_shared
+
+  # No `demo-scheduler` service — deliberate. The scheduler drives
+  # time-based, org-wide production behaviours (deadline reminder emails,
+  # notification generation, module-usage aggregation) that are meaningless
+  # against a fixed-anchor-date demo dataset and carry a real, avoidable
+  # risk: a running scheduler could attempt to send a deadline-reminder
+  # email referencing one of Halden Grove's fictional addresses. MAIL_MAILER
+  # =log on every demo container makes that technically impossible even by
+  # accident, but removing the scheduler entirely is the simpler, safer
+  # choice — see internal-docs/demo-environment/deployment.md.
+
+  demo-nginx:
+    image: nginx:1.31-alpine
+    container_name: suresign_demo_nginx
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    volumes:
+      - ./docker/nginx/demo.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      demo-backend:
+        condition: service_healthy
+      demo-frontend:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/nginx-demo-health"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - suresign_shared
+
+networks:
+  # Joins Production's network (see docker-compose.prod.yml's `suresign`
+  # network, named `suresign_shared`) rather than creating a new one — this
+  # is what lets demo-backend/demo-queue resolve `mysql`/`redis` by service
+  # name. Production's stack must be deployed first (it owns/creates this
+  # network); Dokploy deploys Production before Demo for exactly this
+  # reason — see deployment.md's ordering note.
+  suresign_shared:
+    external: true
+
+volumes:
+  demo_backend_storage:

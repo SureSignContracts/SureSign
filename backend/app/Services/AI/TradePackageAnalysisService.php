@@ -26,9 +26,12 @@ class TradePackageAnalysisService
     }
 
     /**
-     * Run the AI analysis and return the parsed JSON as an array.
+     * Phase G4C.3BC — see ContractAnalysisService::extractAndRecordDocumentMetrics()
+     * for the full rationale; identical shape for this workflow.
+     *
+     * @return array{text: string, normalized_input_char_count: int}
      */
-    public function analyse(TradePackageAiAnalysis $analysis, FileUpload $fileUpload): array
+    public function extractAndRecordDocumentMetrics(TradePackageAiAnalysis $analysis, FileUpload $fileUpload): array
     {
         $subcontractText = $this->shared->extractText($fileUpload);
 
@@ -37,9 +40,35 @@ class TradePackageAnalysisService
         }
 
         // Hash the extracted text so identical subcontract content can reuse a prior
-        // completed analysis instead of paying Claude again.
+        // completed analysis instead of paying Claude again. Document metrics are
+        // recorded here too — the single authoritative write point, mirroring
+        // ContractAnalysisService::analyse().
         $hash = hash('sha256', $subcontractText);
-        $analysis->update(['document_hash' => $hash]);
+        $analysis->update([
+            'document_hash'       => $hash,
+            'document_char_count' => mb_strlen($subcontractText),
+            'document_file_type'  => $this->shared->fileExtension($fileUpload),
+        ]);
+
+        // Phase G4C.2C-2 — see ContractAnalysisService::analyse() for why this is
+        // computed once here, from text already in memory.
+        $normalizedInputCharCount = AiInputNormalizer::normalizedCharCount($subcontractText);
+
+        return ['text' => $subcontractText, 'normalized_input_char_count' => $normalizedInputCharCount];
+    }
+
+    /**
+     * Run the AI analysis and return the parsed JSON as an array.
+     *
+     * @param array{text: string, normalized_input_char_count: int}|null $prepared See
+     *   ContractAnalysisService::analyse()'s equivalent parameter.
+     */
+    public function analyse(TradePackageAiAnalysis $analysis, FileUpload $fileUpload, ?array $prepared = null): array
+    {
+        $prepared ??= $this->extractAndRecordDocumentMetrics($analysis, $fileUpload);
+        $subcontractText = $prepared['text'];
+        $normalizedInputCharCount = $prepared['normalized_input_char_count'];
+        $hash = $analysis->document_hash;
 
         $cached = TradePackageAiAnalysis::query()
             ->where('document_hash', $hash)
@@ -56,14 +85,23 @@ class TradePackageAnalysisService
                 'reused_from' => $cached->id,
             ]);
 
+            $analysis->update([
+                'provider_called' => false,
+                'estimated_cost'  => 0.0,
+            ]);
+
             return [
-                'data'          => $cached->raw_response_json,
-                'tokens_input'  => 0,
-                'tokens_output' => 0,
+                'data'                        => $cached->raw_response_json,
+                'tokens_input'                => 0,
+                'tokens_output'               => 0,
+                'normalized_input_char_count' => $normalizedInputCharCount,
             ];
         }
 
         $provider = $this->shared->makeProvider();
+
+        // Recorded immediately before the call — see ContractAnalysisService::analyse().
+        $analysis->update(['provider_called' => true]);
 
         $catalogueNames = array_map(fn (array $pkg) => $pkg['name'], TradePackageCatalogueService::all());
 
@@ -74,13 +112,18 @@ class TradePackageAnalysisService
 
         // Persist the raw response and usage immediately — BEFORE parsing — so that even if
         // parsing fails the (already paid-for) response is not lost and can be re-parsed later
-        // without calling Claude again.
+        // without calling Claude again. estimated_cost is computed and persisted here ONLY —
+        // AnalyseTradePackageWithAiJob no longer recomputes it. See
+        // ContractAnalysisService::analyse() for why $calledAt is captured here rather
+        // than letting estimateCost() read the clock itself.
+        $calledAt = now();
+
         $analysis->update([
             'raw_response_text' => $result['text'] ?? null,
             'stop_reason'       => $result['stop_reason'] ?? null,
             'tokens_input'      => $result['tokens_input'],
             'tokens_output'     => $result['tokens_output'],
-            'estimated_cost'    => $this->shared->estimateCost($result['tokens_input'], $result['tokens_output']),
+            'estimated_cost'    => $this->shared->estimateCost($result['tokens_input'], $result['tokens_output'], $analysis->model, $calledAt),
         ]);
 
         $decoded = $this->parseJsonResponse($result['text']);
@@ -102,9 +145,10 @@ class TradePackageAnalysisService
         }
 
         return [
-            'data'          => $decoded,
-            'tokens_input'  => $result['tokens_input'],
-            'tokens_output' => $result['tokens_output'],
+            'data'                        => $decoded,
+            'tokens_input'                => $result['tokens_input'],
+            'tokens_output'               => $result['tokens_output'],
+            'normalized_input_char_count' => $normalizedInputCharCount,
         ];
     }
 

@@ -218,7 +218,18 @@ query on every request.
 - **Module usage only covers routes explicitly mapped** in
   `ModuleUsageResolver`. An unmapped route silently contributes nothing
   rather than fragmenting into a low-value catch-all bucket; extend the
-  resolver's map as new modules are added.
+  resolver's map as new modules are added — this is a real maintenance
+  cost, not automatic. A repository audit found and fixed several routes
+  that had fallen through this way: Appointments, Billing (customer-facing
+  and Checkout/Plan-Change/Portal), Pricing Management, AI Usage & Cost
+  reporting, Prompt Library, Clients, and Users had no entry at all (every
+  request to those areas silently counted as nothing); a `snags` key that
+  matched no real route (the actual resource is `snagging`) meant Snagging
+  usage was never counted either. All fixed in `ModuleUsageResolver`
+  directly — see its own `MODULE_MAP` docblock for the one deliberate
+  remaining exclusion (`templates` stays unmapped; it's ambiguous between
+  Document Templates and Prompt Library templates, and guessing would
+  misattribute one to the other).
 - **`module_usage_daily` and `daily_active_users` have no automatic
   retention/cleanup yet.** Both are small (one row per
   organization/module/day, and one row per user/day, respectively), so

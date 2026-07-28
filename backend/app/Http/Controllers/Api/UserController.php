@@ -4,9 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
+use App\Models\Organization;
 use App\Models\User;
 use App\Services\EmailVerificationService;
+use App\Services\Entitlements\SubscriptionAccessPolicy;
+use App\Services\Intelligence\SubscriptionIntelligenceService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -20,6 +24,12 @@ class UserController extends Controller
     // user (confirmed via Role::pluck('name') against production data).
     private const ALLOWED_ROLES = ['Super Admin', 'Admin', 'Client'];
 
+    public function __construct(
+        private readonly SubscriptionAccessPolicy $accessPolicy,
+        private readonly SubscriptionIntelligenceService $intelligence,
+    ) {
+    }
+
     public function index(Request $request)
     {
         $perPage = min((int) ($request->input('per_page', 25)), 100);
@@ -27,7 +37,14 @@ class UserController extends Controller
                    ? $request->input('sort') : 'created_at';
         $dir     = $request->input('dir', 'desc') === 'asc' ? 'asc' : 'desc';
 
-        $query = User::with('roles')->orderBy($sort, $dir);
+        // organization.liveSubscription.pricingPlan eager-loaded here
+        // specifically to avoid an N+1 when formatUser() reads
+        // $u->organization?->name and organizationSubscriptionSummaries()
+        // below reads each org's live subscription — this page can list up
+        // to 100 rows, and every one of these relations is batched into a
+        // single query each regardless of how many users share an
+        // organisation (never one query per user).
+        $query = User::with(['roles', 'organization.liveSubscription.pricingPlan'])->orderBy($sort, $dir);
 
         if ($search = $request->input('search')) {
             $query->where(fn($q) => $q->where('name', 'like', "%{$search}%")
@@ -40,9 +57,69 @@ class UserController extends Controller
         }
 
         $paginated = $query->paginate($perPage);
-        $paginated->getCollection()->transform(fn($u) => $this->formatUser($u));
+
+        // G4A — lightweight inherited-subscription summary per row, derived
+        // entirely from the eager-loaded organization.liveSubscription
+        // relation above (zero extra queries) and resolved once per
+        // DISTINCT organisation present on this page (never once per
+        // user) — a page full of colleagues from the same organisation
+        // computes this exactly once. Deliberately just
+        // plan/status/access-mode/trial here — richer usage/storage figures
+        // belong in the single-user subscription() endpoint below, fetched
+        // only when an operator actually opens that user's detail.
+        $orgSummaries = $this->organizationSubscriptionSummaries($paginated->getCollection());
+
+        $paginated->getCollection()->transform(fn($u) => $this->formatUser($u, $orgSummaries->get($u->organization_id)));
 
         return response()->json($paginated);
+    }
+
+    /**
+     * @param Collection<int, User> $users
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function organizationSubscriptionSummaries(Collection $users): Collection
+    {
+        return $users->pluck('organization')
+            ->filter()
+            ->unique('id')
+            ->mapWithKeys(function (Organization $organization) {
+                $subscription = $organization->liveSubscription;
+                $decision = $this->accessPolicy->resolve($subscription);
+
+                return [$organization->id => [
+                    'plan_name' => $subscription?->pricingPlan?->name ?? $subscription?->plan_name_snapshot,
+                    'status' => $subscription?->status,
+                    'access_mode' => $decision->mode,
+                    'trial_ends_at' => $subscription?->trial_ends_at,
+                ]];
+            });
+    }
+
+    /**
+     * G4A — read-only inherited organisation subscription detail for a
+     * single user (the Users page's "Manage User" view). Never a user-level
+     * subscription: this is always the user's ORGANISATION's subscription,
+     * fetched via the same composing service the Organisation Subscription
+     * Administration page and the customer-facing Subscription Intelligence
+     * Centre both use — no separate implementation.
+     */
+    public function subscription(string $id)
+    {
+        $user = User::findOrFail($id);
+
+        if ($user->organization_id === null) {
+            // Super Admin / Admin are platform-wide operators with no
+            // organisation of their own — never show a fake plan or usage
+            // figures for them (Stage 3's explicit requirement).
+            return response()->json(['data' => [
+                'is_platform_operator' => true,
+            ]]);
+        }
+
+        return response()->json(['data' => [
+            'is_platform_operator' => false,
+        ] + $this->intelligence->intelligenceForOrganization($user->organization)]);
     }
 
     public function invite(Request $request)
@@ -380,7 +457,13 @@ class UserController extends Controller
         return $activeSuperAdmins <= 1;
     }
 
-    private function formatUser(User $u): array
+    /**
+     * @param array<string, mixed>|null $organizationSubscription G4A — only
+     *   populated by index() (which already computed it once per distinct
+     *   organisation); every other call site leaves this null since the
+     *   frontend fetches richer detail lazily via subscription() instead.
+     */
+    private function formatUser(User $u, ?array $organizationSubscription = null): array
     {
         return [
             'id'                    => $u->id,
@@ -395,6 +478,12 @@ class UserController extends Controller
             'tours_reset_at'        => $u->tours_reset_at,
             'last_login_at'         => $u->last_login_at,
             'created_at'            => $u->created_at,
+            // G4A — platform operators (Super Admin/Admin) have no
+            // organisation of their own; never show a fake plan for them.
+            'organization_id'       => $u->organization_id,
+            'organization_name'     => $u->organization?->name,
+            'is_platform_operator'  => $u->organization_id === null,
+            'organization_subscription' => $u->organization_id === null ? null : $organizationSubscription,
         ];
     }
 }

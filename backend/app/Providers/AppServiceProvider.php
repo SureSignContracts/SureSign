@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Support\Billing\BillingConfigGuard;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -31,6 +32,10 @@ class AppServiceProvider extends ServiceProvider
         // destructive artisan commands themselves from ever executing
         // against production, regardless of how they get invoked.
         DB::prohibitDestructiveCommands($this->app->isProduction());
+
+        // Refuses to boot with a live Stripe key present in local/testing —
+        // see App\Support\Billing\BillingConfigGuard.
+        BillingConfigGuard::assertSafe($this->app);
 
         $this->configureRateLimiters();
     }
@@ -109,6 +114,10 @@ class AppServiceProvider extends ServiceProvider
         // only, since there's no authenticated user or email-enumeration risk
         // to protect, just a public form that shouldn't be spammable.
         RateLimiter::for('demo-request', function (Request $request) {
+            return Limit::perMinutes(15, 5)->by($request->ip());
+        });
+
+        RateLimiter::for('marketing-contact', function (Request $request) {
             return Limit::perMinutes(15, 5)->by($request->ip());
         });
 
@@ -198,6 +207,29 @@ class AppServiceProvider extends ServiceProvider
                 Limit::perMinutes(15, 10)->by($request->user()?->id ?: $request->ip())->response($tooManyAttempts),
                 Limit::perMinutes(15, 30)->by($request->ip())->response($tooManyAttempts),
             ];
+        });
+
+        // Stripe webhook endpoint — public, unauthenticated, no per-user/
+        // per-email identity to key on (see StripeWebhookController). Kept
+        // entirely separate from the general 'api' limiter (120/min by
+        // user-or-IP) so a burst of legitimate Stripe deliveries/retries
+        // can never be throttled by, or eat into, unrelated authenticated
+        // traffic sharing the same IP (a NAT'd office network, for
+        // instance) — and so a compromised/abusive caller hammering this
+        // one public endpoint can't consume the shared 'api' bucket either.
+        // Keyed by IP only (there is no other identity available). Stripe
+        // typically delivers a handful of events per second during a burst
+        // (e.g. a bulk operation replaying webhooks) and retries a failing
+        // delivery on an increasing backoff over up to ~3 days — 120/min is
+        // generously above real Stripe traffic patterns for a
+        // single-tenant platform's webhook volume while still bounding
+        // abuse of a public POST endpoint. The response carries no detail
+        // beyond the standard 429 (see bootstrap/app.php's shared
+        // TooManyRequestsHttpException renderer) — signature verification
+        // inside WebhookIngestionService remains the real trust boundary
+        // regardless of this limit.
+        RateLimiter::for('billing-webhooks', function (Request $request) {
+            return Limit::perMinute(120)->by($request->ip());
         });
 
         RateLimiter::for('ai-analysis', function (Request $request) {

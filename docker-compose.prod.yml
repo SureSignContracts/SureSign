@@ -36,6 +36,13 @@ services:
       - APP_DEBUG=${APP_DEBUG:-false}
       - APP_URL=${APP_URL:-https://app.suresigncontracts.app}
       - FRONTEND_URL=${FRONTEND_URL:-https://app.suresigncontracts.app}
+      # Separate from FRONTEND_URL — the marketing site only ever calls
+      # public marketing/appointment endpoints, never authenticates against
+      # the app API (see backend/config/cors.php). Without this, every
+      # browser-side fetch from the marketing site (contact form, demo
+      # booking) is blocked by CORS once the site is reachable on its own
+      # domain.
+      - MARKETING_URL=${MARKETING_URL:-https://suresigncontracts.app}
       - APP_TIMEZONE=UTC
       - APP_LOCALE=en
       - APP_FALLBACK_LOCALE=en
@@ -487,7 +494,15 @@ services:
       - suresign
 
 networks:
+  # Explicit fixed name (rather than the Compose-project-prefixed default)
+  # so docker-compose.demo.yml can join it as an `external: true` network —
+  # this is what lets the demo backend/queue containers resolve `mysql` and
+  # `redis` by service name and reuse these same instances (per the approved
+  # demo architecture: shared MySQL/Redis with logical isolation, no second
+  # database/cache server). Purely an addressing change — does not alter any
+  # existing container's behavior on its own.
   suresign:
+    name: suresign_shared
     driver: bridge
 
 volumes:

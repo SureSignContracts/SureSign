@@ -121,9 +121,19 @@ select:focus-visible, [tabindex]:focus-visible {
 ::selection { background: var(--gold-30); color: var(--text-primary); }
 
 /* ── Entrance animations ─────────────────────────────────────────────────── */
+/* `to` ends on `transform: none` (NOT `translateY(0)`) deliberately — the
+   two render identically, but `animation-fill-mode: forwards` keeps
+   whichever value is here applied to the element PERMANENTLY after the
+   animation completes. Any non-`none` transform value — even a total
+   no-op like `translateY(0)` — establishes a new CSS containing block
+   for `position: fixed` descendants, silently confining them (and any
+   modal rendered inside a `.ss-animate-in` card) to that card's box
+   instead of the viewport. `none` does not have this effect. Do not
+   reintroduce a `translateY(0)`/`scale(1)`-style "reset" transform here
+   or in `ss-menu-pop-in` below without checking this. */
 @keyframes ss-fade-in-up {
   from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: none; }
 }
 
 /* Fade + lift on mount. Add inline `animationDelay` for stagger. */
@@ -135,9 +145,10 @@ select:focus-visible, [tabindex]:focus-visible {
 /* Fast fade + scale for anchored popups (dropdown/flyout menus) — distinct
    from .ss-animate-in above, which is a slower vertical-lift tuned for
    page-content cards, not a menu popping out of a trigger. */
+/* Same `transform: none` rule as ss-fade-in-up above — see that comment. */
 @keyframes ss-menu-pop-in {
   from { opacity: 0; transform: scale(0.96); }
-  to   { opacity: 1; transform: scale(1); }
+  to   { opacity: 1; transform: none; }
 }
 
 .ss-menu-pop-in {
@@ -148,6 +159,37 @@ select:focus-visible, [tabindex]:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .ss-animate-in, .ss-menu-pop-in {
     opacity: 1;
+    animation: none;
+  }
+}
+
+/* ── Modal / dialog overlay ───────────────────────────────────────────────
+   Distinct from .ss-menu-pop-in (anchored popup, no backdrop, top-left
+   origin) — a centered dialog needs a heavier settle (slight overshoot),
+   a dimmed+blurred backdrop that fades independently, and — critically —
+   a genuine EXIT animation. React unmounts instantly on state change, so
+   `.ss-modal-panel-out`/`.ss-modal-overlay-out` are applied for one
+   animation duration BEFORE the component actually unmounts (see
+   useModalTransition in components/ui/Modal.tsx). */
+@keyframes ss-modal-overlay-in  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ss-modal-overlay-out { from { opacity: 1; } to { opacity: 0; } }
+
+@keyframes ss-modal-panel-in {
+  from { opacity: 0; transform: scale(0.94) translateY(6px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes ss-modal-panel-out {
+  from { opacity: 1; transform: scale(1) translateY(0); }
+  to   { opacity: 0; transform: scale(0.96) translateY(4px); }
+}
+
+.ss-modal-overlay-in  { animation: ss-modal-overlay-in 0.2s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.ss-modal-overlay-out { animation: ss-modal-overlay-out 0.15s ease-in forwards; }
+.ss-modal-panel-in    { animation: ss-modal-panel-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.ss-modal-panel-out   { animation: ss-modal-panel-out 0.15s cubic-bezier(0.4, 0, 1, 1) forwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ss-modal-overlay-in, .ss-modal-overlay-out, .ss-modal-panel-in, .ss-modal-panel-out {
     animation: none;
   }
 }

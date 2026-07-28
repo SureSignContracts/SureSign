@@ -11,6 +11,9 @@ use App\Models\SuresignSetting;
 use App\Models\TradePackage;
 use App\Models\TradePackageAiAnalysis;
 use App\Services\AI\TradePackageAnalysisService;
+use App\Support\AI\AiAnalysisPresenter;
+use App\Support\AI\AiTelemetrySchema;
+use App\Support\AI\AiWorkflow;
 use App\Services\CalendarSyncService;
 use App\Services\TradePackages\TradePackageIntelligenceSyncService;
 use Illuminate\Http\Request;
@@ -63,7 +66,7 @@ class TradePackageAiController extends Controller
 
             if ($existing) {
                 return response()->json([
-                    'existing_analysis' => $existing,
+                    'existing_analysis' => AiAnalysisPresenter::customerFacingTradePackageAnalysis($existing),
                     'message'           => 'A completed analysis already exists for this trade package.',
                 ], 200);
             }
@@ -87,13 +90,15 @@ class TradePackageAiController extends Controller
             'status'           => 'pending',
             'provider'         => $settings->ai_provider ?? 'anthropic',
             'model'            => $settings->ai_model ?? config('ai.anthropic.model'),
+            'workflow'         => AiWorkflow::TRADE_PACKAGE_ANALYSIS,
+            'telemetry_schema_version' => AiTelemetrySchema::CURRENT_VERSION,
             'created_by'       => $user->id,
         ]);
 
         AnalyseTradePackageWithAiJob::dispatch($analysis->id, $fileUpload->id, $user->id);
 
         return response()->json([
-            'data'    => $analysis->fresh(),
+            'data'    => AiAnalysisPresenter::customerFacingTradePackageAnalysis($analysis->fresh()),
             'message' => 'Subcontract analysis started.',
         ], 201);
     }
@@ -108,7 +113,9 @@ class TradePackageAiController extends Controller
             ->latest()
             ->first();
 
-        return response()->json(['data' => $analysis]);
+        return response()->json([
+            'data' => $analysis ? AiAnalysisPresenter::customerFacingTradePackageAnalysis($analysis) : null,
+        ]);
     }
 
     // ─── GET /trade-packages/{tradePackage}/ai-analyses ───────────────────────
@@ -122,7 +129,9 @@ class TradePackageAiController extends Controller
             ->latest()
             ->get();
 
-        return response()->json(['data' => $analyses]);
+        return response()->json([
+            'data' => $analyses->map(fn (TradePackageAiAnalysis $a) => AiAnalysisPresenter::customerFacingTradePackageAnalysis($a))->all(),
+        ]);
     }
 
     // ─── GET /trade-package-ai-analyses/{analysis} ────────────────────────────
@@ -131,7 +140,9 @@ class TradePackageAiController extends Controller
     {
         $this->authorizeAnalysisAccess($request->user(), $analysis);
 
-        return response()->json(['data' => $analysis->load(['tradePackage', 'fileUpload'])]);
+        return response()->json([
+            'data' => AiAnalysisPresenter::customerFacingTradePackageAnalysis($analysis->load(['tradePackage', 'creator'])),
+        ]);
     }
 
     // ─── POST /trade-package-ai-analyses/{analysis}/reparse ───────────────────
@@ -167,7 +178,7 @@ class TradePackageAiController extends Controller
         ]);
 
         return response()->json([
-            'data'    => $analysis->fresh(),
+            'data'    => AiAnalysisPresenter::customerFacingTradePackageAnalysis($analysis->fresh()),
             'message' => 'Saved response re-parsed successfully. No AI credits were used.',
         ]);
     }
@@ -216,7 +227,7 @@ class TradePackageAiController extends Controller
         );
 
         return response()->json([
-            'data'    => $analysis->fresh(),
+            'data'    => AiAnalysisPresenter::customerFacingTradePackageAnalysis($analysis->fresh()),
             'message' => 'Analysis confirmed.',
         ]);
     }

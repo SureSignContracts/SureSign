@@ -48,3 +48,38 @@ Schedule::command('suresign:send-appointment-reminders')
     ->everyFifteenMinutes()
     ->withoutOverlapping()
     ->runInBackground();
+
+// Billing webhook recovery — conservative 5-minute cadence, well above the
+// 15-minute stale-processing lease and the 2-minute stranded-received grace
+// threshold (App\Console\Commands\RecoverBillingWebhookEvents), so a normal
+// in-flight event is never mistaken for one needing recovery.
+// withoutOverlapping() alone (no onOneServer()) matches every other
+// scheduled command in this codebase — this app's deployment/scheduler
+// configuration is single-instance, per those existing commands; adding
+// onOneServer() would be new, unproven infrastructure ahead of an actual
+// need, not a correctness requirement (WebhookEventProcessor's own row
+// locking is what actually prevents duplicate processing regardless of how
+// many scheduler instances ever call this command — see the command's own
+// docblock on why duplicate dispatch is harmless, not incorrect).
+Schedule::command('billing:webhooks:recover')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// Subscription Commercial State Automation checkpoint — turns due grace
+// period starts/expiries, trial expiries, and scheduled cancellations into
+// real SubscriptionLifecycleService transitions (see
+// App\Services\Billing\SubscriptionAutomationService's class docblock for
+// exactly what is/isn't automated and why). Hourly matches every other
+// lifecycle-adjacent scheduled command in this codebase — every automated
+// category here is date/day-grained (grace_period_ends_at, trial_ends_at,
+// current_period_ends_at), never a sub-hour precision requirement, so
+// hourly cadence is not a compromise. withoutOverlapping() alone (no
+// onOneServer()) follows the same single-instance-deployment convention as
+// billing:webhooks:recover above — SubscriptionLifecycleService's own row
+// locking, not the scheduler, is what actually prevents a duplicate
+// transition if this were ever dispatched more than once concurrently.
+Schedule::command('billing:subscriptions:process-automation')
+    ->hourly()
+    ->withoutOverlapping()
+    ->runInBackground();

@@ -30,6 +30,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Demo Environment Flag
+    |--------------------------------------------------------------------------
+    |
+    | True only on the permanent demo.suresigncontracts.app deployment
+    | (docker-compose.demo.yml sets APP_DEMO=true) — never in production or
+    | development. Distinct from config('demo.*') in config/demo.php, which
+    | governs the isolated `demo` DB connection/seeders used from *any*
+    | environment (including this dev container) to build the demo dataset.
+    | This flag instead marks the *running application instance itself* as
+    | the demo deployment, for any future backend code that needs to know
+    | it's serving demo.suresigncontracts.app specifically (e.g. gating an
+    | integration that must never fire from the demo instance).
+    */
+
+    'demo' => (bool) env('APP_DEMO', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Debug Mode
     |--------------------------------------------------------------------------
     |

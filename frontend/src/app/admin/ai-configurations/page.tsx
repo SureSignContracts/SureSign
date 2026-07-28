@@ -8,6 +8,13 @@ import Toggle from '@/components/ui/Toggle';
 import Button from '@/components/ui/Button';
 import { Card, CardBody } from '@/components/ui/Card';
 
+const KNOWN_AI_MODELS = [
+  { value: 'claude-sonnet-5', label: 'claude-sonnet-5 (recommended)' },
+  { value: 'claude-sonnet-4-6', label: 'claude-sonnet-4-6 (previous generation)' },
+  { value: 'claude-haiku-4-5-20251001', label: 'claude-haiku-4-5-20251001 (faster / lower cost)' },
+  { value: 'claude-opus-4-8', label: 'claude-opus-4-8 (most capable)' },
+];
+
 export default function AdminAiConfigPage() {
   const qc = useQueryClient();
 
@@ -48,6 +55,14 @@ export default function AdminAiConfigPage() {
   const currentAiModel        = aiModel !== null ? aiModel : ((suresignData as any)?.ai_model ?? 'claude-sonnet-5');
   const currentAiEffort       = aiEffort !== null ? aiEffort : ((suresignData as any)?.ai_effort ?? 'high');
   const hasAnthropicKey       = !!(suresignData as any)?.has_anthropic_key;
+
+  // A <select> silently displays its FIRST <option> whenever its bound value
+  // doesn't match any listed option, while the real (unrecognized) value stays
+  // selected underneath — misleadingly showing "claude-sonnet-5" as chosen when
+  // the actual saved model is something else entirely (e.g. a retired alias).
+  // Surfacing the true value here, instead of letting the dropdown lie, is what
+  // this component was missing.
+  const isKnownModel = KNOWN_AI_MODELS.some(m => m.value === currentAiModel);
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-8">
@@ -120,13 +135,21 @@ export default function AdminAiConfigPage() {
               value={currentAiModel}
               onChange={e => setAiModel(e.target.value)}
               className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-              style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+              style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: currentAiModel && !isKnownModel ? '#ef4444' : 'var(--text-primary)' }}
             >
-              <option value="claude-sonnet-5">claude-sonnet-5 (recommended)</option>
-              <option value="claude-sonnet-4-6">claude-sonnet-4-6 (previous generation)</option>
-              <option value="claude-haiku-4-5-20251001">claude-haiku-4-5-20251001 (faster / lower cost)</option>
-              <option value="claude-opus-4-8">claude-opus-4-8 (most capable)</option>
+              {!isKnownModel && currentAiModel && (
+                <option value={currentAiModel}>{currentAiModel} (unrecognized — currently saved)</option>
+              )}
+              {KNOWN_AI_MODELS.map(m => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
             </select>
+            {!isKnownModel && currentAiModel && (
+              <p className="text-xs mt-1.5" style={{ color: '#ef4444' }}>
+                This model isn&apos;t one of the supported options — it may be a retired or invalid model ID,
+                which will cause every analysis to fail. Select a supported model above and save to fix this.
+              </p>
+            )}
           </div>
 
           {/* Effort */}

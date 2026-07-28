@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { formatDate } from '@/lib/utils';
+import { formatDate, cn } from '@/lib/utils';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import GeneratePackageModal from '@/components/documents/GeneratePackageModal';
@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import PageTourButton from '@/components/tours/PageTourButton';
+import Modal from '@/components/ui/Modal';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -219,7 +220,7 @@ export default function TradePackageWorkspacePage() {
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       {/* Header */}
-      <div>
+      <div className="ss-animate-in">
         <Link
           href={`/app/projects/${projectId}/contracts`}
           className="inline-flex items-center gap-1.5 text-xs mb-3 transition-colors hover:opacity-80"
@@ -247,21 +248,21 @@ export default function TradePackageWorkspacePage() {
             <div className="flex items-center gap-2" data-tour="tp-actions">
               <button
                 onClick={() => setShowAiOnboarding(true)}
-                className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-xl transition-colors"
+                className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-xl transition-all duration-150 hover:opacity-80 active:scale-[0.97]"
                 style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)', border: '1px solid var(--border)' }}
               >
                 <Sparkles size={14} /> AI Analysis
               </button>
               <button
                 onClick={() => setShowGenerate(true)}
-                className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-xl transition-colors"
+                className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-xl transition-all duration-150 hover:opacity-80 active:scale-[0.97]"
                 style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
               >
                 <FileText size={14} /> Generate Documents
               </button>
               <button
                 onClick={() => setShowEdit(true)}
-                className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-xl transition-colors"
+                className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-xl transition-all duration-150 hover:opacity-90 active:scale-[0.97]"
                 style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
               >
                 <Pencil size={14} /> Edit Package
@@ -272,7 +273,7 @@ export default function TradePackageWorkspacePage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 border-b overflow-x-auto" data-tour="tp-tabs" style={{ borderColor: 'var(--border)' }}>
+      <div className="ss-animate-in flex items-center gap-1 border-b overflow-x-auto" data-tour="tp-tabs" style={{ borderColor: 'var(--border)', animationDelay: '40ms' }}>
         {tabs.map(t => {
           const active = tab === t.key;
           return (
@@ -287,7 +288,7 @@ export default function TradePackageWorkspacePage() {
                 // 'delay' from a prior visit would render no content).
                 t.key === 'delay-eot' ? 'delay' : t.key === 'compliance' ? 'risks' : undefined
               )}
-              className="flex items-center gap-1.5 px-3.5 py-2.5 text-sm font-medium transition-colors relative whitespace-nowrap"
+              className={`flex items-center gap-1.5 px-3.5 py-2.5 text-sm font-medium transition-colors relative whitespace-nowrap ${active ? '' : 'hover:text-[var(--text-secondary)]'}`}
               style={{ color: active ? 'var(--text-primary)' : 'var(--text-muted)' }}
             >
               <t.icon size={14} /> {t.label}
@@ -368,9 +369,12 @@ export default function TradePackageWorkspacePage() {
 
 // ─── Overview ────────────────────────────────────────────────────────────────
 
-function InfoCard({ icon: Icon, title, children }: { icon: React.ElementType; title: string; children: React.ReactNode }) {
+function InfoCard({ icon: Icon, title, children, delay = 0 }: { icon: React.ElementType; title: string; children: React.ReactNode; delay?: number }) {
   return (
-    <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+    <div
+      className="ss-animate-in rounded-2xl p-5"
+      style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: `${delay}ms` }}
+    >
       <div className="flex items-center gap-2 mb-4">
         <Icon size={15} style={{ color: 'var(--text-muted)' }} />
         <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{title}</h3>
@@ -389,14 +393,14 @@ function Row({ label, value }: { label: string; value?: React.ReactNode }) {
   );
 }
 
-function StatTile({ label, value, onClick, tone }: { label: string; value: string | number; onClick?: () => void; tone?: 'default' | 'warning' | 'danger' }) {
+function StatTile({ label, value, onClick, tone, delay = 0 }: { label: string; value: string | number; onClick?: () => void; tone?: 'default' | 'warning' | 'danger'; delay?: number }) {
   const color = tone === 'danger' ? '#f87171' : tone === 'warning' ? '#facc15' : 'var(--text-primary)';
   return (
     <button
       onClick={onClick}
       disabled={!onClick}
-      className="rounded-2xl p-4 text-left transition-colors disabled:cursor-default"
-      style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}
+      className={`ss-animate-in rounded-2xl p-4 text-left transition-all duration-200 disabled:cursor-default ${onClick ? 'hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.98]' : ''}`}
+      style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: `${delay}ms` }}
     >
       <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{label}</p>
       <p className="text-lg font-bold tabular-nums" style={{ color }}>{value}</p>
@@ -483,23 +487,25 @@ function OverviewTab({ pkg, projectId, formatCurrency, onNavigateTab, onNavigate
           label="Next Payment Due"
           value={nextPayment ? formatDate(nextPayment.date) : '—'}
           onClick={nextPayment ? () => navigateToCalendarItem(nextPayment) : undefined}
+          delay={0}
         />
         <StatTile
           label="Next Milestone"
           value={nextMilestone ? formatDate(nextMilestone.date) : '—'}
           onClick={nextMilestone ? () => navigateToCalendarItem(nextMilestone) : undefined}
+          delay={40}
         />
-        <StatTile label="Programme" value={milestones.length ? `${completeMilestones}/${milestones.length}` : '—'} onClick={() => onNavigateTab('programme')} />
+        <StatTile label="Programme" value={milestones.length ? `${completeMilestones}/${milestones.length}` : '—'} onClick={() => onNavigateTab('programme')} delay={80} />
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <StatTile label="Open Delay Events" value={openDelays} tone={openDelays > 0 ? 'warning' : 'default'} onClick={() => onNavigateTab('delay-eot')} />
-        <StatTile label="Pending EOTs" value={pendingEots} tone={pendingEots > 0 ? 'warning' : 'default'} onClick={() => onNavigateTab('delay-eot')} />
-        <StatTile label="Open L&E Claims" value={openLe} tone={openLe > 0 ? 'warning' : 'default'} onClick={() => onNavigateTab('delay-eot')} />
+        <StatTile label="Open Delay Events" value={openDelays} tone={openDelays > 0 ? 'warning' : 'default'} onClick={() => onNavigateTab('delay-eot')} delay={100} />
+        <StatTile label="Pending EOTs" value={pendingEots} tone={pendingEots > 0 ? 'warning' : 'default'} onClick={() => onNavigateTab('delay-eot')} delay={140} />
+        <StatTile label="Open L&E Claims" value={openLe} tone={openLe > 0 ? 'warning' : 'default'} onClick={() => onNavigateTab('delay-eot')} delay={180} />
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
-        <InfoCard icon={Building2} title="Contractor">
+        <InfoCard icon={Building2} title="Contractor" delay={0}>
           <Row label="Name" value={pkg.contractor_name} />
           <Row label="Contact" value={pkg.contractor_contact_name} />
           <Row label="Email" value={pkg.contractor_email} />
@@ -509,7 +515,7 @@ function OverviewTab({ pkg, projectId, formatCurrency, onNavigateTab, onNavigate
           <Row label="VAT Number" value={pkg.contractor_vat_number} />
         </InfoCard>
 
-        <InfoCard icon={Receipt} title="Commercial Terms">
+        <InfoCard icon={Receipt} title="Commercial Terms" delay={60}>
           <Row label="Contract Value" value={pkg.contract_value != null ? formatCurrency(pkg.contract_value) : '—'} />
           <Row label="Retention %" value={pkg.retention_percentage != null ? `${pkg.retention_percentage}%` : '—'} />
           <Row label="Liquidated Damages" value={pkg.liquidated_damages} />
@@ -517,7 +523,7 @@ function OverviewTab({ pkg, projectId, formatCurrency, onNavigateTab, onNavigate
           <Row label="Payment Frequency" value={pkg.payment_frequency ? pkg.payment_frequency.charAt(0).toUpperCase() + pkg.payment_frequency.slice(1) : '—'} />
         </InfoCard>
 
-        <InfoCard icon={CalendarDays} title="Key Dates">
+        <InfoCard icon={CalendarDays} title="Key Dates" delay={120}>
           <Row label="Letter of Intent" value={date(pkg.letter_of_intent_date)} />
           <Row label="Award" value={date(pkg.award_date)} />
           <Row label="Execution" value={date(pkg.execution_date)} />
@@ -526,7 +532,7 @@ function OverviewTab({ pkg, projectId, formatCurrency, onNavigateTab, onNavigate
           <Row label="Defects Liability End" value={date(pkg.defects_liability_end_date)} />
         </InfoCard>
 
-        <InfoCard icon={Layers} title="Payment Rules (statutory dates)">
+        <InfoCard icon={Layers} title="Payment Rules (statutory dates)" delay={180}>
           <Row label="Due Date" value={`Application + ${offsetLabel(pkg.due_date_offset_days)}`} />
           <Row label="Final Date for Payment" value={`Due + ${offsetLabel(pkg.final_date_offset_days)}`} />
           <Row label="Payment Notice" value={`Due + ${offsetLabel(pkg.payment_notice_offset_days)}`} />
@@ -541,7 +547,11 @@ function OverviewTab({ pkg, projectId, formatCurrency, onNavigateTab, onNavigate
       </div>
 
       <div className="grid md:grid-cols-3 gap-4">
-        <button onClick={() => onNavigateTab('ai-analysis')} className="rounded-2xl p-5 text-left" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+        <button
+          onClick={() => onNavigateTab('ai-analysis')}
+          className="ss-animate-in rounded-2xl p-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.98]"
+          style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '0ms' }}
+        >
           <div className="flex items-center gap-2 mb-3">
             <Sparkles size={15} style={{ color: 'var(--gold)' }} />
             <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>AI Analysis</h3>
@@ -558,7 +568,10 @@ function OverviewTab({ pkg, projectId, formatCurrency, onNavigateTab, onNavigate
           )}
         </button>
 
-        <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+        <div
+          className="ss-animate-in rounded-2xl p-5"
+          style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '60ms' }}
+        >
           <div className="flex items-center gap-2 mb-3">
             <CalendarDays size={15} style={{ color: 'var(--text-muted)' }} />
             <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Upcoming Calendar Items</h3>
@@ -569,7 +582,7 @@ function OverviewTab({ pkg, projectId, formatCurrency, onNavigateTab, onNavigate
             <ul className="space-y-1.5 mb-2">
               {upcomingItems.slice(0, 3).map((item: any) => (
                 <li key={item.id}>
-                  <button onClick={() => navigateToCalendarItem(item)} className="text-xs truncate text-left hover:underline" style={{ color: 'var(--text-secondary)' }}>
+                  <button onClick={() => navigateToCalendarItem(item)} className="text-xs truncate text-left transition-colors hover:underline block w-full" style={{ color: 'var(--text-secondary)' }}>
                     {item.title}
                   </button>
                 </li>
@@ -577,19 +590,22 @@ function OverviewTab({ pkg, projectId, formatCurrency, onNavigateTab, onNavigate
             </ul>
           )}
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            <Link href={`/app/projects/${projectId}/calendar`} className="hover:underline" style={{ color: 'var(--gold)' }}>
+            <Link href={`/app/projects/${projectId}/calendar`} className="transition-colors hover:underline" style={{ color: 'var(--gold)' }}>
               View full Calendar ({upcomingCount}) →
             </Link>
           </p>
         </div>
 
-        <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+        <div
+          className="ss-animate-in rounded-2xl p-5"
+          style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '120ms' }}
+        >
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Clock size={15} style={{ color: 'var(--text-muted)' }} />
               <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Recent Activity</h3>
             </div>
-            <button onClick={() => onNavigateTab('activity')} className="text-xs hover:underline" style={{ color: 'var(--gold)' }}>View all →</button>
+            <button onClick={() => onNavigateTab('activity')} className="text-xs transition-colors hover:underline" style={{ color: 'var(--gold)' }}>View all →</button>
           </div>
           {activity.length === 0 ? (
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>No activity recorded yet.</p>
@@ -598,7 +614,7 @@ function OverviewTab({ pkg, projectId, formatCurrency, onNavigateTab, onNavigate
               {activity.slice(0, 3).map((a: any) => (
                 <li key={a.id}>
                   {a.source?.tab ? (
-                    <button onClick={() => onNavigateSource(a.source)} className="text-xs truncate text-left hover:underline block w-full" style={{ color: 'var(--text-secondary)' }}>
+                    <button onClick={() => onNavigateSource(a.source)} className="text-xs truncate text-left transition-colors hover:underline block w-full" style={{ color: 'var(--text-secondary)' }}>
                       {a.description}
                     </button>
                   ) : (
@@ -644,34 +660,32 @@ function MilestoneModal({ projectId, tradePackageId, onClose }: { projectId: str
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-      <div className="w-full max-w-md rounded-xl p-6" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>Add Milestone</h2>
-          <button onClick={onClose}><X size={18} style={{ color: 'var(--text-muted)' }} /></button>
-        </div>
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-muted)' }}>Name *</label>
-            <input className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+    <Modal title="Add Milestone" icon={ListChecks} tone="neutral" onClose={onClose} busy={mutation.isPending}>
+      {(close) => (
+        <>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-muted)' }}>Name *</label>
+              <input className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-muted)' }}>Planned Date</label>
+              <input type="date" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} value={form.planned_date} onChange={e => setForm({ ...form, planned_date: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-muted)' }}>Notes</label>
+              <textarea className="w-full px-3 py-2 rounded-lg text-sm outline-none" rows={2} style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
+            </div>
           </div>
-          <div>
-            <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-muted)' }}>Planned Date</label>
-            <input type="date" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} value={form.planned_date} onChange={e => setForm({ ...form, planned_date: e.target.value })} />
+          <div className="flex justify-end gap-2 pt-2">
+            <button onClick={close} disabled={mutation.isPending} className="px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-50" style={{ color: 'var(--text-secondary)' }}>Cancel</button>
+            <button onClick={() => mutation.mutate()} disabled={!form.name || mutation.isPending} className="px-4 py-2 rounded-lg text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+              {mutation.isPending ? 'Saving…' : 'Add Milestone'}
+            </button>
           </div>
-          <div>
-            <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-muted)' }}>Notes</label>
-            <textarea className="w-full px-3 py-2 rounded-lg text-sm outline-none" rows={2} style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
-          </div>
-        </div>
-        <div className="flex justify-end gap-2 mt-5">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Cancel</button>
-          <button onClick={() => mutation.mutate()} disabled={!form.name || mutation.isPending} className="px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
-            {mutation.isPending ? 'Saving…' : 'Add Milestone'}
-          </button>
-        </div>
-      </div>
-    </div>
+        </>
+      )}
+    </Modal>
   );
 }
 
@@ -1013,7 +1027,7 @@ function AiAnalysisTab({ projectId, pkg, onStartNew }: { projectId: string; pkg:
   const reparseMutation = useMutation({
     mutationFn: (id: number) => api.post(`/trade-package-ai-analyses/${id}/reparse`),
     onSuccess: () => {
-      toast.success('Re-parsed, no AI credits used.');
+      toast.success('Re-parsed using the existing analysis. Your monthly AI usage was not increased.');
       queryClient.invalidateQueries({ queryKey: ['trade-package-ai-analyses', pkg.id] });
     },
     onError: () => toast.error('Could not re-parse this analysis.'),
@@ -1054,9 +1068,7 @@ function AiAnalysisTab({ projectId, pkg, onStartNew }: { projectId: string; pkg:
               </button>
               {expanded === a.id && (
                 <div className="p-4 space-y-3" style={{ backgroundColor: 'var(--bg-surface)' }}>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                    <Row label="Model" value={a.model} />
-                    <Row label="Cost" value={a.estimated_cost != null ? `$${Number(a.estimated_cost).toFixed(4)}` : '—'} />
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
                     <Row label="Started" value={a.started_at ? formatDate(a.started_at) : '—'} />
                     <Row label="Completed" value={a.completed_at ? formatDate(a.completed_at) : '—'} />
                     {/* Sprint 6D: only ever surface fields the pipeline actually captures —
@@ -1192,6 +1204,23 @@ function PkgField({ label, value, onChange, type = 'text' }: {
 
 function EditPackageModal({ projectId, pkg, onClose }: { projectId: string; pkg: TradePackage; onClose: () => void }) {
   const queryClient = useQueryClient();
+  // Genuine exit animation before unmount — matches components/ui/Modal.tsx's
+  // own close() pattern. This modal stays a custom layout (max-w-3xl,
+  // sticky header, scrollable body) rather than migrating to the shared
+  // <Modal> component, which is fixed at max-w-md and too narrow for this form.
+  const [closing, setClosing] = useState(false);
+  const close = () => {
+    if (closing) return;
+    setClosing(true);
+    window.setTimeout(onClose, 150);
+  };
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const str = (v: unknown) => (v == null ? '' : String(v));
   const [form, setForm] = useState<Record<string, string>>({
@@ -1254,11 +1283,18 @@ function EditPackageModal({ projectId, pkg, onClose }: { projectId: string; pkg:
   const labelStyle = LABEL_STYLE;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="ss-animate-in w-full max-w-3xl rounded-2xl max-h-[90vh] overflow-y-auto" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
+    <div
+      className={cn('fixed inset-0 z-50 flex items-center justify-center p-4', closing ? 'ss-modal-overlay-out' : 'ss-modal-overlay-in')}
+      style={{ backgroundColor: 'rgba(10,10,10,0.55)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)' }}
+      onClick={e => { if (e.target === e.currentTarget) close(); }}
+    >
+      <div
+        className={cn('w-full max-w-3xl rounded-2xl max-h-[90vh] overflow-y-auto', closing ? 'ss-modal-panel-out' : 'ss-modal-panel-in')}
+        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}
+      >
         <div className="flex items-center justify-between p-5 sticky top-0" style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)' }}>
           <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Edit Trade Package</h2>
-          <button onClick={onClose}><X size={18} style={{ color: 'var(--text-muted)' }} /></button>
+          <button onClick={close}><X size={18} style={{ color: 'var(--text-muted)' }} /></button>
         </div>
         <form onSubmit={e => { e.preventDefault(); mutate(); }} className="p-5 space-y-6">
           {/* Package */}
@@ -1341,7 +1377,7 @@ function EditPackageModal({ projectId, pkg, onClose }: { projectId: string; pkg:
           </section>
 
           <div className="flex items-center justify-end gap-2 pt-2">
-            <button type="button" onClick={onClose} className="text-sm px-4 py-2 rounded-xl" style={{ color: 'var(--text-muted)' }}>Cancel</button>
+            <button type="button" onClick={close} disabled={isPending} className="text-sm px-4 py-2 rounded-xl transition-opacity hover:opacity-80 disabled:opacity-50" style={{ color: 'var(--text-muted)' }}>Cancel</button>
             <button type="submit" disabled={isPending} className="flex items-center gap-1.5 text-sm px-4 py-2 rounded-xl transition-all active:scale-[0.98] disabled:opacity-50" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
               {isPending && <Loader2 size={14} className="animate-spin" />} Save Changes
             </button>

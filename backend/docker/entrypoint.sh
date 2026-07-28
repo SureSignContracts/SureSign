@@ -2,7 +2,30 @@
 set -e
 
 if [ "$1" = "queue" ]; then
-    exec php artisan queue:work --tries=1 --timeout=480 --sleep=3
+    # --queue=billing-webhooks,default: this worker must consume the
+    # dedicated `billing-webhooks` queue (App\Jobs\ProcessBillingWebhookEventJob)
+    # FIRST, then fall through to `default` (AnalyseContractWithAiJob,
+    # AnalyseTradePackageWithAiJob, GenerateProjectNotificationsJob,
+    # SendAppointmentEmailJob) — Laravel drains queues strictly in the
+    # order listed, so billing events are never left waiting behind a
+    # slow AI job. Before this line, the worker had no --queue flag at
+    # all and only ever consumed `default` — every billing-webhooks job
+    # would have sat in the `jobs` table indefinitely. See
+    # internal-docs/super-admin/subscription-billing.md's Billing Worker
+    # Alignment checkpoint for the full incident/fix writeup.
+    #
+    # --tries=1/--timeout=480 remain the WORKER-LEVEL defaults for any
+    # job that doesn't declare its own — AnalyseContractWithAiJob's
+    # comment ("must stay under DB_QUEUE_RETRY_AFTER=600s") is what these
+    # two flags are actually tuned for. They do NOT apply to
+    # ProcessBillingWebhookEventJob, which declares its own stricter
+    # $tries=3/$timeout=30/$backoff=[10,60] — Laravel's own Worker
+    # (confirmed by reading vendor/laravel/framework/.../Worker.php
+    # directly) always prefers a job's own tries()/timeout() over these
+    # CLI defaults when the job sets them, so billing jobs are never
+    # limited to one attempt or a 480s timeout despite what these flags
+    # might suggest at a glance.
+    exec php artisan queue:work --queue=billing-webhooks,default --tries=1 --timeout=480 --sleep=3
 fi
 
 if [ "$1" = "scheduler" ]; then

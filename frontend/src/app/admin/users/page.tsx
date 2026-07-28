@@ -3,17 +3,30 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import Link from 'next/link';
 import {
   Users, UserPlus, Shield, Mail, Search, Copy, Check,
   Settings2, Trash2, X,
-  KeyRound, RotateCcw, LogOut, Compass,
+  KeyRound, RotateCcw, LogOut, Compass, ShieldCheck, ExternalLink,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { formatDateTime } from '@/lib/dateTime';
 import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
 import PaginationBar from '@/components/ui/PaginationBar';
 import Toggle from '@/components/ui/Toggle';
+import { Badge, Tone } from '@/components/ui/Badge';
+import { useUserInheritedSubscription } from '@/hooks/useBilling';
+import { SubscriptionSummaryView } from '@/types/subscriptionIntelligence';
+import UsageMeter from '@/components/billing/intelligence/UsageMeter';
+
+const ACCESS_MODE_TONE: Record<string, Tone> = {
+  none: 'neutral', trial: 'accent', full: 'success', grace: 'warning', restricted: 'danger',
+};
+const ACCESS_MODE_LABEL: Record<string, string> = {
+  none: 'No access', trial: 'Trial', full: 'Full access', grace: 'Grace period', restricted: 'Restricted',
+};
 
 // Matches the roles actually seeded in DatabaseSeeder — 'Manager'/'Viewer'
 // were previously listed here but no such role exists in the backend.
@@ -50,6 +63,13 @@ function genPassword(): string {
   return [...required, ...filler].sort(() => Math.random() - 0.5).join('');
 }
 
+interface OrganizationSubscriptionSummary {
+  plan_name: string | null;
+  status: string | null;
+  access_mode: string;
+  trial_ends_at: string | null;
+}
+
 interface AdminUser {
   id: number;
   name: string;
@@ -63,6 +83,111 @@ interface AdminUser {
   tours_reset_at: string | null;
   last_login_at: string | null;
   created_at: string;
+  organization_id: number | null;
+  organization_name: string | null;
+  is_platform_operator: boolean;
+  organization_subscription: OrganizationSubscriptionSummary | null;
+}
+
+// ── Organisation / inherited subscription pill (Users list — lightweight, no per-row fetch) ──
+function OrganizationCell({ u }: { u: AdminUser }) {
+  if (u.is_platform_operator) {
+    return (
+      <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>
+        <ShieldCheck size={12} />
+        Platform Operator
+      </div>
+    );
+  }
+
+  if (!u.organization_name) {
+    return <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>;
+  }
+
+  const sub = u.organization_subscription;
+
+  return (
+    <div>
+      <p className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>{u.organization_name}</p>
+      {sub && (
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <Badge tone={ACCESS_MODE_TONE[sub.access_mode] ?? 'neutral'} className="!px-1.5 !py-0 !text-[10px]">
+            {ACCESS_MODE_LABEL[sub.access_mode] ?? sub.access_mode}
+          </Badge>
+          {sub.plan_name && (
+            <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{sub.plan_name}</span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Inherited subscription section inside Manage User modal — fetched lazily, only while the modal is open ──
+function InheritedSubscriptionSection({ user }: { user: AdminUser }) {
+  const { data, isLoading } = useUserInheritedSubscription(user.id);
+
+  if (user.is_platform_operator) {
+    return (
+      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+        Platform operators have no organisation subscription of their own.
+      </p>
+    );
+  }
+
+  if (isLoading) {
+    return <div className="h-16 rounded-xl animate-pulse motion-reduce:animate-none" style={{ backgroundColor: 'var(--bg-elevated)' }} />;
+  }
+
+  const info = data?.data;
+  if (!info || info.is_platform_operator) {
+    return <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Could not load subscription information.</p>;
+  }
+
+  const subscription = info.subscription as unknown as SubscriptionSummaryView | null;
+  const access = subscription?.access;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+            {subscription?.plan_name ?? subscription?.plan_name_snapshot ?? 'No plan'}
+          </p>
+          <p className="text-xs mt-0.5 capitalize" style={{ color: 'var(--text-muted)' }}>
+            {subscription ? String(subscription.status ?? '').replace(/_/g, ' ') : 'No subscription'}
+          </p>
+        </div>
+        {access && (
+          <Badge tone={ACCESS_MODE_TONE[access.mode] ?? 'neutral'}>{ACCESS_MODE_LABEL[access.mode] ?? access.mode}</Badge>
+        )}
+      </div>
+
+      {info.trial && (
+        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          Trial ends {formatDateTime(info.trial.ends_at)} ({info.trial.days_remaining} day{info.trial.days_remaining === 1 ? '' : 's'} left).
+        </p>
+      )}
+
+      {(info.ai || info.storage) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {info.ai && <UsageMeter metric={info.ai} />}
+          {info.storage && <UsageMeter metric={info.storage} />}
+        </div>
+      )}
+
+      {user.organization_id && (
+        <Link
+          href={`/admin/companies/${user.organization_id}`}
+          className="inline-flex items-center gap-1.5 text-xs font-medium hover:opacity-80"
+          style={{ color: 'var(--gold)' }}
+        >
+          <ExternalLink size={12} />
+          Manage Organization Subscription
+        </Link>
+      )}
+    </div>
+  );
 }
 
 // ── Status badges ───────────────────────────────────────────────────────────
@@ -283,6 +408,14 @@ function ManageUserModal({
             onChange={onToggleActive}
             disabled={actionLoading}
           />
+        </section>
+
+        <div style={{ borderTop: '1px solid var(--border)', margin: '0 0 20px' }} />
+
+        {/* ── Subscription (inherited, read-only — G4A) ── */}
+        <section className="mb-6">
+          <SectionHeader>Subscription</SectionHeader>
+          <InheritedSubscriptionSection user={user} />
         </section>
 
         <div style={{ borderTop: '1px solid var(--border)', margin: '0 0 20px' }} />
@@ -716,7 +849,7 @@ export default function AdminUsersPage() {
         <table className="w-full min-w-[820px]">
           <thead>
             <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
-              {['User', 'Role', 'Status', 'Joined', 'Last Active', ''].map((h, i) => (
+              {['User', 'Role', 'Status', 'Organisation', 'Joined', 'Last Active', ''].map((h, i) => (
                 <th key={i} className="text-left px-4 py-3 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{h}</th>
               ))}
             </tr>
@@ -725,7 +858,7 @@ export default function AdminUsersPage() {
             {isLoading ? (
               [...Array(4)].map((_, i) => (
                 <tr key={i} style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)' }}>
-                  {[...Array(6)].map((_, j) => (
+                  {[...Array(7)].map((_, j) => (
                     <td key={j} className="px-4 py-3">
                       <div className="h-4 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)', width: j === 0 ? '60%' : '40%' }} />
                     </td>
@@ -774,6 +907,7 @@ export default function AdminUsersPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3"><StatusBadges u={u} /></td>
+                  <td className="px-4 py-3"><OrganizationCell u={u} /></td>
                   <td className="px-4 py-3">
                     <span className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
                       {u.created_at ? formatDate(u.created_at) : '—'}

@@ -4,6 +4,25 @@ namespace App\Services\AI;
 
 class ContractAnalysisPrompt
 {
+    /**
+     * The canonical short-summary field for schema v2.0 is
+     * executive_summary.commercial_summary — NOT the flat top-level
+     * contract_summary key the v1 (pre-v2.0) schema used. Both
+     * AnalyseContractWithAiJob and AiController::reparseAnalysis() call this
+     * single method rather than each independently guessing the right key
+     * (a mismatch here previously left ContractAiAnalysis::summary silently
+     * null for every v2.0 analysis — see G4C.1A). The v1 fallback stays
+     * only so an old, already-completed analysis re-parsed today still
+     * produces a summary; the schema itself is not duplicated.
+     */
+    public static function extractSummary(array $data): ?string
+    {
+        $summary = data_get($data, 'executive_summary.commercial_summary')
+            ?? data_get($data, 'contract_summary');
+
+        return $summary !== null ? \Illuminate\Support\Str::limit($summary, 1000) ?: null : null;
+    }
+
     public static function system(): string
     {
         return <<<'PROMPT'

@@ -51,7 +51,14 @@ class ClaudeAiProvider implements AiProviderInterface
 
         $body = $response->json();
 
-        $text = $body['content'][0]['text']
+        // Content blocks are NOT always [text] — with output_config.effort set (this
+        // pipeline always sets one), Claude may prepend a 'thinking' block ahead of
+        // the actual 'text' block for a sufficiently complex/long request. Blindly
+        // reading content[0] silently broke on any response that included one,
+        // wrongly reporting a real, complete answer as "unexpected response".
+        $textBlock = collect($body['content'] ?? [])->firstWhere('type', 'text');
+
+        $text = (is_array($textBlock) ? $textBlock['text'] ?? null : null)
             ?? throw new RuntimeException('The AI service returned an unexpected response.');
 
         return [

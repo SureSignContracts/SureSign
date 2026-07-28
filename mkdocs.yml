@@ -178,6 +178,7 @@ nav:
   - Settings and Branding:
       - settings/overview.md
       - settings/company-branding.md
+      - settings/billing.md
   - Workflows:
       - workflows/index.md
       - workflows/new-project.md

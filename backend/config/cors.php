@@ -3,8 +3,8 @@ return [
     'paths' => ['api/*', 'sanctum/csrf-cookie'],
     'allowed_methods' => ['*'],
     // MARKETING_URL is separate from FRONTEND_URL because the marketing site
-    // (suresigncontracts.app) only needs CORS for the public /demo-requests
-    // endpoint — it never authenticates against the app API otherwise.
+    // (suresigncontracts.app) only uses public marketing and appointment
+    // endpoints. It never authenticates against the app API.
     'allowed_origins' => array_filter([
         env('FRONTEND_URL', 'http://localhost:3000'),
         env('MARKETING_URL'),

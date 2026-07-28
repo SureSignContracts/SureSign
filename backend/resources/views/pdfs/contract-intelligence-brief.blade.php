@@ -434,12 +434,9 @@
         <div class="sh sh0">AI Analysis Details</div>
         <table class="it">
             <tr><td class="k">Analysis Reference</td><td class="v">{{ $analysisRef }}</td></tr>
-            <tr><td class="k">Provider / Model</td><td class="v">{{ ucfirst($analysis->provider ?? 'Anthropic') }} / {{ $analysis->model ?? 'claude-sonnet' }}</td></tr>
+            <tr><td class="k">AI Engine</td><td class="v">SureSign AI</td></tr>
             @if($analysis->completed_at)
             <tr><td class="k">Analysis Date</td><td class="v">{{ Carbon::parse($analysis->completed_at)->format('d M Y, H:i') }}</td></tr>
-            @endif
-            @if($analysis->estimated_cost)
-            <tr><td class="k">Estimated API Cost</td><td class="v">${{ number_format($analysis->estimated_cost, 4) }}</td></tr>
             @endif
         </table>
     </div>

@@ -388,7 +388,7 @@ function AiAnalysisModal({ contract, projectId, onClose, initialAnalysis, forceN
                 style={{ backgroundColor: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.2)', color: '#4ade80' }}
               >
                 <CheckCircle size={12} />
-                Viewing a saved analysis will not consume AI credits.
+                Viewing a saved analysis will not affect your monthly AI usage.
               </div>
               <div className="space-y-2">
                 {priorAnalyses.map((a: any) => (
@@ -415,16 +415,6 @@ function AiAnalysisModal({ contract, projectId, onClose, initialAnalysis, forceN
                         {a.creator?.name && (
                           <span className="text-xs" style={{ color: 'var(--text-muted)' }}>by {a.creator.name}</span>
                         )}
-                        {a.model && (
-                          <span className="text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>
-                            {a.model.replace('claude-', '')}
-                          </span>
-                        )}
-                        {a.estimated_cost != null && (
-                          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                            ${Number(a.estimated_cost).toFixed(4)}
-                          </span>
-                        )}
                       </div>
                     </div>
                     <button
@@ -445,7 +435,7 @@ function AiAnalysisModal({ contract, projectId, onClose, initialAnalysis, forceN
                 >
                   <Sparkles size={13} />
                   Run New Analysis
-                  <span className="text-xs ml-1" style={{ color: '#ca8a04' }}>(may consume credits)</span>
+                  <span className="text-xs ml-1" style={{ color: '#ca8a04' }}>(counts towards monthly AI usage)</span>
                 </button>
               </div>
             </div>
@@ -1480,7 +1470,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
                       Upload a contract file. SureSign Contracts will read it and suggest contract details before you create the record.
                     </p>
                     <p className="text-xs mt-2 font-medium" style={{ color: '#ca8a04' }}>
-                      ⚠ Running a new analysis may consume AI credits.
+                      ⚠ Running a new analysis will count towards your monthly AI usage.
                     </p>
                   </div>
                   <ArrowRight size={16} className="flex-shrink-0 mt-1" style={{ color: 'var(--text-muted)' }} />
@@ -1504,7 +1494,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
                       Select a previously completed analysis to populate the contract form. No AI will run.
                     </p>
                     <p className="text-xs mt-2 font-medium" style={{ color: '#4ade80' }}>
-                      ✓ Will not consume AI credits.
+                      ✓ Will not affect your monthly AI usage.
                     </p>
                     {completedAnalyses.length > 0 && (
                       <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
@@ -1526,7 +1516,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
                 style={{ backgroundColor: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.2)', color: '#4ade80' }}
               >
                 <CheckCircle size={12} />
-                Using an existing analysis will not consume additional AI credits.
+                Using an existing analysis will not increase your monthly AI usage.
               </div>
 
               {completedAnalyses.length === 0 ? (
@@ -1565,16 +1555,6 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
                             </span>
                             {a.creator?.name && (
                               <span className="text-xs" style={{ color: 'var(--text-muted)' }}>by {a.creator.name}</span>
-                            )}
-                            {a.model && (
-                              <span className="text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>
-                                {a.model.replace('claude-', '')}
-                              </span>
-                            )}
-                            {a.estimated_cost != null && (
-                              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                                ${Number(a.estimated_cost).toFixed(4)}
-                              </span>
                             )}
                           </div>
                         </div>
@@ -1686,7 +1666,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
                     style={{ backgroundColor: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.2)', color: '#4ade80' }}
                   >
                     <CheckCircle size={12} />
-                    Viewing a saved analysis will not consume AI credits.
+                    Viewing a saved analysis will not affect your monthly AI usage.
                   </div>
                   <div className="space-y-2">
                     {stubPriorAnalyses.map((a: any) => (
@@ -1709,8 +1689,6 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
                                 : formatAiAnalysisDate(a.created_at)}
                             </span>
                             {a.creator?.name && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>by {a.creator.name}</span>}
-                            {a.model && <span className="text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>{a.model.replace('claude-', '')}</span>}
-                            {a.estimated_cost != null && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>${Number(a.estimated_cost).toFixed(4)}</span>}
                           </div>
                         </div>
                         <button
@@ -1746,7 +1724,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
                   >
                     <Sparkles size={13} />
                     Run New Analysis
-                    <span className="text-xs ml-1" style={{ color: '#ca8a04' }}>(may consume credits)</span>
+                    <span className="text-xs ml-1" style={{ color: '#ca8a04' }}>(counts towards monthly AI usage)</span>
                   </button>
                 </div>
               )}
@@ -1772,7 +1750,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
                   style={{ backgroundColor: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.2)', color: '#4ade80' }}
                 >
                   <CheckCircle size={12} />
-                  Viewing a saved analysis. No AI credits are being used.
+                  Viewing a saved analysis. Your monthly AI usage is not affected.
                 </div>
               )}
 
@@ -3002,7 +2980,7 @@ export default function ProjectContractsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
-                  {['Date', 'Contract', 'Status', 'Created by', 'Model', 'Cost', ''].map(h => (
+                  {['Date', 'Contract', 'Status', 'Created by', ''].map(h => (
                     <th key={h} className="text-left px-5 py-3 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{h}</th>
                   ))}
                 </tr>
@@ -3035,12 +3013,6 @@ export default function ProjectContractsPage() {
                       </td>
                       <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
                         {a.creator?.name ?? '—'}
-                      </td>
-                      <td className="px-5 py-3 text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>
-                        {a.model ? a.model.replace('claude-', '') : '—'}
-                      </td>
-                      <td className="px-5 py-3 text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
-                        {a.estimated_cost != null ? `$${Number(a.estimated_cost).toFixed(4)}` : '—'}
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-1">

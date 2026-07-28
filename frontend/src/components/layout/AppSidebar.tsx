@@ -15,7 +15,7 @@ import {
   FileText, BarChart2, Brain, Users, Settings, LogOut,
   Sun, Moon, ShieldCheck, ChevronRight, HelpCircle,
   PanelLeftClose, PanelLeftOpen, LifeBuoy, Compass,
-  ScrollText, Lock, BookOpen,
+  ScrollText, Lock, BookOpen, CreditCard, Gauge,
 } from 'lucide-react';
 import { APP_VERSION_LABEL } from '@/config/app-version';
 import { buildSupportHref } from '@/lib/supportContext';
@@ -412,7 +412,6 @@ function ProfilePopover({
   collapsed,
   displayName,
   email,
-  theme,
   isSuperAdmin,
   isMobile,
   pathname,
@@ -422,7 +421,6 @@ function ProfilePopover({
   helpTriggerRef,
   helpFlyoutRef,
   onClose,
-  onToggleTheme,
   onLogout,
   portalRef,
 }: {
@@ -430,7 +428,6 @@ function ProfilePopover({
   collapsed: boolean;
   displayName: string;
   email?: string;
-  theme: string;
   isSuperAdmin: boolean;
   isMobile: boolean;
   pathname: string;
@@ -440,7 +437,6 @@ function ProfilePopover({
   helpTriggerRef: React.RefObject<HTMLButtonElement | null>;
   helpFlyoutRef: React.RefObject<HTMLDivElement | null>;
   onClose: () => void;
-  onToggleTheme: () => void;
   onLogout: () => void;
   portalRef: React.RefObject<HTMLDivElement | null>;
 }) {
@@ -497,16 +493,25 @@ function ProfilePopover({
         Settings
       </Link>
 
-      <button
-        onClick={onToggleTheme}
-        className="group w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs transition-colors hover:bg-[var(--bg-hover)]"
+      <Link
+        href="/app/settings/billing"
+        onClick={onClose}
+        className="group flex items-center gap-2.5 px-3.5 py-2.5 text-xs transition-colors hover:bg-[var(--bg-hover)]"
         style={{ color: 'var(--text-secondary)' }}
       >
-        {theme === 'dark'
-          ? <Sun  size={13} className="transition-transform duration-200 group-hover:rotate-12 group-hover:scale-110" />
-          : <Moon size={13} className="transition-transform duration-200 group-hover:-rotate-12 group-hover:scale-110" />}
-        {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-      </button>
+        <CreditCard size={13} className="transition-transform duration-200 group-hover:scale-110" />
+        Billing
+      </Link>
+
+      <Link
+        href="/app/settings/usage"
+        onClick={onClose}
+        className="group flex items-center gap-2.5 px-3.5 py-2.5 text-xs transition-colors hover:bg-[var(--bg-hover)]"
+        style={{ color: 'var(--text-secondary)' }}
+      >
+        <Gauge size={13} className="transition-transform duration-200 group-hover:scale-110" />
+        Usage
+      </Link>
 
       <div>
         <button
@@ -885,7 +890,6 @@ export default function AppSidebar({
           collapsed={showCollapsed}
           displayName={displayName}
           email={user?.email}
-          theme={theme}
           isSuperAdmin={isSuperAdmin}
           isMobile={isMobile}
           pathname={pathname ?? '/app'}
@@ -895,7 +899,6 @@ export default function AppSidebar({
           helpTriggerRef={helpTriggerRef}
           helpFlyoutRef={helpFlyoutRef}
           onClose={closeProfile}
-          onToggleTheme={toggle}
           onLogout={() => logout().then(() => (window.location.href = '/login'))}
           portalRef={portalPopoverRef}
         />

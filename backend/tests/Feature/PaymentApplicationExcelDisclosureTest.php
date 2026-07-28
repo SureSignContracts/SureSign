@@ -38,7 +38,7 @@ class PaymentApplicationExcelDisclosureTest extends TestCase
 
         $paymentApplication = PaymentApplication::create([
             'project_id' => $project->id, 'organization_id' => $org->id, 'created_by' => $user->id,
-            'application_number' => 1, 'gross_valuation' => 1000, 'amount_due' => 1000,
+            'application_number' => 1, 'application_date' => now()->toDateString(), 'gross_valuation' => 1000, 'amount_due' => 1000,
             'status' => 'draft',
             // Deliberately malformed -- breakdown is cast 'array' but nothing
             // prevents a plain string being persisted through it, and

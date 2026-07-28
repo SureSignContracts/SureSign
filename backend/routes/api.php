@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\CommercialOverviewController;
 use App\Http\Controllers\Api\SiteAdministrationController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\OrganizationController;
+use App\Http\Controllers\Api\OrganizationSubscriptionAssignmentController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\SiteDiaryController;
@@ -42,6 +43,7 @@ use App\Http\Controllers\Api\ProgrammeMilestoneController;
 use App\Http\Controllers\Api\PromptController;
 use App\Http\Controllers\Api\CompaniesHouseController;
 use App\Http\Controllers\Api\DemoRequestController;
+use App\Http\Controllers\Api\MarketingContactController;
 use App\Http\Controllers\Api\GenerateTradePackageFoldersController;
 use App\Http\Controllers\Api\TradePackageCatalogueController;
 use App\Http\Controllers\Api\TradePackageAiController;
@@ -58,6 +60,18 @@ use App\Http\Controllers\Api\SystemStatusController;
 use App\Http\Controllers\Api\PlatformAnnouncementController;
 use App\Http\Controllers\Api\TourMilestoneController;
 use App\Http\Controllers\Api\ApplicationMonitoringController;
+use App\Http\Controllers\Api\AiCreditsGrantController;
+use App\Http\Controllers\Api\AiCreditsOperationsController;
+use App\Http\Controllers\Api\AiTelemetryReportingController;
+use App\Http\Controllers\Api\BillingController;
+use App\Http\Controllers\Api\AiCreditUsageController;
+use App\Http\Controllers\Api\SubscriptionIntelligenceController;
+use App\Http\Controllers\Api\BillingPortalController;
+use App\Http\Controllers\Api\CheckoutController;
+use App\Http\Controllers\Api\PlanChangeController;
+use App\Http\Controllers\Api\SubscriptionCancellationController;
+use App\Http\Controllers\Api\PricingController;
+use App\Http\Controllers\Api\StripeWebhookController;
 use App\Http\Controllers\Api\AppointmentAvailabilityController;
 use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\AppointmentTypeController;
@@ -86,11 +100,40 @@ Route::prefix('auth')->group(function () {
 
 Route::get('/guest-settings', [SuresignSettingController::class, 'guestShow']);
 
+// Public marketing-site Pricing page — no auth. Only plans/features/FAQs/items
+// that are active, visible, and published are ever returned; see
+// PricingManagementService::publicPayload() and
+// internal-docs/super-admin/pricing-management.md.
+Route::get('/pricing', [PricingController::class, 'publicShow']);
+
+// Public Stripe webhook endpoint — no auth (Stripe's servers cannot
+// authenticate as a SureSign user), no CSRF (this app's `api` middleware
+// group is never subject to CSRF at all — confirmed in bootstrap/app.php;
+// this route needs no explicit exemption). Trust comes entirely from
+// signature verification inside WebhookIngestionService. See
+// internal-docs/super-admin/subscription-billing.md.
+//
+// Deliberately EXCLUDES the generic 'api' group throttle
+// (`Illuminate\Routing\Middleware\ThrottleRequests:api`, wired in via
+// bootstrap/app.php's `throttleApi()`) rather than stacking it alongside
+// `billing-webhooks` — confirmed via `php artisan route:list -v` that both
+// were otherwise present. The generic 'api' limiter keys unauthenticated
+// requests by IP, exactly like `billing-webhooks` does, so stacking both
+// would mean two IDENTICAL-key buckets gating the same traffic (redundant,
+// not additional protection) while adding needless confusion about which
+// limit actually governs Stripe's deliveries. `billing-webhooks` alone is
+// the intentional, tuned-for-Stripe limit; this route is fully isolated
+// from whatever quota customer-facing authenticated API traffic consumes.
+Route::post('/billing/webhooks/stripe', [StripeWebhookController::class, 'handle'])
+    ->withoutMiddleware('throttle:api')
+    ->middleware('throttle:billing-webhooks');
+
 // Public marketing-site lead capture (suresigncontracts.app/book-a-demo) — no auth.
 // Superseded by the public Appointments booking flow below (Phase 3) for
 // the marketing site's own CTA, but left in place/unused rather than
 // removed — see internal-docs/super-admin/appointments.md.
 Route::post('/demo-requests', [DemoRequestController::class, 'store'])->middleware('throttle:demo-request');
+Route::post('/marketing-contact', [MarketingContactController::class, 'store'])->middleware('throttle:marketing-contact');
 
 // Public Appointments booking (suresigncontracts.app/book/{slug}) — no
 // auth. Only Appointment Types with is_public=true and is_active=true are
@@ -195,6 +238,66 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
 
     // Global Commercial — organisation-wide commercial monitoring/triage (read-only)
     Route::get('/commercial/overview', [CommercialOverviewController::class, 'overview']);
+
+    // Billing — organisation-facing Subscription & Billing data (read-only —
+    // Stripe Test Mode Integration checkpoint, Slice A). Checkout, Portal,
+    // upgrade/downgrade, and cancellation endpoints are deliberately not
+    // exposed yet — see BillingController's docblock.
+    Route::prefix('billing')->group(function () {
+        Route::get('/overview', [BillingController::class, 'overview']);
+        Route::get('/subscription', [BillingController::class, 'subscription']);
+        Route::get('/plans', [BillingController::class, 'plans']);
+        Route::get('/pending-plan-change', [BillingController::class, 'pendingPlanChange']);
+        Route::get('/invoices', [BillingController::class, 'invoices']);
+        Route::get('/invoices/{invoice}', [BillingController::class, 'invoice']);
+        Route::get('/payments', [BillingController::class, 'payments']);
+
+        // Phase G3 — Subscription Intelligence Centre. Read-only, single
+        // composed payload; see SubscriptionIntelligenceService.
+        Route::get('/intelligence', [SubscriptionIntelligenceController::class, 'index']);
+
+        // Phase G4C.3E — customer-facing "Monthly AI Usage" meter. Same
+        // tenancy contract as /intelligence above (org derived only from
+        // the authenticated user). See AiCreditUsageService.
+        Route::get('/ai-credit-usage', [AiCreditUsageController::class, 'index']);
+
+        // Every mutating Billing endpoint below actually creates/changes a
+        // real Stripe-backed commercial relationship, so all of them are
+        // additionally gated by 'billing.enabled' (App\Http\Middleware\
+        // EnsureBillingIsEnabled) — see that class's docblock for why this
+        // gate was needed at all. Read-only endpoints above are deliberately
+        // left ungated.
+        Route::middleware('billing.enabled')->group(function () {
+            // First-subscription Checkout initiation only — the sole
+            // mutating Billing endpoint this slice adds. Rate-limited
+            // separately from the read endpoints since it triggers a real
+            // outbound Stripe API call.
+            Route::post('/checkout', [CheckoutController::class, 'store'])->middleware('throttle:10,1');
+
+            // Phase E4 — explicit customer-initiated abandonment of an
+            // unfinished Checkout attempt. Only valid while pending_payment;
+            // see CheckoutController::cancelPending()'s docblock.
+            Route::post('/checkout/cancel-pending', [CheckoutController::class, 'cancelPending'])->middleware('throttle:10,1');
+
+            // Existing-subscription plan changes only — Enterprise/first-
+            // subscription Checkout are deliberately out of scope here.
+            Route::post('/plan-change', [PlanChangeController::class, 'store'])->middleware('throttle:10,1');
+            Route::post('/plan-change/{planChange}/cancel', [PlanChangeController::class, 'cancel'])->middleware('throttle:10,1');
+
+            // First-party subscription cancellation — SureSign owns this
+            // workflow entirely; Stripe Customer Portal cancellation is never
+            // exposed (see SubscriptionCancellationController's docblock).
+            Route::post('/subscription/cancel', [SubscriptionCancellationController::class, 'cancel'])->middleware('throttle:10,1');
+            Route::post('/subscription/resume', [SubscriptionCancellationController::class, 'resume'])->middleware('throttle:10,1');
+
+            // Restricted Stripe Customer Portal (Slice E2) — payment methods,
+            // billing details, and invoice history only. Plan changes and
+            // cancellation stay on SureSign's own endpoints above; the Portal
+            // configuration this creates/reuses has both of those capabilities
+            // disabled (see BillingPortalService). Empty body only.
+            Route::post('/portal', [BillingPortalController::class, 'store'])->middleware('throttle:10,1');
+        });
+    });
 
     // Site Admin — organisation-wide RFI/Site Instruction/Site Diary/Meeting/EOT monitoring (read-only)
     Route::get('/site-administration/overview', [SiteAdministrationController::class, 'overview']);
@@ -474,11 +577,108 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
         Route::post('users/{id}/set-password',         [UserController::class, 'setPassword']);
         Route::post('users/{id}/revoke-tokens',        [UserController::class, 'revokeTokens']);
         Route::post('users/{id}/reset-tours',          [UserController::class, 'resetTours']);
+        // G4A — read-only inherited organisation subscription detail (see
+        // internal-docs/super-admin/subscription-billing.md).
+        Route::get('users/{id}/subscription',          [UserController::class, 'subscription']);
 
         // Application Monitoring — cross-organization presence/usage/operational
         // data. Super Admin only; deliberately not in the 'Super Admin|Admin'
         // group below (see internal-docs/super-admin/application-monitoring.md).
         Route::get('/admin/application-monitoring', [ApplicationMonitoringController::class, 'index']);
+
+    });
+
+    // Pricing Management — controls the public marketing Pricing page and
+    // (since Phase G2) Subscription Plan entitlement defaults. Widened from
+    // Super-Admin-only to 'Super Admin|Admin' per the approved Phase G0
+    // decision: both are platform-wide roles (organization_id = null) in
+    // this app's role model, so this carries no customer-org exposure risk
+    // (see internal-docs/super-admin/pricing-management.md and
+    // internal-docs/super-admin/subscription-billing.md's Phase G0/G2
+    // sections).
+    Route::middleware('role:Super Admin|Admin')->prefix('admin/pricing')->group(function () {
+        Route::get('/settings', [PricingController::class, 'showSettings']);
+        Route::put('/settings', [PricingController::class, 'updateSettings']);
+
+        Route::get('/plans',                 [PricingController::class, 'indexPlans']);
+        Route::post('/plans',                [PricingController::class, 'storePlan']);
+        Route::put('/plans/reorder',         [PricingController::class, 'reorderPlans']);
+        Route::put('/plans/{plan}',          [PricingController::class, 'updatePlan']);
+        Route::post('/plans/{plan}/publish', [PricingController::class, 'publishPlan']);
+        Route::post('/plans/{plan}/archive', [PricingController::class, 'archivePlan']);
+        Route::delete('/plans/{plan}',       [PricingController::class, 'destroyPlan']);
+        Route::post('/plans/{plan}/copy',    [PricingController::class, 'copyPlan']);
+
+        // Phase G2 — Subscription Plan entitlement defaults editor. Reads/writes
+        // pricing_plan_entitlements only; never touches FeatureGate, snapshots,
+        // or Stripe. Editing here only affects future entitlement snapshots.
+        Route::get('/plans/{plan}/entitlements', [PricingController::class, 'showEntitlements']);
+        Route::put('/plans/{plan}/entitlements', [PricingController::class, 'updateEntitlements']);
+
+        Route::get('/feature-sections',                 [PricingController::class, 'indexFeatureSections']);
+        Route::post('/feature-sections',                [PricingController::class, 'storeFeatureSection']);
+        Route::put('/feature-sections/reorder',         [PricingController::class, 'reorderFeatureSections']);
+        Route::put('/feature-sections/{section}',       [PricingController::class, 'updateFeatureSection']);
+        Route::delete('/feature-sections/{section}',    [PricingController::class, 'destroyFeatureSection']);
+
+        Route::get('/features',              [PricingController::class, 'indexFeatures']);
+        Route::post('/features',             [PricingController::class, 'storeFeature']);
+        Route::put('/features/reorder',      [PricingController::class, 'reorderFeatures']);
+        Route::put('/features/{feature}',    [PricingController::class, 'updateFeature']);
+        Route::delete('/features/{feature}', [PricingController::class, 'destroyFeature']);
+
+        Route::get('/matrix', [PricingController::class, 'indexMatrix']);
+        Route::put('/matrix', [PricingController::class, 'updateMatrix']);
+
+        Route::get('/faqs',              [PricingController::class, 'indexFaqs']);
+        Route::post('/faqs',             [PricingController::class, 'storeFaq']);
+        Route::put('/faqs/reorder',      [PricingController::class, 'reorderFaqs']);
+        Route::put('/faqs/{faq}',        [PricingController::class, 'updateFaq']);
+        Route::delete('/faqs/{faq}',     [PricingController::class, 'destroyFaq']);
+
+        Route::get('/included-items',              [PricingController::class, 'indexIncludedItems']);
+        Route::post('/included-items',             [PricingController::class, 'storeIncludedItem']);
+        Route::put('/included-items/reorder',      [PricingController::class, 'reorderIncludedItems']);
+        Route::put('/included-items/{item}',       [PricingController::class, 'updateIncludedItem']);
+        Route::delete('/included-items/{item}',    [PricingController::class, 'destroyIncludedItem']);
+    });
+
+    // Internal AI execution / non-enforcing AI Credit simulation reporting
+    // (Phase G4C.2C-2). 'Super Admin|Admin' — matches the Pricing
+    // Management precedent above, since both roles are platform-wide (not
+    // customer-org scoped) in this codebase's role model. Every response
+    // is built exclusively from AiAnalysisPresenter's internal*() methods —
+    // see AiTelemetryReportingController's own docblock. Read-only.
+    Route::middleware('role:Super Admin|Admin')->prefix('admin/ai-telemetry')->group(function () {
+        Route::get('/summary', [AiTelemetryReportingController::class, 'summary']);
+        Route::get('/detail',  [AiTelemetryReportingController::class, 'detail']);
+        Route::get('/export',  [AiTelemetryReportingController::class, 'export']);
+        // Phase G4C.2D — telemetry maturity health checks (read-only).
+        Route::get('/health',  [AiTelemetryReportingController::class, 'health']);
+    });
+
+    // Phase G4C.3D-1 — AI Credits Operations Dashboard (read-only). Same
+    // 'Super Admin|Admin' gate as ai-telemetry above, for the same reason
+    // (both roles are platform-wide, not customer-org scoped).
+    Route::middleware('role:Super Admin|Admin')->prefix('admin/ai-credits')->group(function () {
+        Route::get('/summary', [AiCreditsOperationsController::class, 'summary']);
+        Route::get('/organizations', [AiCreditsOperationsController::class, 'organizations']);
+        Route::get('/organizations/{id}', [AiCreditsOperationsController::class, 'organizationDetail']);
+        Route::get('/transactions', [AiCreditsOperationsController::class, 'transactions']);
+        Route::get('/shadow-activity', [AiCreditsOperationsController::class, 'shadowActivity']);
+        Route::get('/operating-mode', [AiCreditsOperationsController::class, 'operatingModeSettings']);
+    });
+
+    // Phase G4C.3H — AI Credits grants/adjustments/expiry. Deliberately
+    // 'role:Super Admin' ONLY (unlike the read-only group above) — Admin
+    // must never reach these, mirroring the G4B.2 subscription-assignment
+    // precedent exactly, including its throttle.
+    Route::middleware(['role:Super Admin', 'throttle:30,1'])->prefix('admin/ai-credits')->group(function () {
+        Route::post('/organizations/{organization}/grant', [AiCreditsGrantController::class, 'grant']);
+        Route::post('/organizations/{organization}/adjust-credit', [AiCreditsGrantController::class, 'adjustCredit']);
+        Route::post('/organizations/{organization}/adjust-debit', [AiCreditsGrantController::class, 'adjustDebit']);
+        Route::post('/organizations/{organization}/expire', [AiCreditsGrantController::class, 'expire']);
+        Route::put('/operating-mode', [AiCreditsGrantController::class, 'updateOperatingMode']);
     });
 
     Route::middleware('role:Super Admin|Admin')->group(function () {
@@ -630,6 +830,23 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
 
         // Show individual organization by ID (admin)
         Route::get('/organizations/{id}', [OrganizationController::class, 'showById']);
+        // G4A — read-only Organisation Subscription Administration (see
+        // internal-docs/super-admin/subscription-billing.md).
+        Route::get('/organizations/{id}/subscription', [OrganizationController::class, 'subscription']);
+    });
+
+    // G4B.2 — Manual & Complimentary subscription assignment/termination.
+    // Deliberately 'role:Super Admin' ONLY — Admin keeps read-only access
+    // via the group above and must never reach these mutation endpoints
+    // (see internal-docs/super-admin/subscription-billing.md's G4B.2
+    // section). Throttled like the other Super-Admin-only mutation group
+    // (Users) for the same reason: a careless/compromised session
+    // shouldn't be able to mass-assign faster than a human clicking
+    // through the admin UI ever would.
+    Route::middleware(['role:Super Admin', 'throttle:30,1'])->group(function () {
+        Route::post('/organizations/{organization}/subscriptions/assign-manual', [OrganizationSubscriptionAssignmentController::class, 'assignManual']);
+        Route::post('/organizations/{organization}/subscriptions/assign-complimentary', [OrganizationSubscriptionAssignmentController::class, 'assignComplimentary']);
+        Route::post('/organizations/{organization}/subscriptions/{subscription}/terminate', [OrganizationSubscriptionAssignmentController::class, 'terminate']);
     });
 
     // Notifications

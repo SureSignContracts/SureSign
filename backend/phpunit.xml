@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
-         bootstrap="vendor/autoload.php"
+         bootstrap="tests/bootstrap.php"
          colors="true"
 >
     <testsuites>
@@ -19,14 +19,17 @@
     </source>
     <php>
         <!--
-            force="true" on every env override below is load-bearing, not
-            decorative: without it, a value already set in the process
-            environment (e.g. DB_CONNECTION=mysql / DB_DATABASE=suresign,
-            as set by docker-compose for the app container) silently wins
-            over this file, and RefreshDatabase-based tests run migrate:fresh
-            against the real database instead of an isolated sqlite one.
-            Confirmed by incident on 2026-07-10: this exact gap let a test
-            run wipe the real local `suresign` database.
+            SECONDARY / redundant declaration only — the authoritative fix is
+            tests/bootstrap.php (referenced by the `bootstrap` attribute
+            above), which sets $_SERVER as well as putenv()/$_ENV. This block
+            alone is NOT sufficient: force="true" here calls putenv() and
+            sets $_ENV, but never touches $_SERVER, which PHP's CLI SAPI
+            already populated from the real container environment (e.g.
+            DB_CONNECTION=mysql) before PHPUnit ever runs. Laravel's env()
+            resolution consults $_SERVER, so relying on this block alone lets
+            a RefreshDatabase-based test run migrate:fresh against the real
+            database — confirmed by incidents on 2026-07-10 and 2026-07-22.
+            Kept here only for tooling that reads phpunit.xml directly.
         -->
         <env name="APP_ENV" value="testing" force="true"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file" force="true"/>

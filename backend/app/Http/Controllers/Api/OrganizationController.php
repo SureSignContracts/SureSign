@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\BrandingSetting;
 use App\Models\Organization;
+use App\Services\Admin\OrganizationSubscriptionAdminService;
 use App\Services\FileSecurityService;
 use App\Services\TimezoneResolver;
 use Illuminate\Http\Request;
@@ -183,6 +184,20 @@ class OrganizationController extends Controller
             ? url('storage/' . $org->branding->logo_path)
             : null;
         return response()->json(['data' => $org]);
+    }
+
+    /**
+     * G4A — read-only Organisation Subscription Administration. Gated by
+     * the same 'role:Super Admin|Admin' route group as showById() above;
+     * organisation isolation is not a concern here (unlike a customer-
+     * facing endpoint) because a platform operator is explicitly permitted
+     * to view any organisation's subscription state — never a Client.
+     */
+    public function subscription(string $id, OrganizationSubscriptionAdminService $service)
+    {
+        $organization = Organization::findOrFail($id);
+
+        return response()->json(['data' => $service->forOrganization($organization)]);
     }
 
     public function update(Request $request)

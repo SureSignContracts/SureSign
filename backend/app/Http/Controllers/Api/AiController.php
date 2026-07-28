@@ -12,6 +12,9 @@ use App\Models\FileUpload;
 use App\Models\Project;
 use App\Models\SuresignSetting;
 use App\Services\AI\ContractAnalysisService;
+use App\Support\AI\AiAnalysisPresenter;
+use App\Support\AI\AiTelemetrySchema;
+use App\Support\AI\AiWorkflow;
 use App\Services\CalendarSyncService;
 use App\Services\ContractIntelligenceSyncService;
 use App\Services\DocumentGenerationService;
@@ -64,7 +67,7 @@ class AiController extends Controller
 
             if ($existing) {
                 return response()->json([
-                    'existing_analysis' => $existing,
+                    'existing_analysis' => AiAnalysisPresenter::customerFacingContractAnalysis($existing),
                     'message'           => 'A completed analysis already exists for this contract.',
                 ], 200);
             }
@@ -107,13 +110,15 @@ class AiController extends Controller
             'status'          => 'pending',
             'provider'        => $settings->ai_provider ?? 'anthropic',
             'model'           => $settings->ai_model ?? config('ai.anthropic.model'),
+            'workflow'        => AiWorkflow::CONTRACT_ANALYSIS,
+            'telemetry_schema_version' => AiTelemetrySchema::CURRENT_VERSION,
             'created_by'      => $user->id,
         ]);
 
         AnalyseContractWithAiJob::dispatch($analysis->id, $fileUpload->id, $user->id);
 
         return response()->json([
-            'data'    => $analysis->fresh(),
+            'data'    => AiAnalysisPresenter::customerFacingContractAnalysis($analysis->fresh()),
             'message' => 'Contract analysis started.',
         ], 201);
     }
@@ -129,7 +134,9 @@ class AiController extends Controller
             ->latest()
             ->first();
 
-        return response()->json(['data' => $analysis]);
+        return response()->json([
+            'data' => $analysis ? AiAnalysisPresenter::customerFacingContractAnalysis($analysis) : null,
+        ]);
     }
 
     // ─── GET /ai/analyses/{analysis} ──────────────────────────────────────────
@@ -138,7 +145,9 @@ class AiController extends Controller
     {
         $this->authorizeAnalysisAccess($request->user(), $analysis);
 
-        return response()->json(['data' => $analysis->load(['contract', 'fileUpload'])]);
+        return response()->json([
+            'data' => AiAnalysisPresenter::customerFacingContractAnalysis($analysis->load(['contract', 'creator'])),
+        ]);
     }
 
     // ─── POST /ai/analyses/{analysis}/reparse ─────────────────────────────────
@@ -168,7 +177,7 @@ class AiController extends Controller
             ], 422);
         }
 
-        $summary = \Illuminate\Support\Str::limit(data_get($decoded, 'contract_summary', null), 1000) ?: null;
+        $summary = \App\Services\AI\ContractAnalysisPrompt::extractSummary($decoded);
 
         $analysis->update([
             'status'            => 'completed',
@@ -179,7 +188,7 @@ class AiController extends Controller
         ]);
 
         return response()->json([
-            'data'    => $analysis->fresh(),
+            'data'    => AiAnalysisPresenter::customerFacingContractAnalysis($analysis->fresh()),
             'message' => 'Saved response re-parsed successfully. No AI credits were used.',
         ]);
     }
@@ -229,7 +238,7 @@ class AiController extends Controller
         );
 
         return response()->json([
-            'data'    => $analysis->fresh(),
+            'data'    => AiAnalysisPresenter::customerFacingContractAnalysis($analysis->fresh()),
             'message' => 'Analysis confirmed.',
         ]);
     }
@@ -352,7 +361,9 @@ class AiController extends Controller
             ->latest()
             ->get();
 
-        return response()->json(['data' => $analyses]);
+        return response()->json([
+            'data' => $analyses->map(fn (ContractAiAnalysis $a) => AiAnalysisPresenter::customerFacingContractAnalysis($a))->all(),
+        ]);
     }
 
     // ─── GET /projects/{project}/ai-analyses ─────────────────────────────────
@@ -372,7 +383,9 @@ class AiController extends Controller
             ->latest()
             ->get();
 
-        return response()->json(['data' => $analyses]);
+        return response()->json([
+            'data' => $analyses->map(fn (ContractAiAnalysis $a) => AiAnalysisPresenter::customerFacingContractAnalysis($a))->all(),
+        ]);
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────

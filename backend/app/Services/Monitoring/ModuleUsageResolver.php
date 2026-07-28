@@ -47,7 +47,9 @@ class ModuleUsageResolver
         'site-instructions'        => 'site_reports',
         'rfis'                     => 'site_reports',
         'qa-reports'               => 'site_reports',
-        'snags'                    => 'site_reports',
+        // Fixed: the real route resource is 'snagging' (apiResource('snagging', ...)) —
+        // 'snags' matched no real route and this bucket has never been counted.
+        'snagging'                 => 'site_reports',
         'delay-events'             => 'delay_events',
         'eot-requests'             => 'eot_requests',
         'loss-and-expense-claims'  => 'loss_and_expense',
@@ -58,6 +60,43 @@ class ModuleUsageResolver
         'organizations'            => 'settings',
         'suresign-settings'        => 'settings',
         'admin'                    => 'super_admin',
+
+        // Added — real routes previously falling through to null (see
+        // ModuleUsageService/App Monitoring known-limitations note).
+        'appointments'             => 'appointments',
+        'appointment-types'        => 'appointments',
+        'appointment-availability' => 'appointments',
+        'clients'                  => 'clients',
+        'users'                    => 'users',
+        // Prompt Library: covers both /prompts/{template}/render (customer
+        // copy/render action) and /admin/prompts/... (category/template
+        // management) — same feature, one bucket, matching this map's
+        // existing coarse-grained convention.
+        'prompts'                  => 'prompt_library',
+        // Contract AI Analysis detail-view actions (status/analyses/
+        // confirm/cancel/reparse/generate-brief) under the top-level /ai
+        // prefix — distinct from the nested /contracts/{id}/ai-analysis
+        // and /trade-packages/{id}/ai-analysis start actions, which
+        // deliberately stay bucketed under 'contracts'/'trade_packages'
+        // (coarser, but already counted — not a gap).
+        'ai'                       => 'ai_analysis',
+        // Organisation-facing Subscription & Billing (/billing/...).
+        'billing'                  => 'billing',
+        // Super Admin/Admin Pricing Management (/admin/pricing/...) —
+        // distinct from the public, unauthenticated marketing /pricing
+        // page, which this middleware never sees (fires only when
+        // $request->user() exists — see TrackApplicationUsage).
+        'pricing'                  => 'pricing_management',
+        // Internal AI Usage & Cost reporting (/admin/ai-telemetry/...).
+        'ai-telemetry'             => 'ai_telemetry',
+
+        // Deliberately NOT mapped: bare 'templates' is ambiguous — the
+        // same segment appears in both /admin/templates (Document
+        // Templates CRUD) and /admin/prompts/templates (Prompt Library
+        // templates), and this resolver's "last matching segment wins"
+        // rule would let one silently mislabel the other. Left unmapped
+        // (falls to the 'admin'/'prompts' segment that precedes it,
+        // matching its pre-existing behaviour) rather than guessing.
     ];
 
     /**
@@ -141,6 +180,14 @@ class ModuleUsageResolver
             'loss_and_expense'     => 'Loss and Expense',
             'settings'             => 'Settings',
             'super_admin'          => 'Super Admin',
+            'appointments'         => 'Appointments',
+            'clients'              => 'Clients',
+            'users'                => 'Users',
+            'prompt_library'       => 'Prompt Library',
+            'ai_analysis'          => 'AI Analysis',
+            'billing'              => 'Billing',
+            'pricing_management'   => 'Pricing Management',
+            'ai_telemetry'         => 'AI Usage & Cost',
             default                => ucfirst(str_replace('_', ' ', $moduleKey)),
         };
     }

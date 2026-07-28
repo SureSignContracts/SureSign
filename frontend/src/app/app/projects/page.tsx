@@ -88,7 +88,7 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
   const mutation = useMutation({
     mutationFn: (data: typeof form) => api.post('/projects', { ...data, currency: data.currency || null }).then(r => r.data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['projects-portfolio'] });
       onClose();
     },
     onError: (e: unknown) => {

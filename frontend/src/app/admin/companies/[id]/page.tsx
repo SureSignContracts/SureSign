@@ -10,7 +10,7 @@ import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import toast from 'react-hot-toast';
 import {
   ArrowLeft, Building2, Users, FolderKanban, Search, Plus, X,
-  Calendar, DollarSign, ChevronRight, MapPin, Phone, Mail, Hash, User,
+  Calendar, DollarSign, ChevronRight, MapPin, Phone, Mail, Hash, User, CreditCard,
 } from 'lucide-react';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
@@ -217,6 +217,26 @@ export default function AdminCompanyDetailPage() {
           <p className="text-lg font-bold mt-1 tabular-nums" style={{ color: 'var(--text-primary)' }}>{formatCurrency(totalValue)}</p>
         </div>
       </div>
+
+      {/* Subscription — G4A/G4B.2 Organisation Subscription Administration,
+          moved to its own page (kept off this page to avoid overloading it
+          with an unrelated, heavier data fetch/action set). */}
+      <Link
+        href={`/admin/companies/${id}/subscription`}
+        className="flex items-center justify-between rounded-2xl p-4 transition-opacity hover:opacity-90"
+        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--gold-15)' }}>
+            <CreditCard size={16} style={{ color: 'var(--gold)' }} />
+          </div>
+          <div>
+            <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Subscription & Billing</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Plan, usage, health, and subscription actions</p>
+          </div>
+        </div>
+        <ChevronRight size={16} style={{ color: 'var(--text-muted)' }} />
+      </Link>
 
       {/* Projects section */}
       <div className="space-y-4">

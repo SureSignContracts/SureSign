@@ -18,15 +18,21 @@ const apiOrigin = (() => {
 // block. script-src needs it for the two small inline scripts in
 // layout.tsx/page.tsx (pre-hydration theme flash prevention, JSON-LD) —
 // both are static, non-user-influenced markup, not a real injection vector.
+//
+// static.cloudflareinsights.com/cloudflareinsights.com: this app has no
+// analytics code of its own — Cloudflare auto-injects its Web Analytics
+// beacon at the edge whenever the site is proxied through it, so the CSP
+// has to allow it regardless of anything in this repo, or Cloudflare's own
+// script gets blocked with no code-level fix possible.
 const csp = [
   "default-src 'self'",
   "base-uri 'self'",
   "frame-ancestors 'none'",
-  "script-src 'self' 'unsafe-inline'",
+  "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
   "font-src 'self'",
-  `connect-src 'self' ${apiOrigin}`,
+  `connect-src 'self' ${apiOrigin} https://cloudflareinsights.com`,
   "form-action 'self'",
 ].join('; ');
 

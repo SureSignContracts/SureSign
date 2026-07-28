@@ -42,6 +42,8 @@ return [
             'queue' => env('DB_QUEUE', 'default'),
             // Must exceed the longest job timeout (AnalyseContractWithAiJob = 300s) so a
             // still-running job is never re-reserved and re-executed (which double-bills Claude).
+            // App\Jobs\ProcessBillingWebhookEventJob's own $timeout=30 sits
+            // comfortably under this too — verified, not assumed.
             'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 600),
             'after_commit' => false,
         ],

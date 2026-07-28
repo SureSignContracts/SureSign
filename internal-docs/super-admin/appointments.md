@@ -9,10 +9,12 @@ product and not a rebrand of any third-party scheduling tool.
 
 This covers **Phase 1 (Foundation), Phase 2 (Staff Availability & Internal
 Scheduling), Phase 2.1 (Scheduling Integrity Hardening), Phase 3 (Public
-Booking), and Phase 4 backend (Communications & Appointment Experience —
-confirmation/reminder emails, signed cancel/reschedule links, ICS)**. The
-Phase 4 marketing-site confirmation pages are not built yet — the backend
-they'll call is complete. Calendar-provider integrations (Google/Outlook/
+Booking), and Phase 4 (Communications & Appointment Experience —
+confirmation/reminder emails, signed cancel/reschedule links, ICS, and the
+marketing-site confirmation/cancel/reschedule pages that call it)**. Every
+phase listed is complete end to end, backend and frontend — see
+[Marketing site](#marketing-site-marketing-a-separate-nextjs-appdeployment)
+below for the actual pages. Calendar-provider integrations (Google/Outlook/
 Teams/Zoom), round-robin assignment, and dashboards/reporting are all
 deferred to later phases and do not exist yet — see
 [Deferred to later phases](#deferred-to-later-phases).

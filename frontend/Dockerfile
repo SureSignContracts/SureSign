@@ -9,6 +9,14 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+# Demo-only — unset (falsy) for every production build, since no build arg
+# is passed in docker-compose.prod.yml. Only docker-compose.demo.yml passes
+# these, baking the small identifying banner (src/components/shared/
+# DemoBanner.tsx) into that build alone.
+ARG NEXT_PUBLIC_DEMO_MODE
+ENV NEXT_PUBLIC_DEMO_MODE=$NEXT_PUBLIC_DEMO_MODE
+ARG NEXT_PUBLIC_DEMO_VERSION
+ENV NEXT_PUBLIC_DEMO_VERSION=$NEXT_PUBLIC_DEMO_VERSION
 RUN npm run build
 
 FROM node:20-alpine AS runner

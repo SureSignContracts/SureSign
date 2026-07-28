@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import Providers from './providers';
+import DemoBanner from '@/components/shared/DemoBanner';
 
 const geistSans = Geist({ subsets: ['latin'], variable: '--font-sans' });
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-mono' });
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('suresign-theme')||'light';document.documentElement.setAttribute('data-theme',t);}catch(e){}` }} />
       </head>
       <body suppressHydrationWarning>
+        <DemoBanner />
         <Providers>{children}</Providers>
       </body>
     </html>

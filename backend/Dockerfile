@@ -19,6 +19,7 @@ RUN echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula sele
 RUN apt-get update && apt-get install -y \
     git curl zip unzip libpng-dev libonig-dev libxml2-dev libzip-dev \
     libreoffice \
+    poppler-utils \
     ttf-mscorefonts-installer \
     fonts-liberation \
     fonts-dejavu \

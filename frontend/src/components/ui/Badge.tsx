@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 
-type Tone = 'neutral' | 'success' | 'warning' | 'info' | 'danger' | 'accent';
+export type Tone = 'neutral' | 'success' | 'warning' | 'info' | 'danger' | 'accent';
 
 const TONE_STYLE: Record<Tone, React.CSSProperties> = {
   neutral: { backgroundColor: 'rgba(148,163,184,0.12)', color: '#94a3b8' },

@@ -15,4 +15,19 @@ class Organization extends Model {
     public function documents()       { return $this->hasMany(Document::class); }
     public function aiConversations() { return $this->hasMany(AiConversation::class); }
     public function activities()      { return $this->hasMany(ProjectActivity::class); }
+    public function billingCustomer() { return $this->hasOne(BillingCustomer::class); }
+    public function subscriptions()   { return $this->hasMany(Subscription::class); }
+
+    /**
+     * The organisation's current pending/active subscription, if any — see
+     * App\Support\Billing\SubscriptionStatus::LIVE for what counts as
+     * "live". Convenience accessor; SubscriptionService (Phase 5+) is the
+     * one place that decides whether a NEW one may be created.
+     */
+    public function liveSubscription()
+    {
+        return $this->hasOne(Subscription::class)
+            ->whereIn('status', \App\Support\Billing\SubscriptionStatus::LIVE)
+            ->latestOfMany();
+    }
 }

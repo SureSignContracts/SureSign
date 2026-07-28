@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, Save, Check, Upload, X, Palette, Building2, KeyRound, ScrollText, Lock, BookOpen, Globe } from 'lucide-react';
+import { Settings, Save, Check, Upload, X, Palette, Building2, KeyRound, ScrollText, Lock, BookOpen, Globe, CreditCard, Gauge } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -305,19 +305,35 @@ export default function SettingsPage() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 p-1 rounded-full mb-6 w-fit" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+      <div className="flex flex-wrap gap-1 p-1 rounded-full mb-6 w-fit" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
         {tabs.map(t => (
           <button key={t.id} onClick={() => { setTab(t.id); setSaved(false); }}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all active:scale-[0.97]"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all active:scale-[0.97]"
             style={tab === t.id
               ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
               : { color: 'var(--text-secondary)' }
             }
           >
-            <t.icon size={14} />
+            <t.icon size={12} />
             {t.label}
           </button>
         ))}
+        <Link
+          href="/app/settings/billing"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all active:scale-[0.97] hover:bg-[var(--bg-hover)]"
+          style={{ color: 'var(--text-secondary)' }}
+        >
+          <CreditCard size={12} />
+          Billing
+        </Link>
+        <Link
+          href="/app/settings/usage"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all active:scale-[0.97] hover:bg-[var(--bg-hover)]"
+          style={{ color: 'var(--text-secondary)' }}
+        >
+          <Gauge size={12} />
+          Usage
+        </Link>
       </div>
 
       <div className="rounded-2xl p-6" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>

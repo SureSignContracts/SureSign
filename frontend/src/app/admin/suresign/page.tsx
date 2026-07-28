@@ -796,7 +796,7 @@ export default function AdminSureSignPage() {
                 { key: 'find',              label: 'Find Company',   superAdminOnly: false },
                 { key: 'users',             label: 'Users',          superAdminOnly: false },
                 // Super Admin-only pages — only show to Super Admins
-                { key: 'billing',           label: 'Billing',        superAdminOnly: true },
+                { key: 'pricing',           label: 'Pricing',        superAdminOnly: true },
                 { key: 'ai-configurations', label: 'AI Config',      superAdminOnly: true },
                 { key: 'application-monitoring', label: 'Application Monitoring', superAdminOnly: true },
                 { key: 'storage',           label: 'Storage',        superAdminOnly: true },

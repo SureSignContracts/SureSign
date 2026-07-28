@@ -42,6 +42,12 @@ vendor
 storage/app/private/*
 storage/app/public/*
 storage/app/templates/*
+# Isolated demo-environment storage root (see config/demo.php's
+# storage_root / App\Support\Demo\DemoStorage) — local dev/test-run
+# artifacts only, never part of the shipped image. Root-owned leftovers
+# here have the same "blocks the build outright" failure mode already
+# noted below for storage/framework/testing.
+storage/app/demo-private/*
 
 # A local dev machine may already have run `artisan storage:link`, leaving a
 # real symlink at this path. It must never be baked into the image — a fresh

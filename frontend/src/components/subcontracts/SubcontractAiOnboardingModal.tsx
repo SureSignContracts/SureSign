@@ -8,6 +8,7 @@ import api from '@/lib/api';
 import Button from '@/components/ui/Button';
 import Section from '@/components/ai/Section';
 import AnalysisLoadingDisplay from '@/components/ai/AnalysisLoadingDisplay';
+import { cn } from '@/lib/utils';
 
 function getErrorMessage(error: unknown, fallback: string) {
   const anyErr = error as any;
@@ -226,6 +227,26 @@ export default function SubcontractAiOnboardingModal({ isOpen, onClose, tradePac
     onError: (err: unknown) => toast.error(getErrorMessage(err, 'Failed to restart analysis.')),
   });
 
+  // Genuine exit animation before unmount, matching components/ui/Modal.tsx's
+  // own close() pattern — kept as a custom layout (wide, multi-section,
+  // step-driven upload/analysing/reviewing/error flow) rather than migrating
+  // to the shared <Modal>, which is fixed at max-w-md. Blocked while an
+  // upload/analysis/confirm is actually in flight, same as Modal's `busy`.
+  const busy = uploadMutation.isPending || step === 'analysing' || confirmMutation.isPending;
+  const [closing, setClosing] = useState(false);
+  const close = () => {
+    if (busy || closing) return;
+    setClosing(true);
+    window.setTimeout(onClose, 150);
+  };
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busy, closing]);
+
   if (!isOpen) return null;
 
   const detectedTrade = data.general.detected_trade;
@@ -241,11 +262,14 @@ export default function SubcontractAiOnboardingModal({ isOpen, onClose, tradePac
   const showOtherNotice = !tradePackage.is_custom && isOther && !!data.general.detected_trade_freeform;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
+    <div
+      className={cn('fixed inset-0 z-50 flex items-center justify-center p-4', closing ? 'ss-modal-overlay-out' : 'ss-modal-overlay-in')}
+      style={{ backgroundColor: 'rgba(10,10,10,0.55)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)' }}
+      onClick={e => { if (e.target === e.currentTarget) close(); }}
+    >
       <div
-        className="w-full max-w-2xl rounded-2xl ss-animate-in shadow-[var(--shadow-pop)] flex flex-col"
-        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', maxHeight: '92vh' }}
-        onClick={e => e.stopPropagation()}
+        className={cn('w-full max-w-2xl rounded-2xl flex flex-col', closing ? 'ss-modal-panel-out' : 'ss-modal-panel-in')}
+        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)', maxHeight: '92vh' }}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-5 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
@@ -256,8 +280,8 @@ export default function SubcontractAiOnboardingModal({ isOpen, onClose, tradePac
               {tradePackage.name}
             </span>
           </div>
-          {step !== 'analysing' && (
-            <button onClick={onClose} aria-label="Close">
+          {!busy && (
+            <button onClick={close} aria-label="Close" className="transition-opacity hover:opacity-70">
               <X size={18} style={{ color: 'var(--text-muted)' }} />
             </button>
           )}
@@ -334,7 +358,7 @@ export default function SubcontractAiOnboardingModal({ isOpen, onClose, tradePac
                 </div>
               </div>
               <div className="flex justify-end gap-3">
-                <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
+                <button onClick={close} className="rounded-lg px-4 py-2 text-sm transition-opacity hover:opacity-80" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
                   Close
                 </button>
                 <Button onClick={() => retryMutation.mutate()} disabled={retryMutation.isPending}>
@@ -443,7 +467,7 @@ export default function SubcontractAiOnboardingModal({ isOpen, onClose, tradePac
               )}
 
               <div className="flex justify-end gap-3 pt-2">
-                <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
+                <button onClick={close} className="rounded-lg px-4 py-2 text-sm transition-opacity hover:opacity-80" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
                   Cancel
                 </button>
                 <Button onClick={() => confirmMutation.mutate()} disabled={confirmMutation.isPending}>
