@@ -476,6 +476,11 @@ services:
       - "3002:3000"
     environment:
       - HOSTNAME=0.0.0.0
+      # Server-side only (not NEXT_PUBLIC_) — reaches the backend over the
+      # internal docker network for this service's own server-side fetches
+      # (lib/pricing.ts, used by the Pricing pages' ISR revalidation and the
+      # sitemap), the same reason `frontend` sets it above.
+      - BACKEND_INTERNAL_URL=http://backend:8000/api
     security_opt:
       - no-new-privileges:true
     networks:

@@ -22,7 +22,7 @@ export function DeliveryDocs() {
           <div className="rounded-2xl border border-border bg-bg-base p-8 shadow-[var(--shadow-card)] transition-shadow duration-300 hover:shadow-[var(--shadow-pop)] md:p-10">
             <div className="text-xl font-medium tracking-tight text-text-primary">Documents</div>
             <p className="mt-3 max-w-[38ch] text-text-secondary">
-              Every file — meetings, site reports, QA, general — lands in the same
+              Every file, including meetings, site reports, QA, and general documents, lands in the same
               standard folder structure and document register as everything else,
               atomically numbered so nothing gets overwritten or duplicated.
             </p>

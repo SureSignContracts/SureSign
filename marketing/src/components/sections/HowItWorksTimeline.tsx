@@ -5,7 +5,7 @@ import { getGsap } from '@/lib/gsap';
 import { useReducedMotion } from '@/lib/useReducedMotion';
 
 const STEPS = [
-  { title: 'Upload Contract', detail: 'Drop in the executed contract — PDF, DOCX, or TXT.' },
+  { title: 'Upload Contract', detail: 'Drop in the executed contract as a PDF, DOCX, or TXT file.' },
   { title: 'Automated Contract Analysis', detail: 'Parties, key dates, payment rules, and programme milestones are extracted automatically.' },
   { title: 'Review & Confirm', detail: 'A human reviews the extraction and confirms it before anything downstream trusts it.' },
   { title: 'Generate Trade Packages', detail: 'Standard folders, package codes, and subcontract documents are created in bulk.' },

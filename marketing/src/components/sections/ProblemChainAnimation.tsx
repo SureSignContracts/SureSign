@@ -12,7 +12,7 @@ export function ProblemChainAnimation() {
 
   useEffect(() => {
     if (reduced || !ref.current) return;
-    const { gsap, ScrollTrigger } = getGsap();
+    const { gsap } = getGsap();
     const ctx = gsap.context(() => {
       const steps = gsap.utils.toArray<HTMLElement>('[data-chaos-step]');
       const resolved = ref.current!.querySelector('[data-resolved]');

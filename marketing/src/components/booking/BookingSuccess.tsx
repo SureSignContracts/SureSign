@@ -49,7 +49,7 @@ export function BookingSuccess({
       </h1>
       <p className="mt-2 text-sm text-text-secondary">
         {confirmed
-          ? "We've sent the details to your email — see you then."
+          ? "We've sent the details to your email. See you then."
           : "Someone from the SureSign team will confirm your exact time shortly."}
       </p>
 

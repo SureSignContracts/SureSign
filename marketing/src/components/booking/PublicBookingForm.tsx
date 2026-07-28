@@ -77,20 +77,17 @@ export function PublicBookingForm({ slug }: { slug: string }) {
 
   const abortRef = useRef<AbortController | null>(null);
 
-  // today/maxDate bound the calendar — new Date()/Date.now() must not be
-  // called directly during render, so they're computed inside effects and
-  // held as state rather than as plain render-body/useMemo values.
+  // today bounds the calendar — new Date()/Date.now() must not be called
+  // directly during render, so it's computed inside an effect and held as
+  // state rather than as a plain render-body/useMemo value.
   const [today, setToday] = useState('');
-  const [maxDate, setMaxDate] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    setToday(new Date().toISOString().split('T')[0]);
+    setToday(new Date().toISOString().split('T')[0]); // eslint-disable-line react-hooks/set-state-in-effect
   }, []);
 
-  useEffect(() => {
-    if (!type || !today) { setMaxDate(undefined); return; }
-    setMaxDate(addDaysIso(today, type.max_advance_days));
-  }, [type, today]);
+  // Pure derivation from today/type — no need for its own state+effect.
+  const maxDate = type && today ? addDaysIso(today, type.max_advance_days) : undefined;
 
   function loadType() {
     setTypeStatus('loading');
@@ -100,7 +97,7 @@ export function PublicBookingForm({ slug }: { slug: string }) {
       .catch(err => setTypeStatus(err instanceof TypeError ? 'network' : 'not_found'));
   }
 
-  useEffect(() => { loadType(); }, [slug]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadType(); }, [slug]); // eslint-disable-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
 
   function loadSlots(date: string, tz: string) {
     abortRef.current?.abort();
@@ -135,13 +132,13 @@ export function PublicBookingForm({ slug }: { slug: string }) {
   }
 
   useEffect(() => {
-    if (!type || type.scheduling_mode !== 'fixed' || !selectedDate) { setSlots([]); return; }
+    if (!type || type.scheduling_mode !== 'fixed' || !selectedDate) { setSlots([]); return; } // eslint-disable-line react-hooks/set-state-in-effect
     loadSlots(selectedDate, timezone);
     return () => abortRef.current?.abort();
   }, [type, selectedDate, timezone, slug]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (type?.scheduling_mode === 'manual') setSchedulingMode('manual');
+    if (type?.scheduling_mode === 'manual') setSchedulingMode('manual'); // eslint-disable-line react-hooks/set-state-in-effect
   }, [type]);
 
   // Changing the display timezone changes what a bare "HH:MM" slot label
@@ -151,7 +148,7 @@ export function PublicBookingForm({ slug }: { slug: string }) {
   // labelled slots whenever `timezone` changes; this covers manual mode,
   // where there's no slots fetch to reset it.)
   useEffect(() => {
-    if (schedulingMode === 'manual') setSelectedSlot(null);
+    if (schedulingMode === 'manual') setSelectedSlot(null); // eslint-disable-line react-hooks/set-state-in-effect
   }, [timezone]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function loadAvailability(year: number, month: number) {
@@ -269,14 +266,14 @@ export function PublicBookingForm({ slug }: { slug: string }) {
       const data = await res.json();
 
       if (res.status === 409) {
-        setSubmitError("That time was just taken — please choose another.");
+        setSubmitError("That time was just taken. Please choose another.");
         setStage('Choose Time');
         if (selectedDate) loadSlots(selectedDate, timezone);
         setSubmitting(false);
         return;
       }
       if (!res.ok) {
-        setSubmitError(data.message || 'Something went wrong — please try again.');
+        setSubmitError(data.message || 'Something went wrong. Please try again.');
         setSubmitting(false);
         return;
       }
@@ -284,7 +281,7 @@ export function PublicBookingForm({ slug }: { slug: string }) {
       setResult(data);
       setStage('Confirmation');
     } catch {
-      setSubmitError("Something went wrong sending that — please try again, or reach us directly.");
+      setSubmitError("Something went wrong sending that. Please try again or reach us directly.");
     } finally {
       setSubmitting(false);
     }
@@ -341,7 +338,7 @@ export function PublicBookingForm({ slug }: { slug: string }) {
 
               {dateBecameUnavailable && (
                 <p role="status" className="rounded-lg border border-border bg-bg-elevated px-4 py-3 text-sm text-text-secondary">
-                  That date&apos;s availability just changed — please choose another date.
+                  That date&apos;s availability just changed. Please choose another date.
                 </p>
               )}
 

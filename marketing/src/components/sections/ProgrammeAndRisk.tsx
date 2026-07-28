@@ -27,7 +27,7 @@ export function ProgrammeAndRisk() {
             </h3>
             <p className="mt-4 max-w-[38ch] text-text-secondary">
               Risks and delay events attach to the same contract or trade package they
-              came from — a claim traces straight back to the programme impact that
+              came from. A claim traces straight back to the programme impact that
               caused it.
             </p>
           </div>

@@ -1,22 +1,40 @@
+import type { Metadata } from 'next';
 import { MarketingNav } from '@/components/nav/MarketingNav';
 import { Footer } from '@/components/shared/Footer';
 import { Hero } from '@/components/hero/Hero';
-import { TrustBar } from '@/components/hero/TrustBar';
-import { ProblemChain } from '@/components/sections/ProblemChain';
-import { HowSureSignWorks } from '@/components/sections/HowSureSignWorks';
+import { MarketStatus } from '@/components/sections/MarketStatus';
+import { CommercialOutcomes } from '@/components/sections/CommercialOutcomes';
 import { ContractAnalysis } from '@/components/sections/ContractAnalysis';
-import { ProjectWorkspace } from '@/components/sections/ProjectWorkspace';
-import { TradePackages } from '@/components/sections/TradePackages';
 import { ProductWalkthrough } from '@/components/demo/ProductWalkthrough';
-import { CommercialWorkflow } from '@/components/sections/CommercialWorkflow';
-import { ProgrammeAndRisk } from '@/components/sections/ProgrammeAndRisk';
-import { DeliveryDocs } from '@/components/sections/DeliveryDocs';
-import { Notifications } from '@/components/sections/Notifications';
+import { OperationalValue } from '@/components/sections/OperationalValue';
 import { ConnectedPlatform } from '@/components/sections/ConnectedPlatform';
-import { BuiltFor } from '@/components/sections/BuiltFor';
 import { Security } from '@/components/sections/Security';
-import { Documentation } from '@/components/sections/Documentation';
+import { BuyerQuestions } from '@/components/sections/BuyerQuestions';
+import { HomePricingSummary } from '@/components/sections/HomePricingSummary';
 import { BookDemoCta } from '@/components/sections/BookDemoCta';
+import { getPricingData } from '@/lib/pricing';
+
+export const metadata: Metadata = {
+  title: 'Construction Contract Administration, Connected',
+  description:
+    'Turn the contract into a controlled commercial workflow. SureSign connects human-reviewed contract intelligence to notices, applications, programme events and the complete project record.',
+  alternates: { canonical: '/' },
+  openGraph: {
+    title: 'Turn the contract into a controlled commercial workflow | SureSign',
+    description:
+      'Human-reviewed contract intelligence connected to construction commercial workflows and one project record.',
+    url: '/',
+    siteName: 'SureSign',
+    locale: 'en_GB',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Turn the contract into a controlled commercial workflow | SureSign',
+    description:
+      'Human-reviewed contract intelligence connected to construction commercial workflows and one project record.',
+  },
+};
 
 const JSON_LD = {
   '@context': 'https://schema.org',
@@ -32,12 +50,14 @@ const JSON_LD = {
       applicationCategory: 'BusinessApplication',
       operatingSystem: 'Web',
       description:
-        'Construction contract administration platform: automated contract analysis, trade packages, payment applications, statutory notices, programme, and risk — one connected workflow.',
+        'Construction contract administration platform with automated contract analysis, trade packages, payment applications, statutory notices, programme, and risk in one connected workflow.',
     },
   ],
 };
 
-export default function HomePage() {
+export default async function HomePage() {
+  const pricing = await getPricingData();
+
   return (
     <>
       <script
@@ -45,23 +65,17 @@ export default function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
       />
       <MarketingNav />
-      <main>
+      <main id="main-content">
         <Hero />
-        <TrustBar />
-        <ProblemChain />
-        <HowSureSignWorks />
-        <ContractAnalysis />
-        <ProjectWorkspace />
-        <TradePackages />
+        <MarketStatus />
+        <CommercialOutcomes />
         <ProductWalkthrough />
-        <CommercialWorkflow />
-        <ProgrammeAndRisk />
-        <DeliveryDocs />
-        <Notifications />
+        <ContractAnalysis />
+        <OperationalValue />
         <ConnectedPlatform />
-        <BuiltFor />
         <Security />
-        <Documentation />
+        <BuyerQuestions />
+        {pricing && <HomePricingSummary plans={pricing.plans} />}
         <BookDemoCta />
       </main>
       <Footer />

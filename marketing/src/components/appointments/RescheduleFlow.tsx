@@ -40,7 +40,7 @@ export function RescheduleFlow({
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    setToday(new Date().toISOString().split('T')[0]);
+    setToday(new Date().toISOString().split('T')[0]); // eslint-disable-line react-hooks/set-state-in-effect
   }, []);
 
   useEffect(() => {
@@ -49,6 +49,7 @@ export function RescheduleFlow({
     const controller = new AbortController();
     abortRef.current = controller;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSlotsLoading(true);
     setSlotsError(null);
     setSelectedSlot(null);
@@ -72,7 +73,7 @@ export function RescheduleFlow({
   if (!appointment.can_reschedule) {
     return (
       <p role="status" className="rounded-xl border border-border bg-bg-elevated px-5 py-4 text-sm text-text-secondary">
-        This appointment can no longer be rescheduled online — please contact us directly.
+        This appointment can no longer be rescheduled online. Please contact us directly.
       </p>
     );
   }
@@ -138,7 +139,7 @@ export function RescheduleFlow({
           )}
 
           {!slotsLoading && !slotsError && schedulingMode === 'fixed' && slots.length === 0 && (
-            <p className="text-sm text-text-secondary">No times available on this date — try another day.</p>
+            <p className="text-sm text-text-secondary">No times available on this date. Try another day.</p>
           )}
 
           {!slotsLoading && !slotsError && schedulingMode === 'fixed' && slots.length > 0 && (

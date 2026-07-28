@@ -14,7 +14,7 @@ export function Notifications() {
             <p className="mt-4 max-w-[46ch] text-text-secondary">
               File uploads, document generation, trade package creation, and
               approaching payment deadlines all raise a notification for the people who
-              need to see them — in-app, and by email where it matters.
+              need to see them in the app and by email where it matters.
             </p>
           </div>
 

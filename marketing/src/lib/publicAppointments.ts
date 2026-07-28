@@ -75,7 +75,7 @@ export function isPastExpiry(searchParams: URLSearchParams): boolean {
 }
 
 async function parseError(res: Response, searchParams: URLSearchParams): Promise<ApiResult<never>> {
-  let message = 'Something went wrong — please try again.';
+  let message = 'Something went wrong. Please try again.';
   try {
     const body = await res.json();
     if (typeof body?.message === 'string') message = body.message;
@@ -110,7 +110,7 @@ async function request<T>(url: string, searchParams: URLSearchParams, init?: Req
     const data = (await res.json()) as T;
     return { ok: true, data };
   } catch {
-    return { ok: false, kind: 'network', message: "We couldn't reach SureSign — check your connection and try again." };
+    return { ok: false, kind: 'network', message: "We couldn't reach SureSign. Check your connection and try again." };
   }
 }
 
@@ -155,7 +155,7 @@ export async function fetchRescheduleSlots(rescheduleSlotsUrl: string, date: str
     if (err instanceof DOMException && err.name === 'AbortError') {
       return { ok: false, kind: 'network', message: 'Cancelled.' };
     }
-    return { ok: false, kind: 'network', message: "We couldn't load available times — please try again." };
+    return { ok: false, kind: 'network', message: "We couldn't load available times. Please try again." };
   }
 }
 

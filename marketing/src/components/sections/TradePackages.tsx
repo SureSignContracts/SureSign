@@ -9,11 +9,11 @@ export function TradePackages() {
         <div className="mx-auto max-w-[52ch] text-center">
           <div className="text-sm font-medium uppercase tracking-wide text-text-muted">Trade Packages</div>
           <h2 className="mt-3 text-2xl font-medium tracking-tight text-text-primary md:text-3xl">
-            Groundworks, brickwork, M&amp;E — generated in bulk, not built by hand.
+            Groundworks, brickwork, and M&amp;E packages generated in bulk, not built by hand.
           </h2>
           <p className="mx-auto mt-4 max-w-[42ch] text-text-secondary">
             Each package gets a code, a reference, and nine standard sub-folders the
-            moment it&apos;s created — independent of the main contract, but still part of
+            moment it&apos;s created. It remains independent of the main contract while still forming part of
             the same project record.
           </p>
         </div>
@@ -21,7 +21,6 @@ export function TradePackages() {
         <div className="mx-auto mt-16 max-w-3xl">
           <MockupFrame
             elevated
-            annotations={[{ label: '9 folders, every time', position: 'bottom-left' }]}
             caption="Trade packages for a live project, each with 9 standard sub-folders."
           >
             <TradePackageTree />

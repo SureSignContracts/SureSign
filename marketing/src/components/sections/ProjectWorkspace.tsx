@@ -17,7 +17,7 @@ export function ProjectWorkspace() {
           <p className="mt-4 max-w-[46ch] text-text-secondary">
             Every project gets the same standard set of module folders on creation,
             mirrored to a local Windows folder if your team needs it. No one has to
-            remember the structure — it&apos;s already there.
+            remember the structure because it&apos;s already there.
           </p>
         </div>
 

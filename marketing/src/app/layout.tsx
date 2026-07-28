@@ -8,22 +8,30 @@ const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-mono' });
 export const metadata: Metadata = {
   metadataBase: new URL('https://suresigncontracts.app'),
   title: {
-    default: 'SureSign — Construction Contract Administration, Connected',
-    template: '%s — SureSign',
+    default: 'SureSign | Construction Contract Administration, Connected',
+    template: '%s | SureSign',
   },
   description:
-    'Automated contract analysis, trade packages, payment applications, statutory notices, programme, risk, and documentation — one connected platform for construction contract administration.',
+    'Automated contract analysis, trade packages, payment applications, statutory notices, programme, risk, and documentation in one connected platform for construction contract administration.',
   icons: {
     icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }],
   },
   openGraph: {
-    title: 'SureSign — Construction Contract Administration, Connected',
+    title: 'SureSign | Construction Contract Administration, Connected',
     description:
       'One connected platform for construction contract administration: automated contract analysis, trade packages, payment applications, statutory notices, programme, risk, and documentation.',
     url: 'https://suresigncontracts.app',
     siteName: 'SureSign',
     locale: 'en_GB',
     type: 'website',
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'SureSign construction contract administration' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'SureSign | Construction Contract Administration, Connected',
+    description:
+      'Human-reviewed contract intelligence connected to commercial workflows and one project record.',
+    images: ['/opengraph-image'],
   },
 };
 
@@ -41,7 +49,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning>
+        <a href="#main-content" className="skip-link">Skip to main content</a>
+        {children}
+      </body>
     </html>
   );
 }

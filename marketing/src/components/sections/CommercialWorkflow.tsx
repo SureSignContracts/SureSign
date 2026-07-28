@@ -12,7 +12,7 @@ export function CommercialWorkflow() {
           </h2>
           <p className="mt-5 text-text-secondary">
             Every payment application carries its due date, payment notice deadline,
-            pay less notice deadline, and final date for payment — computed from
+            pay less notice deadline, and final date for payment, all computed from
             confirmed contract rules, not re-entered by hand for every application.
           </p>
         </div>

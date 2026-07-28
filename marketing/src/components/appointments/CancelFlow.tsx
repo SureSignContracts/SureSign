@@ -28,7 +28,7 @@ export function CancelFlow({
   if (!appointment.can_cancel) {
     return (
       <p role="status" className="rounded-xl border border-border bg-bg-elevated px-5 py-4 text-sm text-text-secondary">
-        This appointment can no longer be cancelled online — please contact us directly.
+        This appointment can no longer be cancelled online. Please contact us directly.
       </p>
     );
   }

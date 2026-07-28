@@ -66,7 +66,7 @@ export function AiAnalysisReview() {
 }
 
 export function TradePackageTree() {
-  const packages = ['CF — Concrete Frame', 'BW — Brickwork', 'WD — Windows & Doors'];
+  const packages = ['CF: Concrete Frame', 'BW: Brickwork', 'WD: Windows & Doors'];
   return (
     <div className="bg-white p-5">
       <div className="space-y-2">
@@ -129,7 +129,7 @@ export function DashboardPreview() {
 
       <div className="flex-1 p-5">
         <div className="flex items-center justify-between">
-          <div className="font-medium text-[#0a0a0a]">Colchester Project</div>
+          <div className="font-medium text-[#0a0a0a]">Project</div>
           <div className="hidden items-center gap-3 text-xs text-[#8a8a8a] md:flex">
             <span>Search…</span>
           </div>
@@ -247,7 +247,7 @@ export function ProgrammeTimeline() {
   return (
     <div className="bg-white p-5">
       <div className="flex items-end justify-between gap-2">
-        {milestones.map((m, i) => (
+        {milestones.map((m) => (
           <div key={m.label} className="flex flex-1 flex-col items-center gap-2">
             <div className="h-1.5 w-full rounded-full bg-[#e4e4e4]" />
             <span className="h-2 w-2 rounded-full border-2 border-[#0a0a0a] bg-white" />

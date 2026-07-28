@@ -11,16 +11,23 @@ export function HeroReveal({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (reduced || !ref.current) return;
     const { gsap } = getGsap();
-    const targets = ref.current.querySelectorAll('[data-reveal]');
-    gsap.set(targets, { opacity: 0, y: 16 });
-    gsap.to(targets, {
-      opacity: 1,
-      y: 0,
-      duration: 0.7,
-      ease: 'power2.out',
-      stagger: 0.08,
-      delay: 0.1,
-    });
+    const ctx = gsap.context(() => {
+      const targets = gsap.utils.toArray<HTMLElement>('[data-reveal]');
+      gsap.fromTo(
+        targets,
+        { autoAlpha: 0, y: 16 },
+        {
+          autoAlpha: 1,
+          y: 0,
+          duration: 0.7,
+          ease: 'power2.out',
+          stagger: 0.08,
+          delay: 0.08,
+        },
+      );
+    }, ref);
+
+    return () => ctx.revert();
   }, [reduced]);
 
   return <div ref={ref}>{children}</div>;

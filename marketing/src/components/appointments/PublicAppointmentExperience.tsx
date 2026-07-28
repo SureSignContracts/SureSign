@@ -72,7 +72,7 @@ export function PublicAppointmentExperience({ token }: { token: string }) {
     });
   }, [token, action, searchParams]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); }, [load]); // eslint-disable-line react-hooks/set-state-in-effect
 
   useEffect(() => {
     if (state.kind !== 'ready' || reduced || !cardRef.current) return;

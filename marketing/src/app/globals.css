@@ -15,7 +15,7 @@
   --border-light: #d4d4d4;
   --text-primary: #0a0a0a;
   --text-secondary: #525252;
-  --text-muted: #8a8a8a;
+  --text-muted: #737373;
   --shadow-card: 0 1px 2px rgba(18,18,18,0.04), 0 4px 12px rgba(18,18,18,0.05);
   --shadow-pop: 0 4px 10px rgba(18,18,18,0.08), 0 14px 36px rgba(18,18,18,0.12);
   --shadow-deep: 0 2px 4px rgba(18,18,18,0.05), 0 12px 24px rgba(18,18,18,0.06), 0 32px 64px rgba(18,18,18,0.08);
@@ -36,12 +36,34 @@
   --border-light: #333333;
   --text-primary: #f0ece6;
   --text-secondary: #9a9490;
-  --text-muted: #5a5652;
+  --text-muted: #8a8580;
   --shadow-card: 0 1px 2px rgba(0,0,0,0.45), 0 4px 14px rgba(0,0,0,0.35);
   --shadow-pop: 0 6px 16px rgba(0,0,0,0.5), 0 18px 44px rgba(0,0,0,0.45);
   --shadow-deep: 0 2px 4px rgba(0,0,0,0.4), 0 16px 32px rgba(0,0,0,0.35), 0 40px 80px rgba(0,0,0,0.3);
   --spotlight: rgba(240,240,240,0.06);
   --hero-photo-opacity: 0.12;
+}
+
+.brand-logo {
+  display: block;
+  background: url('/SureSign_BLOGO.webp') center / contain no-repeat;
+  transition: filter 200ms ease;
+}
+
+[data-theme="dark"] .brand-logo {
+  filter: brightness(0) invert(1);
+}
+
+.theme-icon-dark {
+  display: none;
+}
+
+[data-theme="dark"] .theme-icon-light {
+  display: none;
+}
+
+[data-theme="dark"] .theme-icon-dark {
+  display: block;
 }
 
 @theme inline {
@@ -82,6 +104,25 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
+.skip-link {
+  position: fixed;
+  left: 1rem;
+  top: 1rem;
+  z-index: 60;
+  transform: translateY(-200%);
+  border-radius: 0.5rem;
+  background: var(--accent);
+  color: var(--accent-fg);
+  padding: 0.65rem 0.9rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: transform 150ms ease;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
 /*
  * Ambient, barely-there background treatment — a faint grid plus a soft
  * radial spotlight. The visitor should feel these, not see them (per the
@@ -104,8 +145,8 @@ html, body {
     linear-gradient(90deg, var(--border) 1px, transparent 1px);
   background-size: 64px 64px;
   opacity: 0.35;
-  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 0%, transparent 70%);
-  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 0%, transparent 70%);
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 45%, black 0%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 45%, black 0%, transparent 70%);
 }
 
 .bg-atmosphere::after {
@@ -114,7 +155,7 @@ html, body {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: radial-gradient(ellipse 60% 50% at 50% 0%, var(--spotlight), transparent 70%);
+  background: radial-gradient(ellipse 60% 50% at 50% 40%, var(--spotlight), transparent 70%);
 }
 
 /*

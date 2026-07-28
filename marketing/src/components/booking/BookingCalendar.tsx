@@ -193,7 +193,7 @@ export function BookingCalendar({
                 tabIndex={isRovingTarget ? 0 : -1}
                 aria-pressed={selected}
                 aria-current={isToday ? 'date' : undefined}
-                aria-label={`${iso}${status === 'unavailable' ? ' — no availability' : ''}`}
+                aria-label={`${iso}${status === 'unavailable' ? ', no availability' : ''}`}
                 onFocus={() => setFocusedIso(iso)}
                 onKeyDown={e => handleKeyDown(e, iso)}
                 onClick={() => { setFocusedIso(iso); onSelectDate(iso); }}

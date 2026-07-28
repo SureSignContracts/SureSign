@@ -7,14 +7,28 @@ import { BookDemoCta } from '@/components/sections/BookDemoCta';
 export const metadata: Metadata = {
   title: 'Security',
   description:
-    'How SureSign secures organisation data: organisation-based scoping, role-based access, complete audit history, and secure document storage.',
+    'Review the implemented security and operational controls SureSign can evidence today, together with the procurement details that require confirmation.',
+  alternates: { canonical: '/security' },
+  openGraph: {
+    title: 'Security and Procurement | SureSign',
+    description: 'Implemented controls for project access, roles, document storage, human review, activity records and recovery operations.',
+    url: '/security',
+    siteName: 'SureSign',
+    locale: 'en_GB',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Security and Procurement | SureSign',
+    description: 'Implemented controls SureSign can evidence today.',
+  },
 };
 
 export default function SecurityPage() {
   return (
     <>
       <MarketingNav />
-      <main className="pt-8">
+      <main id="main-content" className="pt-8">
         <Security />
         <BookDemoCta />
       </main>

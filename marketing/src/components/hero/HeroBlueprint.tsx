@@ -37,12 +37,14 @@ export function HeroBlueprint() {
   }, [reduced]);
 
   return (
-    <div ref={ref} aria-hidden className="pointer-events-none absolute inset-x-0 top-0" style={{ willChange: 'transform' }}>
+    <div ref={ref} aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10" style={{ willChange: 'transform' }}>
       <div
         className="relative aspect-[1417/736] w-full"
         style={{
-          maskImage: 'linear-gradient(to bottom, transparent, black 25%, black 75%, transparent)',
-          WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 25%, black 75%, transparent)',
+          maskImage:
+            'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.02) 7%, rgba(0,0,0,0.09) 14%, rgba(0,0,0,0.2) 20%, rgba(0,0,0,0.36) 27%, rgba(0,0,0,0.56) 34%, rgba(0,0,0,0.81) 41%, rgba(0,0,0,1) 45%, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 100%)',
+          WebkitMaskImage:
+            'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.02) 7%, rgba(0,0,0,0.09) 14%, rgba(0,0,0,0.2) 20%, rgba(0,0,0,0.36) 27%, rgba(0,0,0,0.56) 34%, rgba(0,0,0,0.81) 41%, rgba(0,0,0,1) 45%, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 100%)',
         }}
       >
         <Image

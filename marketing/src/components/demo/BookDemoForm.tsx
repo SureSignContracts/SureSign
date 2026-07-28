@@ -36,14 +36,14 @@ export function BookDemoForm() {
       form.reset();
     } catch {
       setStatus('error');
-      setError("Something went wrong sending that — please try again, or reach us directly.");
+      setError("Something went wrong sending that. Please try again or reach us directly.");
     }
   }
 
   if (status === 'success') {
     return (
       <div className="rounded-2xl border border-border bg-bg-surface p-10 text-center">
-        <div className="text-lg font-medium text-text-primary">Thanks — we&apos;ll be in touch.</div>
+        <div className="text-lg font-medium text-text-primary">Thanks. We&apos;ll be in touch.</div>
         <p className="mt-2 text-sm text-text-secondary">
           Someone from the SureSign team will reach out to schedule your demo.
         </p>

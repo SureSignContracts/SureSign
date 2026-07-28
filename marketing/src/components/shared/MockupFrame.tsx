@@ -51,10 +51,9 @@ export function MockupFrame({ children, caption, className = '', annotations = [
             : 'shadow-[var(--shadow-pop)]'
         }`}
       >
-        <div className="flex items-center gap-1.5 border-b border-[#e4e4e4] bg-[#f4f4f4] px-4 py-3">
-          <span className="h-2.5 w-2.5 rounded-full bg-[#d4d4d4]" />
-          <span className="h-2.5 w-2.5 rounded-full bg-[#d4d4d4]" />
-          <span className="h-2.5 w-2.5 rounded-full bg-[#d4d4d4]" />
+        <div className="flex items-center justify-between gap-4 border-b border-[#e4e4e4] bg-[#f4f4f4] px-4 py-2.5">
+          <span className="text-[11px] font-medium tracking-tight text-[#525252]">SureSign workspace</span>
+          <span className="font-mono text-[10px] text-[#8a8a8a]">Project record</span>
         </div>
         <div className="relative">
           {children}
@@ -70,7 +69,7 @@ export function MockupFrame({ children, caption, className = '', annotations = [
       {elevated && (
         <div
           aria-hidden
-          className="absolute -bottom-3 left-[10%] right-[10%] h-6 rounded-full bg-black/10 blur-2xl"
+          className="absolute -bottom-3 left-[10%] right-[10%] h-6 rounded-full bg-[#121212]/10 blur-2xl"
         />
       )}
 

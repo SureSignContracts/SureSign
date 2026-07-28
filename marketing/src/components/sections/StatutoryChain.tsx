@@ -6,7 +6,7 @@ import { useReducedMotion } from '@/lib/useReducedMotion';
 
 const STAGES = [
   { title: 'Payment Application', detail: 'Submitted for a valuation period, pre-filled from the last certified application.', date: '01 Mar 2026' },
-  { title: 'Due Date', detail: 'Calculated from the confirmed contract rules — not entered by hand.', date: '08 Mar 2026' },
+  { title: 'Due Date', detail: 'Calculated from the confirmed contract rules, not entered by hand.', date: '08 Mar 2026' },
   { title: 'Payment Notice', detail: 'Issued against the application, standalone and auditable.', date: '15 Mar 2026' },
   { title: 'Pay Less Notice', detail: 'Raised against the application where the certified sum is disputed.', date: '20 Mar 2026' },
   { title: 'Final Date for Payment', detail: 'The statutory deadline the whole chain is protecting.', date: '27 Mar 2026' },

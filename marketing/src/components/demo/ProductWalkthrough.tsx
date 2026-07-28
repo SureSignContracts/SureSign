@@ -1,57 +1,132 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Container } from '@/components/shared/Container';
 import { MockupFrame } from '@/components/shared/MockupFrame';
-import { PaymentAppTable, AiAnalysisReview, TradePackageTree, StatutoryChainScreen } from '@/components/shared/placeholders';
+import { getGsap } from '@/lib/gsap';
+import { useReducedMotion } from '@/lib/useReducedMotion';
+import {
+  PaymentAppTable,
+  AiAnalysisReview,
+  TradePackageTree,
+  DocumentsExplorer,
+} from '@/components/shared/placeholders';
 
 const STEPS = [
-  { label: 'Review Findings', detail: 'Confirm the parties, dates, and payment rules SureSign extracted.', screen: AiAnalysisReview },
-  { label: 'Create Trade Package', detail: 'Generate a trade package with its standard folders in one action.', screen: TradePackageTree },
-  { label: 'Manage Commercial Workflow', detail: 'Raise a payment application against the confirmed contract data.', screen: PaymentAppTable },
-  { label: 'Track Deadlines', detail: 'Statutory dates run in the background, calculated, not chased.', screen: StatutoryChainScreen },
+  { label: 'Upload the contract', detail: 'Start with the executed contract and its project context.', screen: AiAnalysisReview },
+  { label: 'Extract the rules', detail: 'Identify dates, obligations, payment rules and programme information.', screen: AiAnalysisReview },
+  { label: 'Review and confirm', detail: 'A person checks and corrects the extraction before it is used.', screen: AiAnalysisReview },
+  { label: 'Populate workflows', detail: 'Confirmed information becomes usable project and trade package data.', screen: TradePackageTree },
+  { label: 'Control obligations', detail: 'Manage applications, notices and deadlines against confirmed rules.', screen: PaymentAppTable },
+  { label: 'Keep the record', detail: 'Documents, decisions and events remain connected to the project history.', screen: DocumentsExplorer },
 ];
 
 export function ProductWalkthrough() {
   const [active, setActive] = useState(0);
+  const sectionRef = useRef<HTMLElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const reduced = useReducedMotion();
   const ActiveScreen = STEPS[active].screen;
 
+  useEffect(() => {
+    if (reduced || !sectionRef.current) return;
+
+    const { gsap } = getGsap();
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        '[data-workflow-step]',
+        { autoAlpha: 0.35, x: -10 },
+        {
+          autoAlpha: 1,
+          x: 0,
+          duration: 0.55,
+          stagger: 0.07,
+          ease: 'power2.out',
+          scrollTrigger: {
+            trigger: sectionRef.current,
+            start: 'top 70%',
+            once: true,
+          },
+        },
+      );
+    }, sectionRef);
+
+    return () => ctx.revert();
+  }, [reduced]);
+
+  useEffect(() => {
+    if (reduced || !panelRef.current) return;
+
+    const { gsap } = getGsap();
+    const tween = gsap.fromTo(
+      panelRef.current,
+      { autoAlpha: 0, y: 10, scale: 0.992 },
+      { autoAlpha: 1, y: 0, scale: 1, duration: 0.42, ease: 'power2.out' },
+    );
+    return () => {
+      tween.kill();
+    };
+  }, [active, reduced]);
+
+  function handleTabKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+
+    const next = event.key === 'Home'
+      ? 0
+      : event.key === 'End'
+        ? STEPS.length - 1
+        : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
+          ? (active - 1 + STEPS.length) % STEPS.length
+          : (active + 1) % STEPS.length;
+
+    setActive(next);
+    requestAnimationFrame(() => document.getElementById(`workflow-tab-${next}`)?.focus());
+  }
+
   return (
-    <section className="tone-surface border-b border-border py-28 md:py-36">
+    <section ref={sectionRef} id="how-it-works" className="tone-surface border-b border-border py-24 md:py-32">
       <Container>
         <div className="max-w-[56ch]">
-          <h2 className="text-2xl font-medium tracking-tight text-text-primary md:text-3xl">
-            Explore the platform.
+          <p className="text-sm font-medium text-text-muted">One connected workflow</p>
+          <h2 className="mt-3 text-3xl font-medium tracking-tight text-text-primary md:text-4xl">
+            The contract becomes operational data, with a person in control.
           </h2>
-          <p className="mt-4 text-text-secondary">
-            The same journey from &quot;How SureSign Works&quot; — this time, at your own pace.
+          <p className="mt-4 max-w-[54ch] text-text-secondary">
+            Not eight disconnected tools. One traceable sequence from the uploaded
+            contract to the records your team administers throughout the project.
           </p>
         </div>
 
         {/* Progress — which step of the journey this is, not just a tab list. */}
-        <div className="mt-10 h-1 w-full overflow-hidden rounded-full bg-border">
+        <div className="mt-10 h-px w-full overflow-hidden bg-border">
           <div
-            className="h-full rounded-full bg-accent transition-[width] duration-500 ease-out"
-            style={{ width: `${((active + 1) / STEPS.length) * 100}%` }}
+            className="h-full origin-left bg-accent transition-transform duration-500 ease-out"
+            style={{ transform: `scaleX(${(active + 1) / STEPS.length})` }}
           />
         </div>
 
-        <div className="mt-8 grid gap-10 md:grid-cols-[0.7fr_1.3fr] md:gap-16">
+        <div className="mt-8 grid gap-10 md:grid-cols-[0.75fr_1.25fr] md:gap-16">
           <div
             role="tablist"
             aria-label="Product walkthrough steps"
-            className="flex gap-2 overflow-x-auto md:flex-col md:gap-1 md:overflow-visible"
+            onKeyDown={handleTabKeyDown}
+            className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-2 md:flex-col md:gap-1 md:overflow-visible md:pb-0"
           >
             {STEPS.map((step, i) => (
               <button
                 key={step.label}
+                data-workflow-step
                 role="tab"
                 aria-selected={active === i}
+                aria-controls="workflow-panel"
+                id={`workflow-tab-${i}`}
+                tabIndex={active === i ? 0 : -1}
                 onClick={() => setActive(i)}
-                className={`shrink-0 rounded-xl border px-4 py-3 text-left text-sm transition-colors md:shrink ${
+                className={`min-h-12 w-[calc(100vw-3rem)] max-w-full shrink-0 snap-start rounded-xl border px-4 py-3 text-left text-sm transition-[background-color,border-color,color,transform] duration-200 md:w-auto md:shrink ${
                   active === i
-                    ? 'border-border-light bg-bg-surface font-medium text-text-primary'
-                    : 'border-transparent text-text-secondary hover:text-text-primary'
+                    ? 'border-border-light bg-bg-base font-medium text-text-primary shadow-[var(--shadow-card)]'
+                    : 'border-transparent text-text-secondary hover:translate-x-0.5 hover:text-text-primary'
                 }`}
               >
                 <div className="flex items-center gap-2">
@@ -63,7 +138,13 @@ export function ProductWalkthrough() {
             ))}
           </div>
 
-          <div key={active} className="[animation:fade-slide-in_400ms_ease-out]">
+          <div
+            ref={panelRef}
+            id="workflow-panel"
+            role="tabpanel"
+            aria-labelledby={`workflow-tab-${active}`}
+            tabIndex={0}
+          >
             <MockupFrame elevated>
               <ActiveScreen />
             </MockupFrame>
