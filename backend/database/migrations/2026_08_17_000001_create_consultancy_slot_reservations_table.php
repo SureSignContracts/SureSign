@@ -66,7 +66,11 @@ return new class extends Migration
 
             // Supports the conflict re-check query
             // (consultant + active + unexpired + overlapping range).
-            $table->index(['consultant_user_id', 'status', 'expires_at']);
+            // Explicit short name — Laravel's auto-generated name for this
+            // one (consultancy_slot_reservations_consultant_user_id_status_expires_at_index,
+            // 73 chars) exceeds MySQL's 64-character identifier limit
+            // (error 1059), which fails the entire CREATE TABLE statement.
+            $table->index(['consultant_user_id', 'status', 'expires_at'], 'csr_consultant_status_expires_idx');
             $table->index(['starts_at', 'ends_at']);
         });
     }
