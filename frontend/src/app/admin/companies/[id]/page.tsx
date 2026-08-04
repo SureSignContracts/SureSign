@@ -7,6 +7,8 @@ import Link from 'next/link';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
+import OrganisationUrlBrandingSection from '@/components/admin/OrganisationUrlBrandingSection';
+import OrganisationDomainsSection from '@/components/admin/OrganisationDomainsSection';
 import toast from 'react-hot-toast';
 import {
   ArrowLeft, Building2, Users, FolderKanban, Search, Plus, X,
@@ -237,6 +239,12 @@ export default function AdminCompanyDetailPage() {
         </div>
         <ChevronRight size={16} style={{ color: 'var(--text-muted)' }} />
       </Link>
+
+      {/* Organisation URL Branding, Phase 1 */}
+      <OrganisationUrlBrandingSection organizationId={id} organizationName={org.name} urlSlug={org.url_slug ?? null} />
+
+      {/* Organisation URL Branding, Phase 2 — customer-owned domains */}
+      <OrganisationDomainsSection organizationId={id} organizationName={org.name} />
 
       {/* Projects section */}
       <div className="space-y-4">

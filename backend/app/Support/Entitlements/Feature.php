@@ -64,6 +64,35 @@ class Feature
     // App\Services\Intelligence\AiCreditUsageService.
     public const AI_CREDITS_PER_MONTH = 'ai_credits_per_month';
 
+    // ─── Registry Amendment, Organisation URL Branding customer
+    // self-service phase — deliberately TWO separate keys, never merged.
+    // CUSTOM_BRANDED_SUBDOMAIN governs only a SureSign-managed branded
+    // subdomain (organisation.suresigncontracts.app); CUSTOM_DOMAIN
+    // governs customer-owned domains (Bring Your Own Domain), a
+    // materially different, higher-support-cost capability an
+    // organisation could easily have one without the other for. Both are
+    // deliberately DISTINCT from the pre-existing CUSTOM_BRANDING key
+    // above (which only ever meant logo/letterhead/colour on generated
+    // documents) — an organisation entitled to that must not
+    // automatically be entitled to a public branded hostname, a
+    // materially higher-stakes capability. See
+    // internal-docs/super-admin/organisation-url-branding.md's customer
+    // self-service section for the full reasoning and rollout mechanism
+    // (existing active subscriptions' immutable entitlement snapshots
+    // don't automatically pick up a brand-new key — see
+    // App\Console\Commands\RefreshEntitlementSnapshotsForCapabilityRollout).
+    public const CUSTOM_BRANDED_SUBDOMAIN = 'custom_branded_subdomain';
+
+    /**
+     * Reserved now, not yet sold or exposed to any customer self-service
+     * UI this phase — real DNS verification/TLS/support workflows still
+     * require Super Admin involvement (see DomainVerificationService).
+     * The entitlement/API boundary is prepared so a future phase can
+     * enable customer self-service purely by configuring this key
+     * true for eligible plans, without any further code change.
+     */
+    public const CUSTOM_DOMAIN = 'custom_domain';
+
     public const ALL = [
         self::MAX_ACTIVE_PROJECTS,
         self::AI_ANALYSES_PER_MONTH,
@@ -76,6 +105,8 @@ class Feature
         self::MAX_USERS,
         self::MAX_ORGANISATIONS,
         self::AI_CREDITS_PER_MONTH,
+        self::CUSTOM_BRANDED_SUBDOMAIN,
+        self::CUSTOM_DOMAIN,
     ];
 
     /**
@@ -218,6 +249,33 @@ class Feature
             // only a derived 0-100% is, via AiCreditUsageService. This
             // flag governs the registry entry itself (e.g. internal admin
             // display), not the customer presentation contract.
+            'customer_visible' => false,
+            'overrideable' => true,
+        ],
+        self::CUSTOM_BRANDED_SUBDOMAIN => [
+            'display_name' => 'Branded SureSign Subdomain',
+            'description' => 'Customer self-service management of a SureSign-managed branded hostname (e.g. organisation.suresigncontracts.app) for public Appointment/Consultation links.',
+            'category' => EntitlementCategory::FEATURE,
+            'value_type' => EntitlementValueType::BOOLEAN,
+            'unit' => null,
+            'enforcement_level' => EnforcementLevel::HARD_LIMIT,
+            'sold' => true,
+            'customer_visible' => true,
+            'overrideable' => true,
+        ],
+        self::CUSTOM_DOMAIN => [
+            'display_name' => 'Customer-Owned Domain (Bring Your Own Domain)',
+            'description' => 'Customer-owned domain support (e.g. contracts.customer.com). Super Admin-managed only today — reserved boundary for future customer self-service.',
+            'category' => EntitlementCategory::FEATURE,
+            'value_type' => EntitlementValueType::BOOLEAN,
+            'unit' => null,
+            'enforcement_level' => EnforcementLevel::HARD_LIMIT,
+            // Not sold as customer self-service yet — see this key's own
+            // docblock above. Super Admin management (Phase 2) is
+            // unaffected by this entitlement entirely; it exists only to
+            // gate a FUTURE customer-facing surface, which does not exist
+            // yet.
+            'sold' => false,
             'customer_visible' => false,
             'overrideable' => true,
         ],

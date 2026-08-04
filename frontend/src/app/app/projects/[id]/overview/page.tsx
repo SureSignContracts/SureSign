@@ -6,9 +6,12 @@ import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { effectiveTodayYmd, parseDateOnly } from '@/lib/dateTime';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
+import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import CountUp from '@/components/ui/CountUp';
-import { DollarSign, FileText, MessageSquare, GitBranch, AlertCircle, Activity, BarChart2, ChevronRight, ShieldAlert, TrendingUp, Zap, FileCheck } from 'lucide-react';
+import { DollarSign, FileText, MessageSquare, GitBranch, AlertCircle, Activity, BarChart2, ChevronRight, ShieldAlert, TrendingUp, Zap, FileCheck, HeartHandshake } from 'lucide-react';
 import PageTourButton from '@/components/tours/PageTourButton';
+import Link from 'next/link';
+import { formatDateTime } from '@/lib/dateTime';
 
 // ── Health ─────────────────────────────────────────────────────────────────
 
@@ -317,6 +320,98 @@ function FinalAccountsWidget({ finalAccounts, projectId, formatCurrency }: { fin
   );
 }
 
+// ── Consultancy ──────────────────────────────────────────────────────────────
+
+const ENGAGEMENT_LABELS: Record<string, string> = {
+  awaiting_consultant: 'Awaiting Consultant',
+  awaiting_customer:   'Awaiting Customer',
+  completed:           'Completed',
+  cancelled:           'Cancelled',
+};
+
+interface LinkedConsultation {
+  id: number;
+  reference: string;
+  consultancy_service: { code: string; display_name: string } | null;
+  engagement_status: string | null;
+  appointment_status: string;
+  assigned_consultant: { id: number; name: string } | null;
+  created_at: string;
+  starts_at: string;
+}
+
+/**
+ * Read-only, Consultancy-owned summary of consultations linked to this
+ * project (Phase C2, Batch 5) — visible only to Super Admin/Admin, since
+ * GET /admin/consultancy/projects/{id}/consultations is gated to those
+ * roles. A Client sees nothing here; project linkage is operator-managed
+ * only in this phase (see internal-docs/commercial/
+ * suresign-consultancy-phase-c2-specification-v1.md §6).
+ */
+function ConsultancyWidget({ projectId }: { projectId: string }) {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['project-consultancy-consultations', projectId],
+    queryFn: () => api.get(`/admin/consultancy/projects/${projectId}/consultations`, { params: { per_page: 5 } })
+      .then(r => r.data.data as LinkedConsultation[]),
+  });
+
+  // A skeleton (rather than returning null) avoids this card popping in
+  // and shifting layout after every other widget on the page has already
+  // settled — this widget fetches independently of the page's own
+  // top-level query. On error, stay silent rather than claim "no
+  // consultations linked" — that would misrepresent a failed fetch as a
+  // genuine empty state; this is a secondary, supplementary card, not
+  // worth a full error+retry treatment of its own.
+  if (isLoading) {
+    return (
+      <div className="rounded-2xl p-5 h-24 animate-pulse" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }} />
+    );
+  }
+  if (isError) return null;
+  if (!data || data.length === 0) {
+    return (
+      <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+        <div className="flex items-center gap-2 mb-1">
+          <HeartHandshake size={14} style={{ color: 'var(--text-muted)' }} />
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Consultancy</h2>
+        </div>
+        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>No consultations linked to this project yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+      <div className="flex items-center gap-2 mb-3">
+        <HeartHandshake size={14} style={{ color: 'var(--text-muted)' }} />
+        <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Consultancy</h2>
+      </div>
+      <div>
+        {data.map((c, i) => (
+          <Link
+            key={c.id}
+            href={`/admin/consultancy/queue/${c.id}`}
+            className="flex items-center justify-between gap-3 py-2.5 hover:opacity-80 transition-opacity"
+            style={{ borderBottom: i < data.length - 1 ? '1px solid var(--border)' : undefined }}
+          >
+            <div className="min-w-0">
+              <p className="text-xs font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+                {c.consultancy_service?.display_name ?? 'Consultation'} · {c.reference}
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                {c.assigned_consultant?.name ?? 'Unassigned'} · {formatDateTime(c.starts_at)}
+              </p>
+            </div>
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
+              {ENGAGEMENT_LABELS[c.engagement_status ?? ''] ?? c.engagement_status ?? c.appointment_status}
+            </span>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Shared ──────────────────────────────────────────────────────────────────
 
 function InfoRow({ label, value }: { label: string; value?: string | null }) {
@@ -508,6 +603,7 @@ export default function ProjectOverviewPage() {
   const formatCurrency = useCurrencyFormatter();
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { isPlatformOperator } = useProjectPermissions();
 
   const { data: project, isLoading } = useQuery({
     queryKey: ['project', id],
@@ -720,6 +816,9 @@ export default function ProjectOverviewPage() {
           )}
         </div>
       </div>
+
+      {/* Consultancy — Super Admin/Admin only (see ConsultancyWidget docblock) */}
+      {isPlatformOperator && <ConsultancyWidget projectId={id!} />}
 
       {/* Risk summary (only shown when risks exist) */}
       <RiskSummaryWidget riskSummary={riskSummary} />

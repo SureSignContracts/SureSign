@@ -2,9 +2,9 @@
 
 namespace App\Console\Commands;
 
-use App\Jobs\ProcessBillingWebhookEventJob;
 use App\Models\BillingWebhookEvent;
 use App\Services\Billing\WebhookEventProcessor;
+use App\Services\Billing\WebhookEventRoutingService;
 use App\Support\Billing\WebhookProcessingStatus;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -80,7 +80,7 @@ class RecoverBillingWebhookEvents extends Command
 
     protected $description = 'Dispatch processing jobs for stale-processing, retryable-failed, and stranded-received billing webhook events';
 
-    public function handle(): int
+    public function handle(WebhookEventRoutingService $routingService): int
     {
         $limit = max(1, (int) ($this->option('limit') ?: self::DEFAULT_LIMIT));
         $provider = $this->option('provider');
@@ -88,7 +88,7 @@ class RecoverBillingWebhookEvents extends Command
         $dryRun = (bool) $this->option('dry-run');
 
         if ($eventId !== null) {
-            return $this->recoverSingleEvent((int) $eventId, $dryRun);
+            return $this->recoverSingleEvent((int) $eventId, $dryRun, $routingService);
         }
 
         $staleProcessing = $this->recoverCategory(
@@ -96,6 +96,7 @@ class RecoverBillingWebhookEvents extends Command
             $this->staleProcessingQuery($provider),
             $limit,
             $dryRun,
+            $routingService,
         );
 
         $retryableFailed = $this->recoverCategory(
@@ -103,6 +104,7 @@ class RecoverBillingWebhookEvents extends Command
             $this->retryableFailedQuery($provider),
             $limit,
             $dryRun,
+            $routingService,
         );
 
         $strandedReceived = $this->recoverCategory(
@@ -110,6 +112,7 @@ class RecoverBillingWebhookEvents extends Command
             $this->strandedReceivedQuery($provider),
             $limit,
             $dryRun,
+            $routingService,
         );
 
         $total = $staleProcessing + $retryableFailed + $strandedReceived;
@@ -137,7 +140,7 @@ class RecoverBillingWebhookEvents extends Command
      * additional permission beyond what the scheduled sweep would
      * eventually do itself.
      */
-    private function recoverSingleEvent(int $eventId, bool $dryRun): int
+    private function recoverSingleEvent(int $eventId, bool $dryRun, WebhookEventRoutingService $routingService): int
     {
         $event = BillingWebhookEvent::find($eventId);
 
@@ -164,7 +167,8 @@ class RecoverBillingWebhookEvents extends Command
             return self::SUCCESS;
         }
 
-        ProcessBillingWebhookEventJob::dispatch($event->id);
+        $jobClass = $routingService->jobClassFor($event);
+        $jobClass::dispatch($event->id);
         $this->info("Dispatched a processing job for event {$eventId}.");
 
         return self::SUCCESS;
@@ -188,9 +192,10 @@ class RecoverBillingWebhookEvents extends Command
         return false;
     }
 
-    private function recoverCategory(string $label, \Illuminate\Database\Eloquent\Builder $query, int $limit, bool $dryRun): int
+    private function recoverCategory(string $label, \Illuminate\Database\Eloquent\Builder $query, int $limit, bool $dryRun, WebhookEventRoutingService $routingService): int
     {
-        $ids = $query->limit($limit)->pluck('id');
+        $events = $query->limit($limit)->get();
+        $ids = $events->pluck('id');
 
         if ($ids->isEmpty()) {
             return 0;
@@ -202,8 +207,9 @@ class RecoverBillingWebhookEvents extends Command
             return $ids->count();
         }
 
-        foreach ($ids as $id) {
-            ProcessBillingWebhookEventJob::dispatch($id);
+        foreach ($events as $event) {
+            $jobClass = $routingService->jobClassFor($event);
+            $jobClass::dispatch($event->id);
         }
 
         Log::info("billing:webhooks:recover dispatched {$label} events", [

@@ -34,6 +34,7 @@ class SuresignNotification extends Model
     public const CATEGORY_NOTICE      = 'notice';
     public const CATEGORY_RISK        = 'risk';
     public const CATEGORY_COMMUNICATION = 'communication';
+    public const CATEGORY_CONSULTANCY = 'consultancy';
     public const CATEGORY_GENERAL     = 'general';
 
     // ── Email gate (categories + priorities that may be emailed) ─────────────

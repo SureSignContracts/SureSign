@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, Save, Check, Upload, X, Palette, Building2, KeyRound, ScrollText, Lock, BookOpen, Globe, CreditCard, Gauge } from 'lucide-react';
+import { Settings, Save, Check, Upload, X, Palette, Building2, KeyRound, ScrollText, Lock, BookOpen, Globe, Eye } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -10,8 +10,10 @@ import PasswordStrengthChecker, { checkPassword, isPasswordValid } from '@/compo
 import TimezoneSelect from '@/components/shared/TimezoneSelect';
 import { SUPPORTED_CURRENCIES, currencyLabel } from '@/lib/currency';
 import { useAuthStore } from '@/store/authStore';
+import CustomUrlSection from '@/components/settings/CustomUrlSection';
+import BrandingPreviewPanel from '@/components/settings/BrandingPreviewPanel';
 
-type Tab = 'branding' | 'information' | 'preferences' | 'password';
+type Tab = 'branding' | 'preview' | 'information' | 'preferences' | 'password';
 
 interface BrandingData {
   company_name: string;
@@ -45,7 +47,7 @@ function Field({
   label: string; value: string; onChange: (v: string) => void;
   placeholder?: string; type?: string; textarea?: boolean;
 }) {
-  const cls = "w-full px-3 py-2.5 rounded-lg text-sm outline-none resize-none";
+  const cls = "w-full px-3 py-2.5 rounded-lg text-sm outline-none resize-none transition-colors duration-200 focus:border-[var(--gold)]";
   const sty = { backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' };
   return (
     <div>
@@ -95,15 +97,24 @@ function ImageUploader({
       <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{label}</label>
       <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>{description}</p>
       <div
-        className={`relative rounded-xl overflow-hidden flex items-center justify-center cursor-pointer border-2 border-dashed transition-all ${aspect === 'wide' ? 'h-24 w-full' : 'w-28 h-28'}`}
-        style={{ borderColor: preview ? 'transparent' : 'var(--border)', backgroundColor: 'var(--bg-elevated)' }}
+        className={`group relative rounded-xl overflow-hidden flex items-center justify-center cursor-pointer border-2 border-dashed transition-all duration-200 hover:border-[var(--gold)] hover:scale-[1.01] active:scale-[0.99] ${aspect === 'wide' ? 'h-24 w-full' : 'w-28 h-28'}`}
+        style={{
+          borderColor: preview ? 'transparent' : 'var(--border)',
+          // Fixed light backdrop when a preview is set — deliberately NOT
+          // var(--bg-elevated), which goes near-black in dark mode. Most
+          // uploaded logos/covers are designed for a light background
+          // (dark artwork on transparency) and would otherwise disappear
+          // entirely in dark mode. The empty "Click to upload" state still
+          // follows the theme, since there's no image contrast to protect.
+          backgroundColor: preview ? '#ffffff' : 'var(--bg-elevated)',
+        }}
         onClick={() => ref.current?.click()}
       >
         {preview ? (
           <img src={preview} alt={label} className="w-full h-full object-contain" />
         ) : (
           <div className="flex flex-col items-center gap-1.5 p-3">
-            <Upload size={18} style={{ color: 'var(--text-muted)' }} />
+            <Upload size={18} className="transition-transform duration-200 group-hover:scale-110" style={{ color: 'var(--text-muted)' }} />
             <span className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
               {uploading ? 'Uploading…' : 'Click to upload'}
             </span>
@@ -229,7 +240,8 @@ export default function SettingsPage() {
   const isPending = brandMutation.isPending || infoMutation.isPending;
 
   const tabs: { id: Tab; label: string; icon: any }[] = [
-    { id: 'branding',     label: 'Company Branding',    icon: Palette },
+    { id: 'branding',     label: 'Branding',    icon: Palette },
+    { id: 'preview',      label: 'Branding Preview',     icon: Eye },
     { id: 'information',  label: 'Company Information',  icon: Building2 },
     { id: 'preferences',  label: 'My Preferences',        icon: Globe },
     { id: 'password',     label: 'Change Password',      icon: KeyRound },
@@ -294,8 +306,8 @@ export default function SettingsPage() {
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+      <div className="flex items-center gap-3 mb-6 ss-animate-in">
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center transition-transform duration-300 hover:scale-105" style={{ backgroundColor: 'var(--bg-elevated)' }}>
           <Settings size={18} style={{ color: 'var(--text-secondary)' }} />
         </div>
         <div>
@@ -305,10 +317,10 @@ export default function SettingsPage() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex flex-wrap gap-1 p-1 rounded-full mb-6 w-fit" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+      <div className="flex flex-nowrap gap-1 p-1 rounded-full mb-6 w-fit ss-animate-in" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', animationDelay: '60ms' }}>
         {tabs.map(t => (
           <button key={t.id} onClick={() => { setTab(t.id); setSaved(false); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all active:scale-[0.97]"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 active:scale-[0.97] whitespace-nowrap"
             style={tab === t.id
               ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
               : { color: 'var(--text-secondary)' }
@@ -318,25 +330,9 @@ export default function SettingsPage() {
             {t.label}
           </button>
         ))}
-        <Link
-          href="/app/settings/billing"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all active:scale-[0.97] hover:bg-[var(--bg-hover)]"
-          style={{ color: 'var(--text-secondary)' }}
-        >
-          <CreditCard size={12} />
-          Billing
-        </Link>
-        <Link
-          href="/app/settings/usage"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all active:scale-[0.97] hover:bg-[var(--bg-hover)]"
-          style={{ color: 'var(--text-secondary)' }}
-        >
-          <Gauge size={12} />
-          Usage
-        </Link>
       </div>
 
-      <div className="rounded-2xl p-6" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+      <div key={tab} className="rounded-2xl p-6 ss-animate-in" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', animationDelay: '100ms' }}>
         {isLoading ? (
           <div className="space-y-4">
             {[...Array(4)].map((_, i) => (
@@ -368,6 +364,8 @@ export default function SettingsPage() {
               <Field label="Company Description" value={brandForm.description} onChange={v => setBrandForm(f => ({ ...f, description: v }))} placeholder="Brief description of your company…" textarea />
               <Field label="Tagline / Slogan" value={brandForm.tagline} onChange={v => setBrandForm(f => ({ ...f, tagline: v }))} placeholder="Building the future" />
             </div>
+
+            <CustomUrlSection />
 
             {/* Accent colour */}
             <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
@@ -444,6 +442,13 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
+        ) : tab === 'preview' ? (
+          /* ── Branding Preview (Organisation URL Branding, Phase 4) ── */
+          <BrandingPreviewPanel
+            companyName={brandForm.company_name}
+            logoUrl={b?.logo_url ?? null}
+            accentColor={brandForm.primary_color}
+          />
         ) : tab === 'information' ? (
           /* ── Company Information ── */
           <div className="space-y-5">
@@ -616,12 +621,12 @@ export default function SettingsPage() {
           </div>
         ) : null}
 
-        {tab !== 'password' && tab !== 'preferences' && (
+        {tab !== 'password' && tab !== 'preferences' && tab !== 'preview' && (
           <div className="mt-6 flex justify-end">
             <button
               onClick={handleSave}
               disabled={isPending}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-opacity disabled:opacity-60"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 active:scale-[0.97] disabled:opacity-60"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
             >
               {saved ? <Check size={15} /> : <Save size={15} />}

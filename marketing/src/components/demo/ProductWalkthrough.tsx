@@ -8,13 +8,15 @@ import { useReducedMotion } from '@/lib/useReducedMotion';
 import {
   PaymentAppTable,
   AiAnalysisReview,
+  ContractExtractionPreview,
+  ContractUploadPreview,
   TradePackageTree,
   DocumentsExplorer,
 } from '@/components/shared/placeholders';
 
 const STEPS = [
-  { label: 'Upload the contract', detail: 'Start with the executed contract and its project context.', screen: AiAnalysisReview },
-  { label: 'Extract the rules', detail: 'Identify dates, obligations, payment rules and programme information.', screen: AiAnalysisReview },
+  { label: 'Upload the contract', detail: 'Start with the executed contract and its project context.', screen: ContractUploadPreview },
+  { label: 'Extract the rules', detail: 'Identify dates, obligations, payment rules and programme information.', screen: ContractExtractionPreview },
   { label: 'Review and confirm', detail: 'A person checks and corrects the extraction before it is used.', screen: AiAnalysisReview },
   { label: 'Populate workflows', detail: 'Confirmed information becomes usable project and trade package data.', screen: TradePackageTree },
   { label: 'Control obligations', detail: 'Manage applications, notices and deadlines against confirmed rules.', screen: PaymentAppTable },

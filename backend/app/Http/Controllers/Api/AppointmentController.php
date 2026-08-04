@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreAppointmentRequest;
 use App\Http\Requests\UpdateAppointmentRequest;
 use App\Jobs\SendAppointmentEmailJob;
+use App\Jobs\SendConsultationCommunicationJob;
 use App\Models\ActivityLog;
 use App\Models\Appointment;
 use App\Models\AppointmentType;
@@ -16,6 +17,7 @@ use App\Services\AppointmentReferenceService;
 use App\Services\AppointmentSchedulingService;
 use App\Services\AppointmentWorkflowService;
 use App\Services\TimezoneResolver;
+use App\Support\Appointments\AvailabilityContext;
 use Illuminate\Http\Request;
 
 class AppointmentController extends Controller
@@ -26,6 +28,18 @@ class AppointmentController extends Controller
         private readonly AppointmentWorkflowService $workflowService,
         private readonly AppointmentAvailabilityService $availabilityService,
     ) {
+    }
+
+    /**
+     * Consultancy Live Booking Upgrade, Stage 1 — this controller creates/
+     * reschedules/assigns appointments of ANY AppointmentType, including one
+     * backing a ConsultancyService, so the correct availability context must
+     * be resolved per-type rather than assumed to always be
+     * AvailabilityContext::APPOINTMENTS.
+     */
+    private function resolveContext(AppointmentType $type): string
+    {
+        return $type->consultancyService ? AvailabilityContext::CONSULTANCY : AvailabilityContext::APPOINTMENTS;
     }
 
     /**
@@ -186,7 +200,7 @@ class AppointmentController extends Controller
         };
 
         try {
-            $appointment = $this->schedulingService->withConflictCheck($staff, $type, $startsAt, $endsAt, null, $override, $create, $organization);
+            $appointment = $this->schedulingService->withConflictCheck($staff, $type, $startsAt, $endsAt, null, $override, $create, $organization, $this->resolveContext($type));
         } catch (\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 409);
         }
@@ -275,7 +289,7 @@ class AppointmentController extends Controller
             $appointment = $this->schedulingService->withConflictCheck(
                 $staff, $appointment->appointmentType, $appointment->starts_at, $appointment->ends_at, $appointment->id, $override,
                 fn () => $this->workflowService->assign($appointment, $userId, $request->user()),
-                $appointment->organization,
+                $appointment->organization, $this->resolveContext($appointment->appointmentType),
             );
         } catch (\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 409);
@@ -332,7 +346,7 @@ class AppointmentController extends Controller
             $appointment = $this->schedulingService->withConflictCheck(
                 $staff, $appointment->appointmentType, $startsAt, $endsAt, $appointment->id, $override,
                 fn () => $this->workflowService->reschedule($appointment, $startsAt, $endsAt, $validated['timezone'], $request->user(), $validated['reason'] ?? null),
-                $appointment->organization,
+                $appointment->organization, $this->resolveContext($appointment->appointmentType),
             );
         } catch (\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 409);
@@ -350,7 +364,14 @@ class AppointmentController extends Controller
             );
         }
 
-        SendAppointmentEmailJob::dispatch($appointment->id, 'reschedule')->afterCommit();
+        // Communications Upgrade Batch 2 — a Consultancy booking gets its own
+        // branded "rescheduled" email; every other Appointment/Book-a-Demo
+        // reschedule is untouched.
+        if ($appointment->consultationEnquiry) {
+            SendConsultationCommunicationJob::dispatch($appointment->id, 'booking_rescheduled')->afterCommit();
+        } else {
+            SendAppointmentEmailJob::dispatch($appointment->id, 'reschedule')->afterCommit();
+        }
 
         return response()->json($appointment);
     }
@@ -423,7 +444,7 @@ class AppointmentController extends Controller
             if ($this->schedulingService->hasBufferedConflict($staff->id, $type, $startsAt, $endsAt, $excludeId)) {
                 throw new \RuntimeException("This time does not leave the required buffer around another appointment for {$staff->name}.");
             }
-            $this->availabilityService->assertBookable($staff, $type, $startsAt, $endsAt, $excludeId);
+            $this->availabilityService->assertBookable($staff, $type, $startsAt, $endsAt, $this->resolveContext($type), $excludeId);
         } catch (\RuntimeException $e) {
             return response()->json(['available' => false, 'reason' => $e->getMessage()]);
         }
@@ -469,9 +490,27 @@ class AppointmentController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        // completed/no_show intentionally send no attendee email this phase.
+        // no_show intentionally sends no attendee email this phase.
         if (in_array($toStatus, ['confirmed', 'declined', 'cancelled'], true)) {
-            SendAppointmentEmailJob::dispatch($appointment->id, 'transition', ['to_status' => $toStatus])->afterCommit();
+            // Communications Upgrade Batch 2 — a Consultancy booking's
+            // cancellation gets its own branded email; confirm/decline stay
+            // on the generic path (Consultancy has no confirm/decline step).
+            if ($toStatus === 'cancelled' && $appointment->consultationEnquiry) {
+                SendConsultationCommunicationJob::dispatch($appointment->id, 'booking_cancelled')->afterCommit();
+            } else {
+                SendAppointmentEmailJob::dispatch($appointment->id, 'transition', ['to_status' => $toStatus])->afterCommit();
+            }
+        }
+
+        // Communications Upgrade Batch 3 — the follow-up email fires on
+        // the one canonical "the consultation actually happened" event:
+        // Appointment::status reaching 'completed' (terminal — see
+        // AppointmentWorkflowService::TRANSITIONS, no path back out of it,
+        // so this can only ever fire once per appointment). Consultancy
+        // only; a generic (non-Consultancy) Appointment marked completed
+        // still sends nothing, unchanged from before this batch.
+        if ($toStatus === 'completed' && $appointment->consultationEnquiry) {
+            SendConsultationCommunicationJob::dispatch($appointment->id, 'consultation_followup')->afterCommit();
         }
 
         return response()->json($appointment);

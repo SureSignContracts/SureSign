@@ -4,6 +4,7 @@ namespace App\Services\Billing;
 
 use App\Services\Billing\Exceptions\InvalidWebhookSignatureException;
 use App\Services\Billing\Exceptions\UnexpectedSubscriptionItemStructureException;
+use App\Support\Billing\OneOffCheckoutRequest;
 
 /**
  * In-memory fake used by the automated test suite and bound whenever
@@ -127,6 +128,59 @@ class FakeBillingProvider implements BillingProviderInterface
     public function retrieveCheckoutSession(string $providerCheckoutSessionId): ?array
     {
         return $this->checkoutSessions[$providerCheckoutSessionId] ?? null;
+    }
+
+    /**
+     * Consultancy Live Booking Upgrade, Stage 3 — deterministic fake for
+     * BillingProviderInterface::createOneOffCheckoutSession(). Records
+     * enough of the request for tests to assert exactly what would have
+     * been sent to Stripe (amount/currency/name/metadata/idempotency key),
+     * without ever making the amount/currency Stripe-mutable after
+     * creation — mirrors the real provider's own `price_data` (frozen at
+     * creation) semantics.
+     */
+    public function createOneOffCheckoutSession(OneOffCheckoutRequest $request): array
+    {
+        $id = 'cs_fake_oneoff_' . (++$this->sequence);
+
+        $session = [
+            'id' => $id,
+            'url' => "https://checkout.stripe.test/fake/{$id}",
+            'expires_at' => $request->expiresAt->getTimestamp(),
+            'status' => 'open',
+            'payment_status' => 'unpaid',
+            'mode' => 'payment',
+            'amount_total' => $request->amountMinorUnits,
+            'currency' => strtolower($request->currency),
+            'livemode' => $this->livemode,
+            'metadata' => $request->metadata,
+            'idempotency_key' => $request->idempotencyKey,
+            'payment_intent_id' => null,
+        ];
+
+        $this->checkoutSessions[$id] = $session;
+
+        return $session;
+    }
+
+    /**
+     * Test-only helper — simulates Stripe reporting a completed, paid
+     * one-off Checkout Session (never used by production code). Callers
+     * build the verified webhook payload from
+     * $fake->checkoutSessions[$id] directly, exactly like a real Stripe
+     * webhook's `data.object` would look.
+     */
+    public function markOneOffCheckoutSessionPaid(string $providerCheckoutSessionId, string $paymentIntentId): array
+    {
+        $session = $this->checkoutSessions[$providerCheckoutSessionId]
+            ?? throw new \RuntimeException("Unknown fake checkout session: {$providerCheckoutSessionId}");
+
+        $session['status'] = 'complete';
+        $session['payment_status'] = 'paid';
+        $session['payment_intent_id'] = $paymentIntentId;
+        $this->checkoutSessions[$providerCheckoutSessionId] = $session;
+
+        return $session;
     }
 
     public function expireCheckoutSession(string $providerCheckoutSessionId): array
@@ -418,6 +472,9 @@ class FakeBillingProvider implements BillingProviderInterface
             'amount_total' => $checkoutSessionObject['amount_total'] ?? null,
             'currency' => isset($checkoutSessionObject['currency']) ? strtoupper($checkoutSessionObject['currency']) : null,
             'metadata' => is_array($checkoutSessionObject['metadata'] ?? null) ? $checkoutSessionObject['metadata'] : [],
+            'mode' => $checkoutSessionObject['mode'] ?? null,
+            'payment_status' => $checkoutSessionObject['payment_status'] ?? null,
+            'payment_intent_id' => is_array($checkoutSessionObject['payment_intent'] ?? null) ? ($checkoutSessionObject['payment_intent']['id'] ?? null) : ($checkoutSessionObject['payment_intent'] ?? $checkoutSessionObject['payment_intent_id'] ?? null),
         ];
     }
 

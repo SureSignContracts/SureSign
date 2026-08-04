@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Appointment;
 use App\Models\AppointmentType;
+use App\Models\ConsultancySlotReservation;
 use App\Models\Organization;
 use App\Models\User;
 use Carbon\Carbon;
@@ -39,6 +40,53 @@ use Illuminate\Support\Facades\DB;
  * or proposed_effective_end === existing_effective_start) is explicitly
  * ALLOWED — the strict `<`/`>` comparisons below never treat equal
  * boundaries as a conflict.
+ *
+ * Consultancy Live Booking Upgrade, Stage 1 — withConflictCheck()/
+ * generateAvailableSlots()/bookableDatesInMonth() now take an explicit
+ * App\Support\Appointments\AvailabilityContext, threaded through only to
+ * AppointmentAvailabilityService (weekly schedule/override resolution).
+ * isSlotFree()/hasBufferedConflict()/rawOverlapQuery()/candidateQuery() are
+ * DELIBERATELY UNCHANGED and take no context — same-staff conflict
+ * detection is, and remains, scoped purely by assigned_user_id and blocking
+ * status, never by appointment type or workflow. This is what makes a
+ * confirmed Book a Demo appointment already block an overlapping
+ * Consultancy slot for the same consultant, and vice versa, with no new
+ * subsystem (see the Phase 0 architecture review §11).
+ *
+ * Consultancy Live Booking Upgrade, Stage 2 — two additions, both in this
+ * one class rather than a parallel Consultancy-only engine:
+ *
+ *   1. isSlotFree()/hasBufferedConflict() now ALSO consider active,
+ *      non-expired App\Models\ConsultancySlotReservation rows (see
+ *      reservationRawOverlapQuery()/reservationCandidateQuery() below) —
+ *      folded into the SAME two methods every read (generateAvailableSlots())
+ *      and write (withConflictCheck()) path already calls, so a temporary
+ *      Consultancy hold blocks a slot everywhere a confirmed Appointment
+ *      already would, including Book a Demo, with no second query path. A
+ *      reservation is checked by status='active' AND expires_at in the
+ *      future — NEVER status alone — so an elapsed-but-not-yet-cleaned-up
+ *      reservation stops blocking immediately, before the scheduled expiry
+ *      command ever runs.
+ *
+ *   2. withConflictCheck() now acquires a `SELECT ... FOR UPDATE` lock on
+ *      the resolved staff member's OWN `users` row, FIRST, before any
+ *      conflict query — this is the fix for the classic "empty result set"
+ *      race: locking only the rows an overlap query returns provides no
+ *      protection at all when two concurrent transactions both see zero
+ *      conflicting rows and both proceed to insert. The `users` row for a
+ *      given staff member always exists regardless of whether any
+ *      Appointment/reservation row does, so it is always available to
+ *      lock and always serialises every scheduling write for that one
+ *      consultant — Book a Demo, ordinary Appointments, Consultancy
+ *      Appointments, and Consultancy reservations alike, since this method
+ *      is the single shared write boundary all of them already call. This
+ *      necessarily serialises ALL scheduling writes for one consultant
+ *      (not just writes to one exact slot) — an accepted tradeoff at
+ *      current single-consultant volume, and safer than any lock that can
+ *      disappear when no candidate rows exist yet. See
+ *      internal-docs/super-admin/consultancy.md's Stage 2 section for the
+ *      full concurrency design and its SQLite-vs-MySQL verification
+ *      boundary.
  */
 class AppointmentSchedulingService
 {
@@ -61,7 +109,8 @@ class AppointmentSchedulingService
      */
     public function isSlotFree(int $userId, Carbon $startsAt, Carbon $endsAt, ?int $excludeAppointmentId = null): bool
     {
-        return $this->rawOverlapQuery($userId, $startsAt, $endsAt, $excludeAppointmentId)->doesntExist();
+        return $this->rawOverlapQuery($userId, $startsAt, $endsAt, $excludeAppointmentId)->doesntExist()
+            && $this->reservationRawOverlapQuery($userId, $startsAt, $endsAt)->doesntExist();
     }
 
     /**
@@ -90,6 +139,18 @@ class AppointmentSchedulingService
             }
         }
 
+        $reservationCandidates = $this->reservationCandidateQuery($userId, $candidateRangeStart, $candidateRangeEnd)->get();
+
+        foreach ($reservationCandidates as $reservation) {
+            $reservationType = $reservation->consultancyService?->appointmentType;
+            $candidateStart = $reservation->starts_at->copy()->subMinutes($reservationType?->buffer_before_minutes ?? 0);
+            $candidateEnd   = $reservation->ends_at->copy()->addMinutes($reservationType?->buffer_after_minutes ?? 0);
+
+            if ($proposedStart->lt($candidateEnd) && $proposedEnd->gt($candidateStart)) {
+                return true;
+            }
+        }
+
         return false;
     }
 
@@ -112,10 +173,20 @@ class AppointmentSchedulingService
      *
      * @throws \RuntimeException if the slot is no longer free or unavailable
      */
-    public function withConflictCheck(?User $staff, ?AppointmentType $type, Carbon $startsAt, Carbon $endsAt, ?int $excludeAppointmentId, bool $override, \Closure $callback, ?Organization $organization = null): mixed
+    public function withConflictCheck(?User $staff, ?AppointmentType $type, Carbon $startsAt, Carbon $endsAt, ?int $excludeAppointmentId, bool $override, \Closure $callback, ?Organization $organization, string $context): mixed
     {
-        return DB::transaction(function () use ($staff, $type, $startsAt, $endsAt, $excludeAppointmentId, $override, $callback, $organization) {
+        return DB::transaction(function () use ($staff, $type, $startsAt, $endsAt, $excludeAppointmentId, $override, $callback, $organization, $context) {
             if ($staff) {
+                // Stage 2 concurrency fix — lock the staff member's OWN
+                // `users` row first, before any conflict query. This row
+                // always exists, unlike any Appointment/reservation
+                // candidate row, which is exactly what closes the "empty
+                // result set" race: two concurrent transactions targeting
+                // a slot with zero existing conflicts would otherwise both
+                // lock nothing and both proceed. See this class's own
+                // docblock for the full reasoning.
+                User::where('id', $staff->id)->lockForUpdate()->first();
+
                 // Lock a range wide enough to cover both the raw-overlap and
                 // the buffer-widened candidate set in one pass, so a
                 // concurrent request can't slip in between the check and
@@ -133,7 +204,7 @@ class AppointmentSchedulingService
                 }
 
                 if (!$override) {
-                    $this->availabilityService->assertBookable($staff, $type, $startsAt, $endsAt, $excludeAppointmentId);
+                    $this->availabilityService->assertBookable($staff, $type, $startsAt, $endsAt, $context, $excludeAppointmentId);
                 }
             } elseif ($type && !$override) {
                 $this->availabilityService->assertTypeBookable($type, $startsAt, $endsAt, null, $organization);
@@ -172,10 +243,10 @@ class AppointmentSchedulingService
      * Sorted by the underlying UTC instant (not the formatted strings), so
      * a date-crossing slot still lands in correct chronological order.
      */
-    public function generateAvailableSlots(User $staff, AppointmentType $type, string $localDate, ?string $displayTimezone = null): array
+    public function generateAvailableSlots(User $staff, AppointmentType $type, string $localDate, ?string $displayTimezone, string $context): array
     {
         $stepMinutes = 15;
-        $windows = $this->availabilityService->resolveWindowsForDate($staff, $localDate);
+        $windows = $this->availabilityService->resolveWindowsForDate($staff, $localDate, $context);
         $staffTimezone = TimezoneResolver::effectiveTimezone($staff, $staff->organization);
         $labelTimezone = $displayTimezone ?: $staffTimezone;
 
@@ -199,7 +270,7 @@ class AppointmentSchedulingService
 
                 if ($bookable) {
                     try {
-                        $this->availabilityService->assertBookable($staff, $type, $slotStartUtc, $slotEndUtc);
+                        $this->availabilityService->assertBookable($staff, $type, $slotStartUtc, $slotEndUtc, $context);
                         $displayInstant = $slotStartUtc->copy()->setTimezone($labelTimezone);
                         $slots[$slotStartUtc->getTimestamp()] = [
                             'date' => $displayInstant->format('Y-m-d'),
@@ -240,7 +311,7 @@ class AppointmentSchedulingService
      * generated it) so the returned set is accurate from the visitor's own
      * calendar perspective, then filtered back down to just this month.
      */
-    public function bookableDatesInMonth(User $staff, AppointmentType $type, int $year, int $month, string $earliestLocalDate, string $latestLocalDate, ?string $displayTimezone = null): array
+    public function bookableDatesInMonth(User $staff, AppointmentType $type, int $year, int $month, string $earliestLocalDate, string $latestLocalDate, ?string $displayTimezone, string $context): array
     {
         $firstOfMonth = Carbon::create($year, $month, 1);
         $scanStart = $firstOfMonth->copy()->subDay();
@@ -251,7 +322,7 @@ class AppointmentSchedulingService
         while ($cursor->lte($scanEnd)) {
             $localDate = $cursor->toDateString();
             if ($localDate >= $earliestLocalDate && $localDate <= $latestLocalDate) {
-                foreach ($this->generateAvailableSlots($staff, $type, $localDate, $displayTimezone) as $slot) {
+                foreach ($this->generateAvailableSlots($staff, $type, $localDate, $displayTimezone, $context) as $slot) {
                     $bookableDisplayDates[$slot['date']] = true;
                 }
             }
@@ -288,5 +359,33 @@ class AppointmentSchedulingService
             ->where('starts_at', '<', $rangeEnd)
             ->where('ends_at', '>', $rangeStart)
             ->with('appointmentType');
+    }
+
+    /**
+     * Stage 2 — active, non-expired reservations only. Deliberately checks
+     * BOTH status='active' AND expires_at in the future (never status
+     * alone) so an elapsed reservation stops blocking immediately, ahead
+     * of the scheduled `consultancy:reservations:expire` command actually
+     * marking it 'expired'.
+     */
+    private function reservationRawOverlapQuery(int $consultantUserId, Carbon $startsAt, Carbon $endsAt)
+    {
+        return ConsultancySlotReservation::query()
+            ->where('consultant_user_id', $consultantUserId)
+            ->where('status', 'active')
+            ->where('expires_at', '>', Carbon::now())
+            ->where('starts_at', '<', $endsAt)
+            ->where('ends_at', '>', $startsAt);
+    }
+
+    private function reservationCandidateQuery(int $consultantUserId, Carbon $rangeStart, Carbon $rangeEnd)
+    {
+        return ConsultancySlotReservation::query()
+            ->where('consultant_user_id', $consultantUserId)
+            ->where('status', 'active')
+            ->where('expires_at', '>', Carbon::now())
+            ->where('starts_at', '<', $rangeEnd)
+            ->where('ends_at', '>', $rangeStart)
+            ->with('consultancyService.appointmentType');
     }
 }

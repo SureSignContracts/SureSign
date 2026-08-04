@@ -10,6 +10,7 @@ class SuresignSetting extends Model
     protected $table = 'suresign_settings';
 
     protected $fillable = [
+        'consultancy_consultant_user_id',
         'ai_enabled',
         'prompts_enabled',
         'notification_settings',
@@ -51,6 +52,8 @@ class SuresignSetting extends Model
         'appointment_reschedule_cutoff_hours',
         'appointment_ics_enabled',
         'appointment_default_meeting_instructions',
+        'consultation_public_link_ttl_hours',
+        'consultancy_new_booking_notification_recipients',
     ];
 
     protected $casts = [

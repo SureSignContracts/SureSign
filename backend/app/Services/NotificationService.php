@@ -26,6 +26,12 @@ class NotificationService
     public const SYSTEM                      = 'system';
     public const PAYMENT_DEADLINE_APPROACHING = 'payment_deadline_approaching';
     public const AI_ANALYSIS_COMPLETED       = 'ai_analysis_completed';
+    // Consultancy — operator-facing only (never sent to the customer; see
+    // App\Services\Consultancy\ConsultationCommunicationService for the
+    // customer-facing email side). Confirmed no such notification existed
+    // anywhere before this — an operator previously learned about a new
+    // booking only by manually checking the Consultancy Queue.
+    public const CONSULTATION_BOOKED = 'consultation_booked';
     // Variation approval workflow
     public const VARIATION_SUBMITTED   = 'variation_submitted';
     public const VARIATION_INSTRUCTED  = 'variation_instructed';

@@ -13,7 +13,10 @@ Current public links:
 
 - Product
 - Pricing dropdown
-- Adjudication
+- Services dropdown
+  - Services overview
+  - Consultancy
+  - Adjudication
 - Contact
 - Documentation
 - Log In
@@ -22,6 +25,23 @@ Current public links:
 `Contact` routes to `/contact`. `Documentation` and `Log In` remain external
 links. The mobile menu renders from the same link collection as desktop, so
 navigation changes must not be duplicated in separate arrays.
+
+The footer mirrors the same product architecture: Platform contains Product,
+Pricing, Documentation, and the existing product overview anchors; Services
+contains the `/services` overview, Consultancy, and Adjudication. Company,
+Legal, and Trust retain the existing contact, legal, security, procurement,
+and demo routes.
+
+## Professional services
+
+`/services` is the parent marketing page for SureSign professional services.
+It explains the distinction between Consultancy and Adjudication and links to
+their canonical routes:
+
+- `/consultancy`
+- `/adjudication`
+
+The child routes remain top-level and must not be moved beneath `/services`.
 
 ## Pricing section
 

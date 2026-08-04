@@ -4,12 +4,15 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\SendAppointmentEmailJob;
+use App\Jobs\SendConsultationCommunicationJob;
 use App\Models\Appointment;
 use App\Services\AppointmentEmailService;
 use App\Services\AppointmentPublicLinkService;
 use App\Services\AppointmentSchedulingService;
 use App\Services\AppointmentWorkflowService;
 use App\Services\TimezoneResolver;
+use App\Support\Appointments\AvailabilityContext;
+use App\Support\Organizations\EnforcesPublicOrganizationHost;
 use Illuminate\Http\Request;
 
 /**
@@ -30,6 +33,8 @@ use Illuminate\Http\Request;
  */
 class PublicAppointmentActionController extends Controller
 {
+    use EnforcesPublicOrganizationHost;
+
     private const TERMINAL_STATUSES = ['cancelled', 'declined', 'completed', 'no_show'];
 
     public function __construct(
@@ -40,9 +45,40 @@ class PublicAppointmentActionController extends Controller
     ) {
     }
 
+    /**
+     * See App\Support\Organizations\EnforcesPublicOrganizationHost — when
+     * the marketing frontend is being served on a branded organisation
+     * hostname, it forwards that context as `org_slug`; a mismatch against
+     * the appointment's own organisation is treated identically to the
+     * token simply not existing.
+     */
     private function findByToken(string $token): ?Appointment
     {
-        return Appointment::where('public_token', $token)->first();
+        $appointment = Appointment::where('public_token', $token)->first();
+
+        if ($appointment === null) {
+            return null;
+        }
+
+        if (! $this->hostMatchesOrganization(request()->header('X-Suresign-Org-Host'), $appointment->organization_id)) {
+            return null;
+        }
+
+        return $appointment;
+    }
+
+    /**
+     * Consultancy Live Booking Upgrade, Stage 1 — this controller serves
+     * both ordinary Appointments (including Book a Demo) and Consultancy
+     * bookings via the same generic public_token, so the correct
+     * availability context must be resolved per-appointment rather than
+     * assumed. A Consultancy booking always has a linked ConsultationEnquiry
+     * (see Appointment::consultationEnquiry()) — every other appointment
+     * does not.
+     */
+    private function contextFor(Appointment $appointment): string
+    {
+        return $appointment->consultationEnquiry ? AvailabilityContext::CONSULTANCY : AvailabilityContext::APPOINTMENTS;
     }
 
     private function notFound()
@@ -112,7 +148,14 @@ class PublicAppointmentActionController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        SendAppointmentEmailJob::dispatch($appointment->id, 'transition', ['to_status' => 'cancelled'])->afterCommit();
+        // Communications Upgrade Batch 2 — see contextFor()'s own docblock:
+        // this controller serves both ordinary Appointments and Consultancy
+        // bookings via the same signed public_token.
+        if ($this->contextFor($appointment) === AvailabilityContext::CONSULTANCY) {
+            SendConsultationCommunicationJob::dispatch($appointment->id, 'booking_cancelled')->afterCommit();
+        } else {
+            SendAppointmentEmailJob::dispatch($appointment->id, 'transition', ['to_status' => 'cancelled'])->afterCommit();
+        }
 
         return response()->json(['status' => 'cancelled']);
     }
@@ -159,7 +202,7 @@ class PublicAppointmentActionController extends Controller
         }
 
         $displayTimezone = $validated['timezone'] ?? TimezoneResolver::effectiveTimezone($staff, $staff->organization);
-        $slots = $this->schedulingService->generateAvailableSlots($staff, $appointment->appointmentType, $validated['date'], $displayTimezone);
+        $slots = $this->schedulingService->generateAvailableSlots($staff, $appointment->appointmentType, $validated['date'], $displayTimezone, $this->contextFor($appointment));
 
         return response()->json([
             'scheduling_mode' => 'fixed',
@@ -199,7 +242,7 @@ class PublicAppointmentActionController extends Controller
             $appointment = $this->schedulingService->withConflictCheck(
                 $staff, $appointment->appointmentType, $startsAt, $endsAt, $appointment->id, false,
                 fn () => $this->workflowService->reschedule($appointment, $startsAt, $endsAt, $validated['timezone'], null, 'Rescheduled by attendee'),
-                $appointment->organization,
+                $appointment->organization, $this->contextFor($appointment),
             );
         } catch (\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 409);
@@ -207,7 +250,13 @@ class PublicAppointmentActionController extends Controller
 
         // The token just rotated inside reschedule() — this email carries
         // fresh links; the link the visitor just used is now dead.
-        SendAppointmentEmailJob::dispatch($appointment->id, 'reschedule')->afterCommit();
+        // Communications Upgrade Batch 2 — Consultancy bookings get their
+        // own branded "rescheduled" email; see contextFor()'s own docblock.
+        if ($this->contextFor($appointment) === AvailabilityContext::CONSULTANCY) {
+            SendConsultationCommunicationJob::dispatch($appointment->id, 'booking_rescheduled')->afterCommit();
+        } else {
+            SendAppointmentEmailJob::dispatch($appointment->id, 'reschedule')->afterCommit();
+        }
 
         return response()->json($this->publicView($appointment));
     }

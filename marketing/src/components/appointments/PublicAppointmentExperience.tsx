@@ -8,6 +8,8 @@ import { HeroReveal } from '@/components/hero/HeroReveal';
 import { fetchAppointmentView, signedQueryFrom } from '@/lib/publicAppointments';
 import type { AppointmentAction, AppointmentPublicView, ApiResult } from '@/lib/publicAppointments';
 import { isTerminalStatus, statusLabel } from '@/lib/appointmentFormat';
+import { OrganisationBrandingBadge } from '@/components/shared/OrganisationBrandingBadge';
+import { OrganisationBrandingProvider } from '@/lib/OrganisationBrandingContext';
 import { AppointmentSummaryCard } from './AppointmentSummaryCard';
 import { CancelFlow } from './CancelFlow';
 import { RescheduleFlow } from './RescheduleFlow';
@@ -38,7 +40,15 @@ function terminalMessage(status: string): string {
   }
 }
 
-export function PublicAppointmentExperience({ token }: { token: string }) {
+export function PublicAppointmentExperience(props: { token: string }) {
+  return (
+    <OrganisationBrandingProvider>
+      <PublicAppointmentExperienceInner {...props} />
+    </OrganisationBrandingProvider>
+  );
+}
+
+function PublicAppointmentExperienceInner({ token }: { token: string }) {
   const searchParams = useSearchParams();
   const actionParam = searchParams.get('action');
   const action: AppointmentAction | null = actionParam === 'cancel' || actionParam === 'reschedule' ? actionParam : null;
@@ -96,6 +106,7 @@ export function PublicAppointmentExperience({ token }: { token: string }) {
 
   return (
     <div ref={cardRef} className="space-y-6">
+      <OrganisationBrandingBadge />
       <AppointmentSummaryCard appointment={appointment} />
 
       {terminal && (

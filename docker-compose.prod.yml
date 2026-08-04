@@ -476,6 +476,12 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${MARKETING_NEXT_PUBLIC_API_URL:-https://app.suresigncontracts.app/api}
+        # Organisation URL Branding, Phase 4 — where the branded login
+        # gateway hands off to after "Continue to Sign In". A build ARG
+        # (not just a runtime `environment:` entry) because NEXT_PUBLIC_
+        # variables are inlined into the client bundle at build time —
+        # same reason NEXT_PUBLIC_API_URL above is threaded this way.
+        NEXT_PUBLIC_FRONTEND_URL: ${MARKETING_NEXT_PUBLIC_FRONTEND_URL:-https://app.suresigncontracts.app}
     image: suresign-marketing:latest
     container_name: suresign_marketing
     restart: unless-stopped

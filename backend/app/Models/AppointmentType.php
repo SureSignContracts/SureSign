@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class AppointmentType extends Model
@@ -43,5 +44,15 @@ class AppointmentType extends Model
     public function appointments(): HasMany
     {
         return $this->hasMany(Appointment::class);
+    }
+
+    /**
+     * Present only when this type is the scheduling engine for a
+     * Consultancy Service (see App\Models\ConsultancyService) — null for
+     * every other Appointment Type.
+     */
+    public function consultancyService(): HasOne
+    {
+        return $this->hasOne(ConsultancyService::class);
     }
 }

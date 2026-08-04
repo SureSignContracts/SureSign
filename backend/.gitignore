@@ -26,3 +26,10 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Stray SQLite file created when `php artisan test`/`migrate` is run outside
+# Docker without the real .env loaded (DB_CONNECTION falls back to sqlite,
+# and DB_DATABASE=suresign is then read as a file path, not a schema name).
+# The real app always uses MySQL — see backend/.env's DB_CONNECTION.
+/suresign
+*.sqlite

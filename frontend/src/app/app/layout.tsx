@@ -118,7 +118,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--bg-base)' }}>
       <AppSidebar mobileOpen={navOpen} onMobileClose={() => setNavOpen(false)} />
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+      <div className="flex flex-col flex-1 min-w-0 min-h-0 overflow-hidden">
         <MobileTopBar
           onMenu={() => setNavOpen(true)}
           title={orgName}
@@ -129,7 +129,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <header className="hidden lg:flex h-12 items-center justify-end px-4 flex-shrink-0" style={{ backgroundColor: 'var(--bg-base)' }}>
           <NotificationBell basePath="/app/notifications" />
         </header>
-        <main className="flex-1 overflow-y-auto">
+        {/* min-h-0: without it, a flex item defaults to never shrinking
+            below its own content's height even with flex-1 set — a
+            content-heavy page pushes this <main> (and the column/row it's
+            nested in) taller than h-screen, so the document scrolls
+            instead of just this element's own overflow-y-auto region. */}
+        <main className="flex-1 min-h-0 overflow-y-auto">
           {children}
         </main>
       </div>

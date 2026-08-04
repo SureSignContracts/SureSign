@@ -65,6 +65,65 @@ export function AiAnalysisReview() {
   );
 }
 
+export function ContractUploadPreview() {
+  return (
+    <div className="bg-white p-5">
+      <div className="mb-4 font-mono text-xs text-[#8a8a8a]">contract_intake · ready for analysis</div>
+      <div className="rounded-xl border border-[#d4d4d4] bg-[#fafafa] p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium text-[#0a0a0a]">JCT Design and Build Contract.pdf</p>
+            <p className="mt-1 text-xs text-[#737373]">Executed contract · 148 pages · 12.4 MB</p>
+          </div>
+          <span className="shrink-0 rounded-md border border-[#d4d4d4] bg-white px-2 py-1 text-xs font-medium text-[#404040]">
+            Uploaded
+          </span>
+        </div>
+        <div className="mt-5 grid gap-2 border-t border-[#e4e4e4] pt-4 sm:grid-cols-2">
+          <div>
+            <p className="text-xs text-[#8a8a8a]">Project</p>
+            <p className="mt-1 text-sm text-[#262626]">Riverside Apartments</p>
+          </div>
+          <div>
+            <p className="text-xs text-[#8a8a8a]">Document type</p>
+            <p className="mt-1 text-sm text-[#262626]">Main contract</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function ContractExtractionPreview() {
+  const rows = [
+    ['Parties', 'Extracted'],
+    ['Payment terms', 'Extracted'],
+    ['Key dates', 'Extracting'],
+    ['Retention rules', 'Queued'],
+    ['Programme milestones', 'Queued'],
+  ];
+
+  return (
+    <div className="bg-white p-5">
+      <div className="flex items-center justify-between gap-4">
+        <div className="font-mono text-xs text-[#8a8a8a]">contract_ai_analysis · status: processing</div>
+        <span className="font-mono text-xs text-[#525252]">52%</span>
+      </div>
+      <div className="mt-3 h-1 overflow-hidden rounded-full bg-[#e5e5e5]">
+        <div className="h-full w-[52%] rounded-full bg-[#171717]" />
+      </div>
+      <div className="mt-4 space-y-2">
+        {rows.map(([label, status]) => (
+          <div key={label} className="flex items-center justify-between rounded-lg border border-[#e4e4e4] px-4 py-2.5 text-sm">
+            <span className="text-[#0a0a0a]">{label}</span>
+            <span className={status === 'Extracting' ? 'font-medium text-[#0a0a0a]' : 'text-[#737373]'}>{status}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function TradePackageTree() {
   const packages = ['CF: Concrete Frame', 'BW: Brickwork', 'WD: Windows & Doors'];
   return (

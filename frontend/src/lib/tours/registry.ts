@@ -117,6 +117,34 @@ export const TOURS: TourDef[] = [
     ],
   },
 
+  // ── Consultancy (org-level, non-project-scoped — same shape as the
+  // Dashboard tour above, not a project workspace page) ───────────────────
+  {
+    key: 'page-consultations',
+    label: 'Consultancy tour',
+    description: 'Booking time with a real construction professional, and finding your way back to a consultation afterwards.',
+    group: 'Getting Started',
+    route: () => '/app/consultations',
+    steps: [
+      {
+        target: '[data-tour="consultations-header"]',
+        title: 'A real person, not AI',
+        description: 'Consultancy connects you with an experienced construction professional for a private consultation — talk through a payment application, a notice, a variation, or any general contract administration question.',
+      },
+      {
+        target: '[data-tour="consultations-book-button"]',
+        title: 'Book a Consultation',
+        description: 'Pick a consultation type, a date and time, and describe your enquiry. A short title and description is enough for your consultant to prepare — project stage, contract form and preferred outcome are optional extras that help but are not required.',
+      },
+      {
+        target: '[data-tour="consultations-list"]',
+        title: 'Your consultations',
+        description: 'Every consultation your organisation has booked, with its current status. Select any reference to open its full detail — including any summary your consultant has published once the consultation is complete. A draft summary stays internal to your consultant until they publish it; you will only ever see the finished version.',
+      },
+      RESTART_STEP,
+    ],
+  },
+
   // ── Projects (org-level list) ────────────────────────────────────────────
   {
     key: 'page-projects',

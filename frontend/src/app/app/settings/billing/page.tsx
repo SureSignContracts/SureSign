@@ -3,18 +3,14 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { ArrowLeft, CreditCard, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CreditCard, Loader2, RefreshCw } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { useBillingOverview, useBillingPlans, PORTAL_RETURN_FLAG_KEY } from '@/hooks/useBilling';
+import { useBillingOverview, PORTAL_RETURN_FLAG_KEY } from '@/hooks/useBilling';
 import EmptyState from '@/components/ui/EmptyState';
-import AccessStatusBanner from '@/components/billing/AccessStatusBanner';
-import SubscriptionSummaryCard from '@/components/billing/SubscriptionSummaryCard';
-import PendingPlanChangeCard from '@/components/billing/PendingPlanChangeCard';
-import PlanComparisonSection from '@/components/billing/PlanComparisonSection';
 import InvoiceListSection from '@/components/billing/InvoiceListSection';
 import PaymentListSection from '@/components/billing/PaymentListSection';
 import BillingPortalCard from '@/components/billing/BillingPortalCard';
-import SubscriptionIntelligenceSection from '@/components/billing/intelligence/SubscriptionIntelligenceSection';
+import { subscriptionStatusLabel } from '@/lib/billingStatus';
 
 function Skeleton() {
   return (
@@ -37,7 +33,6 @@ export default function BillingPage() {
   const qc = useQueryClient();
 
   const { data: overview, isLoading: overviewLoading, isError: overviewError } = useBillingOverview();
-  const { data: plansData, isLoading: plansLoading } = useBillingPlans();
 
   // Phase E5 — detects a genuine return from the Stripe Customer Portal
   // (see PORTAL_RETURN_FLAG_KEY's docblock) and surfaces a brief, real
@@ -74,7 +69,7 @@ export default function BillingPage() {
           </div>
           <div>
             <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Billing</h1>
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Your subscription, plan and payment history</p>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Payment methods, invoices and payment history</p>
           </div>
         </div>
       </div>
@@ -102,57 +97,32 @@ export default function BillingPage() {
         />
       ) : (
         <>
-          <AccessStatusBanner
-            access={overview.access}
-            graceEndsAt={overview.subscription?.grace_period_ends_at}
-            timeZone={timeZone}
-          />
-
-          {(!overview.has_subscription || overview.subscription?.is_abandoned_checkout) && (
-            <div
-              className="rounded-2xl p-5 ss-animate-in"
-              style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
-            >
-              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                {overview.subscription?.is_abandoned_checkout
-                  ? 'Your previous Checkout was cancelled before payment was taken.'
-                  : "Your organisation doesn't have an active subscription yet."}
-              </p>
-              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                {overview.subscription?.is_abandoned_checkout
-                  ? 'No subscription was created and nothing was charged. Choose a plan below whenever you’re ready.'
-                  : 'Choose a plan below to get started with secure Stripe Checkout.'}
-              </p>
+          <Link
+            href="/app/settings/billing/subscription"
+            className="group flex items-center justify-between rounded-2xl p-5 ss-animate-in transition-colors hover:bg-[var(--bg-hover)]"
+            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+                <RefreshCw size={16} style={{ color: 'var(--text-secondary)' }} />
+              </div>
+              <div>
+                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                  {overview.has_subscription && !overview.subscription?.is_abandoned_checkout
+                    ? `${overview.subscription?.plan_name ?? 'Subscription'} · ${subscriptionStatusLabel(overview.subscription?.status)}`
+                    : 'Subscription'}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                  {overview.has_subscription && !overview.subscription?.is_abandoned_checkout
+                    ? 'Manage your plan, upgrades and downgrades'
+                    : 'Choose a plan to get started'}
+                </p>
+              </div>
             </div>
-          )}
-
-          {overview.subscription && !overview.subscription.is_abandoned_checkout && (
-            <SubscriptionSummaryCard
-              subscription={overview.subscription}
-              timeZone={timeZone}
-              hasPendingPlanChange={!!overview.pending_plan_change}
-            />
-          )}
-
-          {overview.pending_plan_change && (
-            <PendingPlanChangeCard planChange={overview.pending_plan_change} timeZone={timeZone} />
-          )}
+            <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-0.5" style={{ color: 'var(--text-muted)' }} />
+          </Link>
 
           {overview.billing_customer && <BillingPortalCard />}
-
-          {overview.has_subscription && !overview.subscription?.is_abandoned_checkout && (
-            <SubscriptionIntelligenceSection timeZone={timeZone} />
-          )}
-
-          {!plansLoading && plansData && (
-            <PlanComparisonSection
-              plans={plansData.plans}
-              hasSubscription={!overview.can_start_new_checkout}
-              eligibleForPlanChange={overview.subscription?.status === 'active' && !overview.subscription?.cancel_at_period_end}
-              hasPendingChange={!!overview.pending_plan_change}
-              pendingCheckout={overview.subscription?.pending_checkout ?? null}
-            />
-          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <InvoiceListSection />

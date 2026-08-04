@@ -7,7 +7,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AppointmentAvailabilityOverride extends Model
 {
-    protected $fillable = ['user_id', 'local_date', 'is_unavailable', 'start_time', 'end_time'];
+    // 'context' (App\Support\Appointments\AvailabilityContext) is set
+    // exclusively by AppointmentAvailabilityService from a validated
+    // constant — never mass-assigned from raw request input.
+    protected $fillable = ['user_id', 'context', 'local_date', 'is_unavailable', 'start_time', 'end_time'];
 
     protected $casts = [
         'local_date'     => 'date',

@@ -102,6 +102,15 @@ services:
       # realistically-sized contract — see internal-docs/super-admin/
       # ai-credits-architecture.md.
       - ANTHROPIC_MAX_TOKENS=128000
+      # Google Integration Foundation (Stage 4A) — real values come from the
+      # gitignored root .env file (never hardcoded here, since this file IS
+      # committed to git). GOOGLE_OAUTH_REDIRECT_URI must be a FRONTEND url
+      # (Google redirects the browser there; that page calls the backend's
+      # callback API with the returned code/state) — see
+      # App\Services\Google\GoogleOAuthService's own docblock.
+      - GOOGLE_OAUTH_CLIENT_ID=${GOOGLE_OAUTH_CLIENT_ID:-}
+      - GOOGLE_OAUTH_CLIENT_SECRET=${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      - GOOGLE_OAUTH_REDIRECT_URI=${GOOGLE_OAUTH_REDIRECT_URI:-http://localhost:3000/admin/google/callback}
 
   queue:
     user: root
@@ -181,6 +190,11 @@ services:
       # backend container. See marketing/src/lib/pricing.ts.
       - NEXT_PUBLIC_API_URL=http://localhost:8000/api
       - BACKEND_INTERNAL_URL=http://backend:8000/api
+      # Organisation URL Branding, Phase 4 — where the branded login
+      # gateway (marketing/src/app/login) hands off to after "Continue to
+      # Sign In". Browser-facing, so NEXT_PUBLIC_ like NEXT_PUBLIC_API_URL
+      # above, never the Docker-internal frontend address.
+      - NEXT_PUBLIC_FRONTEND_URL=http://localhost:3000
       - NODE_ENV=development
 
 volumes:

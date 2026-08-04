@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\Appointment;
+use App\Observers\ConsultancyAppointmentObserver;
 use App\Support\Billing\BillingConfigGuard;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -36,6 +38,12 @@ class AppServiceProvider extends ServiceProvider
         // Refuses to boot with a live Stripe key present in local/testing —
         // see App\Support\Billing\BillingConfigGuard.
         BillingConfigGuard::assertSafe($this->app);
+
+        // Consultancy Phase C2, Batch 1 — the sole place Consultancy reacts
+        // to an Appointments-owned event (cancellation). Zero lines changed
+        // in AppointmentWorkflowService or any other Appointments engine
+        // class — see ConsultancyAppointmentObserver's own docblock.
+        Appointment::observe(ConsultancyAppointmentObserver::class);
 
         $this->configureRateLimiters();
     }

@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\EmailNotificationService;
 use App\Services\FileSecurityService;
 use App\Services\NotificationService;
+use App\Support\Email\EmailComponents;
 use App\Services\RecentActivityService;
 use App\Services\SupportTicketStatusService;
 use App\Traits\AuthorizesSupportTickets;
@@ -318,16 +319,11 @@ class SupportTicketController extends Controller
 
         $lines = $lines->push('')->push("Subject: {$ticket->subject}")->push('')->push('Message:')->push($ticket->message);
 
-        // EmailNotificationService::buildHtml() interpolates the email
-        // subject directly into <title>/<h1> without escaping it (a
-        // pre-existing gap shared by every sendDirect()/send() caller, e.g.
-        // DemoRequestController's user-supplied 'company' field — out of
-        // scope to fix platform-wide here). The ticket subject is fully
-        // user-controlled, so it's HTML-escaped at this call site — the one
-        // place within Help & Support scope where that raw string reaches
-        // an HTML-rendering context — to close the injection path without
-        // touching the shared service.
-        $sent = EmailNotificationService::sendDirect($recipient, '[SureSign Support] '.$ticket->reference.' — '.e($ticket->subject), $lines->implode("\n"));
+        // Communications Platform, Batch 4 — EmailNotificationService::buildHtml()
+        // now escapes the subject itself for every caller, so the local
+        // e() this call site used to need here (the ticket subject is
+        // fully user-controlled) was removed to avoid double-escaping.
+        $sent = EmailNotificationService::sendDirect($recipient, '[SureSign Support] '.$ticket->reference.' — '.$ticket->subject, $lines->implode("\n"));
 
         if (!$sent) {
             Log::warning("SupportTicketController: failed to email support ticket {$ticket->reference} to {$recipient}");
@@ -508,7 +504,8 @@ class SupportTicketController extends Controller
             self::emailTicketOwner(
                 $ticket,
                 'Your support request has been resolved',
-                "Your request \"{$ticket->subject}\" (Ref: {$ticket->reference}) has been marked resolved.\n\nIf this doesn't fully address your question, just reply on the request and it will reopen automatically."
+                "Your request \"{$ticket->subject}\" (Ref: {$ticket->reference}) has been marked resolved.\n\nIf this doesn't fully address your question, just reply on the request and it will reopen automatically.",
+                "/app/help/support/{$ticket->id}",
             );
         }
 
@@ -517,15 +514,48 @@ class SupportTicketController extends Controller
 
     // Shared by updateStatus() (resolved) and SupportTicketMessageController
     // (support reply) — one place that emails the ticket owner, so both call
-    // sites stay consistent with the same "escaped subject, plain text body"
-    // handling notifySupportTeam() below already uses for the inbound side.
-    public static function emailTicketOwner(SupportTicket $ticket, string $subject, string $bodyText): void
+    // sites stay consistent. Subject escaping is handled centrally by
+    // EmailNotificationService::buildHtml() (Batch 4) — no local e() needed
+    // here.
+    //
+    // Communications Platform, Batch 4 — now built via EmailComponents
+    // (a paragraph plus a real "View Request" button) with a genuine
+    // plaintext alternative, rather than a bare escaped paragraph. Wording
+    // and trigger are unchanged; $actionUrl is the exact same relative path
+    // both callers already pass their paired in-app notification.
+    public static function emailTicketOwner(SupportTicket $ticket, string $subject, string $bodyText, ?string $actionUrl = null): void
     {
         if (!$ticket->user?->email) {
             return;
         }
 
-        $sent = EmailNotificationService::sendDirect($ticket->user->email, '[SureSign Support] '.e($subject), $bodyText);
+        // $bodyText may contain multiple "\n\n"-separated paragraphs
+        // (both existing callers pass one) — each becomes its own
+        // paragraph() call so the line break survives in HTML, not just
+        // in the plaintext part.
+        $htmlParts = array_map(
+            fn (string $paragraph) => EmailComponents::paragraph($paragraph),
+            explode("\n\n", $bodyText),
+        );
+        $textLines = [$bodyText];
+
+        if ($actionUrl) {
+            $absoluteUrl = rtrim(config('suresign.frontend_url'), '/') . $actionUrl;
+            $htmlParts[] = EmailComponents::button('View Request', $absoluteUrl, 'secondary');
+            $textLines[] = '';
+            $textLines[] = "View Request: {$absoluteUrl}";
+        }
+
+        $sent = EmailNotificationService::sendDirect(
+            $ticket->user->email,
+            '[SureSign Support] '.$subject,
+            implode("\n", $textLines),
+            [],
+            null,
+            'Support',
+            implode("\n", $htmlParts),
+            true,
+        );
 
         if (!$sent) {
             Log::warning("SupportTicketController: failed to email ticket owner for {$ticket->reference}");

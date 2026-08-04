@@ -13,6 +13,7 @@ use App\Models\AppointmentBlockedPeriod;
 use App\Models\User;
 use App\Services\AppointmentAvailabilityService;
 use App\Services\TimezoneResolver;
+use App\Support\Appointments\AvailabilityContext;
 use Illuminate\Http\Request;
 
 /**
@@ -58,7 +59,7 @@ class AppointmentAvailabilityController extends Controller
         return response()->json([
             'user_id'  => $target->id,
             'timezone' => TimezoneResolver::effectiveTimezone($target, $target->organization),
-            'windows'  => $this->service->getWeeklySchedule($target),
+            'windows'  => $this->service->getWeeklySchedule($target, AvailabilityContext::APPOINTMENTS),
         ]);
     }
 
@@ -67,7 +68,7 @@ class AppointmentAvailabilityController extends Controller
         $target = $this->resolveTarget($request, $user);
 
         try {
-            $windows = $this->service->setWeeklySchedule($target, $request->validated()['windows'], $request->user());
+            $windows = $this->service->setWeeklySchedule($target, $request->validated()['windows'], $request->user(), AvailabilityContext::APPOINTMENTS);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
@@ -81,7 +82,7 @@ class AppointmentAvailabilityController extends Controller
     {
         $target = $this->resolveTarget($request, $user);
 
-        return response()->json($this->service->getOverrides($target, $request->query('from'), $request->query('to')));
+        return response()->json($this->service->getOverrides($target, $request->query('from'), $request->query('to'), AvailabilityContext::APPOINTMENTS));
     }
 
     public function storeOverride(StoreAppointmentAvailabilityOverrideRequest $request, ?User $user = null)
@@ -89,7 +90,7 @@ class AppointmentAvailabilityController extends Controller
         $target = $this->resolveTarget($request, $user);
 
         try {
-            $override = $this->service->createOverride($target, $request->validated(), $request->user());
+            $override = $this->service->createOverride($target, $request->validated(), $request->user(), AvailabilityContext::APPOINTMENTS);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
@@ -100,7 +101,7 @@ class AppointmentAvailabilityController extends Controller
     public function updateOverride(UpdateAppointmentAvailabilityOverrideRequest $request, AppointmentAvailabilityOverride $override, ?User $user = null)
     {
         $target = $this->resolveTarget($request, $user);
-        if ($override->user_id !== $target->id) {
+        if ($override->user_id !== $target->id || $override->context !== AvailabilityContext::APPOINTMENTS) {
             abort(404, 'Override not found for this staff member.');
         }
 
@@ -116,7 +117,7 @@ class AppointmentAvailabilityController extends Controller
     public function destroyOverride(Request $request, AppointmentAvailabilityOverride $override, ?User $user = null)
     {
         $target = $this->resolveTarget($request, $user);
-        if ($override->user_id !== $target->id) {
+        if ($override->user_id !== $target->id || $override->context !== AvailabilityContext::APPOINTMENTS) {
             abort(404, 'Override not found for this staff member.');
         }
 

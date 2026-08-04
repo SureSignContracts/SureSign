@@ -157,8 +157,8 @@ export default function CheckoutSuccessPage() {
           <Button variant="secondary" size="sm" onClick={handleManualRefresh} disabled={isRefetching}>
             <RefreshCw size={13} className={isRefetching ? 'animate-spin' : undefined} /> Refresh
           </Button>
-          <Link href="/app/settings/billing">
-            <Button variant="primary" size="sm">Go to Billing</Button>
+          <Link href="/app/settings/billing/subscription">
+            <Button variant="primary" size="sm">Go to Subscription</Button>
           </Link>
         </div>
 

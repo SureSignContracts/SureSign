@@ -15,6 +15,7 @@ import { useAuthStore } from '@/store/authStore';
 import { formatDate } from '@/lib/utils';
 import { isToday as isTodayInTimezone, formatDateTime } from '@/lib/dateTime';
 import toast from 'react-hot-toast';
+import { SidebarCountBadge } from '@/components/ui/Badge';
 
 /**
  * For a timed-meeting notification, the shared `message` text can only ever
@@ -282,8 +283,6 @@ export default function NotificationBell({ basePath = '/admin/notifications' }: 
   // Read: recently read ones for context
   const read = all.filter(n => n.status === 'read').slice(0, 5);
 
-  const displayCount = count > 99 ? '99+' : count > 0 ? String(count) : null;
-  const hasCritical  = critical.length > 0;
   const hasRead      = read.length > 0;
   const isEmpty      = all.length === 0;
 
@@ -362,11 +361,7 @@ export default function NotificationBell({ basePath = '/admin/notifications' }: 
         aria-label="Notifications"
       >
         <Bell size={20} />
-        {displayCount && (
-          <span className={`absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 text-white text-[10px] font-bold tabular-nums rounded-full flex items-center justify-center leading-none ${hasCritical ? 'bg-red-500 animate-pulse' : 'bg-red-500'}`}>
-            {displayCount}
-          </span>
-        )}
+        <SidebarCountBadge count={count} className="absolute -right-2 -top-1" />
       </button>
 
       {/* Dropdown */}

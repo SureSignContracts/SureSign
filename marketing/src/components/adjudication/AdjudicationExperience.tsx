@@ -296,6 +296,12 @@ export function AdjudicationExperience() {
               Related expertise gives construction businesses a clear route from proactive contract
               administration to specialist support when a dispute escalates.
             </p>
+            <Link
+              href="/services"
+              className="mt-6 inline-flex text-sm font-medium text-text-primary underline decoration-border-light underline-offset-4 hover:decoration-text-primary"
+            >
+              View all professional services
+            </Link>
           </div>
 
           <div className="relative mt-14 grid gap-6 lg:grid-cols-2">

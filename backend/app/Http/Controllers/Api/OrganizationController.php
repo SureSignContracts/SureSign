@@ -3,11 +3,15 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\UpdateOrganizationUrlSlugRequest;
+use App\Services\Organizations\OrganizationUrlSlugService;
+use App\Models\ActivityLog;
 use App\Models\BrandingSetting;
 use App\Models\Organization;
 use App\Services\Admin\OrganizationSubscriptionAdminService;
 use App\Services\FileSecurityService;
 use App\Services\TimezoneResolver;
+use App\Support\Organizations\BrandingCacheInvalidator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
@@ -242,6 +246,59 @@ class OrganizationController extends Controller
         return response()->json($org->fresh());
     }
 
+    // ─── URL Branding (Organisation URL Branding, Phase 1) ───────────────────
+
+    /**
+     * (Phase 2) Read-only slug history — Super Admin/Admin, matches the
+     * general Organisation read-access convention elsewhere in this
+     * controller. Never exposed to a Client-role/customer-facing surface.
+     */
+    public function urlSlugHistory(Organization $organization)
+    {
+        return response()->json([
+            'data' => $organization->urlSlugHistory()->orderByDesc('released_at')->get(['url_slug', 'released_at']),
+        ]);
+    }
+
+    /**
+     * Super Admin ONLY (see routes/api.php) — set/change the organisation's
+     * branded hostname slug. `url_slug` may be null to explicitly clear it
+     * without a separate remove call from the same form. See
+     * App\Http\Requests\UpdateOrganizationUrlSlugRequest for validation
+     * (format, reserved names, uniqueness) and
+     * App\Support\Organizations\UrlSlugValidator for the rules themselves.
+     */
+    public function updateUrlSlug(UpdateOrganizationUrlSlugRequest $request, Organization $organization, OrganizationUrlSlugService $service)
+    {
+        $organization = $service->apply(
+            $organization,
+            $request->normalizedUrlSlug(),
+            'super_admin',
+            $request->user(),
+            $request->validated('reason'),
+        );
+
+        return response()->json(['data' => $organization]);
+    }
+
+    /**
+     * Explicit "Remove" action — functionally identical to updateUrlSlug()
+     * with a null value, kept as its own endpoint/button per the brief's
+     * Super Admin experience requirements (view/set/remove/preview as
+     * distinct, always-confirmed actions).
+     */
+    public function removeUrlSlug(Request $request, Organization $organization, OrganizationUrlSlugService $service)
+    {
+        $validated = $request->validate([
+            'reason' => 'required|string|min:10|max:1000',
+            'confirmed' => 'required|accepted',
+        ]);
+
+        $organization = $service->apply($organization, null, 'super_admin', $request->user(), $validated['reason']);
+
+        return response()->json(['data' => $organization]);
+    }
+
     // ─── Branding ────────────────────────────────────────────────────────────
 
     public function getBranding(Request $request)
@@ -329,6 +386,8 @@ class OrganizationController extends Controller
             ], fn($v) => $v !== null)
         );
 
+        BrandingCacheInvalidator::forgetForOrganization($org);
+
         return response()->json(['data' => $this->brandingResource($org, $branding->fresh())]);
     }
 
@@ -346,6 +405,8 @@ class OrganizationController extends Controller
 
         if ($branding->logo_path) \Storage::disk('public')->delete($branding->logo_path);
         $branding->update(['logo_path' => $path]);
+
+        BrandingCacheInvalidator::forgetForOrganization($request->user()->organization);
 
         return response()->json(['logo_url' => url('storage/' . $path)]);
     }

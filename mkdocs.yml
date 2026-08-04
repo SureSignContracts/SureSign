@@ -111,6 +111,8 @@ nav:
       - ai/reviewing-results.md
       - ai/limitations.md
       - ai/failed-analysis.md
+  - Consultancy:
+      - consultancy/overview.md
   - Programme:
       - programme/overview.md
       - programme/milestones.md

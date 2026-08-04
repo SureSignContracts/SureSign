@@ -9,6 +9,7 @@ use App\Models\AppointmentBlockedPeriod;
 use App\Models\AppointmentType;
 use App\Models\Organization;
 use App\Models\User;
+use App\Support\Appointments\AvailabilityContext;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -31,9 +32,30 @@ use Illuminate\Support\Facades\DB;
  * never stored with their own timezone. Blocked periods and appointments are
  * fixed UTC instants that don't move if the staff member's timezone setting
  * changes later.
+ *
+ * Consultancy Live Booking Upgrade, Stage 1 — every weekly-schedule/override
+ * method now takes an explicit App\Support\Appointments\AvailabilityContext
+ * value. This is what lets the same consultant have an independent schedule
+ * for ordinary Appointments (including Book a Demo) and for Consultancy,
+ * reusing this exact service rather than a second one. Blocked periods
+ * remain deliberately context-free — a blocked period is real unavailability
+ * and must apply regardless of which context is being checked. Every public
+ * method validates $context via AvailabilityContext::isValid() and throws
+ * rather than silently defaulting — an unrecognised context must never
+ * resolve to Consultancy (or to anything else) by accident.
  */
 class AppointmentAvailabilityService
 {
+    /**
+     * @throws \InvalidArgumentException
+     */
+    private function assertValidContext(string $context): void
+    {
+        if (!AvailabilityContext::isValid($context)) {
+            throw new \InvalidArgumentException("Unknown availability context \"{$context}\".");
+        }
+    }
+
     public function isEligibleStaff(User $user): bool
     {
         return $user->is_active && !$user->isBanned() && ($user->hasRole('Admin') || $user->hasRole('Super Admin'));
@@ -48,26 +70,31 @@ class AppointmentAvailabilityService
 
     // ─── Weekly schedule ────────────────────────────────────────────────
 
-    public function getWeeklySchedule(User $user): Collection
+    public function getWeeklySchedule(User $user, string $context): Collection
     {
-        return AppointmentAvailability::where('user_id', $user->id)->orderBy('weekday')->orderBy('start_time')->get();
+        $this->assertValidContext($context);
+
+        return AppointmentAvailability::where('user_id', $user->id)->where('context', $context)->orderBy('weekday')->orderBy('start_time')->get();
     }
 
     /**
-     * Replaces the user's entire weekly schedule.
+     * Replaces the user's entire weekly schedule for the given context only
+     * — sibling rows in the OTHER context are never touched by this call.
      * $windows: array of ['weekday' => 0-6, 'start_time' => 'H:i', 'end_time' => 'H:i', 'is_active' => bool].
      * @throws \InvalidArgumentException on an invalid or overlapping window
      */
-    public function setWeeklySchedule(User $user, array $windows, User $actor): Collection
+    public function setWeeklySchedule(User $user, array $windows, User $actor, string $context): Collection
     {
+        $this->assertValidContext($context);
         $this->assertEligibleStaff($user);
         $this->assertNoOverlaps($windows, 'weekday');
 
-        return DB::transaction(function () use ($user, $windows, $actor) {
-            AppointmentAvailability::where('user_id', $user->id)->delete();
+        return DB::transaction(function () use ($user, $windows, $actor, $context) {
+            AppointmentAvailability::where('user_id', $user->id)->where('context', $context)->delete();
 
             $created = collect($windows)->map(fn (array $w) => AppointmentAvailability::create([
                 'user_id'    => $user->id,
+                'context'    => $context,
                 'weekday'    => $w['weekday'],
                 'start_time' => $w['start_time'],
                 'end_time'   => $w['end_time'],
@@ -76,10 +103,10 @@ class AppointmentAvailabilityService
 
             ActivityLog::record(
                 'appointment_availability.updated',
-                "Weekly availability updated for {$user->name}.",
+                "Weekly availability updated for {$user->name} ({$context}).",
                 $actor,
                 $user,
-                ['window_count' => $created->count()],
+                ['window_count' => $created->count(), 'context' => $context],
             );
 
             return $created;
@@ -88,9 +115,12 @@ class AppointmentAvailabilityService
 
     // ─── Date-specific overrides ────────────────────────────────────────
 
-    public function getOverrides(User $user, ?string $from = null, ?string $to = null): Collection
+    public function getOverrides(User $user, ?string $from, ?string $to, string $context): Collection
     {
+        $this->assertValidContext($context);
+
         return AppointmentAvailabilityOverride::where('user_id', $user->id)
+            ->where('context', $context)
             ->when($from, fn ($q) => $q->whereDate('local_date', '>=', $from))
             ->when($to, fn ($q) => $q->whereDate('local_date', '<=', $to))
             ->orderBy('local_date')
@@ -100,13 +130,15 @@ class AppointmentAvailabilityService
     /**
      * @throws \InvalidArgumentException
      */
-    public function createOverride(User $user, array $data, User $actor): AppointmentAvailabilityOverride
+    public function createOverride(User $user, array $data, User $actor, string $context): AppointmentAvailabilityOverride
     {
+        $this->assertValidContext($context);
         $this->assertEligibleStaff($user);
-        $this->assertValidOverrideRecord($user, $data);
+        $this->assertValidOverrideRecord($user, $data, $context);
 
         $override = AppointmentAvailabilityOverride::create([
             'user_id'        => $user->id,
+            'context'        => $context,
             'local_date'     => $data['local_date'],
             'is_unavailable' => $data['is_unavailable'] ?? false,
             'start_time'     => $data['start_time'] ?? null,
@@ -115,10 +147,10 @@ class AppointmentAvailabilityService
 
         ActivityLog::record(
             'appointment_availability_override.created',
-            "Availability override created for {$user->name} on {$data['local_date']}.",
+            "Availability override created for {$user->name} on {$data['local_date']} ({$context}).",
             $actor,
             $override,
-            $data,
+            array_merge($data, ['context' => $context]),
         );
 
         return $override;
@@ -137,13 +169,15 @@ class AppointmentAvailabilityService
             'end_time'       => $override->end_time,
         ], $data);
 
-        $this->assertValidOverrideRecord($user, $merged, excludeId: $override->id);
+        // An override's own context never changes via update() — it is
+        // fixed at creation, exactly like its user_id.
+        $this->assertValidOverrideRecord($user, $merged, $override->context, excludeId: $override->id);
 
         $override->update($merged);
 
         ActivityLog::record(
             'appointment_availability_override.updated',
-            "Availability override updated for {$user->name} on {$merged['local_date']}.",
+            "Availability override updated for {$user->name} on {$merged['local_date']} ({$override->context}).",
             $actor,
             $override,
             $data,
@@ -174,7 +208,7 @@ class AppointmentAvailabilityService
      *
      * @throws \InvalidArgumentException
      */
-    private function assertValidOverrideRecord(User $user, array $data, ?int $excludeId = null): void
+    private function assertValidOverrideRecord(User $user, array $data, string $context, ?int $excludeId = null): void
     {
         $isUnavailable = $data['is_unavailable'] ?? false;
 
@@ -191,7 +225,11 @@ class AppointmentAvailabilityService
             }
         }
 
+        // Sibling comparison scoped to the SAME context only — a
+        // Consultancy override must never be rejected as "conflicting" with
+        // an Appointments-context override on the same date, and vice versa.
         $siblings = AppointmentAvailabilityOverride::where('user_id', $user->id)
+            ->where('context', $context)
             ->whereDate('local_date', $data['local_date'])
             ->when($excludeId, fn ($q) => $q->where('id', '!=', $excludeId))
             ->get();
@@ -281,9 +319,12 @@ class AppointmentAvailabilityService
      *
      * @return array<int, array{start: Carbon, end: Carbon}>
      */
-    public function resolveWindowsForDate(User $staff, string $localDate): array
+    public function resolveWindowsForDate(User $staff, string $localDate, string $context): array
     {
+        $this->assertValidContext($context);
+
         $overrides = AppointmentAvailabilityOverride::where('user_id', $staff->id)
+            ->where('context', $context)
             ->whereDate('local_date', $localDate)
             ->get();
 
@@ -301,6 +342,7 @@ class AppointmentAvailabilityService
         $weekday = Carbon::parse($localDate)->dayOfWeek;
 
         return AppointmentAvailability::where('user_id', $staff->id)
+            ->where('context', $context)
             ->where('weekday', $weekday)
             ->where('is_active', true)
             ->get()
@@ -353,8 +395,9 @@ class AppointmentAvailabilityService
      *
      * @throws \RuntimeException with a human-readable rejection reason
      */
-    public function assertBookable(User $staff, AppointmentType $type, Carbon $startsAtUtc, Carbon $endsAtUtc, ?int $excludeAppointmentId = null): void
+    public function assertBookable(User $staff, AppointmentType $type, Carbon $startsAtUtc, Carbon $endsAtUtc, string $context, ?int $excludeAppointmentId = null): void
     {
+        $this->assertValidContext($context);
         $this->assertTypeBookable($type, $startsAtUtc, $endsAtUtc, $staff, $staff->organization);
 
         $timezone = TimezoneResolver::effectiveTimezone($staff, $staff->organization);
@@ -366,7 +409,7 @@ class AppointmentAvailabilityService
             throw new \RuntimeException("This time falls outside {$staff->name}'s availability (appointment would span midnight in their local timezone).");
         }
 
-        $windows = $this->resolveWindowsForDate($staff, $localStart->toDateString());
+        $windows = $this->resolveWindowsForDate($staff, $localStart->toDateString(), $context);
         $startTod = $this->parseTime($localStart->format('H:i'));
         $endTod   = $this->parseTime($localEnd->format('H:i'));
 

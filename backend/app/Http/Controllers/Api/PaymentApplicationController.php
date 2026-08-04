@@ -534,6 +534,10 @@ class PaymentApplicationController extends Controller
             null, $paymentApplication
         );
 
+        // Computed once and reused for both the in-app notification and
+        // (Batch 4) the email's own CTA button.
+        $actionUrl = WorkspaceNavigationResolver::actionUrl($project->id, 'payment_application', $paymentApplication->id, $paymentApplication->trade_package_id);
+
         NotificationService::sendToOrganization(
             $project->organization,
             'payment_application_submitted',
@@ -544,7 +548,7 @@ class PaymentApplicationController extends Controller
                 'project_id' => $project->id, 'organization_id' => $project->organization_id,
                 'category' => SuresignNotification::CATEGORY_COMMERCIAL, 'priority' => SuresignNotification::PRIORITY_REMINDER,
                 'source_type' => 'payment_application', 'source_id' => $paymentApplication->id, 'source_field' => 'submitted',
-                'action_url' => WorkspaceNavigationResolver::actionUrl($project->id, 'payment_application', $paymentApplication->id, $paymentApplication->trade_package_id),
+                'action_url' => $actionUrl,
             ],
             $request->user(),
         );
@@ -553,7 +557,7 @@ class PaymentApplicationController extends Controller
             'payment_application.submitted',
             'New Payment Application Submitted',
             "Payment Application #{$paymentApplication->application_number} has been submitted for project: {$project->name}.",
-            [],
+            EmailNotificationService::actionMeta($actionUrl, 'View Payment Application'),
             $project->organization
         );
 
@@ -613,6 +617,10 @@ class PaymentApplicationController extends Controller
             $paymentApplication
         );
 
+        // Computed once and reused for both the in-app notification and
+        // (Batch 4) the email's own CTA button.
+        $actionUrl = WorkspaceNavigationResolver::actionUrl($project->id, 'payment_application', $paymentApplication->id, $paymentApplication->trade_package_id);
+
         NotificationService::sendToOrganization(
             $project->organization,
             'payment_application_certified',
@@ -623,7 +631,7 @@ class PaymentApplicationController extends Controller
                 'project_id' => $project->id, 'organization_id' => $project->organization_id,
                 'category' => SuresignNotification::CATEGORY_COMMERCIAL, 'priority' => SuresignNotification::PRIORITY_WARNING,
                 'source_type' => 'payment_application', 'source_id' => $paymentApplication->id, 'source_field' => 'certified',
-                'action_url' => WorkspaceNavigationResolver::actionUrl($project->id, 'payment_application', $paymentApplication->id, $paymentApplication->trade_package_id),
+                'action_url' => $actionUrl,
             ],
             $request->user(),
         );
@@ -632,7 +640,7 @@ class PaymentApplicationController extends Controller
             'payment_application.certified',
             'Payment Application Certified',
             "Payment Application #{$paymentApplication->application_number} has been certified. Certified amount: {$paymentApplication->certified_amount}.",
-            [],
+            EmailNotificationService::actionMeta($actionUrl, 'View Payment Application'),
             $project->organization
         );
 
@@ -897,6 +905,10 @@ class PaymentApplicationController extends Controller
             $notice
         );
 
+        // Computed once and reused for both the in-app notification and
+        // (Batch 4) the email's own CTA button.
+        $actionUrl = WorkspaceNavigationResolver::actionUrl($project->id, 'payment_notice', $notice->id, $paymentApplication->trade_package_id);
+
         NotificationService::sendToOrganization(
             $project->organization,
             'payment_notice_issued',
@@ -907,7 +919,7 @@ class PaymentApplicationController extends Controller
                 'project_id' => $project->id, 'organization_id' => $project->organization_id,
                 'category' => SuresignNotification::CATEGORY_NOTICE, 'priority' => SuresignNotification::PRIORITY_WARNING,
                 'source_type' => 'payment_notice', 'source_id' => $notice->id, 'source_field' => 'issued',
-                'action_url' => WorkspaceNavigationResolver::actionUrl($project->id, 'payment_notice', $notice->id, $paymentApplication->trade_package_id),
+                'action_url' => $actionUrl,
             ],
             $request->user(),
         );
@@ -916,7 +928,7 @@ class PaymentApplicationController extends Controller
             'payment_notice.issued',
             'Payment Notice Issued',
             "A Payment Notice has been issued for Payment Application #{$paymentApplication->application_number}.",
-            [],
+            EmailNotificationService::actionMeta($actionUrl, 'View Payment Notice'),
             $project->organization
         );
 
@@ -998,6 +1010,10 @@ class PaymentApplicationController extends Controller
             $notice
         );
 
+        // Computed once and reused for both the in-app notification and
+        // (Batch 4) the email's own CTA button.
+        $actionUrl = WorkspaceNavigationResolver::actionUrl($project->id, 'pay_less_notice', $notice->id, $paymentApplication->trade_package_id);
+
         NotificationService::sendToOrganization(
             $project->organization,
             'pay_less_notice_issued',
@@ -1008,7 +1024,7 @@ class PaymentApplicationController extends Controller
                 'project_id' => $project->id, 'organization_id' => $project->organization_id,
                 'category' => SuresignNotification::CATEGORY_NOTICE, 'priority' => SuresignNotification::PRIORITY_WARNING,
                 'source_type' => 'pay_less_notice', 'source_id' => $notice->id, 'source_field' => 'issued',
-                'action_url' => WorkspaceNavigationResolver::actionUrl($project->id, 'pay_less_notice', $notice->id, $paymentApplication->trade_package_id),
+                'action_url' => $actionUrl,
             ],
             $request->user(),
         );
@@ -1017,7 +1033,7 @@ class PaymentApplicationController extends Controller
             'pay_less_notice.issued',
             'Pay Less Notice Issued',
             "A Pay Less Notice has been issued for Payment Application #{$paymentApplication->application_number}.",
-            [],
+            EmailNotificationService::actionMeta($actionUrl, 'View Notice'),
             $project->organization
         );
 

@@ -18,6 +18,11 @@ class Project extends Model {
     public function siteDiaries()     { return $this->hasMany(SiteDiary::class); }
     public function meetingMinutes()  { return $this->hasMany(MeetingMinutes::class); }
     public function eotRequests()     { return $this->hasMany(EotRequest::class); }
+    // Generic, deliberately not Consultancy-flavoured (e.g. not
+    // "consultations()") — Project stays unaware Consultancy exists as a
+    // concept; Consultancy's own code filters this down to consultation
+    // appointments via whereHas('consultationEnquiry') at the call site.
+    public function appointments()    { return $this->hasMany(Appointment::class); }
     public function documents()       { return $this->hasMany(Document::class); }
     public function fileUploads()     { return $this->hasMany(FileUpload::class); }
     public function workflows()       { return $this->hasMany(WorkflowInstance::class); }

@@ -66,6 +66,47 @@ Schedule::command('billing:webhooks:recover')
     ->withoutOverlapping()
     ->runInBackground();
 
+// Consultancy Live Booking Upgrade, Stage 2 — hold duration is short
+// (config('consultancy.reservation_hold_minutes'), default 15 minutes),
+// so cleanup cadence is tighter than billing:webhooks:recover's 5-minute
+// interval. This is a durable-state cleanup only, not a correctness
+// requirement — an elapsed reservation already stops blocking a slot
+// immediately regardless of when this next runs (see
+// AppointmentSchedulingService::isSlotFree()'s own expires_at check).
+Schedule::command('consultancy:reservations:expire')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// Consultancy Live Booking Activation Hardening — same 5-minute cadence as
+// billing:webhooks:recover above, and for the same reason: a
+// 'conversion_pending' payment means Stripe has ALREADY confirmed payment
+// but local Appointment conversion previously failed, so this is genuine
+// recovery of a known-recoverable state, not exploratory drift detection
+// (contrast billing:stripe:reconcile, which stays deliberately
+// unscheduled). withoutOverlapping() alone, no onOneServer(), matches
+// every other scheduled command here —
+// ConsultancyPaymentConversionService::convert()'s own row locking is what
+// actually prevents a double-conversion, not the scheduler. Manual
+// execution (including --dry-run) remains fully supported alongside this.
+Schedule::command('consultancy:payments:reconcile')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// Stage 4B.1 (Google Calendar Event Synchronisation) — same 5-minute
+// cadence and reasoning as consultancy:payments:reconcile/
+// billing:webhooks:recover above: recovers due retry_pending, disconnected,
+// abandoned-processing, and outcome-uncertain AppointmentExternalSync rows.
+// withoutOverlapping() alone, no onOneServer(), matches every other
+// scheduled command here — AppointmentCalendarSyncService's own row-locked
+// claim is what actually prevents duplicate processing, not the scheduler.
+// Manual execution (including --dry-run) remains fully supported.
+Schedule::command('appointments:calendar-sync:reconcile')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->runInBackground();
+
 // Subscription Commercial State Automation checkpoint — turns due grace
 // period starts/expiries, trial expiries, and scheduled cancellations into
 // real SubscriptionLifecycleService transitions (see

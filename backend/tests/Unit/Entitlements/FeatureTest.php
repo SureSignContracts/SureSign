@@ -10,14 +10,17 @@ use Tests\TestCase;
 class FeatureTest extends TestCase
 {
     /**
-     * Eleven, not ten, since the Entitlement Specification v1 §4a amendment
-     * (2026-07-27) deliberately added `ai_credits_per_month` as a recorded
-     * exception to the otherwise-closed registry — see that document's §4a
-     * for why it coexists with (never replaces) `ai_analyses_per_month`.
+     * Thirteen, not eleven: the Entitlement Specification v1 §4a amendment
+     * (2026-07-27) added `ai_credits_per_month`, and the Organisation URL
+     * Branding customer self-service phase added two more
+     * (`custom_branded_subdomain`, `custom_domain`) as a second, equally
+     * deliberate registry amendment — see Feature::CUSTOM_BRANDED_SUBDOMAIN's
+     * own docblock for why they're two separate keys, never merged with
+     * each other or with the pre-existing `custom_branding`.
      */
-    public function test_registry_contains_exactly_the_eleven_approved_keys(): void
+    public function test_registry_contains_exactly_the_thirteen_approved_keys(): void
     {
-        $this->assertCount(11, Feature::ALL);
+        $this->assertCount(13, Feature::ALL);
         $this->assertContains(Feature::MAX_ACTIVE_PROJECTS, Feature::ALL);
         $this->assertContains(Feature::AI_ANALYSES_PER_MONTH, Feature::ALL);
         $this->assertContains(Feature::STORAGE_GB, Feature::ALL);
@@ -29,6 +32,8 @@ class FeatureTest extends TestCase
         $this->assertContains(Feature::MAX_USERS, Feature::ALL);
         $this->assertContains(Feature::MAX_ORGANISATIONS, Feature::ALL);
         $this->assertContains(Feature::AI_CREDITS_PER_MONTH, Feature::ALL);
+        $this->assertContains(Feature::CUSTOM_BRANDED_SUBDOMAIN, Feature::ALL);
+        $this->assertContains(Feature::CUSTOM_DOMAIN, Feature::ALL);
     }
 
     public function test_ai_credits_per_month_is_not_dormant_but_is_not_customer_visible(): void

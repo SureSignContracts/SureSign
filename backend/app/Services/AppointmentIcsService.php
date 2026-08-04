@@ -42,9 +42,24 @@ class AppointmentIcsService
 {
     private const PRODID = '-//SureSign//Appointments//EN';
 
-    public function generate(Appointment $appointment): string
+    /**
+     * @param  ?string  $meetingUrl  Communications Upgrade Batch 1 — the
+     *                               trusted, provider-normalised Google Meet
+     *                               join URL (`AppointmentExternalSync::meeting_join_url`,
+     *                               via `ConsultationCommunicationLinks::joinMeetUrl()`),
+     *                               passed in explicitly by the caller — this
+     *                               service has no knowledge of Consultancy/
+     *                               Google itself. Takes priority over
+     *                               `Appointment::meeting_url` for LOCATION
+     *                               when provided; every existing caller
+     *                               passes nothing and gets today's exact
+     *                               unchanged output. Never a placeholder —
+     *                               omit this argument entirely while Meet is
+     *                               pending, per the approved architecture.
+     */
+    public function generate(Appointment $appointment, ?string $meetingUrl = null): string
     {
-        return $this->build($appointment, 'PUBLISH', $this->icsStatus($appointment->status));
+        return $this->build($appointment, 'PUBLISH', $this->icsStatus($appointment->status), $meetingUrl);
     }
 
     /**
@@ -65,7 +80,7 @@ class AppointmentIcsService
         return 'appointment-' . $appointment->reference . '.ics';
     }
 
-    private function build(Appointment $appointment, string $method, string $status): string
+    private function build(Appointment $appointment, string $method, string $status, ?string $meetingUrl = null): string
     {
         $appointment->loadMissing('appointmentType', 'assignedUser');
         $settings = SuresignSetting::instance();
@@ -79,11 +94,12 @@ class AppointmentIcsService
             "Reference: {$appointment->reference}",
             $appointment->appointmentType ? "Duration: {$appointment->appointmentType->duration_minutes} minutes" : null,
             $appointment->meeting_method && $appointment->meeting_method !== 'tbc' ? 'Meeting method: ' . str_replace('_', ' ', $appointment->meeting_method) : null,
+            $meetingUrl ? "Join Google Meet: {$meetingUrl}" : null,
             $settings->appointment_default_meeting_instructions,
         ]);
         $description = implode('\n', $descriptionLines);
 
-        $location = $appointment->meeting_url ?: ($appointment->location ?: '');
+        $location = $meetingUrl ?: ($appointment->meeting_url ?: ($appointment->location ?: ''));
 
         $lines = [
             'BEGIN:VCALENDAR',

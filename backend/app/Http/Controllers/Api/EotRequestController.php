@@ -248,6 +248,10 @@ class EotRequestController extends Controller
             ? "EOT #{$eot->eot_number} Submitted"
             : "EOT #{$eot->eot_number} " . ($eot->status === 'granted' ? 'Granted' : 'Refused');
 
+        // Computed once and reused for both the in-app notification and
+        // (Batch 4) the email's own CTA button.
+        $actionUrl = WorkspaceNavigationResolver::actionUrl($project->id, 'eot_request', $eot->id, $eot->trade_package_id);
+
         NotificationService::sendToOrganization(
             $project->organization,
             'eot_' . $kind,
@@ -258,13 +262,13 @@ class EotRequestController extends Controller
                 'project_id' => $project->id, 'organization_id' => $project->organization_id,
                 'category' => SuresignNotification::CATEGORY_PROGRAMME, 'priority' => $priority,
                 'source_type' => 'eot_request', 'source_id' => $eot->id, 'source_field' => $sourceField,
-                'action_url' => WorkspaceNavigationResolver::actionUrl($project->id, 'eot_request', $eot->id, $eot->trade_package_id),
+                'action_url' => $actionUrl,
             ],
             $request->user(),
         );
 
         if ($emailEvent) {
-            EmailNotificationService::send($emailEvent, "EOT #{$eot->eot_number}", $message, [], $project->organization);
+            EmailNotificationService::send($emailEvent, "EOT #{$eot->eot_number}", $message, EmailNotificationService::actionMeta($actionUrl, 'View EOT'), $project->organization);
         }
     }
 

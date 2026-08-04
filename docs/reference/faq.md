@@ -38,6 +38,23 @@ show it as overdue relative to that date.
 Most likely you are signed in as a Client user, and the interface shows a
 read-only view of that module. See [Client](../roles/client.md).
 
+**Is SureSign Consultancy an AI feature?**
+No. Consultancy connects you with a real construction professional for a
+private consultation — it does not use AI. See [Consultancy](../consultancy/overview.md).
+
+**Is Consultancy the same as adjudication?**
+No. Consultancy provides professional guidance and discussion about
+contract administration. It is not legal representation, dispute
+resolution, or adjudication services. See
+[SureSign Adjudication](https://suresigncontracts.app/adjudication) for
+formal dispute support.
+
+**Do I need a SureSign account to book a Consultancy session?**
+No. Consultancy sessions can be booked from the public
+[Consultancy page](https://suresigncontracts.app/consultancy) without an
+account. Existing customers can also book from the Consultancy section of
+their SureSign account, where their consultations are saved.
+
 **Why did a file download instead of previewing?**
 Some file types (notably Word documents that have not been converted for
 preview) cannot be rendered inline in the browser. Use Download to open them

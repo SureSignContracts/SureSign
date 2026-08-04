@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { cn } from '@/lib/utils';
+import { useAutoHideScrollbar } from '@/hooks/useAutoHideScrollbar';
 import {
   LayoutDashboard, FileText, DollarSign, MessageSquare, GitBranch,
   ClipboardList, Users2, Bell, CheckSquare, FolderOpen, Package, Archive,
@@ -278,6 +279,7 @@ export default function ProjectSidebar({
   onMobileClose,
 }: ProjectSidebarProps) {
   const pathname = usePathname();
+  const handleSidebarScroll = useAutoHideScrollbar();
   const { user } = useAuthStore();
   const { data: siteSettings, isSettingsReady } = useSiteSettings();
   const hiddenPages: string[] = useMemo(() => siteSettings?.hidden_pages ?? [], [siteSettings]);
@@ -410,7 +412,7 @@ export default function ProjectSidebar({
         </div>
 
         {/* Scrollable nav — space-y-4 between sections matches AppSidebar */}
-        <nav className="flex-1 overflow-y-auto py-3 space-y-4" style={{ overflowX: 'visible' }}>
+        <nav onScroll={handleSidebarScroll} className="ss-sidebar-scroll flex-1 overflow-x-hidden overflow-y-auto py-3 space-y-4">
           {!isSettingsReady ? (
             // Hold rendering until hidden-module settings resolve, so a hidden
             // module (e.g. Adjudication) never paints even for one frame.

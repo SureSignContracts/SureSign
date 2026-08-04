@@ -14,7 +14,9 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\CommercialOverviewController;
 use App\Http\Controllers\Api\SiteAdministrationController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\OrganizationBrandingUrlController;
 use App\Http\Controllers\Api\OrganizationController;
+use App\Http\Controllers\Api\OrganizationDomainController;
 use App\Http\Controllers\Api\OrganizationSubscriptionAssignmentController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\UserController;
@@ -75,8 +77,20 @@ use App\Http\Controllers\Api\StripeWebhookController;
 use App\Http\Controllers\Api\AppointmentAvailabilityController;
 use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\AppointmentTypeController;
+use App\Http\Controllers\Api\ConsultancyAvailabilityController;
+use App\Http\Controllers\Api\ConsultancyOperationsController;
+use App\Http\Controllers\Api\ConsultancyServiceController;
+use App\Http\Controllers\Api\ConsultancySettingsController;
+use App\Http\Controllers\Api\ConsultationController;
+use App\Http\Controllers\Api\ConsultationReservationController;
+use App\Http\Controllers\Api\GoogleCalendarSyncController;
+use App\Http\Controllers\Api\GoogleIntegrationController;
 use App\Http\Controllers\Api\PublicAppointmentActionController;
 use App\Http\Controllers\Api\PublicAppointmentController;
+use App\Http\Controllers\Api\PublicOrganisationBrandingController;
+use App\Http\Controllers\Api\PublicConsultancyReservationController;
+use App\Http\Controllers\Api\PublicConsultationController;
+use App\Http\Controllers\Api\PublicConsultationViewController;
 use App\Models\FileUpload;
 use Illuminate\Support\Facades\Route;
 
@@ -135,6 +149,15 @@ Route::post('/billing/webhooks/stripe', [StripeWebhookController::class, 'handle
 Route::post('/demo-requests', [DemoRequestController::class, 'store'])->middleware('throttle:demo-request');
 Route::post('/marketing-contact', [MarketingContactController::class, 'store'])->middleware('throttle:marketing-contact');
 
+// Organisation URL Branding (Phase 1, upgraded Phase 2) — public raw-
+// hostname-to-branding resolution the marketing site calls before any
+// login/token exists (accepts a branded subdomain OR a verified customer
+// domain, dots and all — see OrganisationHostResolver). Branding-safe
+// fields only — see PublicOrganisationBrandingController.
+Route::get('/public/organisation-branding/{host}', [PublicOrganisationBrandingController::class, 'show'])
+    ->where('host', '[A-Za-z0-9.-]+')
+    ->middleware('throttle:public-booking-read');
+
 // Public Appointments booking (suresigncontracts.app/book/{slug}) — no
 // auth. Only Appointment Types with is_public=true and is_active=true are
 // ever exposed; every field is treated as untrusted input server-side.
@@ -144,6 +167,35 @@ Route::prefix('public')->middleware('throttle:public-booking-read')->group(funct
     Route::get('/appointment-types/{slug}/availability', [PublicAppointmentController::class, 'availability']);
 });
 Route::post('/public/appointment-types/{slug}/book', [PublicAppointmentController::class, 'store'])
+    ->middleware('throttle:public-booking');
+
+// Public Consultancy booking (suresigncontracts.app/consultancy) — no auth.
+// A separate controller from PublicAppointmentController (see
+// PublicConsultationController's docblock) — only Consultancy Services
+// flagged enabled+publicly_bookable are ever exposed. Same rate-limit
+// buckets as public Appointments booking; not a new limiter.
+Route::prefix('public')->middleware('throttle:public-booking-read')->group(function () {
+    Route::get('/consultancy-services', [PublicConsultationController::class, 'index']);
+    Route::get('/consultancy-services/{code}', [PublicConsultationController::class, 'show']);
+    Route::get('/consultancy-services/{code}/slots', [PublicConsultationController::class, 'slots']);
+    Route::get('/consultancy-services/{code}/availability', [PublicConsultationController::class, 'availability']);
+});
+Route::post('/public/consultancy-services/{code}/book', [PublicConsultationController::class, 'store'])
+    ->middleware('throttle:public-booking');
+
+// Consultancy Live Booking Upgrade, Stage 2 — temporary slot reservation
+// (a hold only, never a payment or a confirmed booking). Same rate-limit
+// buckets as the rest of public Consultancy booking; token-based ownership
+// (see PublicConsultancyReservationController), not a new access model.
+Route::post('/public/consultancy-services/{code}/reservations', [PublicConsultancyReservationController::class, 'store'])
+    ->middleware('throttle:public-booking');
+Route::prefix('public')->middleware('throttle:public-booking-read')->group(function () {
+    Route::get('/consultancy-reservations/{token}', [PublicConsultancyReservationController::class, 'show']);
+    Route::get('/consultancy-reservations/{token}/payment', [PublicConsultancyReservationController::class, 'paymentStatus']);
+});
+Route::post('/public/consultancy-reservations/{token}/cancel', [PublicConsultancyReservationController::class, 'cancel'])
+    ->middleware('throttle:public-booking');
+Route::post('/public/consultancy-reservations/{token}/checkout', [PublicConsultancyReservationController::class, 'checkout'])
     ->middleware('throttle:public-booking');
 
 // Signed public appointment actions (Phase 4) — cancel/reschedule links
@@ -176,6 +228,18 @@ Route::middleware(['signed', 'throttle:public-booking'])->group(function () {
 Route::get('/public/appointments/{token}/reschedule/slots', [PublicAppointmentActionController::class, 'rescheduleSlots'])
     ->middleware(['signed:date,timezone', 'throttle:public-booking-read'])
     ->name('public.appointments.reschedule.slots');
+
+// Consultancy Communications & Global Email Experience Upgrade, Batch 3 —
+// read-only public (no-account) consultation pages. Signed exactly like
+// every other public Appointment route above (same `public_token`, same
+// `signed` middleware) — see AppointmentPublicLinkService's own docblock
+// for why these use their own TTL setting instead of the cancel/reschedule
+// one. GET-only: no mutation exists on either page this batch.
+Route::middleware(['signed', 'throttle:public-booking-read'])->group(function () {
+    Route::get('/public/consultations/{token}/view', [PublicConsultationViewController::class, 'show'])->name('public.consultations.view');
+    Route::get('/public/consultations/{token}/view/ics', [PublicConsultationViewController::class, 'ics'])->name('public.consultations.view.ics');
+    Route::get('/public/consultations/{token}/summary', [PublicConsultationViewController::class, 'summary'])->name('public.consultations.summary');
+});
 
 // Authenticated routes — account.status re-checks is_active/banned_at on
 // every request (auth:sanctum only proves the token was valid at issuance,
@@ -228,6 +292,36 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
 
     // Guided Tours — personal milestone notifications only (see TourMilestoneController).
     Route::post('/tour-milestones', [TourMilestoneController::class, 'store']);
+
+    // Consultancy — authenticated customer-facing surface (Phase C1). Every
+    // query is scoped strictly to the caller's own organisation, a
+    // deliberately new authorization boundary separate from
+    // AppointmentController (which Client users have no access to at all).
+    // Deliberately NOT "/consultancy-services" — that exact method+URI is
+    // already used by the Super-Admin/Admin-only catalogue apiResource
+    // below; Laravel's route collection keys routes by method+URI, so a
+    // second route registered later at the identical method+URI silently
+    // replaces the first one in the lookup table rather than layering
+    // alongside it (confirmed via route:list while building this phase) —
+    // hence the distinct "/consultations/bookable-services" path here.
+    Route::get('/consultations/bookable-services', [ConsultationController::class, 'bookableServices']);
+    // Scheduling info + fixed-mode slot generation for a single service —
+    // scoped under /consultations/services/{code} (two segments), which
+    // shares no exact method+URI with any admin-catalogue or {appointment}
+    // route, so this doesn't hit the same route-collision class of bug
+    // documented in consultancy.md.
+    Route::get('/consultations/services/{code}', [ConsultationController::class, 'serviceDetail']);
+    Route::get('/consultations/services/{code}/slots', [ConsultationController::class, 'serviceSlots']);
+    Route::get('/consultations/services/{code}/availability', [ConsultationController::class, 'serviceAvailability']);
+    Route::post('/consultations/services/{code}/reservations', [ConsultationReservationController::class, 'store']);
+    Route::get('/consultations/reservations/{token}', [ConsultationReservationController::class, 'show']);
+    Route::post('/consultations/reservations/{token}/cancel', [ConsultationReservationController::class, 'cancel']);
+    Route::post('/consultations/reservations/{token}/checkout', [ConsultationReservationController::class, 'checkout']);
+    Route::get('/consultations/reservations/{token}/payment', [ConsultationReservationController::class, 'paymentStatus']);
+    Route::get('/consultations', [ConsultationController::class, 'index']);
+    Route::post('/consultations', [ConsultationController::class, 'store']);
+    Route::get('/consultations/{appointment}', [ConsultationController::class, 'show']);
+    Route::post('/consultations/{appointment}/cancel', [ConsultationController::class, 'cancel']);
 
     // Cross-project reports
     Route::get('/reports/summary', [ReportController::class, 'summary']);
@@ -554,6 +648,14 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
     Route::get('/organization/branding',             [OrganizationController::class, 'getBranding']);
     Route::post('/organization/branding',            [OrganizationController::class, 'updateBranding']);
     Route::put('/organization/branding',             [OrganizationController::class, 'updateBranding']);
+
+    // Organisation URL Branding — customer self-service Custom URL
+    // section (Company Branding). Entitlement (Feature::CUSTOM_BRANDED_SUBDOMAIN)
+    // and "no org for Super Admin/Admin" are enforced inside the
+    // controller itself, matching the branding routes' own precedent.
+    Route::get('/organization/url-slug',    [OrganizationBrandingUrlController::class, 'show']);
+    Route::put('/organization/url-slug',    [OrganizationBrandingUrlController::class, 'update']);
+    Route::delete('/organization/url-slug', [OrganizationBrandingUrlController::class, 'destroy']);
     Route::post('/organization/logo',                [OrganizationController::class, 'uploadLogo']);
     Route::post('/organization/cover',               [OrganizationController::class, 'uploadCover']);
     Route::post('/organization/letterhead-header',   [OrganizationController::class, 'uploadLetterheadHeader']);
@@ -681,8 +783,131 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
         Route::put('/operating-mode', [AiCreditsGrantController::class, 'updateOperatingMode']);
     });
 
+    // Google Integration Foundation (Stage 4A) — platform-level, not
+    // Consultancy-specific. diagnostics() is read-only (Super Admin OR
+    // Admin, matching the ai-telemetry/ai-credits read-only precedent);
+    // every mutating/live-call action is Super Admin ONLY, matching the
+    // ai-credits grant/adjust/expire precedent for high-consequence
+    // platform actions. See GoogleIntegrationController's own docblock.
+    Route::middleware('role:Super Admin|Admin')->prefix('admin/google')->group(function () {
+        Route::get('/diagnostics', [GoogleIntegrationController::class, 'diagnostics']);
+    });
+
+    // Stage 4B.1 (Google Calendar Event Synchronisation) — Admin
+    // diagnostics + authorised retry/reconcile. Grouped under the same
+    // admin/google prefix as the Stage 4A diagnostics above. Read AND
+    // retry/reconcile are both Super Admin OR Admin — a safe, idempotent,
+    // non-destructive action, mirroring
+    // ConsultancySettingsController::retryConversion()'s risk profile, not
+    // the stricter Super-Admin-only gate reserved for OAuth connect/
+    // disconnect above. See GoogleCalendarSyncController's own docblock.
+    Route::middleware('role:Super Admin|Admin')->prefix('admin/google/calendar-syncs')->group(function () {
+        Route::get('/', [GoogleCalendarSyncController::class, 'index']);
+        Route::get('/{sync}', [GoogleCalendarSyncController::class, 'show']);
+        Route::post('/{sync}/retry', [GoogleCalendarSyncController::class, 'retry']);
+        Route::post('/{sync}/reconcile', [GoogleCalendarSyncController::class, 'reconcile']);
+    });
+
+    Route::middleware(['role:Super Admin', 'throttle:30,1'])->prefix('admin/google')->group(function () {
+        Route::post('/oauth/connect',    [GoogleIntegrationController::class, 'connect']);
+        Route::post('/oauth/callback',   [GoogleIntegrationController::class, 'callback']);
+        Route::post('/disconnect',       [GoogleIntegrationController::class, 'disconnect']);
+        Route::post('/test-connection',  [GoogleIntegrationController::class, 'testConnection']);
+    });
+
     Route::middleware('role:Super Admin|Admin')->group(function () {
         Route::apiResource('organizations', OrganizationController::class)->except(['show', 'update']);
+
+        // Consultancy Service catalogue (Phase C1) — Super Admin OR Admin,
+        // matching the Pricing Management precedent (both platform-wide
+        // roles), not the stricter Appointment-Type-only rule below.
+        Route::apiResource('consultancy-services', ConsultancyServiceController::class);
+
+        // Consultancy operator surface (Phase C2, Batch 3) — read-only:
+        // queue + operator detail. Every Super Admin/Admin may read any
+        // consultation platform-wide (confirmed, Consultancy-specific
+        // visibility rule — see ConsultancyOperationsController's own
+        // docblock); write actions arrive in Batch 4.
+        Route::get('/admin/consultancy/consultations', [ConsultancyOperationsController::class, 'index']);
+        Route::get('/admin/consultancy/consultations/{appointment}', [ConsultancyOperationsController::class, 'show']);
+
+        // Operator dashboard (Phase C2, Batch 6A) — read-only, aggregate-only.
+        Route::get('/admin/consultancy/dashboard', [ConsultancyOperationsController::class, 'dashboardSummary']);
+
+        // Lightweight sidebar badge count — mirrors
+        // SupportTicketController::counts()'s exact shape/purpose: a cheap,
+        // dedicated endpoint safe to poll every page load, so the sidebar
+        // doesn't pull in dashboardSummary()'s heavier ageing-bucket work
+        // just to show a number.
+        Route::get('/admin/consultancy/counts', [ConsultancyOperationsController::class, 'counts']);
+
+        // Operational write actions (Phase C2, Batch 4) — one explicit-intent
+        // route per business action, never a generic "set status" endpoint.
+        // Write access is narrower than read (authorizeOperatorManage(),
+        // re-checked independently inside each controller method) — Super
+        // Admin or the specific assigned Admin only.
+        Route::put('/admin/consultancy/consultations/{appointment}/notes', [ConsultancyOperationsController::class, 'updateNotes']);
+        Route::put('/admin/consultancy/consultations/{appointment}/summary', [ConsultancyOperationsController::class, 'updateSummaryDraft']);
+        Route::post('/admin/consultancy/consultations/{appointment}/summary/publish', [ConsultancyOperationsController::class, 'publishSummary']);
+        Route::post('/admin/consultancy/consultations/{appointment}/status/awaiting-customer', [ConsultancyOperationsController::class, 'markAwaitingCustomer']);
+        Route::post('/admin/consultancy/consultations/{appointment}/status/awaiting-consultant', [ConsultancyOperationsController::class, 'markAwaitingConsultant']);
+        Route::post('/admin/consultancy/consultations/{appointment}/status/complete', [ConsultancyOperationsController::class, 'markCompleted']);
+        Route::post('/admin/consultancy/consultations/{appointment}/reopen', [ConsultancyOperationsController::class, 'reopen']);
+
+        // Project linkage (Phase C2, Batch 5) — link/change share one PUT
+        // (see linkProject()'s own docblock for why); unlink is a separate
+        // DELETE. Both gated by authorizeOperatorManage() inside the
+        // controller, same as every other write action above.
+        Route::put('/admin/consultancy/consultations/{appointment}/project', [ConsultancyOperationsController::class, 'linkProject']);
+        Route::delete('/admin/consultancy/consultations/{appointment}/project', [ConsultancyOperationsController::class, 'unlinkProject']);
+
+        // The Project-side read view — Consultancy-owned, read-only,
+        // platform-wide (authorizeOperatorAccess(), not the narrower
+        // authorizeOperatorManage()). Deliberately not touching
+        // ProjectController::show() at all.
+        Route::get('/admin/consultancy/projects/{project}/consultations', [ConsultancyOperationsController::class, 'projectConsultations']);
+
+        // Consultancy Live Booking Upgrade, Stage 1 — consultant
+        // configuration (read: Super Admin or Admin; write: Super Admin
+        // only, enforced inside ConsultancySettingsController) and the
+        // Stage 1 readiness check (no Stripe/Google — see that service's
+        // own docblock).
+        Route::get('/admin/consultancy/settings/consultant', [ConsultancySettingsController::class, 'show']);
+        Route::put('/admin/consultancy/settings/consultant', [ConsultancySettingsController::class, 'update']);
+        Route::get('/admin/consultancy/settings/eligible-consultants', [ConsultancySettingsController::class, 'eligibleCandidates']);
+        Route::get('/admin/consultancy/settings/readiness', [ConsultancySettingsController::class, 'readiness']);
+        Route::get('/admin/consultancy/settings/notifications', [ConsultancySettingsController::class, 'notificationSettings']);
+        Route::put('/admin/consultancy/settings/notifications', [ConsultancySettingsController::class, 'updateNotificationSettings']);
+
+        // Consultancy Live Booking Upgrade, Stage 2 — minimal Admin
+        // reservation diagnostics (counts + bounded recent list) and a
+        // safe operator cancellation action. No payment controls exist
+        // yet — none are exposed here.
+        Route::get('/admin/consultancy/reservations', [ConsultancySettingsController::class, 'reservations']);
+        Route::post('/admin/consultancy/reservations/{reservation}/cancel', [ConsultancySettingsController::class, 'cancelReservation']);
+
+        // Consultancy Live Booking Upgrade, Stage 3 — payment recovery
+        // visibility (paid-awaiting-conversion / manual review) and a safe
+        // conversion retry. No refund/payment-amendment action exists.
+        Route::get('/admin/consultancy/payments', [ConsultancySettingsController::class, 'payments']);
+        Route::post('/admin/consultancy/payments/{payment}/retry-conversion', [ConsultancySettingsController::class, 'retryConversion']);
+
+        // Consultancy Live Booking Upgrade, Stage 1 — dedicated Consultancy
+        // Availability admin surface. No {user}/me selection — always
+        // operates on whichever consultant is currently configured (see
+        // ConsultancyAvailabilityController's own docblock for why this
+        // differs from AppointmentAvailabilityController's self/staff
+        // selection model).
+        Route::get('/admin/consultancy/availability',                              [ConsultancyAvailabilityController::class, 'showWeekly']);
+        Route::put('/admin/consultancy/availability',                              [ConsultancyAvailabilityController::class, 'updateWeekly']);
+        Route::get('/admin/consultancy/availability/overrides',                    [ConsultancyAvailabilityController::class, 'indexOverrides']);
+        Route::post('/admin/consultancy/availability/overrides',                   [ConsultancyAvailabilityController::class, 'storeOverride']);
+        Route::put('/admin/consultancy/availability/overrides/{override}',         [ConsultancyAvailabilityController::class, 'updateOverride']);
+        Route::delete('/admin/consultancy/availability/overrides/{override}',      [ConsultancyAvailabilityController::class, 'destroyOverride']);
+        Route::get('/admin/consultancy/availability/blocked-periods',                    [ConsultancyAvailabilityController::class, 'indexBlockedPeriods']);
+        Route::post('/admin/consultancy/availability/blocked-periods',                   [ConsultancyAvailabilityController::class, 'storeBlockedPeriod']);
+        Route::put('/admin/consultancy/availability/blocked-periods/{blockedPeriod}',    [ConsultancyAvailabilityController::class, 'updateBlockedPeriod']);
+        Route::delete('/admin/consultancy/availability/blocked-periods/{blockedPeriod}', [ConsultancyAvailabilityController::class, 'destroyBlockedPeriod']);
 
         // Appointments & Scheduling — Phase 1 (Foundation). Index/show +
         // ordinary CRUD are open to both roles (finer-grained view/manage
@@ -847,6 +1072,30 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
         Route::post('/organizations/{organization}/subscriptions/assign-manual', [OrganizationSubscriptionAssignmentController::class, 'assignManual']);
         Route::post('/organizations/{organization}/subscriptions/assign-complimentary', [OrganizationSubscriptionAssignmentController::class, 'assignComplimentary']);
         Route::post('/organizations/{organization}/subscriptions/{subscription}/terminate', [OrganizationSubscriptionAssignmentController::class, 'terminate']);
+    });
+
+    // Organisation URL Branding, Phase 1 — Super Admin ONLY (mirrors the
+    // manual/complimentary subscription group above): changing a customer's
+    // public hostname is a deliberate production-infra action, not a routine
+    // settings edit. Admin keeps read access via the organizations/{id} show
+    // endpoint (url_slug is included in that payload).
+    Route::middleware(['role:Super Admin', 'throttle:30,1'])->group(function () {
+        Route::put('/organizations/{organization}/url-slug', [OrganizationController::class, 'updateUrlSlug']);
+        Route::delete('/organizations/{organization}/url-slug', [OrganizationController::class, 'removeUrlSlug']);
+    });
+    Route::get('/organizations/{organization}/url-slug-history', [OrganizationController::class, 'urlSlugHistory']);
+
+    // Organisation URL Branding, Phase 2 — customer-owned domains. Read
+    // access (index) is available to both Super Admin and Admin (matches
+    // the platform-wide-role precedent everywhere else in this file);
+    // every mutation is Super Admin ONLY, same reasoning as url-slug above.
+    Route::get('/organizations/{organization}/domains', [OrganizationDomainController::class, 'index']);
+    Route::middleware(['role:Super Admin', 'throttle:30,1'])->group(function () {
+        Route::post('/organizations/{organization}/domains', [OrganizationDomainController::class, 'store']);
+        Route::post('/organizations/{organization}/domains/{domain}/verify', [OrganizationDomainController::class, 'verify']);
+        Route::post('/organizations/{organization}/domains/{domain}/activate', [OrganizationDomainController::class, 'activate']);
+        Route::post('/organizations/{organization}/domains/{domain}/disable', [OrganizationDomainController::class, 'disable']);
+        Route::post('/organizations/{organization}/domains/{domain}/remove', [OrganizationDomainController::class, 'remove']);
     });
 
     // Notifications

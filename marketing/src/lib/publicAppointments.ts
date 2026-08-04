@@ -10,7 +10,9 @@
 // endpoint, which is signed via `signed:date` on the backend precisely so
 // this is safe — see AppointmentPublicLinkService::rescheduleSlotsApiUrl).
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+import { orgHostHeader } from './organisationBranding';
+
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
 export type AppointmentAction = 'cancel' | 'reschedule';
 
@@ -74,7 +76,13 @@ export function isPastExpiry(searchParams: URLSearchParams): boolean {
   return expiresAt * 1000 < Date.now();
 }
 
-async function parseError(res: Response, searchParams: URLSearchParams): Promise<ApiResult<never>> {
+/**
+ * Consultancy Communications Upgrade, Batch 3 — exported so
+ * `publicConsultations.ts` (the public consultation view/summary pages,
+ * a Consultancy-only counterpart to this file) can reuse the exact same
+ * signed-link error/response handling rather than re-implementing it.
+ */
+export async function parseError(res: Response, searchParams: URLSearchParams): Promise<ApiResult<never>> {
   let message = 'Something went wrong. Please try again.';
   try {
     const body = await res.json();
@@ -100,11 +108,18 @@ async function parseError(res: Response, searchParams: URLSearchParams): Promise
   return { ok: false, kind: 'network', message };
 }
 
-async function request<T>(url: string, searchParams: URLSearchParams, init?: RequestInit): Promise<ApiResult<T>> {
+/** Exported for the same reason as parseError() above. */
+export async function request<T>(url: string, searchParams: URLSearchParams, init?: RequestInit): Promise<ApiResult<T>> {
   try {
+    // Organisation URL Branding, Phase 1 — when this page is being served
+    // on a branded organisation hostname, tell the backend so it can
+    // enforce that the token actually belongs to that organisation (see
+    // App\Support\Organizations\EnforcesPublicOrganizationHost). Never a
+    // query parameter — these requests carry a Laravel-signed query
+    // string, and an added parameter would fail signature verification.
     const res = await fetch(url, {
       ...init,
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', ...(init?.headers || {}) },
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', ...orgHostHeader(), ...(init?.headers || {}) },
     });
     if (!res.ok) return parseError(res, searchParams);
     const data = (await res.json()) as T;

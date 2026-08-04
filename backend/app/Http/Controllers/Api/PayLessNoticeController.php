@@ -113,6 +113,10 @@ class PayLessNoticeController extends Controller
 
     private function notifyIssued(Request $request, Project $project, PayLessNotice $notice): void
     {
+        // Computed once and reused for both the in-app notification and
+        // (Batch 4) the email's own CTA button.
+        $actionUrl = WorkspaceNavigationResolver::actionUrl($project->id, 'pay_less_notice', $notice->id);
+
         NotificationService::sendToOrganization(
             $project->organization,
             'pay_less_notice_issued',
@@ -123,7 +127,7 @@ class PayLessNoticeController extends Controller
                 'project_id' => $project->id, 'organization_id' => $project->organization_id,
                 'category' => SuresignNotification::CATEGORY_NOTICE, 'priority' => SuresignNotification::PRIORITY_WARNING,
                 'source_type' => 'pay_less_notice', 'source_id' => $notice->id, 'source_field' => 'issued',
-                'action_url' => WorkspaceNavigationResolver::actionUrl($project->id, 'pay_less_notice', $notice->id),
+                'action_url' => $actionUrl,
             ],
             $request->user(),
         );
@@ -132,7 +136,7 @@ class PayLessNoticeController extends Controller
             'pay_less_notice.issued',
             'Pay Less Notice Issued',
             "A Pay Less Notice has been issued for project: {$project->name}.",
-            [],
+            EmailNotificationService::actionMeta($actionUrl, 'View Notice'),
             $project->organization
         );
     }

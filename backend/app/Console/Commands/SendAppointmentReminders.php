@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Jobs\SendAppointmentEmailJob;
+use App\Jobs\SendConsultationCommunicationJob;
 use App\Models\Appointment;
 use App\Models\AppointmentReminderSend;
 use App\Models\SuresignSetting;
@@ -81,6 +82,7 @@ class SendAppointmentReminders extends Command
                 ->where('starts_at', '>', $now)
                 ->where('starts_at', '<=', $now->copy()->addMinutes($offsetMinutes))
                 ->whereNotNull('assigned_user_id') // reminders need a real recipient context; unassigned appointments have none to remind on behalf of yet
+                ->with('consultationEnquiry')
                 ->chunkById(100, function ($appointments) use ($offsetMinutes, &$claimed) {
                     foreach ($appointments as $appointment) {
                         $send = $this->claimReminderSend($appointment, $offsetMinutes);
@@ -89,10 +91,17 @@ class SendAppointmentReminders extends Command
                         }
                         $claimed++;
 
-                        SendAppointmentEmailJob::dispatch($appointment->id, 'reminder', [
-                            'offset_minutes'   => $offsetMinutes,
-                            'reminder_send_id' => $send->id,
-                        ])->afterCommit();
+                        $context = ['offset_minutes' => $offsetMinutes, 'reminder_send_id' => $send->id];
+
+                        // Communications Upgrade Batch 2 — Consultancy bookings get
+                        // their own branded reminder (with the trusted Meet join
+                        // link), not the generic AppointmentEmailService one; see
+                        // SendConsultationCommunicationJob's docblock.
+                        if ($appointment->consultationEnquiry) {
+                            SendConsultationCommunicationJob::dispatch($appointment->id, 'meeting_reminder', $context)->afterCommit();
+                        } else {
+                            SendAppointmentEmailJob::dispatch($appointment->id, 'reminder', $context)->afterCommit();
+                        }
                     }
                 });
         }

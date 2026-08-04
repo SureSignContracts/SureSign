@@ -564,6 +564,15 @@ class VariationController extends Controller
 
     private function notify($user, string $type, string $title, string $message, string $emailEvent, ?Variation $variation = null): void
     {
+        // Computed once and reused for both the in-app notification and
+        // (Batch 4) the email's own CTA button — previously only the
+        // in-app notification ever saw this URL.
+        $actionUrl = $variation
+            ? \App\Services\TradePackages\WorkspaceNavigationResolver::actionUrl(
+                $variation->project_id, 'variation', $variation->id, $variation->trade_package_id
+            )
+            : null;
+
         // Synchronous workflow transition — the actor already knows they just
         // did this; the other org stakeholders are who need telling.
         if ($variation && $variation->organization) {
@@ -577,9 +586,7 @@ class VariationController extends Controller
                     'project_id' => $variation->project_id, 'organization_id' => $variation->organization_id,
                     'category' => \App\Models\SuresignNotification::CATEGORY_VARIATION,
                     'source_type' => 'variation', 'source_id' => $variation->id, 'source_field' => $type,
-                    'action_url' => \App\Services\TradePackages\WorkspaceNavigationResolver::actionUrl(
-                        $variation->project_id, 'variation', $variation->id, $variation->trade_package_id
-                    ),
+                    'action_url' => $actionUrl,
                 ],
                 $user,
             );
@@ -591,7 +598,7 @@ class VariationController extends Controller
         // important enough to email — the other five transitions (submitted,
         // instructed, quoted, assessed, resubmitted) stay in-app only.
         if (in_array($emailEvent, ['variation.approved', 'variation.rejected'], true)) {
-            EmailNotificationService::send($emailEvent, $title, $message, [], $variation?->organization);
+            EmailNotificationService::send($emailEvent, $title, $message, EmailNotificationService::actionMeta($actionUrl, 'View Variation'), $variation?->organization);
         }
     }
 

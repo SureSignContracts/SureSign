@@ -7,7 +7,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AppointmentAvailability extends Model
 {
-    protected $fillable = ['user_id', 'weekday', 'start_time', 'end_time', 'is_active'];
+    // 'context' (App\Support\Appointments\AvailabilityContext) is set
+    // exclusively by AppointmentAvailabilityService from a validated
+    // constant — never mass-assigned from raw request input.
+    protected $fillable = ['user_id', 'context', 'weekday', 'start_time', 'end_time', 'is_active'];
 
     protected $casts = [
         'weekday'   => 'integer',

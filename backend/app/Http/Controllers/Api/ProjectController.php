@@ -25,14 +25,14 @@ class ProjectController extends Controller
 
         // Super Admin and Admin can query any org by passing organization_id
         if (($user->hasRole('Super Admin') || $user->hasRole('Admin')) && $request->filled('organization_id')) {
-            $query = Project::with(['creator:id,name', 'contacts'])
+            $query = Project::with(['creator:id,name', 'contacts', 'client:id,name', 'organization:id,name'])
                 ->where('organization_id', $request->organization_id);
         } elseif ($user->hasRole('Super Admin') || $user->hasRole('Admin')) {
             // System users with no org filter: return all projects
-            $query = Project::with(['creator:id,name', 'contacts']);
+            $query = Project::with(['creator:id,name', 'contacts', 'client:id,name', 'organization:id,name']);
         } else {
             // Regular clients: scope to their own organisation
-            $query = Project::with(['creator:id,name', 'contacts'])
+            $query = Project::with(['creator:id,name', 'contacts', 'client:id,name', 'organization:id,name'])
                 ->where('organization_id', $user->organization_id);
         }
 
@@ -40,7 +40,23 @@ class ProjectController extends Controller
             $query->where('status', $request->status);
         }
 
-        $projects = $query->latest()->paginate(20);
+        // Consultancy Phase C2, Batch 5 — a narrowly-scoped search, added to
+        // this existing endpoint rather than a second, Consultancy-specific
+        // search architecture (per internal-docs/commercial/
+        // suresign-consultancy-phase-c2-specification-v1.md §6/§16). Matches
+        // only project name, project code, and client name — nothing
+        // broader. Grouped inside its own closure so these OR conditions can
+        // never widen the organisation/role scope already established above.
+        if ($request->filled('search')) {
+            $search = trim((string) $request->string('search'));
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%")
+                    ->orWhereHas('client', fn ($cq) => $cq->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        $projects = $query->latest()->paginate($request->integer('per_page', 20));
         return response()->json($projects);
     }
 

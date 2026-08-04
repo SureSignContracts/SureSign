@@ -153,6 +153,12 @@ class AnalyseTradePackageWithAiJob implements ShouldQueue
             if ($user) {
                 $tradePackage = $analysis->tradePackage;
 
+                // Computed once and reused for both the in-app notification
+                // and (Batch 4) the email's own CTA button.
+                $actionUrl = \App\Services\TradePackages\WorkspaceNavigationResolver::actionUrl(
+                    $tradePackage->project_id, 'trade_package', $tradePackage->id, $tradePackage->id
+                );
+
                 NotificationService::sendToOrganization(
                     $user->organization,
                     NotificationService::AI_ANALYSIS_COMPLETED,
@@ -162,9 +168,7 @@ class AnalyseTradePackageWithAiJob implements ShouldQueue
                     [
                         'organization_id' => $user->organization_id, 'project_id' => $tradePackage->project_id,
                         'source_type' => 'trade_package_ai_analysis', 'source_id' => $analysis->id, 'source_field' => 'completed',
-                        'action_url' => \App\Services\TradePackages\WorkspaceNavigationResolver::actionUrl(
-                            $tradePackage->project_id, 'trade_package', $tradePackage->id, $tradePackage->id
-                        ),
+                        'action_url' => $actionUrl,
                     ],
                     $user,
                     includeActor: true,
@@ -174,7 +178,7 @@ class AnalyseTradePackageWithAiJob implements ShouldQueue
                     'ai_analysis.completed',
                     'Subcontract Analysis Complete',
                     "AI analysis is ready for trade package: {$analysis->tradePackage->name}. Log in to review and confirm the results.",
-                    [],
+                    EmailNotificationService::actionMeta($actionUrl, 'View Analysis'),
                     $user->organization
                 );
             }
@@ -210,6 +214,12 @@ class AnalyseTradePackageWithAiJob implements ShouldQueue
             if ($user) {
                 $tradePackage = $analysis->tradePackage;
 
+                // Computed once and reused for both the in-app notification
+                // and (Batch 4) the email's own CTA button.
+                $actionUrl = \App\Services\TradePackages\WorkspaceNavigationResolver::actionUrl(
+                    $tradePackage->project_id, 'trade_package', $tradePackage->id, $tradePackage->id
+                );
+
                 NotificationService::sendToOrganization(
                     $user->organization,
                     NotificationService::AI_ANALYSIS_COMPLETED,
@@ -220,9 +230,7 @@ class AnalyseTradePackageWithAiJob implements ShouldQueue
                         'organization_id' => $user->organization_id, 'project_id' => $tradePackage->project_id,
                         'priority' => \App\Models\SuresignNotification::PRIORITY_WARNING,
                         'source_type' => 'trade_package_ai_analysis', 'source_id' => $analysis->id, 'source_field' => 'failed',
-                        'action_url' => \App\Services\TradePackages\WorkspaceNavigationResolver::actionUrl(
-                            $tradePackage->project_id, 'trade_package', $tradePackage->id, $tradePackage->id
-                        ),
+                        'action_url' => $actionUrl,
                     ],
                     $user,
                     includeActor: true,
@@ -232,7 +240,7 @@ class AnalyseTradePackageWithAiJob implements ShouldQueue
                     'ai_analysis.failed',
                     'Subcontract Analysis Failed',
                     "AI analysis failed for trade package: {$tradePackage->name}. {$safeMessage}",
-                    [],
+                    EmailNotificationService::actionMeta($actionUrl, 'View Analysis'),
                     $user->organization
                 );
             }

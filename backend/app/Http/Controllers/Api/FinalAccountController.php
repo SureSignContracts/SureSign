@@ -555,6 +555,10 @@ class FinalAccountController extends Controller
         FinalAccount $fa, $actor, string $sourceField, string $title, string $message,
         string $priority, ?string $emailEvent = null,
     ): void {
+        // Computed once and reused for both the in-app notification and
+        // (Batch 4) the email's own CTA button.
+        $actionUrl = WorkspaceNavigationResolver::actionUrl($fa->project_id, 'final_account', $fa->id, $fa->trade_package_id);
+
         NotificationService::sendToOrganization(
             $fa->organization,
             'final_account_' . $sourceField,
@@ -565,13 +569,13 @@ class FinalAccountController extends Controller
                 'project_id' => $fa->project_id, 'organization_id' => $fa->organization_id,
                 'category' => SuresignNotification::CATEGORY_COMMERCIAL, 'priority' => $priority,
                 'source_type' => 'final_account', 'source_id' => $fa->id, 'source_field' => $sourceField,
-                'action_url' => WorkspaceNavigationResolver::actionUrl($fa->project_id, 'final_account', $fa->id, $fa->trade_package_id),
+                'action_url' => $actionUrl,
             ],
             $actor,
         );
 
         if ($emailEvent) {
-            EmailNotificationService::send($emailEvent, $title, $message, [], $fa->organization);
+            EmailNotificationService::send($emailEvent, $title, $message, EmailNotificationService::actionMeta($actionUrl, 'View Final Account'), $fa->organization);
         }
     }
 

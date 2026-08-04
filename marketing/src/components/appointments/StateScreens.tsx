@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { AlertCircle, Ban, RefreshCw, type LucideIcon } from 'lucide-react';
+import { useOrganisationBranding } from '@/lib/OrganisationBrandingContext';
 
 function Frame({ icon: Icon, children }: { icon: LucideIcon; children: React.ReactNode }) {
   return (
@@ -13,11 +14,26 @@ function Frame({ icon: Icon, children }: { icon: LucideIcon; children: React.Rea
 }
 
 export function LoadingSkeleton() {
+  // Phase 4 — only ever populated when this renders INSIDE an
+  // OrganisationBrandingProvider that's already resolved branding (the
+  // outer Suspense fallback in each page.tsx renders before that provider
+  // even mounts, so it stays the plain generic skeleton there — this only
+  // takes effect for the experience components' own internal
+  // `state.kind === 'loading'` case, on a repeat navigation within the
+  // same cached session). Falls back to the identical generic bar
+  // whenever branding isn't available, never a distinct broken layout.
+  const branding = useOrganisationBranding();
+
   return (
     <div aria-live="polite" aria-busy="true" className="rounded-2xl border border-border bg-bg-surface p-8 sm:p-10">
       <span className="sr-only">Loading your appointment…</span>
       <div className="flex items-center justify-between">
-        <div className="h-4 w-32 animate-pulse rounded bg-bg-elevated" />
+        {branding?.logo_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={branding.logo_url} alt="" className="h-8 w-auto" />
+        ) : (
+          <div className="h-4 w-32 animate-pulse rounded bg-bg-elevated" />
+        )}
         <div className="h-7 w-24 animate-pulse rounded-full bg-bg-elevated" />
       </div>
       <div className="mt-8 h-6 w-3/4 animate-pulse rounded bg-bg-elevated" />

@@ -13,9 +13,14 @@ export interface PricingNavPlan {
 
 const LINKS = [
   { href: '/product', label: 'Product' },
-  { href: '/adjudication', label: 'Adjudication' },
   { href: '/contact', label: 'Contact' },
   { href: 'https://docs.suresigncontracts.app', label: 'Documentation', external: true },
+];
+
+const SERVICES_ENTRIES = [
+  { href: '/services', label: 'Services overview' },
+  { href: '/consultancy', label: 'Consultancy' },
+  { href: '/adjudication', label: 'Adjudication' },
 ];
 
 function NavLink({
@@ -46,17 +51,34 @@ function NavLink({
   );
 }
 
-function PricingDropdown({ plans, mobile = false, onNavigate }: { plans: PricingNavPlan[]; mobile?: boolean; onNavigate?: () => void }) {
+interface NavDropdownEntry {
+  href: string;
+  label: string;
+}
+
+function NavDropdown({
+  label,
+  groupLabel,
+  entries,
+  active,
+  ariaLabel,
+  isGroupStart,
+  mobile = false,
+  onNavigate,
+}: {
+  label: string;
+  groupLabel?: string;
+  entries: NavDropdownEntry[];
+  active: boolean;
+  ariaLabel: string;
+  isGroupStart?: (index: number) => boolean;
+  mobile?: boolean;
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
   const rootRef = useRef<HTMLDivElement>(null);
   const firstLinkRef = useRef<HTMLAnchorElement>(null);
   const [open, setOpen] = useState(false);
-  const active = pathname === '/pricing' || pathname.startsWith('/pricing/');
-  const entries = [
-    { href: '/pricing', label: 'Overview' },
-    ...plans.map((plan) => ({ href: `/pricing/${plan.slug}`, label: plan.name })),
-    { href: '/pricing/compare', label: 'Compare Plans' },
-  ];
 
   useEffect(() => {
     if (!open) return;
@@ -113,7 +135,7 @@ function PricingDropdown({ plans, mobile = false, onNavigate }: { plans: Pricing
             : 'text-text-secondary hover:bg-bg-surface hover:text-text-primary'
         }`}
       >
-        Pricing
+        {label}
         <ChevronDown
           size={14}
           strokeWidth={1.7}
@@ -124,7 +146,7 @@ function PricingDropdown({ plans, mobile = false, onNavigate }: { plans: Pricing
 
       <div
         role="menu"
-        aria-label="Pricing pages"
+        aria-label={ariaLabel}
         onKeyDown={handleMenuKeyDown}
         className={
           mobile
@@ -133,16 +155,15 @@ function PricingDropdown({ plans, mobile = false, onNavigate }: { plans: Pricing
         }
       >
         <div className={mobile ? 'min-h-0 pl-4' : ''}>
-          {!mobile && (
+          {!mobile && groupLabel && (
             <div className="px-2.5 pb-2 pt-1">
-              <p className="text-[11px] font-medium text-text-muted">Plans and pricing</p>
+              <p className="text-[11px] font-medium text-text-muted">{groupLabel}</p>
             </div>
           )}
           {entries.map((entry, index) => {
-            const startsPlanGroup = index === 1 && plans.length > 0;
-            const startsCompare = index === plans.length + 1;
+            const startsGroup = isGroupStart?.(index) ?? false;
             return (
-              <div key={entry.href} className={startsPlanGroup || startsCompare ? 'mt-1 border-t border-border pt-1' : ''}>
+              <div key={entry.href} className={startsGroup ? 'mt-1 border-t border-border pt-1' : ''}>
                 <Link
                   ref={index === 0 ? firstLinkRef : undefined}
                   href={entry.href}
@@ -153,7 +174,7 @@ function PricingDropdown({ plans, mobile = false, onNavigate }: { plans: Pricing
                     onNavigate?.();
                   }}
                   className={`block rounded-xl px-2.5 py-2.5 text-sm transition-colors ${
-                    pathname === entry.href
+                    pathname === entry.href || pathname.startsWith(`${entry.href}/`)
                       ? 'bg-bg-surface font-medium text-text-primary'
                       : 'text-text-secondary hover:bg-bg-surface hover:text-text-primary'
                   }`}
@@ -166,6 +187,48 @@ function PricingDropdown({ plans, mobile = false, onNavigate }: { plans: Pricing
         </div>
       </div>
     </div>
+  );
+}
+
+function PricingDropdown({ plans, mobile = false, onNavigate }: { plans: PricingNavPlan[]; mobile?: boolean; onNavigate?: () => void }) {
+  const pathname = usePathname();
+  const active = pathname === '/pricing' || pathname.startsWith('/pricing/');
+  const entries = [
+    { href: '/pricing', label: 'Overview' },
+    ...plans.map((plan) => ({ href: `/pricing/${plan.slug}`, label: plan.name })),
+    { href: '/pricing/compare', label: 'Compare Plans' },
+  ];
+
+  return (
+    <NavDropdown
+      label="Pricing"
+      groupLabel="Plans and pricing"
+      entries={entries}
+      active={active}
+      ariaLabel="Pricing pages"
+      isGroupStart={(index) => index === 1 && plans.length > 0}
+      mobile={mobile}
+      onNavigate={onNavigate}
+    />
+  );
+}
+
+function ServicesDropdown({ mobile = false, onNavigate }: { mobile?: boolean; onNavigate?: () => void }) {
+  const pathname = usePathname();
+  const active = SERVICES_ENTRIES.some(
+    (entry) => pathname === entry.href || pathname.startsWith(`${entry.href}/`),
+  );
+
+  return (
+    <NavDropdown
+      label="Services"
+      groupLabel="Professional services"
+      entries={SERVICES_ENTRIES}
+      active={active}
+      ariaLabel="Services pages"
+      mobile={mobile}
+      onNavigate={onNavigate}
+    />
   );
 }
 
@@ -199,7 +262,9 @@ export function MarketingNavClient({ pricingPlans }: { pricingPlans: PricingNavP
           aria-label="Primary navigation"
         >
           <PricingDropdown plans={pricingPlans} />
-          {LINKS.map((link) => (
+          <NavLink href="/product" label="Product" active={pathname === '/product'} />
+          <ServicesDropdown />
+          {LINKS.filter((link) => link.href !== '/product').map((link) => (
             <NavLink
               key={link.href}
               {...link}
@@ -250,7 +315,14 @@ export function MarketingNavClient({ pricingPlans }: { pricingPlans: PricingNavP
         <div className="min-h-0">
           <Container className="flex flex-col gap-4 py-6">
             <PricingDropdown plans={pricingPlans} mobile onNavigate={() => setOpen(false)} />
-            {LINKS.map((link) => (
+            <NavLink
+              href="/product"
+              label="Product"
+              active={pathname === '/product'}
+              onClick={() => setOpen(false)}
+            />
+            <ServicesDropdown mobile onNavigate={() => setOpen(false)} />
+            {LINKS.filter((link) => link.href !== '/product').map((link) => (
               <NavLink
                 key={link.href}
                 {...link}

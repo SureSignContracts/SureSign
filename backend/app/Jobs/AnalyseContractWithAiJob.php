@@ -172,6 +172,12 @@ class AnalyseContractWithAiJob implements ShouldQueue
             }
 
             if ($user) {
+                // Computed once and reused for both the in-app notification
+                // and (Batch 4) the email's own CTA button.
+                $actionUrl = \App\Services\TradePackages\WorkspaceNavigationResolver::actionUrl(
+                    $analysis->contract->project_id, 'contract_ai_analysis', $analysis->id
+                );
+
                 // Asynchronous outcome — the requesting user wasn't watching when
                 // this finished, so they're included alongside the rest of the org.
                 NotificationService::sendToOrganization(
@@ -183,9 +189,7 @@ class AnalyseContractWithAiJob implements ShouldQueue
                     [
                         'organization_id' => $user->organization_id,
                         'source_type' => 'contract_ai_analysis', 'source_id' => $analysis->id, 'source_field' => 'completed',
-                        'action_url' => \App\Services\TradePackages\WorkspaceNavigationResolver::actionUrl(
-                            $analysis->contract->project_id, 'contract_ai_analysis', $analysis->id
-                        ),
+                        'action_url' => $actionUrl,
                     ],
                     $user,
                     includeActor: true,
@@ -195,7 +199,7 @@ class AnalyseContractWithAiJob implements ShouldQueue
                     'ai_analysis.completed',
                     'Contract Analysis Complete',
                     "AI analysis is ready for contract: {$analysis->contract->title}. Log in to review and confirm the results.",
-                    [],
+                    EmailNotificationService::actionMeta($actionUrl, 'View Analysis'),
                     $user->organization
                 );
             }
@@ -235,6 +239,12 @@ class AnalyseContractWithAiJob implements ShouldQueue
             $credits->releaseFor(AiWorkflow::CONTRACT_ANALYSIS, ContractAiAnalysis::class, $analysis->id, 'AI analysis failed: ' . $safeMessage);
 
             if ($user) {
+                // Computed once and reused for both the in-app notification
+                // and (Batch 4) the email's own CTA button.
+                $actionUrl = \App\Services\TradePackages\WorkspaceNavigationResolver::actionUrl(
+                    $analysis->contract->project_id, 'contract_ai_analysis', $analysis->id
+                );
+
                 NotificationService::sendToOrganization(
                     $user->organization,
                     NotificationService::AI_ANALYSIS_COMPLETED,
@@ -245,9 +255,7 @@ class AnalyseContractWithAiJob implements ShouldQueue
                         'organization_id' => $user->organization_id,
                         'priority' => \App\Models\SuresignNotification::PRIORITY_WARNING,
                         'source_type' => 'contract_ai_analysis', 'source_id' => $analysis->id, 'source_field' => 'failed',
-                        'action_url' => \App\Services\TradePackages\WorkspaceNavigationResolver::actionUrl(
-                            $analysis->contract->project_id, 'contract_ai_analysis', $analysis->id
-                        ),
+                        'action_url' => $actionUrl,
                     ],
                     $user,
                     includeActor: true,
@@ -257,7 +265,7 @@ class AnalyseContractWithAiJob implements ShouldQueue
                     'ai_analysis.failed',
                     'Contract Analysis Failed',
                     "AI analysis failed for contract: {$analysis->contract->title}. {$safeMessage}",
-                    [],
+                    EmailNotificationService::actionMeta($actionUrl, 'View Analysis'),
                     $user->organization
                 );
             }

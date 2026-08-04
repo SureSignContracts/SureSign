@@ -4,6 +4,7 @@ namespace App\Services\Billing;
 
 use App\Services\Billing\Exceptions\InvalidWebhookSignatureException;
 use App\Services\Billing\Exceptions\UnexpectedSubscriptionItemStructureException;
+use App\Support\Billing\OneOffCheckoutRequest;
 use Stripe\Exception\SignatureVerificationException;
 use Stripe\StripeClient;
 use Stripe\Webhook;
@@ -100,6 +101,53 @@ class StripeBillingProvider implements BillingProviderInterface
                 'managed_payments' => ['enabled' => false],
             ], fn ($value) => $value !== null),
             ['idempotency_key' => $params['idempotency_key']]
+        );
+
+        return [
+            'id' => $session->id,
+            'url' => $session->url,
+            'expires_at' => $session->expires_at,
+            'status' => $session->status,
+            'livemode' => (bool) $session->livemode,
+        ];
+    }
+
+    /**
+     * Consultancy Live Booking Upgrade, Stage 3 — see
+     * BillingProviderInterface::createOneOffCheckoutSession()'s docblock.
+     * `payment_method_types: ['card']` is deliberate and exhaustive for the
+     * approved launch scope — Stripe Checkout automatically offers Apple
+     * Pay/Google Pay under the 'card' type when the visitor's browser/
+     * device supports it (no separate payment method type needed for
+     * either wallet), and no other payment method type is ever added here,
+     * so no delayed-notification or bank-transfer method can silently
+     * become available. `automatic_tax` is always disabled — see
+     * App\Support\Consultancy\ConsultancyTaxTreatment.
+     */
+    public function createOneOffCheckoutSession(OneOffCheckoutRequest $request): array
+    {
+        $session = $this->client->checkout->sessions->create(
+            array_filter([
+                'mode' => 'payment',
+                'payment_method_types' => ['card'],
+                'line_items' => [[
+                    'price_data' => array_filter([
+                        'currency' => strtolower($request->currency),
+                        'unit_amount' => $request->amountMinorUnits,
+                        'product_data' => array_filter([
+                            'name' => $request->productName,
+                            'description' => $request->productDescription,
+                        ], fn ($value) => $value !== null),
+                    ], fn ($value) => $value !== null),
+                    'quantity' => 1,
+                ]],
+                'success_url' => $request->successUrl,
+                'cancel_url' => $request->cancelUrl,
+                'expires_at' => $request->expiresAt->getTimestamp(),
+                'metadata' => $request->metadata,
+                'automatic_tax' => ['enabled' => false],
+            ], fn ($value) => $value !== null),
+            ['idempotency_key' => $request->idempotencyKey]
         );
 
         return [
@@ -452,6 +500,16 @@ class StripeBillingProvider implements BillingProviderInterface
             'amount_total' => $checkoutSessionObject['amount_total'] ?? null,
             'currency' => isset($checkoutSessionObject['currency']) ? strtoupper($checkoutSessionObject['currency']) : null,
             'metadata' => is_array($checkoutSessionObject['metadata'] ?? null) ? $checkoutSessionObject['metadata'] : [],
+            // Additive — Consultancy Live Booking Upgrade, Stage 3.
+            // 'mode' distinguishes a subscription Checkout from a one-off
+            // ('payment') Checkout; 'payment_status'/'payment_intent_id'
+            // are what ConsultancyWebhookEventProcessor treats as
+            // authoritative proof of a completed payment ('status' ===
+            // 'complete' alone is not sufficient — see that class's
+            // docblock).
+            'mode' => $checkoutSessionObject['mode'] ?? null,
+            'payment_status' => $checkoutSessionObject['payment_status'] ?? null,
+            'payment_intent_id' => is_array($checkoutSessionObject['payment_intent'] ?? null) ? ($checkoutSessionObject['payment_intent']['id'] ?? null) : ($checkoutSessionObject['payment_intent'] ?? null),
         ];
     }
 

@@ -5,6 +5,13 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { Eye, EyeOff, Shield, ArrowRight } from 'lucide-react';
 import api from '@/lib/api';
+import { isHostnameSyntacticallyValid } from '@/lib/hostnameValidation';
+
+interface BrandGateway {
+  organisation_name: string;
+  logo_url: string | null;
+  accent_color: string;
+}
 
 const EASE = 'cubic-bezier(0.32, 0.72, 0, 1)';
 
@@ -37,11 +44,51 @@ export default function LoginPage() {
   // This avoids SSR/client hydration mismatch (window is undefined on server so we
   // cannot check localStorage until after mount).
   const [ready, setReady] = useState(false);
+  // Organisation URL Branding, Phase 4 — set only when a valid `brandHost`
+  // query param resolves to a real organisation via the same public
+  // branding-lookup endpoint marketing/'s login gateway uses. Purely
+  // decorative (heading/logo above the unmodified form below) — never
+  // changes login()/token storage/the post-login redirect logic, and
+  // never overrides the authenticated user's own organisation once
+  // logged in (this state only exists pre-auth, on this one page).
+  const [brand, setBrand] = useState<BrandGateway | null>(null);
 
   useEffect(() => {
     api.get('/guest-settings')
       .then(r => { if (r.data?.data?.support_email) setSupportEmail(r.data.data.support_email); })
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const brandHost = params.get('brandHost');
+
+    // Strip it from the visible URL immediately, regardless of whether it
+    // turns out to be valid/resolvable — it must never linger in the
+    // address bar or browser history, and is never logged/sent to
+    // analytics from this page.
+    if (brandHost !== null) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+
+    if (!brandHost || !isHostnameSyntacticallyValid(brandHost)) {
+      return; // absent or malformed — identical, silent fallback to the plain form
+    }
+
+    api.get(`/public/organisation-branding/${encodeURIComponent(brandHost)}`)
+      .then(r => {
+        const data = r.data?.data;
+        if (data?.organisation_name) {
+          setBrand({
+            organisation_name: data.organisation_name,
+            logo_url: data.logo_url ?? null,
+            accent_color: data.accent_color,
+          });
+        }
+      })
+      .catch(() => {
+        // Resolver unavailable/host unknown — silent fallback, same as absent.
+      });
   }, []);
 
   useEffect(() => {
@@ -230,14 +277,24 @@ export default function LoginPage() {
             <span className="text-lg font-semibold tracking-tight" style={{ color: '#0f0f0f' }}>SureSign</span>
           </div>
 
-          {/* Heading */}
+          {/* Heading — Organisation URL Branding, Phase 4: decorated with
+              the organisation's own logo/name when arriving via a valid
+              brandHost handoff from marketing/'s branded login gateway;
+              otherwise byte-for-byte the original heading. */}
           <div className="ss-animate-in">
+            {brand?.logo_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={brand.logo_url} alt={`${brand.organisation_name} logo`} className="mb-3 h-8 w-auto" />
+            )}
             <h2 className="text-[1.7rem] font-semibold" style={{ color: '#0f0f0f', letterSpacing: '-0.025em' }}>
-              Welcome back
+              {brand ? `Welcome to ${brand.organisation_name}` : 'Welcome back'}
             </h2>
             <p className="mt-1.5 text-sm" style={{ color: '#737373' }}>
-              Sign in to your workspace
+              {brand ? "Sign in to your organisation's SureSign workspace." : 'Sign in to your workspace'}
             </p>
+            {brand && (
+              <p className="mt-1 text-xs" style={{ color: '#a3a3a3' }}>Powered by SureSign</p>
+            )}
           </div>
 
           {/* Error */}

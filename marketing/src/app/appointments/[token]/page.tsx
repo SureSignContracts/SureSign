@@ -4,11 +4,11 @@ import { Footer } from '@/components/shared/Footer';
 import { Container } from '@/components/shared/Container';
 import { PublicAppointmentExperience } from '@/components/appointments/PublicAppointmentExperience';
 import { LoadingSkeleton } from '@/components/appointments/StateScreens';
+import { buildBrandedMetadata } from '@/lib/brandedMetadata';
 
-export const metadata = {
-  title: 'Manage Your Appointment',
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata() {
+  return buildBrandedMetadata('Manage Your Appointment');
+}
 
 export default async function AppointmentTokenPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;

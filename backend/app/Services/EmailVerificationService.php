@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\SendEmailVerificationJob;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -12,7 +13,14 @@ class EmailVerificationService
     private const EXPIRES_MINUTES = 60;
 
     /**
-     * Generate a fresh verification token for the user and email it via Brevo.
+     * Generate a fresh verification token for the user and email it via
+     * Brevo. Communications Platform, Batch 4 — the send itself was
+     * previously a synchronous EmailNotificationService::sendDirect() call
+     * right here; now dispatches App\Jobs\SendEmailVerificationJob
+     * ->afterCommit(), the same queued contract every other communication
+     * family already uses (see SendPasswordResetEmailJob's own docblock
+     * for why ->afterCommit() is correct even though this method's own
+     * DB write isn't wrapped in an explicit transaction).
      */
     public static function sendVerificationLink(User $user): void
     {
@@ -26,13 +34,7 @@ class EmailVerificationService
         $frontendUrl = rtrim(env('FRONTEND_URL', 'http://localhost:3000'), '/');
         $verifyUrl   = "{$frontendUrl}/verify-email?token={$token}&email=" . urlencode($user->email);
 
-        EmailNotificationService::sendDirect(
-            $user->email,
-            'Verify your SureSign email address',
-            "Please confirm your email address to finish setting up your SureSign account.\n\n"
-                . "Verify it here: {$verifyUrl}\n\n"
-                . "This link expires in " . self::EXPIRES_MINUTES . ' minutes.'
-        );
+        SendEmailVerificationJob::dispatch($user->email, $user->name, $verifyUrl)->afterCommit();
     }
 
     /**

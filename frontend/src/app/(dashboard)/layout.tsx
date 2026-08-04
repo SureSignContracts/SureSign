@@ -25,7 +25,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--bg-base)' }}>
       <Sidebar />
-      <main className="flex-1 overflow-y-auto">
+      {/* min-h-0: without it, a flex item defaults to never shrinking
+          below its own content's height even with flex-1 set — a
+          content-heavy page pushes this <main> (and the whole row)
+          taller than h-screen, so the document scrolls instead of just
+          this element's own overflow-y-auto region. See admin/layout.tsx's
+          identical fix for the full writeup. */}
+      <main className="flex-1 min-h-0 overflow-y-auto">
         {children}
       </main>
     </div>

@@ -13,6 +13,7 @@ use App\Services\AppointmentAvailabilityService;
 use App\Services\AppointmentReferenceService;
 use App\Services\AppointmentSchedulingService;
 use App\Services\TimezoneResolver;
+use App\Support\Appointments\AvailabilityContext;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -117,7 +118,7 @@ class PublicAppointmentController extends Controller
         // timezone when the visitor's isn't supplied, matching the
         // pre-existing behaviour exactly.
         $displayTimezone = $validated['timezone'] ?? TimezoneResolver::effectiveTimezone($staff, $staff->organization);
-        $slots = $this->schedulingService->generateAvailableSlots($staff, $type, $validated['date'], $displayTimezone);
+        $slots = $this->schedulingService->generateAvailableSlots($staff, $type, $validated['date'], $displayTimezone, AvailabilityContext::APPOINTMENTS);
 
         return response()->json([
             'scheduling_mode' => 'fixed',
@@ -166,7 +167,7 @@ class PublicAppointmentController extends Controller
         $latest = Carbon::now($staffTimezone)->addDays($type->max_advance_days)->toDateString();
 
         $dates = $this->schedulingService->bookableDatesInMonth(
-            $staff, $type, $validated['year'], $validated['month'], $earliest, $latest, $displayTimezone,
+            $staff, $type, $validated['year'], $validated['month'], $earliest, $latest, $displayTimezone, AvailabilityContext::APPOINTMENTS,
         );
 
         return response()->json(['scheduling_mode' => 'fixed', 'dates' => $dates]);
@@ -234,7 +235,7 @@ class PublicAppointmentController extends Controller
         };
 
         try {
-            $appointment = $this->schedulingService->withConflictCheck($staff, $type, $startsAt, $endsAt, null, false, $create);
+            $appointment = $this->schedulingService->withConflictCheck($staff, $type, $startsAt, $endsAt, null, false, $create, null, AvailabilityContext::APPOINTMENTS);
         } catch (\RuntimeException $e) {
             return response()->json(['message' => 'That time is no longer available — please choose another.'], 409);
         }

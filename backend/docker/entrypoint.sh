@@ -25,7 +25,20 @@ if [ "$1" = "queue" ]; then
     # CLI defaults when the job sets them, so billing jobs are never
     # limited to one attempt or a 480s timeout despite what these flags
     # might suggest at a glance.
-    exec php artisan queue:work --queue=billing-webhooks,default --tries=1 --timeout=480 --sleep=3
+    #
+    # `consultancy-payments` (App\Jobs\ProcessConsultancyWebhookEventJob,
+    # Consultancy Live Booking Upgrade Stage 3) is listed right after
+    # billing-webhooks for the identical reason — Consultancy payment
+    # confirmation must never sit behind a slow AI job either.
+    #
+    # `google-integrations` (App\Jobs\SyncAppointmentCalendarEventJob,
+    # Stage 4B.1) is listed after consultancy-payments and before default
+    # for the same reason again: a slow/retrying Google Calendar call must
+    # never delay billing-webhooks or consultancy-payments, and a Google
+    # outage must never consume worker capacity those two queues need —
+    # see internal-docs/super-admin/google-integration.md's Stage 4B.1
+    # section.
+    exec php artisan queue:work --queue=billing-webhooks,consultancy-payments,google-integrations,default --tries=1 --timeout=480 --sleep=3
 fi
 
 if [ "$1" = "scheduler" ]; then

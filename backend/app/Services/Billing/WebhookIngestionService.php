@@ -2,7 +2,6 @@
 
 namespace App\Services\Billing;
 
-use App\Jobs\ProcessBillingWebhookEventJob;
 use App\Models\ActivityLog;
 use App\Models\BillingWebhookEvent;
 use App\Services\Billing\Exceptions\InvalidWebhookSignatureException;
@@ -41,6 +40,7 @@ class WebhookIngestionService
     public function __construct(
         private readonly BillingProviderInterface $provider,
         private readonly BillingProviderManager $providerManager,
+        private readonly WebhookEventRoutingService $routingService,
     ) {
     }
 
@@ -132,13 +132,27 @@ class WebhookIngestionService
                 // why redispatching duplicates was rejected in favour of
                 // the scheduled recovery command being the single source
                 // of truth for anything that ends up stranded.
-                ProcessBillingWebhookEventJob::dispatch($event->id)->afterCommit();
+                $this->dispatchForProcessing($event);
 
                 return WebhookIngestionResult::created($event);
             });
         } catch (UniqueConstraintViolationException) {
             return $this->reconcileDuplicate($verified);
         }
+    }
+
+    /**
+     * Consultancy Live Booking Upgrade, Stage 3 — delegates the routing
+     * DECISION to WebhookEventRoutingService (shared with
+     * RecoverBillingWebhookEvents, so a stranded Consultancy event is
+     * routed identically on recovery as on first ingestion), but keeps the
+     * ->afterCommit() dispatch semantics here — this is still the only
+     * place a NEW event's processing job is ever dispatched.
+     */
+    private function dispatchForProcessing(BillingWebhookEvent $event): void
+    {
+        $jobClass = $this->routingService->jobClassFor($event);
+        $jobClass::dispatch($event->id)->afterCommit();
     }
 
     /**

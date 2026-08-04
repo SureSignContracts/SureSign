@@ -41,3 +41,42 @@ export function Badge({
     </span>
   );
 }
+
+/**
+ * Shared compact counter for navigation and notification entry points.
+ * The capsule sizes to its content while remaining non-shrinking, so
+ * navigation labels retain the available row width.
+ */
+export function SidebarCountBadge({
+  count,
+  unread = true,
+  className,
+}: {
+  count: number;
+  unread?: boolean;
+  className?: string;
+}) {
+  if (count <= 0) return null;
+
+  const displayCount = count > 99 ? '99+' : String(count);
+
+  return (
+    <span
+      className={cn('inline-flex h-[18px] min-w-[18px] flex-none items-center justify-center', className)}
+      aria-label={`${displayCount} unread`}
+    >
+      <span
+        key={displayCount}
+        className="ss-sidebar-count inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full border px-1.5 text-[11px] font-semibold leading-none tabular-nums"
+        style={{
+          backgroundColor: unread ? 'var(--bg-panel)' : 'var(--bg-elevated)',
+          borderColor: unread ? 'var(--border-light)' : 'var(--border)',
+          color: unread ? 'var(--text-primary)' : 'var(--text-secondary)',
+        }}
+        aria-hidden="true"
+      >
+        {displayCount}
+      </span>
+    </span>
+  );
+}

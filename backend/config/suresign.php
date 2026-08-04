@@ -54,4 +54,19 @@ return [
 
     'marketing_url' => env('MARKETING_URL', 'http://localhost:3001'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Frontend URL
+    |--------------------------------------------------------------------------
+    |
+    | The authenticated product app (config/cors.php's own default already
+    | trusts the same value) — used to build authenticated in-app links
+    | (e.g. "View Consultation") inside customer emails. Never used for
+    | public/no-account destinations, which always go through marketing_url
+    | above via the existing signed-link services.
+    |
+    */
+
+    'frontend_url' => env('FRONTEND_URL', 'http://localhost:3000'),
+
 ];

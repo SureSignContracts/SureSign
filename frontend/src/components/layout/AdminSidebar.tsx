@@ -15,9 +15,12 @@ import {
   LayoutDashboard, Building2, FolderKanban, FileText, LayoutTemplate,
   Brain, HardDrive, CreditCard, Users, LifeBuoy, ScrollText, ClipboardList,
   Settings, LogOut, Sun, Moon, Gem, BookOpen, Search, Megaphone, Activity,
-  PanelLeftClose, PanelLeftOpen, ChevronRight, CalendarClock, Wallet,
+  PanelLeftClose, PanelLeftOpen, ChevronRight, CalendarClock, Wallet, HeartHandshake,
+  Link2,
 } from 'lucide-react';
 import { APP_VERSION_LABEL } from '@/config/app-version';
+import { SidebarCountBadge } from '@/components/ui/Badge';
+import { useAutoHideScrollbar } from '@/hooks/useAutoHideScrollbar';
 
 const COLLAPSED_KEY = 'suresign_sidebar_collapsed';
 
@@ -35,6 +38,7 @@ const NAV_GROUPS = [
       { href: '/admin/projects',  label: 'Projects',       icon: FolderKanban, pageKey: 'projects'  },
       { href: '/admin/documents', label: 'Documents',      icon: FileText,     pageKey: 'documents' },
       { href: '/admin/appointments', label: 'Appointments', icon: CalendarClock, pageKey: 'appointments' },
+      { href: '/admin/consultancy/dashboard', label: 'Consultancy', icon: HeartHandshake, pageKey: 'consultancy', activePrefix: '/admin/consultancy' },
       { href: '/admin/users',     label: 'Users',          icon: Users,        pageKey: 'users',     superAdminOnly: true },
     ],
   },
@@ -63,6 +67,7 @@ const NAV_GROUPS = [
     items: [
       { href: '/admin/ai-configurations', label: 'AI Config',   icon: Brain,         pageKey: 'ai-configurations', superAdminOnly: true },
       { href: '/admin/ai-usage', label: 'AI Usage & Cost', icon: Brain, pageKey: 'ai-usage' },
+      { href: '/admin/google-integration', label: 'Google Integration', icon: Link2, pageKey: 'google-integration' },
       { href: '/admin/application-monitoring', label: 'Application Monitoring', icon: Activity, pageKey: 'application-monitoring', superAdminOnly: true },
       { href: '/admin/storage',           label: 'Storage',     icon: HardDrive,     pageKey: 'storage',           superAdminOnly: true },
       { href: '/admin/support',           label: 'Support',     icon: LifeBuoy,      pageKey: 'support',           superAdminOnly: true },
@@ -300,17 +305,6 @@ function ProfilePopover({
 
 // ─── Nav item ─────────────────────────────────────────────────────────────────
 
-function NavBadge({ count }: { count: number }) {
-  return (
-    <span
-      className="flex-shrink-0 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-[10px] font-bold tabular-nums"
-      style={{ backgroundColor: '#ef4444', color: '#fff' }}
-    >
-      {count > 99 ? '99+' : count}
-    </span>
-  );
-}
-
 function NavItem({
   href,
   label,
@@ -328,6 +322,7 @@ function NavItem({
 }) {
   const linkRef = useRef<HTMLAnchorElement>(null);
   const [hovered, setHovered] = useState(false);
+  const hasCounter = badge !== undefined;
 
   // Collapsed: icon-only button with portal tooltip
   if (collapsed) {
@@ -360,14 +355,7 @@ function NavItem({
               style={{ backgroundColor: 'var(--text-primary)' }}
             />
           )}
-          {!!badge && (
-            <span
-              className="absolute -top-1 -right-1 min-w-[14px] h-3.5 px-1 rounded-full flex items-center justify-center text-[9px] font-bold tabular-nums"
-              style={{ backgroundColor: '#ef4444', color: '#fff' }}
-            >
-              {badge > 99 ? '99+' : badge}
-            </span>
-          )}
+          <SidebarCountBadge count={badge ?? 0} className="absolute -right-2 -top-1" />
         </Link>
         {hovered && <SidebarTooltip label={badge ? `${label} (${badge})` : label} anchorRef={linkRef} />}
       </>
@@ -404,12 +392,14 @@ function NavItem({
           !active && 'group-hover:scale-110',
         )}
       />
-      <span className="truncate">{label}</span>
+      <span className={cn('min-w-0 flex-1', hasCounter ? 'whitespace-nowrap' : 'truncate')}>
+        {label}
+      </span>
 
-      {!!badge && <NavBadge count={badge} />}
+      <SidebarCountBadge count={badge ?? 0} className="ml-auto" />
 
       {/* Hover right-arrow hint */}
-      {!active && (
+      {!active && !hasCounter && (
         <ChevronRight
           size={11}
           className="ml-auto opacity-0 -translate-x-1 transition-all duration-150 group-hover:opacity-40 group-hover:translate-x-0"
@@ -429,6 +419,7 @@ export default function AdminSidebar({
   onMobileClose?: () => void;
 } = {}) {
   const pathname          = usePathname();
+  const handleSidebarScroll = useAutoHideScrollbar();
   const { user, logout }  = useAuthStore();
   const { theme, toggle } = useTheme();
   const isMobile = useIsMobile();
@@ -496,6 +487,17 @@ export default function AdminSidebar({
     refetchInterval: 60000,
   });
   const supportBadge = supportCounts?.waiting_for_support ?? 0;
+
+  // Consultancy queue badge — "needs attention" count (awaiting_consultant),
+  // mirroring the Support inbox badge above exactly. Not Super-Admin-only:
+  // the Consultancy nav item itself isn't, since any Admin/Super Admin has
+  // platform-wide read access to the queue.
+  const { data: consultancyCounts } = useQuery({
+    queryKey: ['admin-consultancy-counts'],
+    queryFn: () => api.get('/admin/consultancy/counts').then(r => r.data.counts as Record<string, number>),
+    refetchInterval: 60000,
+  });
+  const consultancyBadge = consultancyCounts?.awaiting_consultant ?? 0;
 
   function isVisible(item: { pageKey: string | null; superAdminOnly?: boolean }) {
     if (item.superAdminOnly && !isSuperAdmin) return false;
@@ -575,7 +577,7 @@ export default function AdminSidebar({
       </div>
 
       {/* ── Nav ──────────────────────────────────────────── */}
-      <nav className="flex-1 overflow-y-auto pt-7 pb-3 space-y-4" style={{ overflowX: 'visible' }}>
+      <nav onScroll={handleSidebarScroll} className="ss-sidebar-scroll flex-1 overflow-x-hidden overflow-y-auto pt-7 pb-3 space-y-4">
         {!isSettingsReady ? (
           <div className={cn('space-y-1', showCollapsed ? 'px-2' : 'px-3')}>
             {[...Array(8)].map((_, i) => (
@@ -623,9 +625,9 @@ export default function AdminSidebar({
                       href={item.href}
                       label={item.label}
                       icon={item.icon}
-                      active={isActive(item.href, (item as any).exact)}
+                      active={isActive((item as any).activePrefix ?? item.href, (item as any).exact)}
                       collapsed={showCollapsed}
-                      badge={item.pageKey === 'support' ? supportBadge : undefined}
+                      badge={item.pageKey === 'support' ? supportBadge : item.pageKey === 'consultancy' ? consultancyBadge : undefined}
                     />
                   ))}
                 </div>

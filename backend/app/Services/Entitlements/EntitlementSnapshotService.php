@@ -79,6 +79,30 @@ class EntitlementSnapshotService
         return $this->createOrReuse($subscription, 'enterprise_amendment', 'subscription.enterprise_amended', $effectiveFrom);
     }
 
+    /**
+     * Organisation URL Branding, customer self-service phase —
+     * `App\Console\Commands\RefreshEntitlementSnapshotsForCapabilityRollout`'s
+     * only write path. A DELIBERATELY distinct `source_transition`/
+     * `lifecycle_reason` from every real commercial-event snapshot above —
+     * this is NOT a plan change, activation, or amendment; it exists
+     * purely so an already-active subscription's snapshot can pick up a
+     * brand-new entitlement key without a real commercial event having
+     * occurred. `createOrReuse()`'s existing idempotency
+     * (subscription_id, source_transition, effective_from) applies
+     * identically here — running the same rollout twice with the same
+     * $effectiveFrom reuses the row rather than duplicating it.
+     *
+     * `buildEntitlementsPayload()` (unchanged) rebuilds the FULL current
+     * live plan-entitlement set, not just the new key — see that
+     * command's own docblock for why this is the explicitly approved,
+     * deterministic behaviour here (any other live plan-config drift
+     * since the subscription's original snapshot is picked up too).
+     */
+    public function snapshotForEntitlementRollout(Subscription $subscription, CarbonImmutable $effectiveFrom): SubscriptionEntitlementSnapshot
+    {
+        return $this->createOrReuse($subscription, 'entitlement_rollout', 'subscription.entitlement_rollout', $effectiveFrom);
+    }
+
     private function createOrReuse(Subscription $subscription, string $lifecycleReason, string $sourceTransition, CarbonImmutable $effectiveFrom): SubscriptionEntitlementSnapshot
     {
         return DB::transaction(function () use ($subscription, $lifecycleReason, $sourceTransition, $effectiveFrom) {
@@ -109,7 +133,14 @@ class EntitlementSnapshotService
     /**
      * @return array<string, array{value_type: string, value: mixed, is_unlimited: bool, unit: ?string, source: string}>
      */
-    private function buildEntitlementsPayload(Subscription $subscription, string $lifecycleReason): array
+    /**
+     * Exposed (not just used internally by createOrReuse()) so
+     * `RefreshEntitlementSnapshotsForCapabilityRollout --dry-run` can
+     * compute exactly what a real refresh WOULD write, without writing
+     * anything — the same deterministic payload-building logic, just not
+     * persisted.
+     */
+    public function buildEntitlementsPayload(Subscription $subscription, string $lifecycleReason): array
     {
         if ($lifecycleReason === 'trial_start') {
             // Unchanged — the dedicated trial profile stays hardcoded;

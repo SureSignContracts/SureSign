@@ -15,10 +15,11 @@ import {
   FileText, BarChart2, Brain, Users, Settings, LogOut,
   Sun, Moon, ShieldCheck, ChevronRight, HelpCircle,
   PanelLeftClose, PanelLeftOpen, LifeBuoy, Compass,
-  ScrollText, Lock, BookOpen, CreditCard, Gauge,
+  ScrollText, Lock, BookOpen, CreditCard, Gauge, HeartHandshake, RefreshCw,
 } from 'lucide-react';
 import { APP_VERSION_LABEL } from '@/config/app-version';
 import { buildSupportHref } from '@/lib/supportContext';
+import { useAutoHideScrollbar } from '@/hooks/useAutoHideScrollbar';
 
 const COLLAPSED_KEY = 'suresign_app_sidebar_collapsed';
 
@@ -43,6 +44,7 @@ const NAV_GROUPS = [
     items: [
       { href: '/app/reports', label: 'Reports',      icon: BarChart2   },
       { href: '/app/ai',      label: 'AI Assistant', icon: Brain       },
+      { href: '/app/consultations', label: 'Consultancy', icon: HeartHandshake },
       { href: '/app/team',    label: 'Team',         icon: Users       },
       { href: '/app/help',    label: 'Help',         icon: HelpCircle, tour: 'sidebar-help' },
     ],
@@ -200,9 +202,12 @@ function NavItem({
           className={cn(
             'group relative flex items-center justify-center w-9 h-9 mx-auto rounded-xl',
             'transition-all duration-150 ease-out',
-            active ? 'bg-[var(--bg-surface)] shadow-sm' : 'hover:bg-[var(--bg-surface)]',
+            active ? 'shadow-sm' : 'hover:bg-[var(--bg-surface)]',
           )}
-          style={{ color: active ? 'var(--text-primary)' : 'var(--text-secondary)' }}
+          style={active
+            ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
+            : { color: 'var(--text-secondary)' }
+          }
         >
           <Icon
             size={18}
@@ -211,12 +216,6 @@ function NavItem({
               !active && 'group-hover:scale-110 group-hover:text-[var(--text-primary)]',
             )}
           />
-          {active && (
-            <span
-              className="absolute right-1 top-1 w-1 h-1 rounded-full"
-              style={{ backgroundColor: 'var(--text-primary)' }}
-            />
-          )}
         </Link>
         {hovered && <SidebarTooltip label={label} anchorRef={linkRef} icon={Icon} />}
       </>
@@ -231,19 +230,14 @@ function NavItem({
         'group relative flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm',
         'transition-all duration-150 ease-out',
         active
-          ? 'font-semibold bg-[var(--bg-surface)] shadow-sm'
+          ? 'font-semibold shadow-sm'
           : 'hover:bg-[var(--bg-surface)] hover:translate-x-0.5',
       )}
-      style={{ color: active ? 'var(--text-primary)' : 'var(--text-secondary)' }}
+      style={active
+        ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
+        : { color: 'var(--text-secondary)' }
+      }
     >
-      <span
-        className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] rounded-full transition-all duration-200"
-        style={{
-          backgroundColor: 'var(--text-primary)',
-          height: active ? '18px' : '0px',
-          opacity: active ? 1 : 0,
-        }}
-      />
       <Icon
         size={17}
         className={cn('flex-shrink-0 transition-all duration-150', !active && 'group-hover:scale-110')}
@@ -504,6 +498,16 @@ function ProfilePopover({
       </Link>
 
       <Link
+        href="/app/settings/billing/subscription"
+        onClick={onClose}
+        className="group flex items-center gap-2.5 px-3.5 py-2.5 text-xs transition-colors hover:bg-[var(--bg-hover)]"
+        style={{ color: 'var(--text-secondary)' }}
+      >
+        <RefreshCw size={13} className="transition-transform duration-200 group-hover:scale-110" />
+        Subscription
+      </Link>
+
+      <Link
         href="/app/settings/usage"
         onClick={onClose}
         className="group flex items-center gap-2.5 px-3.5 py-2.5 text-xs transition-colors hover:bg-[var(--bg-hover)]"
@@ -657,6 +661,7 @@ export default function AppSidebar({
   onMobileClose?: () => void;
 } = {}) {
   const pathname          = usePathname();
+  const handleSidebarScroll = useAutoHideScrollbar();
   const { user, logout }  = useAuthStore();
   const { theme, toggle } = useTheme();
   const isMobile = useIsMobile();
@@ -801,7 +806,12 @@ export default function AppSidebar({
         {showCollapsed ? (
           <div className="w-full flex items-center justify-center">
             {logoUrl ? (
-              <img src={logoUrl} alt={orgName} style={{ width: '26px', height: '26px', objectFit: 'contain', borderRadius: '4px' }} />
+              // Fixed white backdrop, not theme-following — most org logos
+              // are dark artwork on transparency and would otherwise
+              // disappear against the dark-mode sidebar background.
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#ffffff' }}>
+                <img src={logoUrl} alt={orgName} style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
+              </div>
             ) : (
               <div
                 className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
@@ -814,7 +824,9 @@ export default function AppSidebar({
         ) : (
           <div className="w-full flex items-center gap-2.5 pl-[21px] pr-3">
             {logoUrl ? (
-              <img src={logoUrl} alt={orgName} style={{ width: '22px', height: '22px', objectFit: 'contain', borderRadius: '4px', flexShrink: 0 }} />
+              <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#ffffff' }}>
+                <img src={logoUrl} alt={orgName} style={{ width: '17px', height: '17px', objectFit: 'contain' }} />
+              </div>
             ) : (
               <div
                 className="w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold flex-shrink-0"
@@ -839,7 +851,7 @@ export default function AppSidebar({
       </div>
 
       {/* ── Nav ──────────────────────────────────────────── */}
-      <nav className="flex-1 overflow-y-auto py-3 space-y-4" style={{ overflowX: 'visible' }}>
+      <nav onScroll={handleSidebarScroll} className="ss-sidebar-scroll flex-1 overflow-x-hidden overflow-y-auto py-3 space-y-4">
         {NAV_GROUPS.map((group, gi) => (
           <div key={gi} className={cn(showCollapsed ? 'px-2' : 'px-3')}>
             {/* Section label */}

@@ -40,7 +40,7 @@ export default function CheckoutCancelledPage() {
           <Link href="/app/settings/billing">
             <Button variant="secondary" size="sm">Return to Billing</Button>
           </Link>
-          <Link href="/app/settings/billing">
+          <Link href="/app/settings/billing/subscription">
             <Button variant="primary" size="sm">Try again</Button>
           </Link>
         </div>

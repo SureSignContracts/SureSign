@@ -127,7 +127,7 @@ export default function AppointmentAvailabilityPage() {
   }
 
   return (
-    <div className="space-y-5 max-w-3xl">
+    <div className="p-6 max-w-3xl mx-auto space-y-5">
       <Link href="/admin/appointments" className="inline-flex items-center gap-1 text-sm" style={{ color: 'var(--text-muted)' }}>
         <ArrowLeft size={14} /> Back to Appointments
       </Link>

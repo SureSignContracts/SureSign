@@ -2,6 +2,8 @@
 
 namespace App\Services\Billing;
 
+use App\Support\Billing\OneOffCheckoutRequest;
+
 /**
  * The one boundary between SureSign's billing services and whatever payment
  * provider is actually configured. Implementations (StripeBillingProvider,
@@ -27,6 +29,23 @@ namespace App\Services\Billing;
  */
 interface BillingProviderInterface
 {
+    /**
+     * Consultancy Live Booking Upgrade, Stage 3 — one-off (`mode: payment`)
+     * Checkout using Stripe's inline `price_data`, for a commercial item
+     * with no pre-registered Product/Price (a Consultancy service's price
+     * is a plain admin-editable value, not a versioned Stripe Price —
+     * see App\Support\Billing\OneOffCheckoutRequest's own docblock for why
+     * this is additive to, not a replacement for, createCheckoutSession()
+     * above). Automatic tax is always disabled — no approved tax policy
+     * exists yet (see App\Support\Consultancy\ConsultancyTaxTreatment).
+     * Payment methods are deliberately restricted to card (Apple Pay/
+     * Google Pay ride on the card payment method type automatically) —
+     * no delayed-notification or bank-transfer methods.
+     *
+     * @return array{id: string, url: string, expires_at: ?int, status: string, livemode: bool}
+     */
+    public function createOneOffCheckoutSession(OneOffCheckoutRequest $request): array;
+
     /**
      * Whether this provider instance is currently configured for the
      * provider's live/production mode, with no network call — derived from

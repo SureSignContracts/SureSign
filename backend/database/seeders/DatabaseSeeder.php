@@ -124,12 +124,23 @@ class DatabaseSeeder extends Seeder
             'admin_email'        => $settings->admin_email         ?: env('SEED_ADMIN_EMAIL', 'tech@suresigncontracts.com'),
             'email_subject_line' => $settings->email_subject_line  ?: env('SEED_EMAIL_SUBJECT_LINE', 'You have a new document from SureSign'),
         ]);
+        // Operational default only — the Consultancy consultant is a
+        // platform setting, resolved dynamically at runtime via
+        // App\Services\Consultancy\ConsultancyConsultantResolver. This
+        // seeder configures Graham's account as that default for local/
+        // staging setup; no domain service ever hardcodes Graham directly.
+        // Idempotent — never overwrites a value already configured via the
+        // Admin Consultancy Settings page.
+        if (!$settings->consultancy_consultant_user_id) {
+            $settings->consultancy_consultant_user_id = $graham->id;
+        }
         $settings->save();
 
         $this->call([
             PromptCategorySeeder::class,
             PromptTemplateSeeder::class,
             AppointmentTypeSeeder::class,
+            ConsultancyServiceSeeder::class,
             PricingSeeder::class,
         ]);
     }

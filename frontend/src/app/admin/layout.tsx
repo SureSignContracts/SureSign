@@ -46,7 +46,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--bg-base)' }}>
       <AdminSidebar mobileOpen={navOpen} onMobileClose={() => setNavOpen(false)} />
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+      <div className="flex flex-col flex-1 min-w-0 min-h-0 overflow-hidden">
         <header className="h-12 flex items-center justify-end px-4 flex-shrink-0" style={{ backgroundColor: 'var(--bg-base)' }}>
           <button
             onClick={() => setNavOpen(true)}
@@ -58,7 +58,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </button>
           <NotificationBell />
         </header>
-        <main className="flex-1 overflow-y-auto">
+        {/* min-h-0 is load-bearing here, not decorative: a flex item's
+            default min-height is `auto`, meaning it refuses to shrink
+            below its own content's height even with flex-1 set. Without
+            it, a content-heavy page (more content than one viewport tall)
+            forces this <main> — and the column/row it's nested in — taller
+            than h-screen, so the browser scrolls the whole document
+            instead of just this element's own overflow-y-auto region.
+            Shorter pages never hit this, since their content already fits
+            without needing to shrink — which is why this only showed up
+            on pages with enough stacked content to exceed one viewport. */}
+        <main className="flex-1 min-h-0 overflow-y-auto">
           {children}
         </main>
       </div>

@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Services\EmailNotificationService;
+use App\Jobs\SendPasswordResetEmailJob;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -60,19 +60,23 @@ class User extends Authenticatable
      * Override the default mail-driven notification (MAIL_MAILER=log would
      * silently swallow it) so password resets go out through the same
      * Brevo pipeline as every other transactional email in the app.
+     *
+     * Communications Platform, Batch 4 — previously called
+     * EmailNotificationService::sendDirect() synchronously right here,
+     * meaning the customer's own request (sitting on a "check your email"
+     * screen) waited on a live Brevo HTTP round-trip. Now dispatches
+     * App\Jobs\SendPasswordResetEmailJob ->afterCommit(), the same queued
+     * contract Consultancy/Appointments already use — Laravel's password
+     * broker doesn't wrap this call in an explicit transaction, so
+     * ->afterCommit() fires immediately here (no active transaction to
+     * defer to), and stays correct if that ever changes.
      */
     public function sendPasswordResetNotification($token)
     {
         $frontendUrl = rtrim(env('FRONTEND_URL', 'http://localhost:3000'), '/');
         $resetUrl    = "{$frontendUrl}/reset-password?token={$token}&email=" . urlencode($this->email);
 
-        EmailNotificationService::sendDirect(
-            $this->email,
-            'Reset your SureSign password',
-            "We received a request to reset your SureSign password.\n\n"
-                . "Reset it here: {$resetUrl}\n\n"
-                . "This link expires in 60 minutes. If you didn't request this, you can safely ignore this email."
-        );
+        SendPasswordResetEmailJob::dispatch($this->email, $this->name, $resetUrl)->afterCommit();
     }
 
     public function organization() { return $this->belongsTo(Organization::class); }

@@ -168,7 +168,8 @@ class SupportTicketMessageController extends Controller
                 SupportTicketController::emailTicketOwner(
                     $supportTicket,
                     'New reply to your support request',
-                    "SureSign Support replied to your request \"{$supportTicket->subject}\" (Ref: {$supportTicket->reference}).\n\nSign in to SureSign to view the reply and continue the conversation."
+                    "SureSign Support replied to your request \"{$supportTicket->subject}\" (Ref: {$supportTicket->reference}).\n\nSign in to SureSign to view the reply and continue the conversation.",
+                    "/app/help/support/{$supportTicket->id}",
                 );
             }
         } else {

@@ -239,6 +239,10 @@ class LossAndExpenseClaimController extends Controller
             ? "L&E Claim #{$claim->claim_number} Submitted"
             : "L&E Claim #{$claim->claim_number} " . ($claim->status === 'agreed' ? 'Agreed' : 'Rejected');
 
+        // Computed once and reused for both the in-app notification and
+        // (Batch 4) the email's own CTA button.
+        $actionUrl = WorkspaceNavigationResolver::actionUrl($project->id, 'loss_and_expense_claim', $claim->id, $claim->trade_package_id);
+
         NotificationService::sendToOrganization(
             $project->organization,
             'loss_and_expense_' . $kind,
@@ -249,13 +253,13 @@ class LossAndExpenseClaimController extends Controller
                 'project_id' => $project->id, 'organization_id' => $project->organization_id,
                 'category' => SuresignNotification::CATEGORY_COMMERCIAL, 'priority' => $priority,
                 'source_type' => 'loss_and_expense_claim', 'source_id' => $claim->id, 'source_field' => $sourceField,
-                'action_url' => WorkspaceNavigationResolver::actionUrl($project->id, 'loss_and_expense_claim', $claim->id, $claim->trade_package_id),
+                'action_url' => $actionUrl,
             ],
             $request->user(),
         );
 
         if ($emailEvent) {
-            EmailNotificationService::send($emailEvent, "L&E Claim #{$claim->claim_number}", $message, [], $project->organization);
+            EmailNotificationService::send($emailEvent, "L&E Claim #{$claim->claim_number}", $message, EmailNotificationService::actionMeta($actionUrl, 'View Claim'), $project->organization);
         }
     }
 

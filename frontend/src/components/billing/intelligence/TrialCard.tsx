@@ -36,7 +36,7 @@ export default function TrialCard({ trial, timeZone }: { trial: TrialCardData; t
           Started {formatDateTime(trial.starts_at, { timeZone })} · Ends {formatDateTime(trial.ends_at, { timeZone })}
         </p>
 
-        <Link href="/app/settings/billing#plans">
+        <Link href="/app/settings/billing/subscription#plans">
           <Button size="sm" variant="primary">Choose a plan</Button>
         </Link>
       </CardBody>

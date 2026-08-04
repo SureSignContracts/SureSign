@@ -27,13 +27,21 @@ class DemoRequestController extends Controller
         $adminEmail = SuresignSetting::instance()->admin_email;
 
         if ($adminEmail) {
+            // Communications Platform, Batch 4 — 'phone'/'message' are both
+            // `nullable` in the validation rules above, so a request that
+            // omits them entirely (a real, valid case on a public form)
+            // previously threw "Undefined array key" here instead of
+            // silently skipping that line, since 'project_count' just
+            // below was the only field already guarded with isset(). Not a
+            // business-behaviour change — the field was always meant to be
+            // optional; this just makes that actually work.
             $body = collect([
                 "Name: {$validated['name']}",
                 "Company: {$validated['company']}",
                 "Email: {$validated['email']}",
-                $validated['phone'] ? "Phone: {$validated['phone']}" : null,
+                ($validated['phone'] ?? null) ? "Phone: {$validated['phone']}" : null,
                 isset($validated['project_count']) ? "Active projects: {$validated['project_count']}" : null,
-                $validated['message'] ? "Message:\n{$validated['message']}" : null,
+                ($validated['message'] ?? null) ? "Message:\n{$validated['message']}" : null,
             ])->filter()->implode("\n");
 
             EmailNotificationService::sendDirect($adminEmail, 'New demo request — '.$validated['company'], $body);
