@@ -17,6 +17,13 @@ ARG NEXT_PUBLIC_DEMO_MODE
 ENV NEXT_PUBLIC_DEMO_MODE=$NEXT_PUBLIC_DEMO_MODE
 ARG NEXT_PUBLIC_DEMO_VERSION
 ENV NEXT_PUBLIC_DEMO_VERSION=$NEXT_PUBLIC_DEMO_VERSION
+# Organisation URL Branding — the registrable root domain branded
+# subdomains resolve under (e.g. "suresigncontracts.app"). Build-time only:
+# read directly via process.env in CustomUrlSection.tsx/
+# OrganisationUrlBrandingSection.tsx, so it must be inlined here, not just
+# set as a runtime environment variable.
+ARG NEXT_PUBLIC_ORGANISATION_BRANDED_ROOT_DOMAIN
+ENV NEXT_PUBLIC_ORGANISATION_BRANDED_ROOT_DOMAIN=$NEXT_PUBLIC_ORGANISATION_BRANDED_ROOT_DOMAIN
 RUN npm run build
 
 FROM node:20-alpine AS runner
