@@ -127,6 +127,13 @@ services:
       - AI_MAX_TOKENS=4096
       - VITE_APP_NAME=SureSign
       - COMPANIES_HOUSE_API_KEY=${COMPANIES_HOUSE_API_KEY:-}
+      # Google Integration (Stage 4A) — was set in Dokploy's Environment tab
+      # but never referenced anywhere in this file, so it never actually
+      # reached the container regardless of redeploys. Needed on backend AND
+      # queue (SyncAppointmentCalendarEventJob runs the same OAuth client).
+      - GOOGLE_OAUTH_CLIENT_ID=${GOOGLE_OAUTH_CLIENT_ID:-}
+      - GOOGLE_OAUTH_CLIENT_SECRET=${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      - GOOGLE_OAUTH_REDIRECT_URI=${GOOGLE_OAUTH_REDIRECT_URI:-}
     depends_on:
       mysql:
         condition: service_healthy
