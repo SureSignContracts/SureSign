@@ -7,6 +7,7 @@ use App\Models\Organization;
 use App\Models\SuresignSetting;
 use App\Services\EmailNotificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -133,6 +134,57 @@ class OrganisationUrlBrandingPhase4EmailLabelTest extends TestCase
         );
 
         Http::assertSent(fn ($request) => str_contains($request->data()['htmlContent'], 'Open Bare Org Ltd Workspace'));
+    }
+
+    /**
+     * Organisation URL Branding, Phase 5 (Stage 4, Part E) — a genuine
+     * bug found in the audit: the relabelling above already existed, but
+     * the underlying action_url still pointed at the fixed app host even
+     * for a fully branded organisation. Confirms the actual href now
+     * reflects the organisation's own branded subdomain.
+     */
+    public function test_workspace_destination_url_uses_organisations_branded_slug(): void
+    {
+        Config::set('suresign.frontend_url', 'https://app.suresigncontracts.app');
+        Config::set('organisation_branding.root_domain', 'suresigncontracts.app');
+        $org = $this->orgWithBranding('Acme Construction');
+        $org->update(['url_slug' => 'acme-co']);
+
+        EmailNotificationService::send(
+            'variation.approved',
+            'Variation Approved',
+            'Body.',
+            EmailNotificationService::actionMeta('/app/projects/1/commercial'),
+            $org,
+        );
+
+        Http::assertSent(fn ($request) => str_contains(
+            $request->data()['htmlContent'],
+            'https://acme-co.suresigncontracts.app/app/projects/1/commercial'
+        ));
+    }
+
+    /**
+     * An unbranded organisation (no active custom domain, no url_slug, or
+     * root_domain unconfigured) must fall back unchanged to the fixed app
+     * host — never a broken/partial URL.
+     */
+    public function test_unbranded_organisation_url_falls_back_to_fixed_app_host(): void
+    {
+        $org = $this->orgWithBranding('Acme Construction');
+
+        EmailNotificationService::send(
+            'variation.approved',
+            'Variation Approved',
+            'Body.',
+            EmailNotificationService::actionMeta('/app/projects/1/commercial'),
+            $org,
+        );
+
+        Http::assertSent(fn ($request) => str_contains(
+            $request->data()['htmlContent'],
+            rtrim(config('suresign.frontend_url'), '/') . '/app/projects/1/commercial'
+        ));
     }
 
     public function test_feature_white_label_disabled_still_gets_org_name_label_not_suresign(): void

@@ -31,6 +31,17 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // This recovery migration exists solely for a MySQL-specific bug
+        // (a >64-char auto-generated index name, MySQL error 1059) — it
+        // cannot occur on any other driver, so the original migration's
+        // index is already correctly present there. The addIndexIfMissing()
+        // helper below uses a raw information_schema.STATISTICS query with
+        // no portable equivalent on SQLite, which otherwise breaks the
+        // entire test suite (phpunit.xml hard-forces sqlite :memory:).
+        if (DB::connection()->getDriverName() !== 'mysql') {
+            return;
+        }
+
         if (! Schema::hasTable('consultancy_slot_reservations')) {
             // Table itself missing entirely (e.g. a fresh environment that
             // never hit the original bug at all, or already fully cleaned

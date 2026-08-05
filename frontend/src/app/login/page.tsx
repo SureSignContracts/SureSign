@@ -6,6 +6,8 @@ import { useAuthStore } from '@/store/authStore';
 import { Eye, EyeOff, Shield, ArrowRight } from 'lucide-react';
 import api from '@/lib/api';
 import { isHostnameSyntacticallyValid } from '@/lib/hostnameValidation';
+import { resolveHostContext } from '@/lib/hostContext';
+import { isSafeAppDeepLink } from '@/lib/safeRedirect';
 
 interface BrandGateway {
   organisation_name: string;
@@ -52,6 +54,16 @@ export default function LoginPage() {
   // never overrides the authenticated user's own organisation once
   // logged in (this state only exists pre-auth, on this one page).
   const [brand, setBrand] = useState<BrandGateway | null>(null);
+  // Organisation URL Branding, Phase 5 (Stage 2C) — 'checking' until the
+  // direct-hostname resolution (see below) settles. 'not_found' renders a
+  // neutral workspace-not-found message INSTEAD of the login form — never
+  // the plain unbranded form (that would silently let a customer log in
+  // on what looks like their own dead/removed workspace URL without
+  // telling them). 'unavailable' (resolver outage) intentionally falls
+  // back to 'ok' — see the effect below — matching the outage-safety
+  // contract in lib/hostContext.ts: never treat an outage as proof of
+  // anything.
+  const [workspaceStatus, setWorkspaceStatus] = useState<'checking' | 'ok' | 'not_found'>('checking');
 
   useEffect(() => {
     api.get('/guest-settings')
@@ -71,24 +83,52 @@ export default function LoginPage() {
       window.history.replaceState(null, '', window.location.pathname);
     }
 
-    if (!brandHost || !isHostnameSyntacticallyValid(brandHost)) {
-      return; // absent or malformed — identical, silent fallback to the plain form
+    if (brandHost && isHostnameSyntacticallyValid(brandHost)) {
+      // Explicit handoff from marketing/'s branded login gateway — decorate
+      // the form, same as before. This path never runs the direct-hostname
+      // resolution below (this page IS being served on the fixed app host
+      // in this case, not the organisation's own hostname).
+      api.get(`/public/organisation-branding/${encodeURIComponent(brandHost)}`)
+        .then(r => {
+          const data = r.data?.data;
+          if (data?.organisation_name) {
+            setBrand({
+              organisation_name: data.organisation_name,
+              logo_url: data.logo_url ?? null,
+              accent_color: data.accent_color,
+            });
+          }
+        })
+        .catch(() => {
+          // Resolver unavailable/host unknown — silent fallback, same as absent.
+        });
+      setWorkspaceStatus('ok');
+      return;
     }
 
-    api.get(`/public/organisation-branding/${encodeURIComponent(brandHost)}`)
-      .then(r => {
-        const data = r.data?.data;
-        if (data?.organisation_name) {
-          setBrand({
-            organisation_name: data.organisation_name,
-            logo_url: data.logo_url ?? null,
-            accent_color: data.accent_color,
-          });
-        }
-      })
-      .catch(() => {
-        // Resolver unavailable/host unknown — silent fallback, same as absent.
-      });
+    // No brandHost handoff — Stage 2C: resolve directly from the ACTUAL
+    // hostname this page is being served on. Today (before Stage 5's
+    // Traefik cutover) this always resolves 'platform', since organisation
+    // hostnames still route to marketing — this code is deployed now,
+    // inert until that cutover, exactly as Stage 2's own compatibility
+    // requirement specifies.
+    resolveHostContext().then((ctx) => {
+      if (ctx.type === 'organisation') {
+        setBrand(ctx.branding ?? null);
+        setWorkspaceStatus('ok');
+      } else if (ctx.type === 'not_found') {
+        setWorkspaceStatus('not_found');
+      } else if (ctx.type === 'historical_redirect' && ctx.redirect_base_url) {
+        // Preserve path/query — mirrors OrganisationUrlGenerator's own
+        // contract; never construct this destination from user input.
+        window.location.replace(ctx.redirect_base_url + window.location.pathname + window.location.search);
+      } else {
+        // 'platform' or 'unavailable' — plain form, no neutral-not-found
+        // page. An outage must never be misreported as "this workspace
+        // doesn't exist."
+        setWorkspaceStatus('ok');
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -113,7 +153,27 @@ export default function LoginPage() {
     setReady(true);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!ready) return null;
+  if (!ready || workspaceStatus === 'checking') return null;
+
+  if (workspaceStatus === 'not_found') {
+    return (
+      <div className="min-h-dvh flex items-center justify-center px-4" style={{ backgroundColor: '#ffffff' }}>
+        <div className="w-full max-w-sm text-center space-y-3">
+          <h1 className="text-xl font-semibold" style={{ color: '#0f0f0f' }}>Workspace not found</h1>
+          <p className="text-sm" style={{ color: '#737373' }}>
+            This SureSign workspace address doesn&apos;t exist or is no longer available.
+          </p>
+          <a
+            href={process.env.NEXT_PUBLIC_APP_HOST || '/'}
+            className="inline-block text-sm font-medium hover:underline"
+            style={{ color: '#0f0f0f' }}
+          >
+            Go to SureSign
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -126,7 +186,13 @@ export default function LoginPage() {
       } else if (user?.organization && !user.organization.is_onboarded) {
         router.push('/app/onboarding');
       } else {
-        router.push('/app');
+        // Stage 3, Part F — a deep-link destination on THIS SAME
+        // hostname, e.g. test-company.suresigncontracts.app/login?next=/app/projects
+        // continuing to that same host's /app/projects. Only ever a
+        // same-app relative path is accepted — see isSafeAppDeepLink's
+        // own docblock for exactly what's rejected.
+        const next = new URLSearchParams(window.location.search).get('next');
+        router.push(next && isSafeAppDeepLink(next) ? next : '/app');
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Login failed. Please check your credentials.');

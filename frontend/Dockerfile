@@ -24,6 +24,14 @@ ENV NEXT_PUBLIC_DEMO_VERSION=$NEXT_PUBLIC_DEMO_VERSION
 # set as a runtime environment variable.
 ARG NEXT_PUBLIC_ORGANISATION_BRANDED_ROOT_DOMAIN
 ENV NEXT_PUBLIC_ORGANISATION_BRANDED_ROOT_DOMAIN=$NEXT_PUBLIC_ORGANISATION_BRANDED_ROOT_DOMAIN
+# Organisation URL Branding, Phase 5 (Stage 2B) — the fixed platform host
+# (full origin, e.g. "https://app.suresigncontracts.app"), used by
+# lib/hostContext.ts to distinguish "this IS the platform app" from an
+# organisation/custom-domain host. Reuses the same FRONTEND_URL value
+# already defined for the backend in docker-compose.prod.yml — no new
+# Dokploy env var needed.
+ARG NEXT_PUBLIC_APP_HOST
+ENV NEXT_PUBLIC_APP_HOST=$NEXT_PUBLIC_APP_HOST
 RUN npm run build
 
 FROM node:20-alpine AS runner

@@ -23,6 +23,24 @@ return Application::configure(basePath: dirname(__DIR__))
             'billing.enabled'   => \App\Http\Middleware\EnsureBillingIsEnabled::class,
         ]);
 
+        // Organisation URL Branding, Phase 5 (Stage 2A) — must be GLOBAL
+        // (not merely 'api' route-group middleware — a preflight OPTIONS
+        // request for a route that only registers GET, e.g.
+        // /api/guest-settings, never matches during routing at all, so
+        // route-group middleware never runs for it), AND must be PREPENDED
+        // rather than appended: the framework's own HandleCors is a global
+        // middleware that short-circuits EVERY OPTIONS request immediately
+        // (returning its own response without calling the next middleware),
+        // regardless of origin — confirmed empirically, an appended
+        // (innermost) copy of this middleware never even ran for OPTIONS.
+        // Prepending makes this the outermost layer, so it gets a chance to
+        // handle a preflight for an origin HandleCors doesn't recognize
+        // BEFORE HandleCors's own unconditional short-circuit. For actual
+        // (non-OPTIONS) requests it still just inspects/augments the
+        // response after calling $next() — see the middleware's own
+        // docblock; never overrides an already-permitted origin.
+        $middleware->prepend(\App\Http\Middleware\AllowActiveCustomDomainCors::class);
+
         // The app is only ever reached through the nginx container (which sets
         // X-Forwarded-For/X-Real-IP correctly — see docker/nginx/default.conf).
         // Trusting the private Docker bridge ranges (rather than only a single

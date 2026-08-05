@@ -253,6 +253,7 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
     Route::prefix('auth')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout'])->name('auth.logout');
         Route::get('/me', [AuthController::class, 'me'])->name('auth.me');
+        Route::get('/workspace-context', [AuthController::class, 'workspaceContext'])->name('auth.workspace-context');
         Route::put('/password', [AuthController::class, 'updatePassword'])->middleware('throttle:password-change');
         Route::put('/timezone', [AuthController::class, 'updateTimezone']);
         Route::put('/force-password-change', [AuthController::class, 'forcePasswordChange'])->middleware('throttle:force-password-change')->name('auth.force-password-change');

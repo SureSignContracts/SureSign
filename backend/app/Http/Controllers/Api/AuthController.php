@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\User;
 use App\Services\CurrencyService;
 use App\Services\EmailVerificationService;
+use App\Services\Organizations\AuthenticatedWorkspaceContextService;
 use App\Services\TimezoneResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -67,6 +68,26 @@ class AuthController extends Controller
     {
         $user = $request->user()->load('organization.branding');
         return response()->json($this->userResource($user));
+    }
+
+    /**
+     * Organisation URL Branding, Phase 5 (Stage 3) — the entirely
+     * server-side wrong-workspace decision. `X-Suresign-Org-Host`
+     * (same header convention as `EnforcesPublicOrganizationHost`) is the
+     * hostname the frontend is actually being viewed on — never trusted
+     * from this request's own Host header, which is always the fixed API
+     * host regardless of which frontend origin called it. Absent header
+     * is treated identically to the fixed app host (a safe default, not
+     * an error) — see AuthenticatedWorkspaceContextService's own
+     * docblock for the full state machine.
+     */
+    public function workspaceContext(Request $request, AuthenticatedWorkspaceContextService $service)
+    {
+        $requestedHost = $request->header('X-Suresign-Org-Host');
+
+        return response()->json(
+            $service->resolve($request->user(), $requestedHost)
+        );
     }
 
     public function updatePassword(Request $request)

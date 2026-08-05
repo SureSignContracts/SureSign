@@ -13,7 +13,18 @@ import AiAnalysisWidget from '@/components/ai/AiAnalysisWidget';
 import GlobalTourLauncher from '@/components/tours/GlobalTourLauncher';
 import PendingTourLauncher from '@/components/tours/PendingTourLauncher';
 import ForcePasswordChangeGate from '@/components/auth/ForcePasswordChangeGate';
+import WorkspaceAccessGate from '@/components/auth/WorkspaceAccessGate';
+import BrandedWorkspaceBanner from '@/components/auth/BrandedWorkspaceBanner';
 import api from '@/lib/api';
+import { fetchWorkspaceContext, type WorkspaceContextResult } from '@/lib/workspaceContext';
+import { isCurrentHostPlatform, currentHostname } from '@/lib/hostContext';
+
+const BLOCKING_WORKSPACE_STATES = new Set([
+  'wrong_workspace',
+  'platform_staff_on_customer_host',
+  'inactive_workspace',
+  'host_not_found',
+]);
 
 function isLightColor(hex: string): boolean {
   const h = hex.replace('#', '');
@@ -30,11 +41,42 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, token, _hasHydrated } = useAuthStore();
   const [navOpen, setNavOpen] = useState(false);
 
-  // Fetch branding to apply client-specific accent colour
+  // Organisation URL Branding, Phase 5 (Stage 3) — the central authenticated
+  // host guard. Resolved BEFORE any organisation-scoped query is allowed to
+  // fire (see the branding query's own `enabled` below) — a brief flash of
+  // one organisation's data on another organisation's hostname is treated
+  // as a tenant-isolation defect, not a cosmetic issue. Never compares
+  // organisation IDs itself — only renders whichever workspace_state the
+  // backend's AuthenticatedWorkspaceContextService returned.
+  const [workspaceCtx, setWorkspaceCtx] = useState<WorkspaceContextResult | null>(null);
+  // Stage 3 policy revisit — a resolver outage must NOT fail open into a
+  // customer's workspace under an UNVERIFIED branded/custom hostname (we
+  // can't prove it's even theirs). On the fixed platform host there's
+  // nothing branded to misattribute, so normal operation is safe there.
+  // This client-side host comparison decides ONLY this presentation-layer
+  // outage behaviour — it is never the actual authorization boundary
+  // (every controller still independently scopes by organization_id).
+  const onPlatformHost = isCurrentHostPlatform(currentHostname() ?? '');
+  const workspaceBlocking = !!workspaceCtx && (
+    BLOCKING_WORKSPACE_STATES.has(workspaceCtx.workspace_state)
+    || (workspaceCtx.workspace_state === 'resolver_unavailable' && !onPlatformHost)
+  );
+
+  useEffect(() => {
+    if (_hasHydrated && token && user && !workspaceCtx) {
+      fetchWorkspaceContext().then(setWorkspaceCtx);
+    }
+  }, [_hasHydrated, token, user, workspaceCtx]);
+
+  // Fetch branding to apply client-specific accent colour — gated on
+  // workspace context having resolved to a non-blocking state, not merely
+  // on a token existing. This is the actual enforcement point: no
+  // organisation-scoped query in this layout (or any child page rendered
+  // beneath it) can fire until the host guard has cleared.
   const { data: branding, isFetched: brandingFetched } = useQuery({
     queryKey: ['branding'],
     queryFn: () => api.get('/organization/branding').then(r => r.data?.data ?? r.data),
-    enabled: !!token,
+    enabled: !!token && !!workspaceCtx && !workspaceBlocking,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -55,9 +97,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [_hasHydrated, token, router]);
 
   // System users (Admin/Super Admin) don't belong in /app — send them to /admin
-  // Exception: project detail pages are shared, so allow access there
+  // Exception: project detail pages are shared, so allow access there.
+  // Skipped entirely while workspace context is blocking (e.g.
+  // platform_staff_on_customer_host) — the WorkspaceAccessGate below is
+  // authoritative in that state, not a race with this redirect.
   useEffect(() => {
-    if (_hasHydrated && token && user) {
+    if (_hasHydrated && token && user && !workspaceBlocking) {
       const isSystemUser = user.roles?.includes('Super Admin') || user.roles?.includes('Admin');
       const isProjectPath = !!pathname?.startsWith('/app/projects/');
       const isSettingsSubPath = !!pathname?.startsWith('/app/settings/');
@@ -66,11 +111,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         return;
       }
     }
-  }, [_hasHydrated, token, user, pathname, router]);
+  }, [_hasHydrated, token, user, pathname, router, workspaceBlocking]);
 
   // Onboarding guard — redirect to onboarding if org not yet set up (clients only)
   useEffect(() => {
-    if (_hasHydrated && token && user) {
+    if (_hasHydrated && token && user && !workspaceBlocking) {
       const isSystemUser = user.roles?.includes('Super Admin') || user.roles?.includes('Admin');
       const isOnboarded = user.organization?.is_onboarded;
       const onOnboardingPage = pathname === '/app/onboarding';
@@ -78,7 +123,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         router.push('/app/onboarding');
       }
     }
-  }, [_hasHydrated, token, user, pathname, router]);
+  }, [_hasHydrated, token, user, pathname, router, workspaceBlocking]);
 
   // Wait for the branding fetch to settle before first paint of the real UI —
   // otherwise --gold briefly renders at its CSS default (SureSign's own
@@ -86,13 +131,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // run, flashing on every hard reload for orgs with custom branding.
   // brandingFetched flips true on either success or failure (React Query's
   // isFetched), so a slow/failing branding request delays the splash but
-  // never blocks it indefinitely.
-  const showSplash = useAuthSplash(_hasHydrated && !!token && !!user && brandingFetched);
-  // `user` is guaranteed non-null here since showSplash is false only once
-  // isReady (which includes !!user) has been true — TypeScript narrowing,
-  // not new runtime behaviour.
-  if (showSplash || !user) {
+  // never blocks it indefinitely. When workspaceBlocking, the branding
+  // query never runs at all (disabled above) — brandingFetched would never
+  // become true, so it's excluded from the readiness condition in that
+  // case; the WorkspaceAccessGate is shown instead, not the normal shell.
+  const showSplash = useAuthSplash(
+    _hasHydrated && !!token && !!user && !!workspaceCtx && (workspaceBlocking || brandingFetched)
+  );
+  // `user`/`workspaceCtx` are guaranteed non-null here since showSplash is
+  // false only once isReady (which includes both) has been true —
+  // TypeScript narrowing, not new runtime behaviour.
+  if (showSplash || !user || !workspaceCtx) {
     return <SureSignLoader />;
+  }
+
+  if (workspaceBlocking) {
+    return <WorkspaceAccessGate context={workspaceCtx} />;
   }
 
   // A Super Admin forced a password reset (or set a temp password requiring
@@ -115,10 +169,30 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const orgName = branding?.company_name || user?.organization?.name || 'Company Portal';
   const logoUrl = branding?.logo_url ?? null;
 
+  // Stage 3 policy revisit, Part E — restrained, dismissible recommendation
+  // only on the fixed platform host, only for an ordinary customer user
+  // (platform staff's own authoritative URL always equals the platform
+  // host itself, so this naturally never shows for them), and only when
+  // the authoritative destination is actually a DIFFERENT host.
+  const isSystemUser = !!user?.roles?.includes('Super Admin') || !!user?.roles?.includes('Admin');
+  const brandedWorkspaceUrl = workspaceCtx.workspace_state === 'platform_host'
+    && !isSystemUser
+    && workspaceCtx.authoritative_workspace_url
+    && (() => {
+      try {
+        return new URL(workspaceCtx.authoritative_workspace_url).host !== window.location.host;
+      } catch {
+        return false;
+      }
+    })()
+    ? workspaceCtx.authoritative_workspace_url
+    : null;
+
   return (
     <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--bg-base)' }}>
       <AppSidebar mobileOpen={navOpen} onMobileClose={() => setNavOpen(false)} />
       <div className="flex flex-col flex-1 min-w-0 min-h-0 overflow-hidden">
+        {brandedWorkspaceUrl && <BrandedWorkspaceBanner authoritativeUrl={brandedWorkspaceUrl} />}
         <MobileTopBar
           onMenu={() => setNavOpen(true)}
           title={orgName}

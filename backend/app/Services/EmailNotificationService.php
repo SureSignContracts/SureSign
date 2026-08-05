@@ -95,6 +95,18 @@ class EmailNotificationService
                 if (str_starts_with($meta['action_url'], $frontendBase . '/app/')) {
                     $branding = BrandingService::forOrganization($organization->id);
                     $meta['action_label'] = 'Open ' . BrandingService::displayName($branding, $organization) . ' Workspace';
+
+                    // Organisation URL Branding, Phase 5 (Stage 4, Part E) —
+                    // the relabelling above already existed, but the URL
+                    // itself still pointed at the fixed host even for a
+                    // branded organisation. Swap the fixed-host prefix for
+                    // the organisation's own authoritative workspace base
+                    // (active custom domain > branded slug > unchanged
+                    // fixed-host fallback) via the one authoritative
+                    // generator — never build a hostname here manually.
+                    $relativePath = substr($meta['action_url'], strlen($frontendBase));
+                    $meta['action_url'] = app(OrganisationUrlGenerator::class)
+                        ->authenticatedWorkspaceBaseUrl($organization) . $relativePath;
                 }
             }
 

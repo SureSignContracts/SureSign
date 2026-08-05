@@ -202,6 +202,10 @@ services:
         # subdomains fully off platform-wide, matching the backend's own
         # root_domain default in config/organisation_branding.php.
         NEXT_PUBLIC_ORGANISATION_BRANDED_ROOT_DOMAIN: ${NEXT_PUBLIC_ORGANISATION_BRANDED_ROOT_DOMAIN:-}
+        # Organisation URL Branding, Phase 5 (Stage 2B) — reuses the same
+        # FRONTEND_URL already defined above for the backend; no new
+        # Dokploy env var needed.
+        NEXT_PUBLIC_APP_HOST: ${FRONTEND_URL:-https://app.suresigncontracts.app}
     image: suresign-frontend:latest
     container_name: suresign_frontend
     restart: unless-stopped

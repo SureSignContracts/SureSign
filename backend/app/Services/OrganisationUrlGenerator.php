@@ -69,6 +69,23 @@ class OrganisationUrlGenerator
     }
 
     /**
+     * Organisation URL Branding, Phase 5 (Stage 3) — the authenticated
+     * app's own counterpart to currentBaseUrl(): the SAME branded-base
+     * priority (active custom domain, then branded slug), but falling
+     * back to `suresign.frontend_url` (the fixed app host) rather than
+     * `suresign.marketing_url` when neither applies. Reusing
+     * currentBaseUrl() directly here would have been a real bug — an
+     * unbranded organisation's authenticated customer would be sent to
+     * the marketing homepage instead of staying on the app host. Never
+     * accepts a caller-supplied destination, same as every other method
+     * here — see AuthenticatedWorkspaceContextService, the only caller.
+     */
+    public function authenticatedWorkspaceBaseUrl(?Organization $organization): string
+    {
+        return $this->brandedBase($organization, config('suresign.frontend_url')) ?? rtrim(config('suresign.frontend_url'), '/');
+    }
+
+    /**
      * Same as publicUrl(), but for a caller that already has a raw,
      * pre-encoded query string (e.g. a signed link's "expires=...&signature=..."
      * extracted via parse_url()) — appended as-is rather than re-encoded
@@ -118,17 +135,22 @@ class OrganisationUrlGenerator
      *   2. A branded url_slug (only when config('organisation_branding.root_domain') is set)
      *   3. null — caller falls back to the default marketing host.
      *
-     * Scheme is always the default marketing URL's own scheme, so a local
-     * http:// dev setup never silently becomes https://. Returns no
-     * trailing slash.
+     * Scheme is derived from $schemeSourceUrl (defaults to
+     * suresign.marketing_url, preserving every pre-Stage-3 caller's exact
+     * behaviour byte-for-byte) so a local http:// dev setup never silently
+     * becomes https://. authenticatedWorkspaceBaseUrl() passes
+     * suresign.frontend_url instead — a real bug found in testing: reusing
+     * the marketing scheme there would silently mismatch a
+     * frontend_url/marketing_url scheme difference. Returns no trailing
+     * slash.
      */
-    private function brandedBase(?Organization $organization): ?string
+    private function brandedBase(?Organization $organization, ?string $schemeSourceUrl = null): ?string
     {
         if ($organization === null) {
             return null;
         }
 
-        $scheme = parse_url(config('suresign.marketing_url'), PHP_URL_SCHEME) ?: 'https';
+        $scheme = parse_url($schemeSourceUrl ?? config('suresign.marketing_url'), PHP_URL_SCHEME) ?: 'https';
 
         $activeDomain = $organization->activeDomain;
         if ($activeDomain !== null) {

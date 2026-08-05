@@ -52,6 +52,11 @@ class BrandingCacheInvalidator
 
             foreach (array_unique($hosts) as $host) {
                 Cache::forget("org-branding:{$host}");
+                // Organisation URL Branding, Phase 5 (Stage 2A) — same host
+                // set also backs OrganisationFrontendOriginResolver's CORS
+                // cache; reusing this existing invalidation call site
+                // rather than adding a new one.
+                Cache::forget("frontend-origin:{$host}");
             }
         } catch (\Throwable $e) {
             Log::warning('BrandingCacheInvalidator: failed to invalidate branding cache for organization ' . $organization->id . ': ' . $e->getMessage());
