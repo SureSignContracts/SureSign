@@ -13,13 +13,17 @@ return [
     // /public/organisation-branding/{host} directly from the browser on a
     // branded subdomain (e.g. https://acme.suresigncontracts.app), which is
     // a distinct Origin from MARKETING_URL/FRONTEND_URL above and would
-    // otherwise be rejected by CORS. Derived from the same
-    // organisation_branding.root_domain config the feature itself is gated
-    // on — empty/off automatically when that isn't configured, matching
-    // OrganisationUrlGenerator's own "fully off unless configured" default.
+    // otherwise be rejected by CORS. Reads ORGANISATION_BRANDED_ROOT_DOMAIN
+    // directly via env() — NOT config('organisation_branding.root_domain') —
+    // because config files load alphabetically at boot ("cors.php" before
+    // "organisation_branding.php"), so that config value isn't registered
+    // yet at the moment this array is being built and would silently
+    // resolve to null every time. Empty/off automatically when the env var
+    // isn't set, matching OrganisationUrlGenerator's own "fully off unless
+    // configured" default.
     'allowed_origins_patterns' => array_filter([
-        config('organisation_branding.root_domain')
-            ? '#^https://[a-z0-9-]+\.' . preg_quote(config('organisation_branding.root_domain'), '#') . '$#'
+        env('ORGANISATION_BRANDED_ROOT_DOMAIN')
+            ? '#^https://[a-z0-9-]+\.' . preg_quote(env('ORGANISATION_BRANDED_ROOT_DOMAIN'), '#') . '$#'
             : null,
     ]),
     'allowed_headers' => ['*'],
