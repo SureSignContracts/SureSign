@@ -19,6 +19,7 @@ import AiUsageMeterCard from './AiUsageMeterCard';
 import TrialCardComponent from './TrialCard';
 import HealthOverview from './HealthOverview';
 import StripeInfoCard from './StripeInfoCard';
+import Select from '@/components/ui/Select';
 import { AssignablePlan, SnapshotSummary, SubscriptionSummaryView } from '@/types/subscriptionIntelligence';
 
 const REASON_MIN_LENGTH = 10;
@@ -213,15 +214,14 @@ function AssignSubscriptionDialog({
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Plan</label>
-            <select
+            <Select
               value={planCode}
               onChange={e => setPlanCode(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none appearance-none"
-              style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+              className="w-full"
             >
               {plans.length === 0 && <option value="">No assignable plans</option>}
               {plans.map(p => <option key={p.code} value={p.code}>{p.name}</option>)}
-            </select>
+            </Select>
           </div>
 
           <div>

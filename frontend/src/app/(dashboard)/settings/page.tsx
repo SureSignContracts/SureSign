@@ -12,6 +12,8 @@ import { SUPPORTED_CURRENCIES, currencyLabel } from '@/lib/currency';
 import { useAuthStore } from '@/store/authStore';
 import CustomUrlSection from '@/components/settings/CustomUrlSection';
 import BrandingPreviewPanel from '@/components/settings/BrandingPreviewPanel';
+import Select from '@/components/ui/Select';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 type Tab = 'branding' | 'preview' | 'information' | 'preferences' | 'password';
 
@@ -299,7 +301,7 @@ export default function SettingsPage() {
         confirm:  errs.password_confirmation?.[0],
       });
       if (!Object.keys(errs).length) {
-        toast.error(err?.response?.data?.message ?? 'Failed to update password.');
+        toast.error(getErrorMessage(err, 'Failed to update password.'));
       }
     },
   });
@@ -493,17 +495,16 @@ export default function SettingsPage() {
 
               <div className="mt-4">
                 <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Organisation Default Currency</label>
-                <select
+                <Select
                   value={infoForm.currency}
                   onChange={e => setInfoForm(f => ({ ...f, currency: e.target.value }))}
-                  className="w-full rounded-lg px-3 py-2 text-sm outline-none border border-[var(--border)] focus:border-[var(--gold)] transition-colors duration-200"
-                  style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-primary)' }}
+                  className="w-full"
                 >
                   <option value="">Use platform default ({b?.effective_currency ?? 'GBP'})</option>
                   {SUPPORTED_CURRENCIES.map(code => (
                     <option key={code} value={code}>{code} — {currencyLabel(code)}</option>
                   ))}
-                </select>
+                </Select>
                 <p className="mt-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>
                   Applies to every project in your organisation that doesn&apos;t have its own currency override set.
                   Changing this never affects a project that already has an explicit currency.

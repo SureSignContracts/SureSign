@@ -16,6 +16,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { Card, CardBody } from '@/components/ui/Card';
 import TimezoneSelect from '@/components/shared/TimezoneSelect';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 const STATUS_TONE: Record<string, 'neutral' | 'success' | 'warning' | 'info' | 'danger' | 'accent'> = {
   requested: 'info', pending_confirmation: 'warning', confirmed: 'success',
@@ -47,7 +48,7 @@ export default function AdminAppointmentDetailPage() {
   const [rescheduleForm, setRescheduleForm] = useState({ date: '', start_time: '', timezone: 'Europe/London' });
   const [rescheduleOverride, setRescheduleOverride] = useState(false);
   const [rescheduleOverrideReason, setRescheduleOverrideReason] = useState('');
-  const [rescheduleAvailability, setRescheduleAvailability] = useState<{ checked: boolean; available: boolean; reason?: string }>({ checked: false, available: true });
+  const [rescheduleAvailability, setRescheduleAvailability] = useState<{ checked: boolean; available: boolean; reason?: string; checkFailed?: boolean }>({ checked: false, available: true });
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignUserId, setAssignUserId] = useState('');
   const [assignConflict, setAssignConflict] = useState<string | null>(null);
@@ -83,7 +84,7 @@ export default function AdminAppointmentDetailPage() {
       }
     },
     onError: (err: any, variables) => {
-      const message = err?.response?.data?.message ?? 'Action failed.';
+      const message = getErrorMessage(err, 'Action failed.');
       // Assign has no live availability preview — surface a conflict inline
       // so a Super Admin can retry with an override, instead of just a toast.
       if (variables.path === 'assign' && err?.response?.status === 409) {
@@ -100,7 +101,7 @@ export default function AdminAppointmentDetailPage() {
       toast.success('Appointment deleted.');
       router.push('/admin/appointments');
     },
-    onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Failed to delete appointment.'),
+    onError: (err: any) => toast.error(getErrorMessage(err, 'Failed to delete appointment.')),
   });
 
   // Live availability preview while the reschedule modal is open — an
@@ -124,7 +125,13 @@ export default function AdminAppointmentDetailPage() {
         timezone: rescheduleForm.timezone,
         exclude_appointment_id: appointment.id,
       }).then(r => setRescheduleAvailability({ checked: true, available: r.data.available, reason: r.data.reason }))
-        .catch(() => setRescheduleAvailability({ checked: false, available: true }));
+        // Previously defaulted silently to available: true on any failure
+        // (network blip, 500, etc.) — this is only a preview (the actual
+        // submit is still re-validated authoritatively server-side), but a
+        // failed check has no business looking identical to a genuine
+        // "available" result. checkFailed shows a small, non-blocking note
+        // instead of silently claiming something unverified.
+        .catch(() => setRescheduleAvailability({ checked: false, available: true, checkFailed: true }));
     }, 400);
 
     return () => clearTimeout(t);
@@ -283,6 +290,13 @@ export default function AdminAppointmentDetailPage() {
               <div className="flex items-start gap-2 p-2.5 rounded-lg text-xs" style={{ backgroundColor: 'rgba(234,179,8,0.1)', color: '#facc15' }}>
                 <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
                 <span>{rescheduleAvailability.reason ?? 'This staff member is not available at this time.'}</span>
+              </div>
+            )}
+
+            {rescheduleAvailability.checkFailed && (
+              <div className="flex items-start gap-2 p-2.5 rounded-lg text-xs" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
+                <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
+                <span>We couldn&rsquo;t check availability for this time. It will still be validated when you submit.</span>
               </div>
             )}
 

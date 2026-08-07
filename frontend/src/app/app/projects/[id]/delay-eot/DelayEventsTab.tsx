@@ -7,6 +7,7 @@ import { formatDate } from '@/lib/utils';
 import { effectiveTodayYmd } from '@/lib/dateTime';
 import { Plus, X, FileOutput, Trash2, Check, Ban, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
+import Select from '@/components/ui/Select';
 import { getErrorMessage, blobDownload, assertDeleteSucceeded, type ContractOption, type TradePackageOption } from './page';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -118,24 +119,24 @@ function DelayEventModal({ projectId, contracts, tradePackages, delayEvent, onCl
           </Field>
 
           <Field label="Cause Category">
-            <select className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE} value={form.cause_category} onChange={e => setForm({ ...form, cause_category: e.target.value })}>
+            <Select className="w-full" value={form.cause_category} onChange={e => setForm({ ...form, cause_category: e.target.value })}>
               {Object.entries(CAUSE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
+            </Select>
           </Field>
 
           {!isEdit && (
             <div className="grid grid-cols-2 gap-3">
               <Field label="Contract">
-                <select className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE} value={form.contract_id} onChange={e => setForm({ ...form, contract_id: e.target.value, trade_package_id: '' })} disabled={!!form.trade_package_id}>
+                <Select className="w-full" value={form.contract_id} onChange={e => setForm({ ...form, contract_id: e.target.value, trade_package_id: '' })} disabled={!!form.trade_package_id}>
                   <option value="">—</option>
                   {contracts.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
-                </select>
+                </Select>
               </Field>
               <Field label="Trade Package">
-                <select className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE} value={form.trade_package_id} onChange={e => setForm({ ...form, trade_package_id: e.target.value, contract_id: '' })} disabled={!!form.contract_id}>
+                <Select className="w-full" value={form.trade_package_id} onChange={e => setForm({ ...form, trade_package_id: e.target.value, contract_id: '' })} disabled={!!form.contract_id}>
                   <option value="">—</option>
                   {tradePackages.map(tp => <option key={tp.id} value={tp.id}>{tp.name}</option>)}
-                </select>
+                </Select>
               </Field>
             </div>
           )}
@@ -207,7 +208,7 @@ export function DelayEventsTab({ projectId, contracts, tradePackages, canWrite, 
   // array there vs. {data:[...]} project-wide — normalised to the same shape here so
   // the rest of this component doesn't need to know which source it came from.
   const listQueryKey = tradePackageId ? ['trade-package-delay-events', tradePackageId] : ['project-delay-events', projectId];
-  const { data, isLoading } = useQuery<{ data?: DelayEvent[] }>({
+  const { data, isLoading, isError, error, refetch } = useQuery<{ data?: DelayEvent[] }>({
     queryKey: listQueryKey,
     queryFn: () => tradePackageId
       ? api.get(`/projects/${projectId}/trade-packages/${tradePackageId}/delay-events`).then(r => ({ data: r.data }))
@@ -278,7 +279,13 @@ export function DelayEventsTab({ projectId, contracts, tradePackages, canWrite, 
           </thead>
           <tbody>
             {isLoading && <tr><td colSpan={9} className="text-center py-8 text-sm" style={{ color: 'var(--text-muted)' }}>Loading…</td></tr>}
-            {!isLoading && filtered.length === 0 && <tr><td colSpan={9} className="text-center py-8 text-sm" style={{ color: 'var(--text-muted)' }}>No delay events{statusFilter !== 'all' ? ` with status "${statusFilter}"` : ''}.</td></tr>}
+            {!isLoading && isError && (
+              <tr><td colSpan={9} className="text-center py-8 text-sm" style={{ color: '#f87171' }}>
+                We couldn&rsquo;t load delay events. {getErrorMessage(error, 'Please try again.')}{' '}
+                <button onClick={() => refetch()} className="underline font-medium">Try again</button>
+              </td></tr>
+            )}
+            {!isLoading && !isError && filtered.length === 0 && <tr><td colSpan={9} className="text-center py-8 text-sm" style={{ color: 'var(--text-muted)' }}>No delay events{statusFilter !== 'all' ? ` with status "${statusFilter}"` : ''}.</td></tr>}
             {filtered.map(ev => (
               <tr key={ev.id} style={{ borderBottom: '1px solid var(--border)' }}>
                 <td className="px-3 py-2.5 font-mono text-xs" style={{ color: 'var(--text-muted)' }}>#{ev.event_number}</td>

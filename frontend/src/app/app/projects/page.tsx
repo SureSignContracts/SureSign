@@ -20,6 +20,7 @@ import Button from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
 import PageTourButton from '@/components/tours/PageTourButton';
+import { normalizeApiError } from '@/lib/normalizeApiError';
 
 const STATUS_TONE: Record<string, 'success' | 'warning' | 'info' | 'danger'> = {
   active: 'success',
@@ -84,6 +85,7 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
     contract_value: '', start_date: '', end_date: '', description: '', currency: '',
   });
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
 
   const mutation = useMutation({
     mutationFn: (data: typeof form) => api.post('/projects', { ...data, currency: data.currency || null }).then(r => r.data),
@@ -92,8 +94,14 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
       onClose();
     },
     onError: (e: unknown) => {
-      const err = e as { response?: { data?: { message?: string } } } | null;
-      setError(err?.response?.data?.message ?? 'Failed to create project. Please check all required fields.');
+      const normalized = normalizeApiError(e, 'Failed to create project. Please check all required fields.');
+      setFieldErrors(normalized.fieldErrors ?? {});
+      // Field-specific errors already render inline next to each field below
+      // — the banner only needs a short summary in that case, not the same
+      // text twice. Non-validation failures (network/server/permission)
+      // still show their own specific message in the banner, since there's
+      // no field to attach them to.
+      setError(normalized.type === 'validation' ? 'Check the highlighted information.' : normalized.message);
     },
   });
 
@@ -132,7 +140,18 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label style={labelStyle}>Project Name *</label>
-              <input className={INPUT_CLS} style={inputStyle} value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. High Street Development" />
+              <input
+                className={INPUT_CLS}
+                style={inputStyle}
+                value={form.name}
+                onChange={e => set('name', e.target.value)}
+                placeholder="e.g. High Street Development"
+                aria-invalid={fieldErrors.name ? true : undefined}
+                aria-describedby={fieldErrors.name ? 'project-name-error' : undefined}
+              />
+              {fieldErrors.name && (
+                <p id="project-name-error" className="text-xs mt-1" style={{ color: '#f87171' }}>{fieldErrors.name[0]}</p>
+              )}
             </div>
             <div>
               <label style={labelStyle}>Project Number / Code</label>
@@ -143,44 +162,58 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label style={labelStyle}>Contract Type</label>
-              <select className={INPUT_CLS} style={inputStyle} value={form.contract_type} onChange={e => set('contract_type', e.target.value)}>
+              <Select className="w-full" value={form.contract_type} onChange={e => set('contract_type', e.target.value)}>
                 <option value="">Select contract type…</option>
                 {CONTRACT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
+              </Select>
             </div>
             <div>
               <label style={labelStyle}>Type of Work</label>
-              <select className={INPUT_CLS} style={inputStyle} value={form.type} onChange={e => set('type', e.target.value)}>
+              <Select className="w-full" value={form.type} onChange={e => set('type', e.target.value)}>
                 <option value="">Select type of work…</option>
                 {WORK_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
+              </Select>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label style={labelStyle}>Contract Value</label>
-              <input className={INPUT_CLS} style={inputStyle} type="number" min="0" step="0.01" value={form.contract_value} onChange={e => set('contract_value', e.target.value)} placeholder="0.00" />
+              <input
+                className={INPUT_CLS}
+                style={inputStyle}
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.contract_value}
+                onChange={e => set('contract_value', e.target.value)}
+                placeholder="0.00"
+                aria-invalid={fieldErrors.contract_value ? true : undefined}
+                aria-describedby={fieldErrors.contract_value ? 'project-contract-value-error' : undefined}
+              />
+              {fieldErrors.contract_value && (
+                <p id="project-contract-value-error" className="text-xs mt-1" style={{ color: '#f87171' }}>{fieldErrors.contract_value[0]}</p>
+              )}
             </div>
             <div>
               <label style={labelStyle}>Status</label>
-              <select className={INPUT_CLS} style={inputStyle} value={form.status} onChange={e => set('status', e.target.value)}>
+              <Select className="w-full" value={form.status} onChange={e => set('status', e.target.value)}>
                 <option value="active">Active</option>
                 <option value="on_hold">On Hold</option>
                 <option value="completed">Completed</option>
                 <option value="cancelled">Cancelled</option>
-              </select>
+              </Select>
             </div>
           </div>
 
           <div>
             <label style={labelStyle}>Currency</label>
-            <select className={INPUT_CLS} style={inputStyle} value={form.currency} onChange={e => set('currency', e.target.value)}>
+            <Select className="w-full" value={form.currency} onChange={e => set('currency', e.target.value)}>
               <option value="">Use organisation default — {user?.organization?.effective_currency ?? 'GBP'}</option>
               {SUPPORTED_CURRENCIES.map(code => (
                 <option key={code} value={code}>{code}</option>
               ))}
-            </select>
+            </Select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -190,7 +223,20 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
             </div>
             <div>
               <label style={labelStyle}>Completion Date</label>
-              <input className={INPUT_CLS} style={inputStyle} type="date" value={form.end_date} onChange={e => set('end_date', e.target.value)} />
+              <input
+                className={INPUT_CLS}
+                style={inputStyle}
+                type="date"
+                value={form.end_date}
+                onChange={e => set('end_date', e.target.value)}
+                aria-invalid={fieldErrors.end_date ? true : undefined}
+                aria-describedby={fieldErrors.end_date ? 'project-end-date-error' : undefined}
+              />
+              {fieldErrors.end_date && (
+                <p id="project-end-date-error" className="text-xs mt-1" style={{ color: '#f87171' }}>
+                  The completion date cannot be earlier than the start date.
+                </p>
+              )}
             </div>
           </div>
 
@@ -213,7 +259,7 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
             Cancel
           </Button>
           <Button
-            onClick={() => mutation.mutate(form)}
+            onClick={() => { setError(null); setFieldErrors({}); mutation.mutate(form); }}
             disabled={!form.name || mutation.isPending}
           >
             {mutation.isPending ? 'Creating…' : 'Create Project'}

@@ -4,10 +4,13 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import PaginationBar from '@/components/ui/PaginationBar';
+import Combobox from '@/components/ui/Combobox';
+import Select from '@/components/ui/Select';
 import {
   FileText, Plus, Search, Pencil, Trash2, Upload, X, Check, ChevronDown, Building2, Globe, Eye,
 } from 'lucide-react';
 import DocumentPreviewModal, { type PreviewTarget } from '@/components/documents/DocumentPreviewModal';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 const CATEGORY_LABELS: Record<string, string> = {
   subcontract:         'Subcontract',
@@ -140,7 +143,7 @@ function TemplateModal({
       onClose();
     } catch (err: unknown) {
       const apiErr = err as { response?: { data?: { message?: string } } };
-      setError(apiErr?.response?.data?.message ?? 'Failed to save template.');
+      setError(getErrorMessage(apiErr, 'Failed to save template.'));
     } finally {
       setSaving(false);
     }
@@ -200,14 +203,9 @@ function TemplateModal({
               <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
                 Category <span style={{ color: '#ef4444' }}>*</span>
               </label>
-              <div className="relative">
-                <select value={category} onChange={e => { setCategory(e.target.value); setTemplateType(''); }}
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none appearance-none"
-                  style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
-                  {Object.entries(CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
-              </div>
+              <Select value={category} onChange={e => { setCategory(e.target.value); setTemplateType(''); }} className="w-full">
+                {Object.entries(CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </Select>
             </div>
 
             {/* Template Type */}
@@ -216,15 +214,10 @@ function TemplateModal({
                 Template Type
                 {category === 'subcontract' && <span style={{ color: '#ef4444' }}> *</span>}
               </label>
-              <div className="relative">
-                <select value={templateType} onChange={e => setTemplateType(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none appearance-none"
-                  style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
-                  <option value="">— Select type —</option>
-                  {Object.entries(templateTypeOptions).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
-              </div>
+              <Select value={templateType} onChange={e => setTemplateType(e.target.value)} className="w-full">
+                <option value="">— Select type —</option>
+                {Object.entries(templateTypeOptions).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </Select>
               {category === 'subcontract' && (
                 <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
                   Required for subcontract templates. Used to auto-select the correct template during document generation.
@@ -293,15 +286,14 @@ function TemplateModal({
                 <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
                   Company <span style={{ color: '#ef4444' }}>*</span>
                 </label>
-                <div className="relative">
-                  <select value={orgId} onChange={e => setOrgId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg text-sm outline-none appearance-none"
-                    style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
-                    <option value="">— Select company —</option>
-                    {orgs.map((o: Org) => <option key={o.id} value={o.id}>{o.name}</option>)}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
-                </div>
+                <Combobox
+                  value={orgId}
+                  onValueChange={setOrgId}
+                  placeholder="— Select company —"
+                  searchPlaceholder="Search companies…"
+                  emptyMessage="No companies found."
+                  options={orgs.map((o: Org) => ({ value: String(o.id), label: o.name }))}
+                />
               </div>
             )}
 

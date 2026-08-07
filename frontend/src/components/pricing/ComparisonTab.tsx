@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import Button from '@/components/ui/Button';
 import { Card, CardBody } from '@/components/ui/Card';
+import Select from '@/components/ui/Select';
 import { ArrowUp, ArrowDown, Plus, Trash2 } from 'lucide-react';
 import {
   PlanFeatureStatus, PricingFeature, PricingFeatureSection, PricingPlan, PricingPlanFeatureRow,
@@ -150,14 +151,13 @@ export default function ComparisonTab() {
                           const cell = cellFor(plan.id, feature.id);
                           return (
                             <td key={plan.id} className="py-2 px-2">
-                              <select
+                              <Select
                                 value={cell?.status || 'not_included'}
                                 onChange={e => updateCell.mutate({ plan_id: plan.id, feature_id: feature.id, status: e.target.value as PlanFeatureStatus })}
-                                className={inputClass}
-                                style={inputStyle}
+                                size="sm"
                               >
                                 {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
-                              </select>
+                              </Select>
                             </td>
                           );
                         })}

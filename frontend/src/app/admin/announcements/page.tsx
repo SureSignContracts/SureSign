@@ -7,6 +7,7 @@ import api from '@/lib/api';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import { SEVERITY_STYLES, SEVERITY_LABELS } from '@/lib/announcements';
 import { fromUtcIso, toUtcIso } from '@/lib/dateTime';
+import Select from '@/components/ui/Select';
 
 interface Announcement {
   id: number;
@@ -148,14 +149,12 @@ export default function AdminAnnouncementsPage() {
             style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
           />
           <div className="grid grid-cols-2 gap-3">
-            <select
+            <Select
               value={form.severity}
               onChange={e => setForm(f => ({ ...f, severity: e.target.value as Announcement['severity'] }))}
-              className="px-3.5 py-2.5 rounded-xl text-sm outline-none"
-              style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
             >
               {SEVERITIES.map(s => <option key={s} value={s}>{SEVERITY_LABELS[s]}</option>)}
-            </select>
+            </Select>
             <label className="flex items-center gap-2 text-sm px-3.5" style={{ color: 'var(--text-secondary)' }}>
               <input type="checkbox" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} />
               Active

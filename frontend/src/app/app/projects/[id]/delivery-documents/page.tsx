@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 import { getErrorMessage, INPUT_STYLE, CATEGORY_LABELS, StatusBadge, Field } from '@/components/deliveryDocuments/deliveryDocumentShared';
 import PageTourButton from '@/components/tours/PageTourButton';
 import Button from '@/components/ui/Button';
+import Select from '@/components/ui/Select';
 
 type DeliveryDoc = {
   id: number;
@@ -247,20 +248,20 @@ function CreateDeliveryDocumentModal({ projectId, invalidateKey, onClose }: {
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <Field label="Applies to" required>
-              <select className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE}
+              <Select className="w-full"
                 value={parentType} onChange={e => { setParentType(e.target.value as 'contract' | 'trade_package'); setParentId(''); }}>
                 <option value="contract">Contract</option>
                 <option value="trade_package">Trade Package</option>
-              </select>
+              </Select>
             </Field>
             <Field label={parentType === 'contract' ? 'Contract' : 'Trade package'} required>
-              <select className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE}
+              <Select className="w-full"
                 value={parentId} onChange={e => setParentId(e.target.value ? Number(e.target.value) : '')}>
                 <option value="">Select…</option>
                 {parentOptions.map((o: { id: number; title?: string; name?: string }) => (
                   <option key={o.id} value={o.id}>{o.title ?? o.name}</option>
                 ))}
-              </select>
+              </Select>
             </Field>
           </div>
           <Field label="Title" required>
@@ -273,13 +274,13 @@ function CreateDeliveryDocumentModal({ projectId, invalidateKey, onClose }: {
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Category">
-              <select className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE}
+              <Select className="w-full"
                 value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
                 {Object.entries(CATEGORY_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-              </select>
+              </Select>
             </Field>
             <Field label="Status">
-              <select className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE}
+              <Select className="w-full"
                 value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
                 <option value="required">Required</option>
                 <option value="pending">Pending</option>
@@ -287,7 +288,7 @@ function CreateDeliveryDocumentModal({ projectId, invalidateKey, onClose }: {
                 <option value="under_review">Under Review</option>
                 <option value="approved">Approved</option>
                 <option value="rejected">Rejected</option>
-              </select>
+              </Select>
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-3">

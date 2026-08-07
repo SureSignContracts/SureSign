@@ -15,6 +15,7 @@ import { useAuthStore } from '@/store/authStore';
 import { formatDate } from '@/lib/utils';
 import { isToday as isTodayInTimezone, formatDateTime } from '@/lib/dateTime';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 import { SidebarCountBadge } from '@/components/ui/Badge';
 
 /**
@@ -322,8 +323,8 @@ export default function NotificationBell({ basePath = '/admin/notifications' }: 
     try {
       await api.patch(`/notifications/${n.id}/dismiss`);
       invalidate();
-    } catch {
-      toast.error('Failed to dismiss');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to dismiss'));
     }
   }
 
@@ -331,8 +332,8 @@ export default function NotificationBell({ basePath = '/admin/notifications' }: 
     try {
       await api.post('/notifications/mark-all-read');
       invalidate();
-    } catch {
-      toast.error('Failed to mark all as read');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to mark all as read'));
     }
   }
 
@@ -341,8 +342,8 @@ export default function NotificationBell({ basePath = '/admin/notifications' }: 
       await api.delete('/notifications/clear-read');
       invalidate();
       toast.success('Read notifications cleared');
-    } catch {
-      toast.error('Failed to clear notifications');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to clear notifications'));
     }
   }
 

@@ -8,6 +8,7 @@ import {
   Gem, Check, Save, RefreshCw, FileText, Mail, ImageIcon,
   X, Upload, Palette, Globe, FileUp, Download, Send, Eye, EyeOff,
 } from 'lucide-react';
+import Select from '@/components/ui/Select';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface PlatformSettings {
@@ -88,13 +89,12 @@ function SelectField({ label, value, onChange, options, hint }: {
   return (
     <div>
       <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>{label}</label>
-      <select
+      <Select
         value={value} onChange={e => onChange(e.target.value)}
-        className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-        style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+        className="w-full"
       >
         {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
+      </Select>
       {hint && <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{hint}</p>}
     </div>
   );

@@ -6,6 +6,7 @@ import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { Plus, X, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import Select from '@/components/ui/Select';
 import { getErrorMessage, INPUT_STYLE, CATEGORY_LABELS, SeverityBadge, StatusBadge, Field } from '@/components/risks/riskShared';
 
 type Risk = {
@@ -192,38 +193,38 @@ function RiskModal({ projectId, tradePackageId, risk, invalidateKey, onClose }: 
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Category">
-              <select className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE}
+              <Select className="w-full"
                 value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
                 {Object.entries(CATEGORY_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-              </select>
+              </Select>
             </Field>
             <Field label="Status">
-              <select className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE}
+              <Select className="w-full"
                 value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
                 <option value="open">Open</option>
                 <option value="in_progress">In Progress</option>
                 <option value="resolved">Resolved</option>
-              </select>
+              </Select>
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Severity">
-              <select className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE}
+              <Select className="w-full"
                 value={form.severity} onChange={e => setForm(f => ({ ...f, severity: e.target.value }))}>
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
                 <option value="high">High</option>
                 <option value="critical">Critical</option>
-              </select>
+              </Select>
             </Field>
             <Field label="Probability">
-              <select className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE}
+              <Select className="w-full"
                 value={form.probability} onChange={e => setForm(f => ({ ...f, probability: e.target.value }))}>
                 <option value="">—</option>
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
                 <option value="high">High</option>
-              </select>
+              </Select>
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-3">

@@ -7,6 +7,15 @@ import { cn } from '@/lib/utils';
 
 export type ModalTone = 'neutral' | 'warning' | 'danger' | 'info';
 
+/** 'md' (default) is every existing confirm-dialog's exact prior width — unchanged. 'xl' is for
+ * content-heavy admin panels (e.g. the Entitlements editor) that need real width to lay out a table. */
+export type ModalSize = 'md' | 'xl';
+
+const SIZE_CLASS: Record<ModalSize, string> = {
+  md: 'max-w-md',
+  xl: 'max-w-[960px]',
+};
+
 const TONE_ICON_STYLE: Record<ModalTone, React.CSSProperties> = {
   neutral: { backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' },
   warning: { backgroundColor: 'rgba(234,179,8,0.12)', color: '#facc15' },
@@ -48,6 +57,7 @@ export default function Modal({
   title,
   icon: Icon,
   tone = 'neutral',
+  size = 'md',
   onClose,
   busy = false,
   children,
@@ -55,6 +65,7 @@ export default function Modal({
   title: string;
   icon?: LucideIcon;
   tone?: ModalTone;
+  size?: ModalSize;
   onClose: () => void;
   busy?: boolean;
   children: (close: () => void) => React.ReactNode;
@@ -82,6 +93,14 @@ export default function Modal({
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        // A Radix-based overlay nested inside this modal (Select,
+        // Combobox's Popover, ...) already dismissed itself and called
+        // `event.preventDefault()` on this exact Escape keydown before it
+        // bubbled from `document` up to this `window` listener — found
+        // during the dropdown-hardening pass, where a single Escape was
+        // closing the dropdown AND the modal underneath it in one press.
+        // Respect that: only this modal's own Escape means "close me".
+        if (e.defaultPrevented) return;
         close();
         return;
       }
@@ -123,13 +142,18 @@ export default function Modal({
       <div
         ref={panelRef}
         tabIndex={-1}
-        className={cn('w-full max-w-md rounded-2xl p-6 space-y-4 outline-none', closing ? 'ss-modal-panel-out' : 'ss-modal-panel-in')}
+        className={cn(
+          'w-full rounded-2xl outline-none max-h-[85vh] flex flex-col overflow-hidden',
+          SIZE_CLASS[size],
+          closing ? 'ss-modal-panel-out' : 'ss-modal-panel-in',
+        )}
         style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}
         role="dialog"
         aria-modal="true"
         aria-labelledby="ss-modal-title"
       >
-        <div className="flex items-center gap-3">
+        {/* Fixed header — never scrolls. `flex-shrink-0` keeps it pinned regardless of body height. */}
+        <div className="flex items-center gap-3 p-6 pb-4 flex-shrink-0">
           {Icon && (
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -143,7 +167,14 @@ export default function Modal({
           </h2>
         </div>
 
-        {children(close)}
+        {/* Body region — `min-h-0` lets this shrink below its content's natural size so an inner
+           `flex-1 min-h-0 overflow-y-auto` region (if the caller uses one, e.g. EntitlementsEditor)
+           gets a real, computed height to scroll within, instead of an independently-guessed vh value.
+           No overflow set here: a short confirm dialog's content just renders at its natural size —
+           byte-for-byte the same visual result every existing caller had before this change. */}
+        <div className="flex-1 min-h-0 flex flex-col px-6 pb-6">
+          {children(close)}
+        </div>
       </div>
     </div>,
     document.body,

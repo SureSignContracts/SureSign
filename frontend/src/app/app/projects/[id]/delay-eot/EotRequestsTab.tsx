@@ -7,6 +7,7 @@ import { formatDate } from '@/lib/utils';
 import { effectiveTodayYmd } from '@/lib/dateTime';
 import { Plus, X, FileOutput, Trash2, Check, Ban } from 'lucide-react';
 import toast from 'react-hot-toast';
+import Select from '@/components/ui/Select';
 import { getErrorMessage, blobDownload, assertDeleteSucceeded, type ContractOption, type TradePackageOption } from './page';
 import { INPUT_STYLE } from './DelayEventsTab';
 
@@ -115,25 +116,25 @@ function EotModal({ projectId, contracts, tradePackages, delayEvents, eot, onClo
             <>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Contract">
-                  <select className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE} value={form.contract_id} disabled={!!form.trade_package_id}
+                  <Select className="w-full" value={form.contract_id} disabled={!!form.trade_package_id}
                     onChange={e => setForm({ ...form, contract_id: e.target.value, trade_package_id: '' })}>
                     <option value="">—</option>
                     {contracts.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
-                  </select>
+                  </Select>
                 </Field>
                 <Field label="Trade Package">
-                  <select className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE} value={form.trade_package_id} disabled={!!form.contract_id}
+                  <Select className="w-full" value={form.trade_package_id} disabled={!!form.contract_id}
                     onChange={e => setForm({ ...form, trade_package_id: e.target.value, contract_id: '' })}>
                     <option value="">—</option>
                     {tradePackages.map(tp => <option key={tp.id} value={tp.id}>{tp.name}</option>)}
-                  </select>
+                  </Select>
                 </Field>
               </div>
               <Field label="Related Delay Event">
-                <select className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE} value={form.delay_event_id} onChange={e => setForm({ ...form, delay_event_id: e.target.value })}>
+                <Select className="w-full" value={form.delay_event_id} onChange={e => setForm({ ...form, delay_event_id: e.target.value })}>
                   <option value="">—</option>
                   {delayEvents.map(d => <option key={d.id} value={d.id}>#{d.event_number} — {d.title}</option>)}
-                </select>
+                </Select>
               </Field>
             </>
           )}
@@ -225,7 +226,7 @@ export function EotRequestsTab({ projectId, contracts, tradePackages, canWrite, 
   const [deleteTarget, setDeleteTarget] = useState<EotRequest | null>(null);
 
   const listQueryKey = tradePackageId ? ['trade-package-eot-requests', tradePackageId] : ['project-eot-requests', projectId];
-  const { data, isLoading } = useQuery<{ data?: EotRequest[] }>({
+  const { data, isLoading, isError, error, refetch } = useQuery<{ data?: EotRequest[] }>({
     queryKey: listQueryKey,
     queryFn: () => tradePackageId
       ? api.get(`/projects/${projectId}/trade-packages/${tradePackageId}/eot-requests`).then(r => ({ data: r.data }))
@@ -296,7 +297,13 @@ export function EotRequestsTab({ projectId, contracts, tradePackages, canWrite, 
           </thead>
           <tbody>
             {isLoading && <tr><td colSpan={9} className="text-center py-8 text-sm" style={{ color: 'var(--text-muted)' }}>Loading…</td></tr>}
-            {!isLoading && filtered.length === 0 && <tr><td colSpan={9} className="text-center py-8 text-sm" style={{ color: 'var(--text-muted)' }}>No EOT requests{statusFilter !== 'all' ? ` with status "${statusFilter}"` : ''}.</td></tr>}
+            {!isLoading && isError && (
+              <tr><td colSpan={9} className="text-center py-8 text-sm" style={{ color: '#f87171' }}>
+                We couldn&rsquo;t load EOT requests. {getErrorMessage(error, 'Please try again.')}{' '}
+                <button onClick={() => refetch()} className="underline font-medium">Try again</button>
+              </td></tr>
+            )}
+            {!isLoading && !isError && filtered.length === 0 && <tr><td colSpan={9} className="text-center py-8 text-sm" style={{ color: 'var(--text-muted)' }}>No EOT requests{statusFilter !== 'all' ? ` with status "${statusFilter}"` : ''}.</td></tr>}
             {filtered.map(eot => (
               <tr key={eot.id} style={{ borderBottom: '1px solid var(--border)' }}>
                 <td className="px-3 py-2.5 font-mono text-xs" style={{ color: 'var(--text-muted)' }}>#{eot.eot_number}</td>

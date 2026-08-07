@@ -10,6 +10,7 @@ import Input from '@/components/ui/Input';
 import Modal from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 interface ConsultancyServiceRow {
   id: number;
@@ -82,7 +83,7 @@ export default function ConsultancyServicesPage() {
     onError: (err: any) => {
       const errors = err?.response?.data?.errors ?? {};
       setFormErrors(errors);
-      if (!Object.keys(errors).length) toast.error(err?.response?.data?.message ?? 'Failed to save.');
+      if (!Object.keys(errors).length) toast.error(getErrorMessage(err, 'Failed to save.'));
     },
   });
 

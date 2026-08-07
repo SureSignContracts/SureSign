@@ -59,9 +59,9 @@ class FinalAccountController extends Controller
 
     // ── GET /trade-packages/{tradePackage}/final-account ─────────────────────
 
-    public function showForTradePackage(Request $request, TradePackage $tradePackage): JsonResponse
+    public function showForTradePackage(Request $request, Project $project, TradePackage $tradePackage): JsonResponse
     {
-        $this->authorizeTradePackage($request, $tradePackage);
+        $this->authorizeProjectPackage($request, $project, $tradePackage);
 
         $fa = FinalAccount::where('trade_package_id', $tradePackage->id)
             ->with(['items' => fn ($q) => $q->orderBy('sort_order')->orderBy('id')])
@@ -123,9 +123,9 @@ class FinalAccountController extends Controller
 
     // ── POST /trade-packages/{tradePackage}/final-account ────────────────────
 
-    public function storeForTradePackage(Request $request, TradePackage $tradePackage): JsonResponse
+    public function storeForTradePackage(Request $request, Project $project, TradePackage $tradePackage): JsonResponse
     {
-        $this->authorizeTradePackage($request, $tradePackage);
+        $this->authorizeProjectPackage($request, $project, $tradePackage);
 
         if ($tradePackage->finalAccount()->exists()) {
             return response()->json(['message' => 'A Final Account already exists for this trade package.'], 422);
@@ -593,11 +593,27 @@ class FinalAccountController extends Controller
         if ($user->organization_id !== $contract->organization_id) abort(403, 'Access denied.');
     }
 
-    private function authorizeTradePackage(Request $request, TradePackage $tradePackage): void
+    // Matches the identical `authorizeProjectPackage` convention already
+    // used by every other controller with this same
+    // `{project}/trade-packages/{tradePackage}/...` route shape
+    // (ProgrammeMilestoneController, DelayEventController,
+    // EotRequestController, RiskController, DeliveryDocumentController,
+    // LossAndExpenseClaimController, TradePackageController) — this
+    // controller previously used a narrower `authorizeTradePackage` that
+    // both omitted the `Project $project` route parameter from the method
+    // signature (a confirmed live bug — Laravel's controller-dependency
+    // splicing misassigns positional arguments when a route parameter has
+    // no corresponding method parameter, causing
+    // showForTradePackage()/storeForTradePackage() to receive the
+    // project ID string where the TradePackage model was expected) and
+    // never verified the trade package actually belongs to the project in
+    // the URL.
+    private function authorizeProjectPackage(Request $request, Project $project, TradePackage $tradePackage): void
     {
-        $user = $request->user();
-        if ($user->hasRole('Super Admin') || $user->hasRole('Admin')) return;
-        if ($user->organization_id !== $tradePackage->organization_id) abort(403, 'Access denied.');
+        $this->authorizeProject($request, $project);
+        if ($tradePackage->project_id !== $project->id) {
+            abort(404, 'Trade package not found for this project.');
+        }
     }
 
     private function authorizeFinalAccount(Request $request, FinalAccount $fa): void

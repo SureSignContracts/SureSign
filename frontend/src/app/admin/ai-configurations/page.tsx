@@ -7,6 +7,7 @@ import { Save, Sparkles, Eye, EyeOff } from 'lucide-react';
 import Toggle from '@/components/ui/Toggle';
 import Button from '@/components/ui/Button';
 import { Card, CardBody } from '@/components/ui/Card';
+import Select from '@/components/ui/Select';
 
 const KNOWN_AI_MODELS = [
   { value: 'claude-sonnet-5', label: 'claude-sonnet-5 (recommended)' },
@@ -131,11 +132,11 @@ export default function AdminAiConfigPage() {
             <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
               Model
             </label>
-            <select
+            <Select
               value={currentAiModel}
               onChange={e => setAiModel(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-              style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: currentAiModel && !isKnownModel ? '#ef4444' : 'var(--text-primary)' }}
+              className="w-full"
+              error={!!(currentAiModel && !isKnownModel)}
             >
               {!isKnownModel && currentAiModel && (
                 <option value={currentAiModel}>{currentAiModel} (unrecognized — currently saved)</option>
@@ -143,7 +144,7 @@ export default function AdminAiConfigPage() {
               {KNOWN_AI_MODELS.map(m => (
                 <option key={m.value} value={m.value}>{m.label}</option>
               ))}
-            </select>
+            </Select>
             {!isKnownModel && currentAiModel && (
               <p className="text-xs mt-1.5" style={{ color: '#ef4444' }}>
                 This model isn&apos;t one of the supported options — it may be a retired or invalid model ID,
@@ -157,18 +158,17 @@ export default function AdminAiConfigPage() {
             <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
               Effort
             </label>
-            <select
+            <Select
               value={currentAiEffort}
               onChange={e => setAiEffort(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-              style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+              className="w-full"
             >
               <option value="low">Low (fastest, cheapest)</option>
               <option value="medium">Medium</option>
               <option value="high">High (recommended)</option>
               <option value="xhigh">X-High (deeper analysis, slower)</option>
               <option value="max">Max (most thorough, slowest / most expensive)</option>
-            </select>
+            </Select>
             <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>
               Controls how much the model reasons before answering. Higher effort can improve accuracy on complex contracts but costs more and takes longer.
             </p>

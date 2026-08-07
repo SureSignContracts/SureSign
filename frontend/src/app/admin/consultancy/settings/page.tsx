@@ -10,6 +10,7 @@ import { useAuthStore } from '@/store/authStore';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
 import { Badge } from '@/components/ui/Badge';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 interface Consultant { id: number; name: string; email: string }
 interface ConsultantResponse { consultant: Consultant | null; configured_but_ineligible: boolean }
@@ -74,7 +75,7 @@ export default function ConsultancySettingsPage() {
       toast.success('Consultancy consultant updated. This affects new bookings only — existing appointments keep their original consultant.');
       setSelectedUserId('');
     },
-    onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Failed to update the Consultancy consultant.'),
+    onError: (err: any) => toast.error(getErrorMessage(err, 'Failed to update the Consultancy consultant.')),
   });
 
   const updateNotificationsMutation = useMutation({
@@ -84,7 +85,7 @@ export default function ConsultancySettingsPage() {
       qc.invalidateQueries({ queryKey: ['consultancy-notification-settings'] });
       toast.success('New-booking notification setting updated.');
     },
-    onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Failed to update the notification setting.'),
+    onError: (err: any) => toast.error(getErrorMessage(err, 'Failed to update the notification setting.')),
   });
 
   return (

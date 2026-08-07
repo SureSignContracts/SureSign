@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
+import Select from '@/components/ui/Select';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -221,12 +222,10 @@ function Cell({ value, onChange, type = 'text', readOnly = false, placeholder = 
 
 function SelectCell({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: string[] }) {
   return (
-    <select value={value} onChange={e => onChange(e.target.value)}
-      className="w-full px-2 py-1 text-xs rounded outline-none"
-      style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
+    <Select value={value} onChange={e => onChange(e.target.value)} className="w-full" size="sm">
       <option value="">—</option>
       {options.map(o => <option key={o} value={o}>{o}</option>)}
-    </select>
+    </Select>
   );
 }
 

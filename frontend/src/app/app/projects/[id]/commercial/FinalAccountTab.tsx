@@ -9,6 +9,7 @@ import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import { Plus, X, Trash2, ChevronDown, FileCheck, AlertTriangle, Lock, Download, FileOutput } from 'lucide-react';
 import toast from 'react-hot-toast';
+import Select from '@/components/ui/Select';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -519,16 +520,15 @@ function FAItemModal({ faId, item, onClose, onSaved }: {
           {!item ? (
             <div>
               <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Category *</label>
-              <select
+              <Select
                 value={form.category}
                 onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-                style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                className="w-full"
               >
                 {FA_USER_CATEGORIES.map(c => (
                   <option key={c.key} value={c.key}>{c.label}</option>
                 ))}
-              </select>
+              </Select>
             </div>
           ) : (
             <div>

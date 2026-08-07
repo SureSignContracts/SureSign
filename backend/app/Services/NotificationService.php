@@ -6,6 +6,7 @@ use App\Jobs\GenerateProjectNotificationsJob;
 use App\Models\Organization;
 use App\Models\SuresignNotification;
 use App\Models\User;
+use Illuminate\Support\Facades\Log;
 
 class NotificationService
 {
@@ -125,6 +126,23 @@ class NotificationService
      * user, so it's skipped rather than duplicated. Without source metadata,
      * every call creates a fresh notification (e.g. a one-off system message).
      */
+    /**
+     * Error Messaging & Recovery UX, Batch 5 — this is an org-wide fan-out
+     * called, unguarded, from many controllers immediately after their own
+     * primary record already committed (e.g.
+     * ProgrammeMilestoneController::update(),
+     * DelayEventController::store(), EotRequestController::decide()) —
+     * every one of those call sites has no try/catch of its own, so a
+     * failure in here (a DB blip, a malformed recipient query, etc.) would
+     * previously turn an already-successful save into an apparent total
+     * failure (500) for the customer. `EmailNotificationService::send()`
+     * (this method's usual sibling call, fired right after it at several of
+     * those same call sites) already has exactly this discipline — this
+     * brings the in-app notification path to the same standard rather than
+     * leaving the two inconsistently protected. Never rethrows; the
+     * in-app notification itself is not the reason a customer's action
+     * should appear to fail.
+     */
     public static function sendToOrganization(
         Organization $organization,
         string   $type,
@@ -136,40 +154,44 @@ class NotificationService
         bool     $includeActor = false,
         ?callable $recipientFilter = null,
     ): void {
-        $query = $organization->users()
-            ->where('is_active', true)
-            ->whereNull('banned_at')
-            ->whereHas('roles', fn ($q) => $q->where('name', 'Client'));
+        try {
+            $query = $organization->users()
+                ->where('is_active', true)
+                ->whereNull('banned_at')
+                ->whereHas('roles', fn ($q) => $q->where('name', 'Client'));
 
-        if ($recipientFilter) {
-            $query = $recipientFilter($query);
-        }
-
-        $recipients = $query->get()->unique('id');
-
-        if (!$includeActor && $actor) {
-            $recipients = $recipients->reject(fn (User $u) => $u->id === $actor->id);
-        }
-
-        $sourceType  = $meta['source_type']  ?? null;
-        $sourceId    = $meta['source_id']    ?? null;
-        $sourceField = $meta['source_field'] ?? null;
-
-        foreach ($recipients as $recipient) {
-            if ($sourceType !== null && $sourceId !== null) {
-                $alreadyNotified = SuresignNotification::where('user_id', $recipient->id)
-                    ->where('type', $type)
-                    ->where('source_type', $sourceType)
-                    ->where('source_id', $sourceId)
-                    ->where('source_field', $sourceField)
-                    ->exists();
-
-                if ($alreadyNotified) {
-                    continue;
-                }
+            if ($recipientFilter) {
+                $query = $recipientFilter($query);
             }
 
-            self::send($recipient, $type, $title, $message, $data, $meta);
+            $recipients = $query->get()->unique('id');
+
+            if (!$includeActor && $actor) {
+                $recipients = $recipients->reject(fn (User $u) => $u->id === $actor->id);
+            }
+
+            $sourceType  = $meta['source_type']  ?? null;
+            $sourceId    = $meta['source_id']    ?? null;
+            $sourceField = $meta['source_field'] ?? null;
+
+            foreach ($recipients as $recipient) {
+                if ($sourceType !== null && $sourceId !== null) {
+                    $alreadyNotified = SuresignNotification::where('user_id', $recipient->id)
+                        ->where('type', $type)
+                        ->where('source_type', $sourceType)
+                        ->where('source_id', $sourceId)
+                        ->where('source_field', $sourceField)
+                        ->exists();
+
+                    if ($alreadyNotified) {
+                        continue;
+                    }
+                }
+
+                self::send($recipient, $type, $title, $message, $data, $meta);
+            }
+        } catch (\Throwable $e) {
+            Log::warning("NotificationService::sendToOrganization: exception sending event '{$type}' for organization {$organization->id}: " . $e->getMessage());
         }
     }
 }

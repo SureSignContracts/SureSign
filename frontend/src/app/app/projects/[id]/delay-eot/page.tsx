@@ -16,6 +16,14 @@ import PageTourButton from '@/components/tours/PageTourButton';
 export type ContractOption = { id: number; title: string; reference_number?: string | null };
 export type TradePackageOption = { id: number; name: string; package_reference?: string | null };
 
+// Intentionally NOT consolidated onto the shared lib/getErrorMessage —
+// this one also falls back to a plain `Error`'s own `.message`, which
+// assertDeleteSucceeded below relies on (it synthesizes an Error for a dev
+// backend quirk where a failed delete comes back as a 200 with an
+// error-shaped body). The shared helper deliberately does not do this
+// generally, to avoid ever surfacing an arbitrary/unexpected JS error
+// message verbatim elsewhere — see lib/normalizeApiError.ts's own docblock
+// and internal-docs/error-messaging-recovery-ux-audit.md's Batch 1 notes.
 export function getErrorMessage(error: unknown, fallback: string) {
   if (typeof error === 'object' && error !== null && 'response' in error) {
     const resp = (error as Record<string, unknown>).response as Record<string, unknown>;

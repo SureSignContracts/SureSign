@@ -1,5 +1,7 @@
 'use client';
 
+import Select from '@/components/ui/Select';
+
 const PER_PAGE_OPTIONS = [25, 50, 100] as const;
 
 interface PaginationBarProps {
@@ -40,20 +42,15 @@ export default function PaginationBar({
           {from}–{to} of {total}
         </span>
         {showPerPageSelect && (
-        <select
+        <Select
           value={perPage}
           onChange={e => onPerPage(Number(e.target.value))}
-          className="text-xs px-2 py-1 rounded-lg outline-none"
-          style={{
-            backgroundColor: 'var(--bg-elevated)',
-            border: '1px solid var(--border)',
-            color: 'var(--text-secondary)',
-          }}
+          size="sm"
         >
           {PER_PAGE_OPTIONS.map(n => (
             <option key={n} value={n}>{n} per page</option>
           ))}
-        </select>
+        </Select>
         )}
       </div>
       <div className="flex items-center gap-1">

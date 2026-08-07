@@ -145,8 +145,8 @@ class AuthRateLimitingTest extends TestCase
             'password' => 'wrong-password',
         ]);
 
-        $forExistingEmail->assertStatus(401)->assertJson(['message' => 'Invalid credentials.']);
-        $forMissingEmail->assertStatus(401)->assertJson(['message' => 'Invalid credentials.']);
+        $forExistingEmail->assertStatus(401)->assertJson(['message' => 'The email or password is incorrect.']);
+        $forMissingEmail->assertStatus(401)->assertJson(['message' => 'The email or password is incorrect.']);
     }
 
     public function test_login_succeeds_again_after_limiter_window_expires(): void

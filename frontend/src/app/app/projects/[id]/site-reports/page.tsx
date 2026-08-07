@@ -11,6 +11,8 @@ import toast from 'react-hot-toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PageTourButton from '@/components/tours/PageTourButton';
 import Button from '@/components/ui/Button';
+import Select from '@/components/ui/Select';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   draft:     { bg: 'rgba(90,86,82,0.2)',    text: '#9a9490' },
@@ -56,7 +58,7 @@ function SiteDiaryModal({ projectId, diary, readOnly, onClose }: { projectId: st
       toast.success(isEdit ? 'Site diary updated' : 'Site diary added');
       onClose();
     },
-    onError: () => toast.error(isEdit ? 'Failed to update site diary' : 'Failed to add site diary'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, isEdit ? 'Failed to update site diary' : 'Failed to add site diary')),
   });
   const set = (f: keyof DiaryForm, v: string) => setForm(p => ({ ...p, [f]: v }));
   const inputStyle = { backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' };
@@ -85,11 +87,11 @@ function SiteDiaryModal({ projectId, diary, readOnly, onClose }: { projectId: st
             </div>
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Status</label>
-              <select value={form.status} onChange={e => set('status', e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+              <Select value={form.status} onChange={e => set('status', e.target.value)} disabled={readOnly} className="w-full">
                 <option value="draft">Draft</option>
                 <option value="submitted">Submitted</option>
                 <option value="approved">Approved</option>
-              </select>
+              </Select>
             </div>
           </div>
           <div>
@@ -136,7 +138,7 @@ export default function ProjectSiteReportsPage() {
   const [confirmTarget, setConfirmTarget] = useState<any | null>(null);
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['project-site-diaries', id, statusFilter],
     queryFn: () => api.get(`/projects/${id}/site-diaries`, { params: statusFilter !== 'all' ? { status: statusFilter } : {} }).then(r => r.data),
   });
@@ -148,7 +150,7 @@ export default function ProjectSiteReportsPage() {
       queryClient.invalidateQueries({ queryKey: ['project-site-diaries', id] });
       setConfirmTarget(null);
     },
-    onError: () => toast.error('Failed to delete site diary'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed to delete site diary')),
   });
 
   const diaries = (data?.data ?? []).filter((d: any) =>
@@ -212,6 +214,15 @@ export default function ProjectSiteReportsPage() {
             <div key={i} className="h-20 rounded-2xl animate-pulse" style={{ backgroundColor: 'var(--bg-surface)' }} />
 
           ))
+        ) : isError ? (
+          <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+            <ClipboardList size={32} className="mx-auto mb-3" style={{ color: '#f87171' }} />
+            <p className="text-sm" style={{ color: 'var(--text-primary)' }}>We couldn&rsquo;t load site diaries</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{getErrorMessage(error, 'Please try again.')}</p>
+            <Button onClick={() => refetch()} variant="secondary" size="sm" className="mt-3">
+              Try again
+            </Button>
+          </div>
         ) : diaries.length === 0 ? (
           <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
             <ClipboardList size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />

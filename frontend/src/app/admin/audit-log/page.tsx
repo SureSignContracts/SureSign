@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { ClipboardList, Search, ChevronDown, ChevronRight } from 'lucide-react';
 import EmptyState from '@/components/ui/EmptyState';
+import Select from '@/components/ui/Select';
 import { useAuthStore } from '@/store/authStore';
 
 const ACTION_LABELS: Record<string, { label: string; color: string }> = {
@@ -138,17 +139,13 @@ export default function AuditLogPage() {
             style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)', minWidth: '220px' }}
           />
         </div>
-        <div className="relative">
-          <select
-            value={action}
-            onChange={e => { setAction(e.target.value); setPage(1); }}
-            className="appearance-none pl-3 pr-8 py-2 rounded-lg text-sm outline-none"
-            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: action ? 'var(--text-primary)' : 'var(--text-muted)', minWidth: '180px' }}
-          >
-            {ACTION_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-          <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
-        </div>
+        <Select
+          value={action}
+          onChange={e => { setAction(e.target.value); setPage(1); }}
+          className="min-w-[180px]"
+        >
+          {ACTION_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </Select>
         {(search || action) && (
           <button
             onClick={() => { setSearch(''); setAction(''); setPage(1); }}

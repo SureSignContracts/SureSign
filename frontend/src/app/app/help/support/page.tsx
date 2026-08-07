@@ -11,6 +11,7 @@ import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { ContactSupportForm } from '@/components/support/ContactSupportForm';
 import { EmergencyBanner } from '@/components/support/EmergencyBanner';
+import Select from '@/components/ui/Select';
 import {
   SUPPORT_CATEGORIES, SUPPORT_STATUSES, SUPPORT_STATUS_LABELS, SUPPORT_STATUS_COLORS,
 } from '@/lib/supportContext';
@@ -82,38 +83,32 @@ function MyRequestsTab() {
             style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
           />
         </div>
-        <select
+        <Select
           value={status}
           onChange={e => { setStatus(e.target.value); setPage(1); }}
           aria-label="Filter by status"
-          className="px-2.5 py-2 rounded-lg text-sm outline-none"
-          style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
         >
           <option value="">All statuses</option>
           {SUPPORT_STATUSES.filter(s => s !== 'open').map(s => <option key={s} value={s}>{SUPPORT_STATUS_LABELS[s]}</option>)}
-        </select>
-        <select
+        </Select>
+        <Select
           value={category}
           onChange={e => { setCategory(e.target.value); setPage(1); }}
           aria-label="Filter by category"
-          className="px-2.5 py-2 rounded-lg text-sm outline-none"
-          style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
         >
           <option value="">All categories</option>
           {SUPPORT_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-        </select>
-        <select
+        </Select>
+        <Select
           value={priority}
           onChange={e => { setPriority(e.target.value); setPage(1); }}
           aria-label="Filter by priority"
-          className="px-2.5 py-2 rounded-lg text-sm outline-none"
-          style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
         >
           <option value="">All priorities</option>
           <option value="low">Low</option>
           <option value="normal">Normal</option>
           <option value="high">High</option>
-        </select>
+        </Select>
       </div>
 
       {/* List */}

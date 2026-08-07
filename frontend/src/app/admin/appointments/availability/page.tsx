@@ -11,6 +11,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import EmptyState from '@/components/ui/EmptyState';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 // Display order Mon..Sun; `weekday` values match Carbon's dayOfWeek (0=Sun..6=Sat).
 const DAYS: { weekday: number; label: string }[] = [
@@ -75,7 +76,7 @@ export default function AppointmentAvailabilityPage() {
       qc.invalidateQueries({ queryKey: ['appointment-availability', basePath] });
       toast.success('Weekly availability saved.');
     },
-    onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Failed to save availability.'),
+    onError: (err: any) => toast.error(getErrorMessage(err, 'Failed to save availability.')),
   });
 
   const createOverrideMutation = useMutation({
@@ -85,7 +86,7 @@ export default function AppointmentAvailabilityPage() {
       toast.success('Override saved.');
       setOverrideForm({ local_date: '', is_unavailable: false, start_time: '09:00', end_time: '17:00' });
     },
-    onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Failed to save override.'),
+    onError: (err: any) => toast.error(getErrorMessage(err, 'Failed to save override.')),
   });
 
   const deleteOverrideMutation = useMutation({
@@ -105,7 +106,7 @@ export default function AppointmentAvailabilityPage() {
       toast.success('Blocked period added.');
       setBlockedForm({ start_date: '', start_time: '09:00', end_date: '', end_time: '17:00', reason: '' });
     },
-    onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Failed to add blocked period.'),
+    onError: (err: any) => toast.error(getErrorMessage(err, 'Failed to add blocked period.')),
   });
 
   const deleteBlockedMutation = useMutation({

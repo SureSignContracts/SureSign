@@ -5,8 +5,10 @@ import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { formatDate } from '@/lib/utils';
-import { FileText, Search, ChevronDown } from 'lucide-react';
+import { FileText, Search } from 'lucide-react';
 import PaginationBar from '@/components/ui/PaginationBar';
+import Select from '@/components/ui/Select';
+import Combobox from '@/components/ui/Combobox';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -223,48 +225,31 @@ export default function AdminDocumentRegisterPage() {
         </div>
 
         {/* Document type filter */}
-        <div className="relative">
-          <select
-            value={typeFilter}
-            onChange={e => { setTypeFilter(e.target.value); setPage(1); }}
-            className="appearance-none pl-3 pr-8 py-2 rounded-lg text-sm outline-none"
-            style={{
-              backgroundColor: 'var(--bg-surface)',
-              border: '1px solid var(--border)',
-              color: typeFilter ? 'var(--text-primary)' : 'var(--text-muted)',
-              minWidth: '160px',
-            }}
-          >
-            <option value="">All types</option>
-            {types.map(t => (
-              <option key={t.code} value={t.code}>{t.label}</option>
-            ))}
-          </select>
-          <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
-        </div>
+        <Select
+          value={typeFilter}
+          onChange={e => { setTypeFilter(e.target.value); setPage(1); }}
+          className="min-w-[160px]"
+        >
+          <option value="">All types</option>
+          {types.map(t => (
+            <option key={t.code} value={t.code}>{t.label}</option>
+          ))}
+        </Select>
 
-        {/* Project filter */}
-        <div className="relative">
-          <select
-            value={projectFilter}
-            onChange={e => { setProjectFilter(e.target.value); setPage(1); }}
-            className="appearance-none pl-3 pr-8 py-2 rounded-lg text-sm outline-none"
-            style={{
-              backgroundColor: 'var(--bg-surface)',
-              border: '1px solid var(--border)',
-              color: projectFilter ? 'var(--text-primary)' : 'var(--text-muted)',
-              minWidth: '200px',
-            }}
-          >
-            <option value="">All projects</option>
-            {projects.map(p => (
-              <option key={p.id} value={p.id}>
-                {p.code ? `${p.code} – ${p.name}` : p.name}
-              </option>
-            ))}
-          </select>
-          <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
-        </div>
+        {/* Project filter — platform-wide list (admin/document-register/projects
+            spans every organisation), so this is a genuine Combobox case
+            unlike every project-scoped contract/trade-package picker
+            elsewhere in the app. */}
+        <Combobox
+          value={projectFilter}
+          onValueChange={v => { setProjectFilter(v); setPage(1); }}
+          placeholder="All projects"
+          searchPlaceholder="Search projects…"
+          emptyMessage="No projects found."
+          clearable
+          className="min-w-[200px]"
+          options={projects.map(p => ({ value: String(p.id), label: p.code ? `${p.code} – ${p.name}` : p.name }))}
+        />
 
         {/* Clear filters */}
         {hasFilters && (

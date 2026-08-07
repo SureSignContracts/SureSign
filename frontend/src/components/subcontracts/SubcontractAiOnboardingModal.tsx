@@ -9,11 +9,7 @@ import Button from '@/components/ui/Button';
 import Section from '@/components/ai/Section';
 import AnalysisLoadingDisplay from '@/components/ai/AnalysisLoadingDisplay';
 import { cn } from '@/lib/utils';
-
-function getErrorMessage(error: unknown, fallback: string) {
-  const anyErr = error as any;
-  return anyErr?.response?.data?.message ?? fallback;
-}
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 // ── types ──────────────────────────────────────────────────────────────────
 
@@ -157,10 +153,20 @@ export default function SubcontractAiOnboardingModal({ isOpen, onClose, tradePac
       });
       const fileUploadId = uploadRes.data.id;
 
-      const startRes = await api.post(`/trade-packages/${tradePackage.id}/ai-analysis`, {
-        file_upload_id: fileUploadId,
-      });
-      return startRes.data;
+      // The upload above has already succeeded and committed by this point
+      // — a failure starting analysis (AI disabled, already in progress,
+      // etc.) must never be reported as if nothing happened at all. Tagging
+      // the error here lets onError below tell the truth about which half
+      // failed, rather than a single generic "failed to start" message that
+      // could just as easily describe a lost upload.
+      try {
+        const startRes = await api.post(`/trade-packages/${tradePackage.id}/ai-analysis`, {
+          file_upload_id: fileUploadId,
+        });
+        return startRes.data;
+      } catch (startErr) {
+        throw Object.assign(new Error('analysis_start_failed'), { cause: startErr, uploadSucceeded: true });
+      }
     },
     onSuccess: (res) => {
       if (res.existing_analysis) {
@@ -172,7 +178,13 @@ export default function SubcontractAiOnboardingModal({ isOpen, onClose, tradePac
       setStep('analysing');
     },
     onError: (err: unknown) => {
-      toast.error(getErrorMessage(err, 'Failed to start subcontract analysis.'));
+      const uploadSucceeded = err instanceof Error && (err as Error & { uploadSucceeded?: boolean }).uploadSucceeded === true;
+      const cause = uploadSucceeded ? (err as Error & { cause?: unknown }).cause : err;
+      toast.error(
+        uploadSucceeded
+          ? getErrorMessage(cause, "We uploaded the document, but couldn't start the analysis. The document is still available. Try uploading it again to retry.")
+          : getErrorMessage(err, 'Failed to upload the document.')
+      );
     },
   });
 
@@ -214,7 +226,7 @@ export default function SubcontractAiOnboardingModal({ isOpen, onClose, tradePac
       toast.success(res?.data?.message ?? 'Analysis cancelled.');
       onClose();
     },
-    onError: () => toast.error('Could not cancel the analysis. It may already have finished.'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Could not cancel the analysis. It may already have finished.')),
   });
 
   const retryMutation = useMutation({

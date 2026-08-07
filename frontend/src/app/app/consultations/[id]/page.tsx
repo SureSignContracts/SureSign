@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, HeartHandshake, Video } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 import { Badge } from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import { formatDate } from '@/lib/utils';
@@ -62,7 +63,7 @@ export default function ConsultationDetailPage() {
       // both the list and this detail view refetch with the new status.
       qc.invalidateQueries({ queryKey: ['consultations'] });
     },
-    onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Failed to cancel.'),
+    onError: (err: unknown) => toast.error(getErrorMessage(err, 'Failed to cancel.')),
   });
 
   if (isLoading) {
@@ -134,6 +135,16 @@ export default function ConsultationDetailPage() {
             >
               <Video size={14} /> Join Google Meet
             </a>
+          ) : consultation.meeting.status === 'temporarily_unavailable' ? (
+            // Distinct from 'pending' below — the calendar event itself
+            // isn't synced yet (queued/retrying/disconnected), a longer and
+            // less certain wait than "still preparing the link" — see
+            // ConsultationMeetingPresenter's own docblock. Previously shown
+            // identically to 'pending', losing that distinction.
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              We&rsquo;re still connecting this consultation to Google Meet. Your consultation is still confirmed.
+              Check back shortly.
+            </p>
           ) : (
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Preparing Meeting Link&hellip;</p>
           )}

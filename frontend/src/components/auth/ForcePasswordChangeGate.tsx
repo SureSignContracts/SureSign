@@ -5,6 +5,7 @@ import { Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 // Rendered instead of the normal app shell whenever the logged-in user's
 // `must_change_password` flag is set (a Super Admin forced a reset, or set
@@ -33,8 +34,8 @@ export default function ForcePasswordChangeGate() {
       await api.put('/auth/force-password-change', { password, password_confirmation: confirm });
       toast.success('Password updated.');
       await fetchUser();
-    } catch (err: any) {
-      setError(err?.response?.data?.message || err?.response?.data?.errors?.password?.[0] || 'Failed to update password.');
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to update password.'));
     } finally {
       setSaving(false);
     }

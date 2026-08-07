@@ -1,6 +1,7 @@
 'use client';
 
 import { getIanaTimezones } from '@/lib/timezones';
+import Combobox from '@/components/ui/Combobox';
 
 /**
  * Single shared IANA timezone dropdown — extracted in Phase 2 of
@@ -9,12 +10,17 @@ import { getIanaTimezones } from '@/lib/timezones';
  * the Phase 1 Appointments pages. Always offers the current `value` even if
  * it isn't in the IANA list (never silently drops an already-stored,
  * possibly-legacy timezone value from the dropdown).
+ *
+ * Built on the shared `Combobox` (not `Select`) — `getIanaTimezones()`
+ * returns 400+ entries in modern browsers (`Intl.supportedValuesOf`), the
+ * exact "long list, hard to pick without search" case `Combobox` exists
+ * for.
  */
 export default function TimezoneSelect({
   value,
   onChange,
   id,
-  background = 'var(--bg-elevated)',
+  background,
   className,
 }: {
   value: string;
@@ -24,16 +30,22 @@ export default function TimezoneSelect({
   className?: string;
 }) {
   const timezones = getIanaTimezones();
+  const options = timezones.includes(value) || !value
+    ? timezones.map(tz => ({ value: tz, label: tz }))
+    : [{ value, label: value }, ...timezones.map(tz => ({ value: tz, label: tz }))];
+
   return (
-    <select
+    <Combobox
       id={id}
       value={value}
-      onChange={e => onChange(e.target.value)}
-      className={className ?? 'w-full px-3 py-2.5 rounded-lg text-sm outline-none'}
-      style={{ backgroundColor: background, border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-    >
-      {!timezones.includes(value) && value && <option value={value}>{value}</option>}
-      {timezones.map(tz => <option key={tz} value={tz}>{tz}</option>)}
-    </select>
+      onValueChange={onChange}
+      options={options}
+      placeholder="Select timezone…"
+      searchPlaceholder="Search timezones…"
+      emptyMessage="No timezone found."
+      className={className}
+      style={background ? { backgroundColor: background } : undefined}
+      aria-label="Timezone"
+    />
   );
 }

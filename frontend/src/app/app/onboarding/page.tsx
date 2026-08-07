@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import PasswordStrengthChecker, { checkPassword, isPasswordValid } from '@/components/ui/PasswordStrengthChecker';
 import { Card } from '@/components/ui/Card';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 // ─── Form state types ────────────────────────────────────────────────────────
 
@@ -230,7 +231,7 @@ export default function OnboardingPage() {
         if (msgs.password_confirmation) mapped.password_confirmation = msgs.password_confirmation[0];
         setProfileErrors(mapped);
       } else {
-        setGlobalError(e?.response?.data?.message ?? 'Failed to save profile. Please try again.');
+        setGlobalError(getErrorMessage(e, 'Failed to save profile. Please try again.'));
       }
     } finally {
       setSaving(false);
@@ -265,7 +266,7 @@ export default function OnboardingPage() {
         if (msgs.website) mapped.website = msgs.website[0];
         setCompanyErrors(mapped);
       } else {
-        setGlobalError(e?.response?.data?.message ?? 'Failed to save company details. Please try again.');
+        setGlobalError(getErrorMessage(e, 'Failed to save company details. Please try again.'));
       }
     } finally {
       setSaving(false);
@@ -302,7 +303,7 @@ export default function OnboardingPage() {
       qc.invalidateQueries({ queryKey: ['branding'] });
       router.push('/app');
     } catch (e: any) {
-      setGlobalError(e?.response?.data?.message ?? 'Something went wrong. Please try again.');
+      setGlobalError(getErrorMessage(e, 'Something went wrong. Please try again.'));
     } finally {
       setSaving(false);
     }

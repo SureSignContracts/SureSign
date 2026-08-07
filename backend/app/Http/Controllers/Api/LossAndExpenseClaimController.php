@@ -14,6 +14,7 @@ use App\Services\NotificationService;
 use App\Services\ProjectActivityService;
 use App\Services\TradePackages\WorkspaceNavigationResolver;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class LossAndExpenseClaimController extends Controller
 {
@@ -263,32 +264,49 @@ class LossAndExpenseClaimController extends Controller
         }
     }
 
+    /**
+     * Error Messaging & Recovery UX, Batch 5 — this auto-seed is a
+     * best-effort enrichment of an already-existing Final Account, called
+     * from decide() AFTER the claim's own agreed/rejected decision has
+     * already been saved. Previously unguarded: any failure here (a rare
+     * DB issue, a race on sort_order, etc.) would have surfaced as a
+     * failure of the decide() action itself, even though the claim's
+     * decision had already committed. Never surfaced to the frontend
+     * either way today (no UI currently claims this step succeeded), so
+     * swallowing it here — rather than adding a new response field — is
+     * the truthful fix: decide() genuinely has nothing further to promise
+     * about this step.
+     */
     private function createFinalAccountItemIfPossible(LossAndExpenseClaim $claim): void
     {
-        if ($claim->final_account_item_id) {
-            return; // already seeded — never double-create
+        try {
+            if ($claim->final_account_item_id) {
+                return; // already seeded — never double-create
+            }
+
+            $finalAccount = $claim->trade_package_id
+                ? FinalAccount::where('trade_package_id', $claim->trade_package_id)->first()
+                : ($claim->contract_id ? FinalAccount::where('contract_id', $claim->contract_id)->first() : null);
+
+            if (!$finalAccount || $finalAccount->isLocked()) {
+                return;
+            }
+
+            $item = FinalAccountItem::create([
+                'final_account_id' => $finalAccount->id,
+                'category'         => FinalAccount::CATEGORY_LOSS_AND_EXPENSE,
+                'description'      => "L&E Claim #{$claim->claim_number} — {$claim->title}",
+                'source_type'      => 'loss_and_expense_claim',
+                'source_id'        => $claim->id,
+                'amount'           => $claim->amount_agreed ?? 0,
+                'is_auto_seeded'   => true,
+                'sort_order'       => FinalAccountItem::where('final_account_id', $finalAccount->id)->max('sort_order') + 1,
+            ]);
+
+            $claim->update(['final_account_item_id' => $item->id]);
+        } catch (\Throwable $e) {
+            Log::warning("LossAndExpenseClaimController::createFinalAccountItemIfPossible: failed to seed Final Account item for claim {$claim->id}: " . $e->getMessage());
         }
-
-        $finalAccount = $claim->trade_package_id
-            ? FinalAccount::where('trade_package_id', $claim->trade_package_id)->first()
-            : ($claim->contract_id ? FinalAccount::where('contract_id', $claim->contract_id)->first() : null);
-
-        if (!$finalAccount || $finalAccount->isLocked()) {
-            return;
-        }
-
-        $item = FinalAccountItem::create([
-            'final_account_id' => $finalAccount->id,
-            'category'         => FinalAccount::CATEGORY_LOSS_AND_EXPENSE,
-            'description'      => "L&E Claim #{$claim->claim_number} — {$claim->title}",
-            'source_type'      => 'loss_and_expense_claim',
-            'source_id'        => $claim->id,
-            'amount'           => $claim->amount_agreed ?? 0,
-            'is_auto_seeded'   => true,
-            'sort_order'       => FinalAccountItem::where('final_account_id', $finalAccount->id)->max('sort_order') + 1,
-        ]);
-
-        $claim->update(['final_account_item_id' => $item->id]);
     }
 
     public function destroy(Request $request, Project $project, LossAndExpenseClaim $lossAndExpenseClaim)

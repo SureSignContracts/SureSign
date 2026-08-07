@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import DocumentPreviewModal, { type PreviewTarget } from '@/components/documents/DocumentPreviewModal';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import GeneratePackageModal from '@/components/documents/GeneratePackageModal';
@@ -165,8 +166,8 @@ function UploadModal({
       toast.success('File uploaded successfully.');
       onUploaded();
       onClose();
-    } catch {
-      toast.error('Upload failed. Please try again.');
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Upload failed. Please try again.'));
     } finally {
       setUploading(false);
     }
@@ -476,7 +477,7 @@ export default function ProjectDocumentsExplorer({ compact = false }: { compact?
       queryClient.invalidateQueries({ queryKey: ['project-doc-explorer', id] });
       toast.success('Document deleted successfully.');
     },
-    onError: () => toast.error('Failed to delete'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed to delete')),
   });
 
   const folders = useMemo<ProjectFolderListItem[]>(
@@ -556,8 +557,8 @@ export default function ProjectDocumentsExplorer({ compact = false }: { compact?
       anchor.download = fileName;
       anchor.click();
       window.URL.revokeObjectURL(url);
-    } catch {
-      toast.error('Download failed');
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Download failed'));
     }
   };
 
@@ -570,8 +571,8 @@ export default function ProjectDocumentsExplorer({ compact = false }: { compact?
       anchor.download = fileName;
       anchor.click();
       window.URL.revokeObjectURL(url);
-    } catch {
-      toast.error('Download failed');
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Download failed'));
     }
   };
 

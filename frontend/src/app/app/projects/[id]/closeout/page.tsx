@@ -3,9 +3,12 @@
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import api from '@/lib/api';
-import { CheckCircle2, Circle, Lock, Plus, X, Loader2 } from 'lucide-react';
+import { CheckCircle2, Circle, Lock, Plus, X, Loader2, AlertTriangle } from 'lucide-react';
 import PageTourButton from '@/components/tours/PageTourButton';
+import Select from '@/components/ui/Select';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -59,7 +62,9 @@ function AddItemModal({ projectId, onClose }: { projectId: string; onClose: () =
             <input type="date" value={form.due_date} onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))}
               className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
           </div>
-          {mutation.isError && <p className="text-xs text-red-400">Failed to add item.</p>}
+          {mutation.isError && (
+            <p className="text-xs text-red-400">{getErrorMessage(mutation.error, 'Failed to add item.')}</p>
+          )}
           <div className="flex justify-end gap-3 pt-1">
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm"
               style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
@@ -82,9 +87,17 @@ export default function ProjectCloseoutPage() {
   const qc = useQueryClient();
   const [showAddModal, setShowAddModal] = useState(false);
 
-  const { data: closeout, isLoading } = useQuery({
+  const { data: closeout, isLoading, isError, error, refetch } = useQuery({
+    // The queryFn previously swallowed every failure into `null`
+    // (`.catch(() => null)`) — GET /projects/{id}/closeout always
+    // auto-creates and returns a real closeout record on success (see
+    // CloseoutController::show()), so there is no legitimate empty/absent
+    // state here at all. A failure previously rendered the full checklist
+    // UI at "0% - 0/0 complete" with no indication anything had gone
+    // wrong — indistinguishable from (and more alarming than) a genuinely
+    // empty checklist, since this page always seeds 15 real items.
     queryKey: ['project-closeout', id],
-    queryFn: () => api.get(`/projects/${id}/closeout`).then(r => r.data).catch(() => null),
+    queryFn: () => api.get(`/projects/${id}/closeout`).then(r => r.data),
     staleTime: 30 * 1000,
   });
 
@@ -95,6 +108,11 @@ export default function ProjectCloseoutPage() {
       qc.setQueryData(['project-closeout', id], updated);
       qc.invalidateQueries({ queryKey: ['project-activities', id] });
     },
+    // Previously had no onError at all — a failed checkbox toggle (e.g. a
+    // permission or network failure) left the click looking like it simply
+    // did nothing, with no indication to the user that it hadn't actually
+    // saved.
+    onError: (e: unknown) => toast.error(getErrorMessage(e, "Couldn't update this item. Please try again.")),
   });
 
   const markCompleteMutation = useMutation({
@@ -103,6 +121,7 @@ export default function ProjectCloseoutPage() {
       qc.setQueryData(['project-closeout', id], updated);
       qc.invalidateQueries({ queryKey: ['project-activities', id] });
     },
+    onError: (e: unknown) => toast.error(getErrorMessage(e, "Couldn't mark closeout as complete. Please try again.")),
   });
 
   const items: any[] = closeout?.items ?? [];
@@ -123,6 +142,23 @@ export default function ProjectCloseoutPage() {
     return (
       <div className="p-6 max-w-4xl mx-auto flex items-center justify-center h-64">
         <Loader2 size={24} className="animate-spin" style={{ color: 'var(--text-muted)' }} />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto flex flex-col items-center justify-center h-64 gap-3 text-center">
+        <AlertTriangle size={28} style={{ color: '#f87171' }} />
+        <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>We couldn&rsquo;t load the closeout checklist</p>
+        <p className="text-xs max-w-sm" style={{ color: 'var(--text-muted)' }}>{getErrorMessage(error, 'Please try again.')}</p>
+        <button
+          onClick={() => refetch()}
+          className="mt-1 px-4 py-2 rounded-lg text-xs font-medium transition-opacity hover:opacity-90 active:scale-[0.98]"
+          style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
+        >
+          Try again
+        </button>
       </div>
     );
   }
@@ -217,16 +253,17 @@ export default function ProjectCloseoutPage() {
                         </span>
                       </div>
                       {/* Status selector */}
-                      <select
+                      <Select
                         value={item.status}
                         onChange={e => updateItemMutation.mutate({ itemId: item.id, status: e.target.value })}
-                        className="ml-3 px-2 py-0.5 rounded-md text-xs outline-none capitalize"
-                        style={{ backgroundColor: badge.bg, color: badge.text, border: 'none', cursor: 'pointer' }}
+                        className="ml-3 capitalize"
+                        size="sm"
+                        style={{ backgroundColor: badge.bg, color: badge.text, border: 'none' }}
                       >
                         {ITEM_STATUSES.map(s => (
                           <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
                         ))}
-                      </select>
+                      </Select>
                     </div>
                   );
                 })}

@@ -14,6 +14,7 @@ import toast from 'react-hot-toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PageTourButton from '@/components/tours/PageTourButton';
 import Button from '@/components/ui/Button';
+import Select from '@/components/ui/Select';
 
 /** One hour after `time` (HH:MM), wrapping past midnight if needed — used
  * only as a starting suggestion when a user first switches a meeting to
@@ -192,17 +193,17 @@ function NewMeetingModal({ projectId, onClose }: { projectId: string; onClose: (
             </div>
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Type</label>
-              <select value={form.type} onChange={e => set('type', e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+              <Select value={form.type} onChange={e => set('type', e.target.value)} className="w-full">
                 {Object.entries(TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Status</label>
-              <select value={form.status} onChange={e => set('status', e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+              <Select value={form.status} onChange={e => set('status', e.target.value)} className="w-full">
                 <option value="draft">Draft</option>
                 <option value="issued">Issued</option>
                 <option value="approved">Approved</option>
-              </select>
+              </Select>
             </div>
           </div>
 
@@ -328,19 +329,17 @@ function MeetingDetailModal({
               </div>
               <div>
                 <label className="block text-xs mb-1" style={labelStyle}>Type</label>
-                <select value={form.type} onChange={e => set('type', e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+                <Select value={form.type} onChange={e => set('type', e.target.value)} className="w-full">
                   {Object.entries(TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                </select>
+                </Select>
               </div>
               <div>
                 <label className="block text-xs mb-1" style={labelStyle}>Status</label>
-                <select value={form.status} onChange={e => set('status', e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+                <Select value={form.status} onChange={e => set('status', e.target.value)} className="w-full">
                   <option value="draft">Draft</option>
                   <option value="issued">Issued</option>
                   <option value="approved">Approved</option>
-                </select>
+                </Select>
               </div>
             </div>
 
@@ -450,7 +449,7 @@ export default function ProjectMeetingsPage() {
   const [showModal, setShowModal] = useState(false);
   const [detailMeeting, setDetailMeeting] = useState<any | null>(null);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['project-meetings', id],
     queryFn: () => api.get(`/projects/${id}/meetings`).then(r => r.data),
   });
@@ -518,6 +517,15 @@ export default function ProjectMeetingsPage() {
           [...Array(4)].map((_, i) => (
             <div key={i} className="h-20 rounded-2xl animate-pulse" style={{ backgroundColor: 'var(--bg-surface)' }} />
           ))
+        ) : isError ? (
+          <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+            <Users2 size={32} className="mx-auto mb-3" style={{ color: '#f87171' }} />
+            <p className="text-sm" style={{ color: 'var(--text-primary)' }}>We couldn&rsquo;t load meetings</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{getErrorMessage(error, 'Please try again.')}</p>
+            <Button onClick={() => refetch()} variant="secondary" size="sm" className="mt-3">
+              Try again
+            </Button>
+          </div>
         ) : meetings.length === 0 ? (
           <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
             <Users2 size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />

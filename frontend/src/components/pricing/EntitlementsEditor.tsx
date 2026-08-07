@@ -6,6 +6,7 @@ import api from '@/lib/api';
 import Button from '@/components/ui/Button';
 import Toggle from '@/components/ui/Toggle';
 import Modal from '@/components/ui/Modal';
+import Select from '@/components/ui/Select';
 import { ChevronDown, ChevronRight, Layers, Lock, RotateCcw, Save } from 'lucide-react';
 import { EntitlementCategoryMeta, PlanEntitlementRow, PlanEntitlementsPayload, PricingPlan } from '@/types/pricing';
 
@@ -19,6 +20,13 @@ const ENFORCEMENT_LABEL: Record<string, string> = {
 };
 
 type QuickFilter = 'enabled' | 'unlimited' | 'configurable';
+
+// Shared grid so the (desktop-only) column header row and every entitlement
+// row line up pixel-for-pixel. Below `sm`, `display` flips to flex (see
+// ROW_LAYOUT) so these column utilities simply go inert — no separate mobile
+// markup needed.
+const ROW_COLUMNS = 'sm:grid-cols-[minmax(0,1fr)_180px_84px_84px_28px]';
+const ROW_LAYOUT = `flex flex-wrap sm:flex-nowrap items-start sm:items-center gap-2 sm:gap-3 sm:grid ${ROW_COLUMNS}`;
 
 function rowsEqual(a: PlanEntitlementRow[], b: PlanEntitlementRow[]): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
@@ -51,7 +59,7 @@ function ValueControl({ row, onChange }: { row: PlanEntitlementRow; onChange: (v
 
   if (row.value_type === 'integer' || row.value_type === 'decimal') {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <label className="sr-only" htmlFor={`value-${row.feature_key}`}>{row.display_name} value</label>
         <input
           id={`value-${row.feature_key}`}
@@ -64,10 +72,10 @@ function ValueControl({ row, onChange }: { row: PlanEntitlementRow; onChange: (v
             if (raw === '') { onChange(0); return; }
             onChange(row.value_type === 'decimal' ? parseFloat(raw) : parseInt(raw, 10));
           }}
-          className="w-24 px-2 py-1.5 rounded-lg text-sm outline-none motion-reduce:transition-none"
+          className="w-16 px-2 py-1 rounded-md text-sm outline-none motion-reduce:transition-none"
           style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
         />
-        {row.unit && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{row.unit}</span>}
+        {row.unit && <span className="text-xs whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>{row.unit}</span>}
       </div>
     );
   }
@@ -78,13 +86,13 @@ function ValueControl({ row, onChange }: { row: PlanEntitlementRow; onChange: (v
       aria-label={`${row.display_name} value`}
       value={typeof row.value === 'string' ? row.value : ''}
       onChange={(e) => onChange(e.target.value)}
-      className="w-40 px-2 py-1.5 rounded-lg text-sm outline-none"
+      className="w-32 px-2 py-1 rounded-md text-sm outline-none"
       style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
     />
   );
 }
 
-function EntitlementRowCard({ row, defaultRow, onChange }: {
+function EntitlementRow({ row, defaultRow, onChange }: {
   row: PlanEntitlementRow;
   defaultRow: PlanEntitlementRow;
   onChange: (next: PlanEntitlementRow) => void;
@@ -92,92 +100,107 @@ function EntitlementRowCard({ row, defaultRow, onChange }: {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const changed = !row.is_reserved && !rowsEqual([row], [defaultRow]);
   const detailsId = `entitlement-details-${row.feature_key}`;
+  const showsUnlimited = !row.is_reserved && row.category === 'usage';
 
   return (
     <div
-      className="rounded-lg"
       style={{
-        backgroundColor: row.is_reserved ? 'var(--bg-surface)' : 'var(--bg-elevated)',
-        border: `1px dashed transparent`,
-        borderStyle: row.is_reserved ? 'dashed' : 'solid',
-        borderColor: changed ? 'var(--gold)' : 'var(--border)',
-        opacity: row.is_reserved ? 0.85 : 1,
+        backgroundColor: 'transparent',
+        boxShadow: changed ? 'inset 3px 0 0 0 var(--gold)' : 'none',
+        opacity: row.is_reserved ? 0.7 : 1,
       }}
     >
-      <div className="p-3 flex flex-wrap items-center gap-4">
-        <div className="min-w-[200px] flex-1">
+      <div className={`${ROW_LAYOUT} px-3 py-2`}>
+        {/* Entitlement name + badges */}
+        <div className="min-w-0 flex-1 basis-full sm:basis-auto">
           <div className="flex items-center gap-2 flex-wrap">
             {row.is_reserved && <Lock size={12} aria-hidden style={{ color: 'var(--text-muted)' }} />}
-            <span className="text-sm font-medium" style={{ color: row.is_reserved ? 'var(--text-muted)' : 'var(--text-primary)' }}>
+            <span className="text-sm font-medium truncate" style={{ color: row.is_reserved ? 'var(--text-muted)' : 'var(--text-primary)' }}>
               {row.display_name}
             </span>
             {row.is_reserved && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
-                Reserved — not sold
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
+                Reserved
               </span>
             )}
             {!row.is_reserved && !row.currently_sold && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(250,204,21,0.15)', color: '#eab308' }}>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap" style={{ backgroundColor: 'rgba(250,204,21,0.15)', color: '#eab308' }}>
                 Not yet sold
               </span>
             )}
           </div>
           {row.is_reserved && (
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-              Reserved for a possible future platform capability — never enforced, sold, or shown to customers today.
+              Reserved for a possible future capability — never enforced, sold, or shown to customers.
             </p>
           )}
         </div>
 
-        {!row.is_reserved && (
-          <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
-            <Toggle checked={row.is_applicable} onChange={(v) => onChange({ ...row, is_applicable: v, is_unlimited: v ? row.is_unlimited : false, value: v ? row.value : null })} />
-            Applicable
-          </label>
-        )}
+        {/* Value + unit + reset */}
+        <div className="flex items-center gap-1.5 sm:justify-self-start">
+          <ValueControl row={row} onChange={(value) => onChange({ ...row, value })} />
+          {!row.is_reserved && (
+            <button
+              type="button"
+              title="Reset to current default"
+              aria-label={`Reset ${row.display_name} to its current default`}
+              disabled={!changed}
+              onClick={() => onChange(defaultRow)}
+              className="p-1 rounded-md disabled:opacity-0 disabled:pointer-events-none flex-shrink-0"
+              style={{ backgroundColor: 'var(--bg-elevated)' }}
+            >
+              <RotateCcw size={12} aria-hidden />
+            </button>
+          )}
+        </div>
 
-        {!row.is_reserved && row.category === 'usage' && (
-          <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
-            <Toggle
-              checked={row.is_unlimited}
-              disabled={!row.is_applicable}
-              onChange={(v) => onChange({ ...row, is_unlimited: v, value: v ? null : (row.value_type === 'boolean' ? false : 0) })}
-            />
-            Unlimited
-          </label>
-        )}
+        {/* Applicable */}
+        <div className="flex sm:flex-col sm:items-center gap-1.5 sm:gap-0.5">
+          {!row.is_reserved ? (
+            <>
+              <span className="text-[10px] uppercase tracking-wide sm:hidden" style={{ color: 'var(--text-muted)' }}>Applicable</span>
+              <Toggle checked={row.is_applicable} onChange={(v) => onChange({ ...row, is_applicable: v, is_unlimited: v ? row.is_unlimited : false, value: v ? row.value : null })} />
+            </>
+          ) : (
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>
+          )}
+        </div>
 
-        <ValueControl row={row} onChange={(value) => onChange({ ...row, value })} />
+        {/* Unlimited (only meaningful for usage-category rows — a placeholder dash keeps every row's columns aligned) */}
+        <div className="flex sm:flex-col sm:items-center gap-1.5 sm:gap-0.5">
+          {showsUnlimited ? (
+            <>
+              <span className="text-[10px] uppercase tracking-wide sm:hidden" style={{ color: 'var(--text-muted)' }}>Unlimited</span>
+              <Toggle
+                checked={row.is_unlimited}
+                disabled={!row.is_applicable}
+                onChange={(v) => onChange({ ...row, is_unlimited: v, value: v ? null : (row.value_type === 'boolean' ? false : 0) })}
+              />
+            </>
+          ) : (
+            <span className="text-xs hidden sm:inline" style={{ color: 'var(--text-muted)' }}>—</span>
+          )}
+        </div>
 
-        {!row.is_reserved && (
+        {/* Details */}
+        <div className="flex sm:justify-center">
           <button
             type="button"
-            title="Reset to current default"
-            aria-label={`Reset ${row.display_name} to its current default`}
-            disabled={!changed}
-            onClick={() => onChange(defaultRow)}
-            className="p-1.5 rounded-md disabled:opacity-30"
-            style={{ backgroundColor: 'var(--bg-surface)' }}
+            onClick={() => setDetailsOpen(o => !o)}
+            aria-expanded={detailsOpen}
+            aria-controls={detailsId}
+            title="Details"
+            className="flex items-center gap-1 text-xs px-1 py-1 rounded-md"
+            style={{ color: 'var(--text-muted)' }}
           >
-            <RotateCcw size={13} aria-hidden />
+            {detailsOpen ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />}
+            <span className="sm:sr-only">Details</span>
           </button>
-        )}
-
-        <button
-          type="button"
-          onClick={() => setDetailsOpen(o => !o)}
-          aria-expanded={detailsOpen}
-          aria-controls={detailsId}
-          className="flex items-center gap-1 text-xs px-1.5 py-1 rounded-md"
-          style={{ color: 'var(--text-muted)' }}
-        >
-          {detailsOpen ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />}
-          Details
-        </button>
+        </div>
       </div>
 
       {detailsOpen && (
-        <div id={detailsId} className="px-3 pb-3 pt-0 text-xs grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5" style={{ color: 'var(--text-secondary)' }}>
+        <div id={detailsId} className="px-3 pb-3 pt-1 text-xs grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5" style={{ color: 'var(--text-secondary)', backgroundColor: 'var(--bg-surface)' }}>
           <p className="col-span-2 sm:col-span-3" style={{ color: 'var(--text-muted)' }}>{row.description}</p>
           <p><span style={{ color: 'var(--text-muted)' }}>Key:</span> {row.feature_key}</p>
           <p><span style={{ color: 'var(--text-muted)' }}>Enforcement (read-only):</span> {ENFORCEMENT_LABEL[row.enforcement_level ?? ''] ?? '—'}</p>
@@ -186,6 +209,22 @@ function EntitlementRowCard({ row, defaultRow, onChange }: {
           <p><span style={{ color: 'var(--text-muted)' }}>Overrideable:</span> {row.overrideable ? 'Yes' : 'No'}</p>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Column labels for the row grid above — desktop only; below `sm` each row shows its own inline labels instead. */
+function ColumnHeader() {
+  return (
+    <div
+      className={`hidden sm:grid ${ROW_COLUMNS} gap-3 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide rounded-t-lg`}
+      style={{ color: 'var(--text-muted)', backgroundColor: 'var(--bg-surface)' }}
+    >
+      <span>Entitlement</span>
+      <span>Value</span>
+      <span className="text-center">Applicable</span>
+      <span className="text-center">Unlimited</span>
+      <span />
     </div>
   );
 }
@@ -211,26 +250,28 @@ function CategorySection({ category, rows, defaults, onChange, defaultOpen }: {
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
         aria-controls={regionId}
-        className="w-full flex items-center justify-between px-1 py-1.5 motion-reduce:transition-none"
+        className="w-full flex items-baseline gap-2 px-1 py-1.5 motion-reduce:transition-none"
       >
-        <span className="text-left">
+        {open ? <ChevronDown size={14} aria-hidden className="flex-shrink-0" /> : <ChevronRight size={14} aria-hidden className="flex-shrink-0" />}
+        <span className="text-left flex items-baseline gap-2 flex-wrap">
           <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-primary)' }} aria-hidden>
             {category.label}
           </span>
-          <span className="block text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{category.description}</span>
+          <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{category.description}</span>
         </span>
-        {open ? <ChevronDown size={16} aria-hidden /> : <ChevronRight size={16} aria-hidden />}
       </button>
 
       {open && (
-        <div id={regionId} role="region" aria-label={category.label} className="space-y-2 mt-2">
-          {rows.map(row => (
-            <EntitlementRowCard
-              key={row.feature_key}
-              row={row}
-              defaultRow={defaults.find(d => d.feature_key === row.feature_key)!}
-              onChange={onChange}
-            />
+        <div id={regionId} role="region" aria-label={category.label} className="rounded-lg mb-3" style={{ border: '1px solid var(--border)' }}>
+          <ColumnHeader />
+          {rows.map((row, i) => (
+            <div key={row.feature_key} style={i > 0 ? { borderTop: '1px solid var(--border)' } : undefined}>
+              <EntitlementRow
+                row={row}
+                defaultRow={defaults.find(d => d.feature_key === row.feature_key)!}
+                onChange={onChange}
+              />
+            </div>
           ))}
         </div>
       )}
@@ -310,20 +351,27 @@ export default function EntitlementsEditorModal({ plan, onClose }: { plan: Prici
     setRows(prev => (prev ? prev.map(r => (r.feature_key === next.feature_key ? next : r)) : prev));
   }
 
+  function clearFilters() {
+    setSearch('');
+    setCategoryFilter('all');
+    setActiveQuickFilters(new Set());
+    setShowReserved(true);
+  }
+
   const categories = data?.categories ?? [];
+  const filtersActive = !!search || categoryFilter !== 'all' || activeQuickFilters.size > 0 || !showReserved;
 
   return (
-    <Modal title={`Entitlements — ${plan.name}`} icon={Layers} tone="neutral" onClose={onClose} busy={mutation.isPending}>
+    <Modal title={`Entitlements — ${plan.name}`} icon={Layers} tone="neutral" size="xl" onClose={onClose} busy={mutation.isPending}>
       {(close) => (
-        <div className="space-y-4 w-[92vw] sm:w-[640px]" style={{ maxWidth: '90vw' }}>
-          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-            These are this plan&apos;s default entitlements — every key and category comes directly from the Feature
-            registry, so a new key or category appears here automatically. Changing a value only affects future
-            activations, upgrades, and downgrades; it never alters an existing subscription&apos;s already-frozen
-            entitlement snapshot.
+        <div className="w-full h-full flex flex-col flex-1 min-h-0">
+          <p className="text-xs mb-4 flex-shrink-0" style={{ color: 'var(--text-secondary)' }}>
+            These are this plan&apos;s default entitlements, pulled live from the Feature registry. Changing a value
+            only affects future activations, upgrades, and downgrades — it never alters an existing subscription&apos;s
+            already-frozen entitlement snapshot.
           </p>
 
-          <div className="space-y-2">
+          <div className="space-y-2 mb-4 flex-shrink-0">
             <label className="sr-only" htmlFor="entitlement-search">Search entitlements</label>
             <input
               id="entitlement-search"
@@ -336,16 +384,15 @@ export default function EntitlementsEditorModal({ plan, onClose }: { plan: Prici
 
             <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter entitlements">
               <label className="sr-only" htmlFor="entitlement-category-filter">Filter by category</label>
-              <select
+              <Select
                 id="entitlement-category-filter"
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                className="px-2 py-1.5 rounded-lg text-xs outline-none"
-                style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                size="sm"
               >
                 <option value="all">All categories</option>
                 {categories.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
-              </select>
+              </Select>
 
               {([
                 ['enabled', 'Enabled only'],
@@ -372,7 +419,7 @@ export default function EntitlementsEditorModal({ plan, onClose }: { plan: Prici
                 type="button"
                 aria-pressed={showReserved}
                 onClick={() => setShowReserved(v => !v)}
-                className="text-xs px-2.5 py-1 rounded-full ml-auto motion-reduce:transition-none"
+                className="text-xs px-2.5 py-1 rounded-full motion-reduce:transition-none"
                 style={{
                   border: `1px solid ${showReserved ? 'var(--gold)' : 'var(--border)'}`,
                   color: showReserved ? 'var(--text-primary)' : 'var(--text-muted)',
@@ -384,35 +431,45 @@ export default function EntitlementsEditorModal({ plan, onClose }: { plan: Prici
             </div>
           </div>
 
-          {isLoading || !rows ? (
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }} role="status">Loading entitlements…</p>
-          ) : (
-            <div className="space-y-4 max-h-[55vh] overflow-y-auto pr-1">
-              {categories.map((category, i) => (
-                <CategorySection
-                  key={category.key}
-                  category={category}
-                  rows={filtered.filter(r => r.category === category.key)}
-                  defaults={defaultRows ?? []}
-                  onChange={updateRow}
-                  defaultOpen={category.key !== 'reserved' && i < 2}
-                />
-              ))}
-              {filtered.length === 0 && (
-                <p className="text-sm" style={{ color: 'var(--text-muted)' }} role="status">
-                  No entitlements match the current search/filters.
-                </p>
-              )}
-            </div>
-          )}
+          {/* The one real scroll region — `flex-1 min-h-0` takes exactly the space Modal's body
+             wrapper actually has left (never a guessed vh value), so it can never end up taller
+             than its own content while still leaving dead space before the footer. */}
+          <div className="flex-1 min-h-0 overflow-y-auto pr-1 -mr-1">
+            {isLoading || !rows ? (
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }} role="status">Loading entitlements…</p>
+            ) : (
+              <>
+                {categories.map((category, i) => (
+                  <CategorySection
+                    key={category.key}
+                    category={category}
+                    rows={filtered.filter(r => r.category === category.key)}
+                    defaults={defaultRows ?? []}
+                    onChange={updateRow}
+                    defaultOpen={category.key !== 'reserved' && i < 2}
+                  />
+                ))}
+                {filtered.length === 0 && (
+                  <div className="text-sm py-6 text-center" role="status">
+                    <p style={{ color: 'var(--text-muted)' }}>No entitlements match these filters.</p>
+                    {filtersActive && (
+                      <button type="button" onClick={clearFilters} className="text-xs mt-2 underline" style={{ color: 'var(--text-secondary)' }}>
+                        Clear filters
+                      </button>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
 
           {mutation.isError && (
-            <p className="text-xs" role="alert" style={{ color: '#f87171' }}>
+            <p className="text-xs mt-3 flex-shrink-0" role="alert" style={{ color: '#f87171' }}>
               Could not save — check every value matches its expected type and try again.
             </p>
           )}
 
-          <div className="flex items-center justify-end gap-3 pt-2">
+          <div className="flex items-center justify-end gap-3 mt-4 pt-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
             <Button variant="secondary" size="sm" onClick={close} disabled={mutation.isPending}>
               {dirty ? 'Discard & close' : 'Close'}
             </Button>

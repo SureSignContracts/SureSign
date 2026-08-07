@@ -84,7 +84,13 @@ export default function GoogleIntegrationPage() {
   const isSuperAdmin = currentUser?.roles?.includes('Super Admin') ?? false;
   const [testResult, setTestResult] = useState<Record<string, unknown> | null>(null);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    // isError was previously not checked at all — a genuine failure to
+    // load diagnostics (network blip, 500, etc.) fell through to the same
+    // render path as "no Google account connected", telling an admin their
+    // integration was disconnected when the real status was simply
+    // unknown. See internal-docs/error-messaging-recovery-ux-audit.md's
+    // Batch 6 Google findings.
     queryKey: ['google-integration-diagnostics'],
     queryFn: () => api.get('/admin/google/diagnostics').then(r => r.data as Diagnostics),
     refetchInterval: 30000,
@@ -147,6 +153,19 @@ export default function GoogleIntegrationPage() {
 
         {isLoading ? (
           <div className="h-16 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+        ) : isError ? (
+          <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+            <AlertTriangle size={16} style={{ color: '#f87171' }} className="mt-0.5 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm" style={{ color: 'var(--text-primary)' }}>
+                We couldn&rsquo;t check the Google connection status. This doesn&rsquo;t necessarily mean it&rsquo;s disconnected.
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{getErrorMessage(error, 'Please try again.')}</p>
+              <button onClick={() => refetch()} className="text-xs font-medium mt-1.5 underline" style={{ color: 'var(--text-secondary)' }}>
+                Try again
+              </button>
+            </div>
+          </div>
         ) : connection?.connected ? (
           <div className="space-y-1">
             <InfoRow label="Connected account" value={connection.connected_email ?? '—'} />

@@ -7,6 +7,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { ArrowLeft, HeartHandshake, Check, Sunrise, Sun, Sunset } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
+import { normalizeApiError } from '@/lib/normalizeApiError';
 import { useAuthStore } from '@/store/authStore';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -119,11 +120,15 @@ export default function NewConsultationPage() {
       toast.success('Consultation booked.');
       router.push(`/app/consultations/${appointment.id}`);
     },
-    onError: (err: any) => {
-      const validationErrors = err?.response?.data?.errors ?? {};
-      setErrors(validationErrors);
-      if (!Object.keys(validationErrors).length) {
-        toast.error(err?.response?.data?.message ?? 'Failed to book that consultation.');
+    onError: (err: unknown) => {
+      const normalized = normalizeApiError(err, 'Failed to book that consultation.');
+      setErrors(normalized.fieldErrors ?? {});
+      // Field errors already render inline next to each input above — only
+      // toast when there's nothing field-specific to show (network/server/
+      // conflict/permission failures all still surface their own specific
+      // message here).
+      if (!normalized.fieldErrors) {
+        toast.error(normalized.message);
       }
     },
   });

@@ -8,6 +8,7 @@ import api from '@/lib/api';
 import Button from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 interface ReservationRow {
   id: number;
@@ -45,7 +46,7 @@ export default function ConsultancyReservationsPage() {
       qc.invalidateQueries({ queryKey: ['consultancy-reservations'] });
       toast.success('Reservation cancelled.');
     },
-    onError: () => toast.error('Failed to cancel the reservation.'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed to cancel the reservation.')),
   });
 
   const counts = data?.counts;

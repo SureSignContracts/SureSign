@@ -149,4 +149,44 @@ class Batch3LossAndExpenseClaimsTest extends TestCase
         $this->postJson("/api/projects/{$projectTwo->id}/loss-and-expense-claims/{$claim->id}/decide", ['status' => 'agreed', 'amount_agreed' => 100])
             ->assertStatus(404);
     }
+
+    // ── Error Messaging & Recovery UX, Batch 5 ──────────────────────────────
+    //
+    // createFinalAccountItemIfPossible() was previously unguarded — any
+    // failure seeding the Final Account item would have surfaced as a
+    // failure of decide() itself, even though the claim's own agreed/
+    // rejected decision had already been saved. Now wrapped in try/catch
+    // (mirrors NotificationServiceResilienceTest's already-proven pattern).
+    // This test is the happy-path regression guard: proving the try/catch
+    // refactor didn't accidentally also swallow the successful case.
+
+    public function test_agreeing_a_claim_still_seeds_the_linked_final_accounts_item(): void
+    {
+        $a = $this->makeOrgAndUser('a');
+        $project = $this->makeProject($a['org'], $a['user']);
+        $contract = \App\Models\Contract::create([
+            'project_id' => $project->id, 'organization_id' => $project->organization_id,
+            'created_by' => $a['user']->id, 'title' => 'Main Contract', 'type' => 'main_contract', 'status' => 'active',
+        ]);
+        $finalAccount = \App\Models\FinalAccount::create([
+            'organization_id' => $project->organization_id, 'project_id' => $project->id,
+            'contract_id' => $contract->id, 'created_by' => $a['user']->id,
+            'title' => 'Final Account', 'status' => 'draft',
+        ]);
+        $claim = $this->makeClaim($project, $a['user'], ['contract_id' => $contract->id, 'status' => 'submitted']);
+
+        Sanctum::actingAs($a['user']);
+
+        $this->postJson("/api/projects/{$project->id}/loss-and-expense-claims/{$claim->id}/decide", [
+            'status' => 'agreed', 'amount_agreed' => 4500,
+        ])->assertStatus(200);
+
+        $this->assertDatabaseHas('final_account_items', [
+            'final_account_id' => $finalAccount->id,
+            'source_type'      => 'loss_and_expense_claim',
+            'source_id'        => $claim->id,
+            'amount'           => 4500,
+        ]);
+        $this->assertNotNull($claim->fresh()->final_account_item_id);
+    }
 }

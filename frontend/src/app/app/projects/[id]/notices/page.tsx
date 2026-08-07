@@ -11,6 +11,8 @@ import toast from 'react-hot-toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PageTourButton from '@/components/tours/PageTourButton';
 import Button from '@/components/ui/Button';
+import Select from '@/components/ui/Select';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 // Delay Notices used to be a third tab here, but it fetched the EOT Requests
 // endpoint under the "Delay Notices" label — Delay Events have their own
@@ -61,7 +63,7 @@ function NewEotModal({ projectId, onClose }: { projectId: string; onClose: () =>
   const { mutate, isPending } = useMutation({
     mutationFn: (data: typeof form) => api.post(`/projects/${projectId}/eot-requests`, data).then(r => r.data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['project-notices', projectId] }); queryClient.invalidateQueries({ queryKey: ['project-activities', projectId] }); toast.success('EOT submitted'); onClose(); },
-    onError: () => toast.error('Failed'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed')),
   });
   const set = (f: keyof typeof form, v: string) => setForm(p => ({ ...p, [f]: v }));
   return (
@@ -108,7 +110,7 @@ function NewPayLessModal({ projectId, onClose }: { projectId: string; onClose: (
       toast.success('Pay Less Notice issued');
       onClose();
     },
-    onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Failed to issue notice'),
+    onError: (err: any) => toast.error(getErrorMessage(err, 'Failed to issue notice')),
   });
   const set = (f: keyof typeof form, v: string) => setForm(p => ({ ...p, [f]: v }));
   return (
@@ -118,15 +120,14 @@ function NewPayLessModal({ projectId, onClose }: { projectId: string; onClose: (
         <form onSubmit={e => { e.preventDefault(); mutate(form); }} className="space-y-3">
           <div>
             <label className="block text-xs mb-1" style={labelStyle}>Payment Application</label>
-            <select value={form.payment_application_id} onChange={e => set('payment_application_id', e.target.value)}
-              className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+            <Select value={form.payment_application_id} onChange={e => set('payment_application_id', e.target.value)} className="w-full">
               <option value="">Not linked to a payment application</option>
               {paymentApps.map((pa: any) => (
                 <option key={pa.id} value={pa.id}>
                   Application #{pa.application_number}{pa.period_ending ? ` (${pa.period_ending})` : ''}
                 </option>
               ))}
-            </select>
+            </Select>
             {paymentApps.length === 0 && (
               <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>No payment applications found for this project.</p>
             )}
@@ -167,7 +168,7 @@ function SiteInstructionModal({ projectId, instruction, readOnly, onClose }: { p
       toast.success(isEdit ? 'Site instruction updated' : 'Site instruction issued');
       onClose();
     },
-    onError: (err: any) => toast.error(err?.response?.data?.message ?? (isEdit ? 'Failed to update instruction' : 'Failed to issue instruction')),
+    onError: (err: unknown) => toast.error(getErrorMessage(err, isEdit ? 'Failed to update instruction' : 'Failed to issue instruction')),
   });
   const set = (f: keyof typeof form, v: string) => setForm(p => ({ ...p, [f]: v }));
   return (
@@ -185,20 +186,18 @@ function SiteInstructionModal({ projectId, instruction, readOnly, onClose }: { p
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Type *</label>
-              <select value={form.type} onChange={e => set('type', e.target.value)} required
-                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+              <Select value={form.type} onChange={e => set('type', e.target.value)} disabled={readOnly} className="w-full">
                 {SITE_INSTRUCTION_TYPES.map(t => (
                   <option key={t.value} value={t.value}>{t.label}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Status</label>
-              <select value={form.status} onChange={e => set('status', e.target.value)}
-                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+              <Select value={form.status} onChange={e => set('status', e.target.value)} disabled={readOnly} className="w-full">
                 <option value="draft">Draft</option>
                 <option value="issued">Issued</option>
-              </select>
+              </Select>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -261,7 +260,7 @@ export default function ProjectNoticesPage() {
       queryClient.invalidateQueries({ queryKey: ['project-notices', id] });
       setConfirmDeleteInstruction(null);
     },
-    onError: () => toast.error('Failed to delete site instruction'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed to delete site instruction')),
   });
 
   const items = (data?.data ?? []).filter((item: any) =>

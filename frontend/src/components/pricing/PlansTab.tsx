@@ -6,6 +6,7 @@ import api from '@/lib/api';
 import Button from '@/components/ui/Button';
 import { Card, CardBody } from '@/components/ui/Card';
 import Toggle from '@/components/ui/Toggle';
+import SharedSelect from '@/components/ui/Select';
 import {
   ArrowUp, ArrowDown, ChevronDown, ChevronRight, Copy, Plus, Save, Trash2, Archive, Rocket, Pencil, Layers,
 } from 'lucide-react';
@@ -38,10 +39,10 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function Select({ value, onChange, options, allowBlank = true }: { value: string; onChange: (v: string) => void; options: readonly string[]; allowBlank?: boolean }) {
   return (
-    <select value={value} onChange={e => onChange(e.target.value)} className={inputClass} style={inputStyle}>
+    <SharedSelect value={value} onChange={e => onChange(e.target.value)}>
       {allowBlank && <option value="">—</option>}
       {options.map(o => <option key={o} value={o}>{o}</option>)}
-    </select>
+    </SharedSelect>
   );
 }
 

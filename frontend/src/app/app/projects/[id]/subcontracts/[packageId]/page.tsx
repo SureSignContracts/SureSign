@@ -22,8 +22,10 @@ import {
   ListChecks, AlertTriangle, Sparkles, Clock, Plus, Trash2, ShieldCheck,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 import PageTourButton from '@/components/tours/PageTourButton';
 import Modal from '@/components/ui/Modal';
+import Select from '@/components/ui/Select';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -656,7 +658,7 @@ function MilestoneModal({ projectId, tradePackageId, onClose }: { projectId: str
       qc.invalidateQueries({ queryKey: ['trade-package-programme', tradePackageId] });
       onClose();
     },
-    onError: () => toast.error('Failed to add milestone'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed to add milestone')),
   });
 
   return (
@@ -704,7 +706,7 @@ function ProgrammeTab({ projectId, tradePackageId, canWrite }: { projectId: stri
       toast.success('Milestone removed');
       qc.invalidateQueries({ queryKey: ['trade-package-programme', tradePackageId] });
     },
-    onError: () => toast.error('Failed to remove milestone'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed to remove milestone')),
   });
 
   const milestones = data ?? [];
@@ -1030,7 +1032,7 @@ function AiAnalysisTab({ projectId, pkg, onStartNew }: { projectId: string; pkg:
       toast.success('Re-parsed using the existing analysis. Your monthly AI usage was not increased.');
       queryClient.invalidateQueries({ queryKey: ['trade-package-ai-analyses', pkg.id] });
     },
-    onError: () => toast.error('Could not re-parse this analysis.'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Could not re-parse this analysis.')),
   });
 
   const analyses = data?.data ?? [];
@@ -1274,7 +1276,7 @@ function EditPackageModal({ projectId, pkg, onClose }: { projectId: string; pkg:
       toast.success('Trade package updated');
       onClose();
     },
-    onError: () => toast.error('Failed to update trade package'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed to update trade package')),
   });
 
   const input = FIELD_CLS;
@@ -1304,9 +1306,9 @@ function EditPackageModal({ projectId, pkg, onClose }: { projectId: string; pkg:
               <PkgField label="Name" value={form.name} onChange={v => set('name', v)} />
               <div>
                 <label className={labelCls} style={labelStyle}>Status</label>
-                <select value={form.status} onChange={e => set('status', e.target.value)} className={input} style={inputStyle}>
+                <Select value={form.status} onChange={e => set('status', e.target.value)} className={input}>
                   {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
+                </Select>
               </div>
               <PkgField label="Package Code" value={form.package_code} onChange={v => set('package_code', v)} />
               <PkgField label="Package Reference" value={form.package_reference} onChange={v => set('package_reference', v)} />
@@ -1341,10 +1343,10 @@ function EditPackageModal({ projectId, pkg, onClose }: { projectId: string; pkg:
               <PkgField label="Payment Terms (days)" type="number" value={form.payment_terms_days} onChange={v => set('payment_terms_days', v)} />
               <div>
                 <label className={labelCls} style={labelStyle}>Payment Frequency</label>
-                <select value={form.payment_frequency} onChange={e => set('payment_frequency', e.target.value)} className={input} style={inputStyle}>
+                <Select value={form.payment_frequency} onChange={e => set('payment_frequency', e.target.value)} className={input}>
                   <option value="">—</option>
                   {FREQUENCY_OPTIONS.map(o => <option key={o} value={o}>{o.charAt(0).toUpperCase() + o.slice(1)}</option>)}
-                </select>
+                </Select>
               </div>
             </div>
           </section>

@@ -248,4 +248,102 @@ class Batch4FinalAccountsTest extends TestCase
         $this->putJson("/api/final-accounts/{$faTwo->id}/items/{$item['id']}", ['amount' => 999])->assertStatus(422);
         $this->deleteJson("/api/final-accounts/{$faTwo->id}/items/{$item['id']}")->assertStatus(422);
     }
+
+    // ── Trade-package Final Account routes — real production bug, zero prior
+    //    coverage (Error Messaging & Recovery UX initiative, live-discovered) ──
+    //
+    // showForTradePackage()/storeForTradePackage() previously omitted
+    // `Project $project` from their method signature despite the route being
+    // `projects/{project}/trade-packages/{tradePackage}/final-account`.
+    // Laravel's controller-dependency-splicing (ResolvesRouteDependencies::
+    // resolveMethodDependencies(), which uses array_splice on the route's
+    // string-keyed parameter array) re-indexes that array numerically as
+    // soon as it splices in the container-resolved Request instance,
+    // silently misaligning the remaining positional arguments — the
+    // controller was actually invoked as
+    // storeForTradePackage($request, '1') with the route's {project} value
+    // ('1', a string) landing in the $tradePackage slot, and the real
+    // TradePackage instance silently dropped as an unused extra argument.
+    // Confirmed against a real, unmodified sibling controller
+    // (ProgrammeMilestoneController::indexByTradePackage(), which DOES
+    // declare Project $project and works correctly) before diagnosing this
+    // as the root cause, not merely reproducing the symptom.
+
+    private function makeTradePackage(Project $project, array $overrides = []): \App\Models\TradePackage
+    {
+        return \App\Models\TradePackage::create(array_merge([
+            'project_id' => $project->id, 'organization_id' => $project->organization_id,
+            'name' => 'Concrete Frame', 'slug' => 'concrete-frame-' . uniqid(), 'status' => 'active',
+        ], $overrides));
+    }
+
+    public function test_client_can_create_a_final_account_for_their_own_trade_package(): void
+    {
+        $a = $this->makeOrgAndUser('a');
+        $project = $this->makeProject($a['org'], $a['user']);
+        $tradePackage = $this->makeTradePackage($project);
+
+        Sanctum::actingAs($a['user']);
+
+        $response = $this->postJson("/api/projects/{$project->id}/trade-packages/{$tradePackage->id}/final-account");
+
+        $response->assertStatus(201);
+        $this->assertDatabaseHas('final_accounts', [
+            'trade_package_id' => $tradePackage->id,
+            'project_id'       => $project->id,
+            'is_trade_package' => true,
+        ]);
+    }
+
+    public function test_client_can_view_a_trade_packages_final_account_status(): void
+    {
+        $a = $this->makeOrgAndUser('a');
+        $project = $this->makeProject($a['org'], $a['user']);
+        $tradePackage = $this->makeTradePackage($project);
+
+        Sanctum::actingAs($a['user']);
+
+        $this->getJson("/api/projects/{$project->id}/trade-packages/{$tradePackage->id}/final-account")
+            ->assertStatus(200)->assertJson(['exists' => false]);
+
+        $this->postJson("/api/projects/{$project->id}/trade-packages/{$tradePackage->id}/final-account")
+            ->assertStatus(201);
+
+        $this->getJson("/api/projects/{$project->id}/trade-packages/{$tradePackage->id}/final-account")
+            ->assertStatus(200)->assertJson(['exists' => true]);
+    }
+
+    public function test_a_trade_package_id_belonging_to_a_different_project_returns_not_found(): void
+    {
+        // The other half of the fix: authorizeProjectPackage() (matching the
+        // platform-wide convention every sibling trade-package-scoped
+        // controller already uses) also verifies the trade package
+        // genuinely belongs to the project named in the URL — the previous
+        // authorizeTradePackage() only checked organisation membership.
+        $a = $this->makeOrgAndUser('a');
+        $projectOne = $this->makeProject($a['org'], $a['user']);
+        $projectTwo = $this->makeProject($a['org'], $a['user']);
+        $tradePackage = $this->makeTradePackage($projectOne);
+
+        Sanctum::actingAs($a['user']);
+
+        $this->postJson("/api/projects/{$projectTwo->id}/trade-packages/{$tradePackage->id}/final-account")
+            ->assertStatus(404);
+        $this->getJson("/api/projects/{$projectTwo->id}/trade-packages/{$tradePackage->id}/final-account")
+            ->assertStatus(404);
+    }
+
+    public function test_client_cannot_create_a_final_account_for_another_organisations_trade_package(): void
+    {
+        $a = $this->makeOrgAndUser('a');
+        $b = $this->makeOrgAndUser('b');
+        $projectB = $this->makeProject($b['org'], $b['user']);
+        $tradePackageB = $this->makeTradePackage($projectB);
+
+        Sanctum::actingAs($a['user']);
+
+        $this->postJson("/api/projects/{$projectB->id}/trade-packages/{$tradePackageB->id}/final-account")
+            ->assertStatus(403);
+        $this->assertDatabaseMissing('final_accounts', ['trade_package_id' => $tradePackageB->id]);
+    }
 }

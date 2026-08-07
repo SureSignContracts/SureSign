@@ -7,6 +7,7 @@ import { Activity } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
 import PaginationBar from '@/components/ui/PaginationBar';
+import Select from '@/components/ui/Select';
 import { formatDate } from '@/lib/utils';
 
 interface ShadowRow {
@@ -65,21 +66,17 @@ export default function AiCreditsShadowActivityPage() {
       </div>
 
       <div className="flex items-center gap-3 flex-wrap">
-        <select value={workflow} onChange={e => { setWorkflow(e.target.value); setPage(1); }}
-          className="text-xs px-3 py-2 rounded-lg outline-none"
-          style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+        <Select value={workflow} onChange={e => { setWorkflow(e.target.value); setPage(1); }} size="sm">
           <option value="">All workflows</option>
           <option value="contract_analysis">Contract Analysis</option>
           <option value="trade_package_analysis">Trade Package Analysis</option>
-        </select>
-        <select value={shadowStatus} onChange={e => { setShadowStatus(e.target.value); setPage(1); }}
-          className="text-xs px-3 py-2 rounded-lg outline-none"
-          style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+        </Select>
+        <Select value={shadowStatus} onChange={e => { setShadowStatus(e.target.value); setPage(1); }} size="sm">
           <option value="">All shadow results</option>
           <option value="sufficient">Sufficient</option>
           <option value="insufficient">Insufficient</option>
           <option value="unresolved">Unresolved</option>
-        </select>
+        </Select>
       </div>
 
       <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>

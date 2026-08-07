@@ -10,6 +10,7 @@ import {
   ArrowUpRight, AlertTriangle,
 } from 'lucide-react';
 import PageTourButton from '@/components/tours/PageTourButton';
+import Select from '@/components/ui/Select';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -606,18 +607,17 @@ function FilterSelect({ label, value, options, onChange }: {
   onChange: (v: string) => void;
 }) {
   return (
-    <select
+    <Select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="px-2.5 py-1.5 rounded-lg text-xs outline-none"
-      style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+      size="sm"
       aria-label={label}
     >
       <option value="all">{label}: All</option>
       {options.map(o => (
         <option key={o.value} value={o.value}>{o.label}</option>
       ))}
-    </select>
+    </Select>
   );
 }
 

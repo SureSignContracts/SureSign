@@ -16,10 +16,12 @@ import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
 import PaginationBar from '@/components/ui/PaginationBar';
 import Toggle from '@/components/ui/Toggle';
+import Select from '@/components/ui/Select';
 import { Badge, Tone } from '@/components/ui/Badge';
 import { useUserInheritedSubscription } from '@/hooks/useBilling';
 import { SubscriptionSummaryView } from '@/types/subscriptionIntelligence';
 import UsageMeter from '@/components/billing/intelligence/UsageMeter';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 const ACCESS_MODE_TONE: Record<string, Tone> = {
   none: 'neutral', trial: 'accent', full: 'success', grace: 'warning', restricted: 'danger',
@@ -732,7 +734,7 @@ export default function AdminUsersPage() {
       toast.success('User updated.');
     },
     onError: (e: any) => {
-      toast.error(e?.response?.data?.message ?? 'Failed to update user.');
+      toast.error(getErrorMessage(e, 'Failed to update user.'));
     },
   });
 
@@ -744,7 +746,7 @@ export default function AdminUsersPage() {
       toast.success('User removed.');
     },
     onError: (e: any) => {
-      toast.error(e?.response?.data?.message ?? 'Failed to remove user.');
+      toast.error(getErrorMessage(e, 'Failed to remove user.'));
     },
   });
 
@@ -757,7 +759,7 @@ export default function AdminUsersPage() {
       toast.success(actionSuccessMessage(vars.action));
     },
     onError: (e: any) => {
-      toast.error(e?.response?.data?.message ?? 'Action failed.');
+      toast.error(getErrorMessage(e, 'Action failed.'));
     },
   });
 
@@ -1040,11 +1042,9 @@ export default function AdminUsersPage() {
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Role</label>
-                <select value={inviteRole} onChange={e => setInviteRole(e.target.value as typeof INVITE_ROLES[number])}
-                        className="w-full px-3 py-2.5 rounded-lg text-sm outline-none appearance-none"
-                        style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
+                <Select value={inviteRole} onChange={e => setInviteRole(e.target.value as typeof INVITE_ROLES[number])} className="w-full">
                   {INVITE_ROLES.map((r: string) => <option key={r} value={r}>{r}</option>)}
-                </select>
+                </Select>
               </div>
             </div>
             <div className="flex gap-3 mt-6">

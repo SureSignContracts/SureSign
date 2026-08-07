@@ -8,6 +8,7 @@ import { Brain, Download, DollarSign, AlertTriangle, FlaskConical, Activity, Use
 import { Badge } from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
 import PaginationBar from '@/components/ui/PaginationBar';
+import Select from '@/components/ui/Select';
 
 // ── types ──────────────────────────────────────────────────────────────────
 
@@ -306,22 +307,18 @@ export default function AdminAiUsagePage() {
 
       {/* ── Filters ── */}
       <div className="flex items-center gap-3 flex-wrap">
-        <select value={workflow} onChange={e => { setWorkflow(e.target.value); setPage(1); }}
-          className="text-xs px-3 py-2 rounded-lg outline-none"
-          style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+        <Select value={workflow} onChange={e => { setWorkflow(e.target.value); setPage(1); }} size="sm">
           <option value="">All workflows</option>
           <option value="contract_analysis">Contract Analysis</option>
           <option value="trade_package_analysis">Trade Package Analysis</option>
-        </select>
-        <select value={status} onChange={e => { setStatus(e.target.value); setPage(1); }}
-          className="text-xs px-3 py-2 rounded-lg outline-none"
-          style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+        </Select>
+        <Select value={status} onChange={e => { setStatus(e.target.value); setPage(1); }} size="sm">
           <option value="">All statuses</option>
           <option value="completed">Completed</option>
           <option value="confirmed">Confirmed</option>
           <option value="failed">Failed</option>
           <option value="cancelled">Cancelled</option>
-        </select>
+        </Select>
       </div>
 
       {/* ── Detail table ── */}

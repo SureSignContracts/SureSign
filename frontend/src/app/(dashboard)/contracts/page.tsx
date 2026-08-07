@@ -6,6 +6,8 @@ import { FileText, Plus, Search, Building2, DollarSign, Calendar } from 'lucide-
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
+import Select from '@/components/ui/Select';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 const statusColors: Record<string, string> = {
   draft:     'rgba(90,86,82,0.3)',
@@ -150,7 +152,7 @@ function NewContractModal({ onClose, onCreated }: { onClose: () => void; onCreat
   const mutation = useMutation({
     mutationFn: (payload: typeof form) => api.post('/contracts', payload),
     onSuccess: onCreated,
-    onError: (err: any) => setError(err.response?.data?.message || 'Failed to create contract.'),
+    onError: (err: unknown) => setError(getErrorMessage(err, 'Failed to create contract.')),
   });
 
   function field(label: string, key: keyof typeof form, type = 'text', placeholder = '') {
@@ -194,11 +196,10 @@ function NewContractModal({ onClose, onCreated }: { onClose: () => void; onCreat
           </div>
           <div>
             <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Contract Type</label>
-            <select
+            <Select
               value={form.contract_type}
               onChange={e => setForm(f => ({ ...f, contract_type: e.target.value }))}
-              className="w-full px-3 py-2.5 rounded-lg text-sm outline-none appearance-none"
-              style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+              className="w-full"
             >
               <option value="construct_only">Construct Only</option>
               <option value="design_construct">Design &amp; Construct</option>
@@ -206,7 +207,7 @@ function NewContractModal({ onClose, onCreated }: { onClose: () => void; onCreat
               <option value="cost_plus">Cost Plus</option>
               <option value="lump_sum">Lump Sum</option>
               <option value="subcontract">Subcontract</option>
-            </select>
+            </Select>
           </div>
           <div className="grid grid-cols-2 gap-3">
             {field('Start Date', 'start_date', 'date')}

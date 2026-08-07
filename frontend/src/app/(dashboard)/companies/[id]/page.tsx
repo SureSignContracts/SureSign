@@ -10,6 +10,7 @@ import {
   ArrowLeft, Building2, Mail, Phone, MapPin, Plus, Search,
   FolderOpen, Calendar, DollarSign, ChevronRight, X,
 } from 'lucide-react';
+import Select from '@/components/ui/Select';
 
 const STATUS_COLORS: Record<string, string> = {
   active: '#10b981', on_hold: '#f59e0b', completed: '#3b82f6', cancelled: '#ef4444',
@@ -72,16 +73,14 @@ function NewProjectModal({ clientId, onClose }: { clientId: string; onClose: () 
           </div>
           <div>
             <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Type</label>
-            <select value={form.type} onChange={e => set('type', e.target.value)}
-              className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-              style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
+            <Select value={form.type} onChange={e => set('type', e.target.value)} className="w-full">
               <option value="">Select type</option>
               <option value="new_build">New Build</option>
               <option value="refurbishment">Refurbishment</option>
               <option value="fitout">Fitout</option>
               <option value="infrastructure">Infrastructure</option>
               <option value="other">Other</option>
-            </select>
+            </Select>
           </div>
           <div>
             <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Contract Value</label>
@@ -93,14 +92,12 @@ function NewProjectModal({ clientId, onClose }: { clientId: string; onClose: () 
           </div>
           <div>
             <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Status</label>
-            <select value={form.status} onChange={e => set('status', e.target.value)}
-              className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-              style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
+            <Select value={form.status} onChange={e => set('status', e.target.value)} className="w-full">
               <option value="active">Active</option>
               <option value="on_hold">On Hold</option>
               <option value="completed">Completed</option>
               <option value="cancelled">Cancelled</option>
-            </select>
+            </Select>
           </div>
           <div>
             <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Start Date</label>

@@ -95,6 +95,51 @@ class AccountStatusTest extends TestCase
         $this->requestAs($token)->getJson('/api/auth/me')->assertStatus(200);
     }
 
+    // ── Login-time account-unavailable (Error Messaging & Recovery UX,
+    //    Batch 1) — a deactivated/banned account must never reach the point
+    //    of a token being issued, and must return the exact same
+    //    message/code as the mid-session EnsureAccountIsActive check below,
+    //    not different untagged wording. ───────────────────────────────────
+
+    public function test_login_rejects_a_deactivated_account_with_account_unavailable_code(): void
+    {
+        $this->makeUser('deactivated-login@example.com', 'Client', active: false);
+
+        $this->postJson('/api/auth/login', [
+            'email' => 'deactivated-login@example.com',
+            'password' => 'password',
+        ])->assertStatus(403)->assertJson([
+            'message' => 'Your account is not currently permitted to access the platform.',
+            'code'    => 'account_unavailable',
+        ]);
+    }
+
+    public function test_login_rejects_a_banned_account_with_account_unavailable_code(): void
+    {
+        $user = $this->makeUser('banned-login@example.com');
+        $user->update(['banned_at' => now(), 'banned_reason' => 'test']);
+
+        $this->postJson('/api/auth/login', [
+            'email' => 'banned-login@example.com',
+            'password' => 'password',
+        ])->assertStatus(403)->assertJson([
+            'message' => 'Your account is not currently permitted to access the platform.',
+            'code'    => 'account_unavailable',
+        ]);
+    }
+
+    public function test_login_does_not_issue_a_token_for_a_deactivated_account(): void
+    {
+        $user = $this->makeUser('no-token-login@example.com', 'Client', active: false);
+
+        $this->postJson('/api/auth/login', [
+            'email' => 'no-token-login@example.com',
+            'password' => 'password',
+        ]);
+
+        $this->assertSame(0, $user->fresh()->tokens()->count());
+    }
+
     // ── Deactivation ─────────────────────────────────────────────────────
 
     public function test_deactivating_a_user_revokes_all_existing_tokens(): void

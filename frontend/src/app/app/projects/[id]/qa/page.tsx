@@ -3,11 +3,14 @@
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { CheckSquare, Plus, Search, X } from 'lucide-react';
 import PageTourButton from '@/components/tours/PageTourButton';
 import Button from '@/components/ui/Button';
+import Select from '@/components/ui/Select';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -54,6 +57,11 @@ function QaModal({ projectId, report, onClose }: { projectId: string; report?: a
   const set = (k: keyof typeof form) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
       setForm(f => ({ ...f, [k]: e.target.value }));
+  // Same update, narrowed to what the shared `Select` component's onChange
+  // actually provides (no real DOM event, just `{ target: { value } }`) —
+  // `set()` above stays typed for the real `<input>`/`<textarea>` elements.
+  const setSelect = (k: keyof typeof form) =>
+    (e: { target: { value: string } }) => setForm(f => ({ ...f, [k]: e.target.value }));
 
   const inputStyle = {
     backgroundColor: 'var(--bg-elevated)',
@@ -98,9 +106,9 @@ function QaModal({ projectId, report, onClose }: { projectId: string; report?: a
             </div>
             <div>
               <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Status</label>
-              <select value={form.status} onChange={set('status')} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+              <Select value={form.status} onChange={setSelect('status')} className="w-full">
                 {STATUSES.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-              </select>
+              </Select>
             </div>
           </div>
           <div>
@@ -120,13 +128,14 @@ function QaModal({ projectId, report, onClose }: { projectId: string; report?: a
           </div>
           <div className="flex items-center gap-3">
             <label className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Follow-up required</label>
-            <select value={form.follow_up_required} onChange={set('follow_up_required')}
-              className="px-3 py-1.5 rounded-lg text-sm outline-none" style={inputStyle}>
+            <Select value={form.follow_up_required} onChange={setSelect('follow_up_required')} size="sm">
               <option value="0">No</option>
               <option value="1">Yes</option>
-            </select>
+            </Select>
           </div>
-          {mutation.isError && <p className="text-xs text-red-400">Failed to save. Please try again.</p>}
+          {mutation.isError && (
+            <p className="text-xs text-red-400">{getErrorMessage(mutation.error, 'Failed to save. Please try again.')}</p>
+          )}
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm"
               style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
@@ -152,9 +161,14 @@ export default function ProjectQaPage() {
   const [modal, setModal] = useState<{ open: boolean; report?: any }>({ open: false });
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    // The queryFn previously swallowed every failure into a fake empty
+    // result (`.catch(() => ({ data: [] }))`) — a genuine load failure was
+    // indistinguishable from "no QA reports exist yet". The endpoint always
+    // returns 200 with a (possibly empty) paginated collection, so there is
+    // no legitimate case that needs catching here.
     queryKey: ['project-qa', id],
-    queryFn: () => api.get(`/projects/${id}/qa-reports`).then(r => r.data).catch(() => ({ data: [] })),
+    queryFn: () => api.get(`/projects/${id}/qa-reports`).then(r => r.data),
   });
 
   const deleteMutation = useMutation({
@@ -164,6 +178,9 @@ export default function ProjectQaPage() {
       qc.invalidateQueries({ queryKey: ['project-activities', id] });
       setDeleteTarget(null);
     },
+    // Previously had no onError — a failed delete just left the confirm
+    // dialog open with no explanation of why.
+    onError: (e: unknown) => toast.error(getErrorMessage(e, "Couldn't delete this QA report. Please try again.")),
   });
 
   const allReports: any[] = data?.data ?? [];
@@ -266,6 +283,15 @@ export default function ProjectQaPage() {
           {[...Array(4)].map((_, i) => (
             <div key={i} className="h-16 rounded-2xl animate-pulse" style={{ backgroundColor: 'var(--bg-surface)' }} />
           ))}
+        </div>
+      ) : isError ? (
+        <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+          <CheckSquare size={32} className="mx-auto mb-3" style={{ color: '#f87171' }} />
+          <p className="text-sm" style={{ color: 'var(--text-primary)' }}>We couldn&rsquo;t load QA reports</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{getErrorMessage(error, 'Please try again.')}</p>
+          <Button onClick={() => refetch()} variant="secondary" size="sm" className="mt-4">
+            Try again
+          </Button>
         </div>
       ) : reports.length === 0 ? (
         <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>

@@ -3,11 +3,14 @@
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { Package, Plus, Search, AlertCircle, X } from 'lucide-react';
 import PageTourButton from '@/components/tours/PageTourButton';
 import Button from '@/components/ui/Button';
+import { getErrorMessage } from '@/lib/getErrorMessage';
+import Select from '@/components/ui/Select';
 
 const PRIORITY_COLORS: Record<string, { bg: string; text: string }> = {
   low:      { bg: 'rgba(90,86,82,0.2)',    text: '#9a9490' },
@@ -73,6 +76,10 @@ function SnagModal({ projectId, snag, onClose }: { projectId: string; snag?: any
   const set = (k: keyof typeof form) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
       setForm(f => ({ ...f, [k]: e.target.value }));
+  // Same update, narrowed to what the shared `Select` component's onChange
+  // actually provides — see qa/page.tsx's identical helper for why.
+  const setSelect = (k: keyof typeof form) =>
+    (e: { target: { value: string } }) => setForm(f => ({ ...f, [k]: e.target.value }));
 
   const inputStyle = {
     backgroundColor: 'var(--bg-elevated)',
@@ -117,15 +124,15 @@ function SnagModal({ projectId, snag, onClose }: { projectId: string; snag?: any
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Priority</label>
-              <select value={form.priority} onChange={set('priority')} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+              <Select value={form.priority} onChange={setSelect('priority')} className="w-full">
                 {PRIORITIES.map(p => <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>)}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Status</label>
-              <select value={form.status} onChange={set('status')} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+              <Select value={form.status} onChange={setSelect('status')} className="w-full">
                 {STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
-              </select>
+              </Select>
             </div>
           </div>
           <div>
@@ -138,7 +145,9 @@ function SnagModal({ projectId, snag, onClose }: { projectId: string; snag?: any
             <textarea value={form.notes} onChange={set('notes')} rows={2} placeholder="Additional notes…"
               className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none" style={inputStyle} />
           </div>
-          {mutation.isError && <p className="text-xs text-red-400">Failed to save. Please try again.</p>}
+          {mutation.isError && (
+            <p className="text-xs text-red-400">{getErrorMessage(mutation.error, 'Failed to save. Please try again.')}</p>
+          )}
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm"
               style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
@@ -164,9 +173,9 @@ export default function ProjectSnaggingPage() {
   const [modal, setModal] = useState<{ open: boolean; snag?: any }>({ open: false });
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['project-snagging', id],
-    queryFn: () => api.get(`/projects/${id}/snagging`).then(r => r.data).catch(() => ({ data: [] })),
+    queryFn: () => api.get(`/projects/${id}/snagging`).then(r => r.data),
   });
 
   const deleteMutation = useMutation({
@@ -176,6 +185,9 @@ export default function ProjectSnaggingPage() {
       qc.invalidateQueries({ queryKey: ['project-activities', id] });
       setDeleteTarget(null);
     },
+    // Previously had no onError — a failed delete just left the confirm
+    // dialog open with no explanation of why.
+    onError: (e: unknown) => toast.error(getErrorMessage(e, "Couldn't delete this snag item. Please try again.")),
   });
 
   const allItems: any[] = data?.data ?? [];
@@ -277,6 +289,15 @@ export default function ProjectSnaggingPage() {
           [...Array(5)].map((_, i) => (
             <div key={i} className="h-16 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-surface)' }} />
           ))
+        ) : isError ? (
+          <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+            <Package size={32} className="mx-auto mb-3" style={{ color: '#f87171' }} />
+            <p className="text-sm" style={{ color: 'var(--text-primary)' }}>We couldn&rsquo;t load snagging items</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{getErrorMessage(error, 'Please try again.')}</p>
+            <Button onClick={() => refetch()} variant="secondary" size="sm" className="mt-4">
+              Try again
+            </Button>
+          </div>
         ) : items.length === 0 ? (
           <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
             <Package size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />

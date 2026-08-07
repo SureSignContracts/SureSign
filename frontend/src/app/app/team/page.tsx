@@ -6,6 +6,7 @@ import api from '@/lib/api';
 import { Users, UserPlus, Shield, Mail, MoreVertical, Search } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import Button from '@/components/ui/Button';
+import Select from '@/components/ui/Select';
 
 const ROLES = ['Company Admin', 'Project Manager', 'Quantity Surveyor', 'Site Manager', 'Commercial Manager', 'Read-only User'];
 
@@ -179,14 +180,9 @@ export default function AppTeamPage() {
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Role</label>
-                <select
-                  value={inviteRole}
-                  onChange={e => setInviteRole(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                  style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-                >
+                <Select value={inviteRole} onChange={e => setInviteRole(e.target.value)} className="w-full">
                   {ROLES.map(r => <option key={r}>{r}</option>)}
-                </select>
+                </Select>
               </div>
             </div>
             <div className="flex gap-3 mt-6">

@@ -17,6 +17,7 @@ import Select from '@/components/ui/Select';
 import EmptyState from '@/components/ui/EmptyState';
 import PaginationBar from '@/components/ui/PaginationBar';
 import TimezoneSelect from '@/components/shared/TimezoneSelect';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 const STATUS_FILTERS = [
   { key: 'all', label: 'All' },
@@ -107,7 +108,7 @@ export default function AdminAppointmentsPage() {
       const errors = err?.response?.data?.errors ?? {};
       setFormErrors(errors);
       if (!Object.keys(errors).length) {
-        toast.error(err?.response?.data?.message ?? 'Failed to create appointment.');
+        toast.error(getErrorMessage(err, 'Failed to create appointment.'));
       }
     },
   });

@@ -7,6 +7,7 @@ import { formatDate } from '@/lib/utils';
 import { effectiveTodayYmd } from '@/lib/dateTime';
 import { Plus, X, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import Select from '@/components/ui/Select';
 import { getErrorMessage, INPUT_STYLE, CATEGORY_LABELS, StatusBadge, Field } from '@/components/deliveryDocuments/deliveryDocumentShared';
 
 type DeliveryDoc = {
@@ -213,13 +214,13 @@ function DeliveryDocumentModal({ projectId, tradePackageId, doc, invalidateKey, 
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Category">
-              <select className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE}
+              <Select className="w-full"
                 value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
                 {Object.entries(CATEGORY_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-              </select>
+              </Select>
             </Field>
             <Field label="Status">
-              <select className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE}
+              <Select className="w-full"
                 value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
                 <option value="required">Required</option>
                 <option value="pending">Pending</option>
@@ -229,7 +230,7 @@ function DeliveryDocumentModal({ projectId, tradePackageId, doc, invalidateKey, 
                 <option value="rejected">Rejected</option>
                 <option value="expired">Expired</option>
                 <option value="superseded">Superseded</option>
-              </select>
+              </Select>
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -247,13 +248,13 @@ function DeliveryDocumentModal({ projectId, tradePackageId, doc, invalidateKey, 
               value={form.revision} onChange={e => setForm(f => ({ ...f, revision: e.target.value }))} />
           </Field>
           <Field label="Link Existing Document">
-            <select className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE}
+            <Select className="w-full"
               value={form.document_id} onChange={e => setForm(f => ({ ...f, document_id: e.target.value }))}>
               <option value="">None</option>
               {(availableDocs ?? []).map(d => (
                 <option key={d.id} value={d.id}>{d.title ?? d.file_name ?? `Document #${d.id}`}</option>
               ))}
-            </select>
+            </Select>
           </Field>
         </div>
         <div className="flex justify-end gap-2 mt-5">

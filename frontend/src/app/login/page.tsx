@@ -8,6 +8,7 @@ import api from '@/lib/api';
 import { isHostnameSyntacticallyValid } from '@/lib/hostnameValidation';
 import { resolveHostContext } from '@/lib/hostContext';
 import { isSafeAppDeepLink } from '@/lib/safeRedirect';
+import { normalizeApiError } from '@/lib/normalizeApiError';
 
 interface BrandGateway {
   organisation_name: string;
@@ -41,6 +42,13 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPw,   setShowPw]   = useState(false);
   const [error,    setError]    = useState('');
+  // Set only from a normalized 422 field-error response — native `required`
+  // already blocks an empty submit client-side, so this is mainly a safety
+  // net (e.g. a malformed-but-non-empty value the browser doesn't catch).
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
+  // Set from the Axios interceptor's own redirect (lib/api.ts) — a
+  // non-sensitive reason code only, never a token or destination.
+  const [authNotice, setAuthNotice] = useState<'session_expired' | 'account_unavailable' | null>(null);
   const [supportEmail, setSupportEmail] = useState('tech@suresigncontracts.com');
   // Start hidden — we reveal only once we've confirmed the user is NOT authenticated.
   // This avoids SSR/client hydration mismatch (window is undefined on server so we
@@ -64,6 +72,22 @@ export default function LoginPage() {
   // contract in lib/hostContext.ts: never treat an outage as proof of
   // anything.
   const [workspaceStatus, setWorkspaceStatus] = useState<'checking' | 'ok' | 'not_found'>('checking');
+
+  useEffect(() => {
+    // Same "strip immediately, regardless of validity" discipline as
+    // brandHost below — never lingers in the address bar/history.
+    const params = new URLSearchParams(window.location.search);
+    const notice = params.get('authNotice');
+    if (notice === 'session_expired' || notice === 'account_unavailable') {
+      // Reading a one-time query param on mount — same
+      // react-hooks/set-state-in-effect pattern already present and
+      // un-suppressed for workspaceStatus/ready further down this file.
+      setAuthNotice(notice);
+      params.delete('authNotice');
+      const rest = params.toString();
+      window.history.replaceState(null, '', window.location.pathname + (rest ? `?${rest}` : ''));
+    }
+  }, []);
 
   useEffect(() => {
     api.get('/guest-settings')
@@ -178,6 +202,8 @@ export default function LoginPage() {
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
     setError('');
+    setFieldErrors({});
+    setAuthNotice(null);
     try {
       await login(email, password);
       const user = useAuthStore.getState().user;
@@ -194,8 +220,20 @@ export default function LoginPage() {
         const next = new URLSearchParams(window.location.search).get('next');
         router.push(next && isSafeAppDeepLink(next) ? next : '/app');
       }
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
+    } catch (err) {
+      const normalized = normalizeApiError(err);
+      setFieldErrors(normalized.fieldErrors ?? {});
+      // Every other case's backend message is already written to be
+      // customer-safe and specific (invalid credentials, account
+      // unavailable, rate limit, validation, network) — only a genuine
+      // server failure gets login-specific wording instead of the
+      // normalizer's generic one, since "sign in" is more precise here than
+      // "Something went wrong on our side."
+      setError(
+        normalized.type === 'server'
+          ? "We couldn't sign you in right now. Please try again."
+          : normalized.message
+      );
     }
   }
 
@@ -363,9 +401,25 @@ export default function LoginPage() {
             )}
           </div>
 
+          {/* Session-expiry / account-unavailable notice — set only from the
+              Axios interceptor's own redirect (lib/api.ts), never shown
+              alongside a submit error (a fresh submit always clears it). */}
+          {!error && authNotice && (
+            <div
+              role="status"
+              className="rounded-xl px-4 py-3 text-sm"
+              style={{ backgroundColor: 'rgba(15,15,15,0.04)', border: '1px solid #e5e5e5', color: '#525252' }}
+            >
+              {authNotice === 'session_expired'
+                ? 'Your session has expired. Sign in again to continue.'
+                : 'This account is currently unavailable. Contact your administrator or SureSign support.'}
+            </div>
+          )}
+
           {/* Error */}
           {error && (
             <div
+              role="alert"
               className="rounded-xl px-4 py-3 text-sm"
               style={{ backgroundColor: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.18)', color: '#b91c1c' }}
             >
@@ -386,9 +440,14 @@ export default function LoginPage() {
                 required
                 autoComplete="email"
                 placeholder="you@company.com"
+                aria-invalid={fieldErrors.email ? true : undefined}
+                aria-describedby={fieldErrors.email ? 'login-email-error' : undefined}
                 className="w-full px-4 py-3 rounded-xl text-sm bg-[#f7f7f7] border border-[#e5e5e5] focus:border-[#0f0f0f] focus:bg-white focus-visible:outline-2 focus-visible:outline-[#0f0f0f] focus-visible:outline-offset-2"
                 style={{ color: '#0f0f0f', transition: `border-color 300ms ${EASE}, background-color 300ms ${EASE}` }}
               />
+              {fieldErrors.email && (
+                <p id="login-email-error" className="text-xs" style={{ color: '#b91c1c' }}>{fieldErrors.email[0]}</p>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -408,6 +467,8 @@ export default function LoginPage() {
                   required
                   autoComplete="current-password"
                   placeholder="••••••••"
+                  aria-invalid={fieldErrors.password ? true : undefined}
+                  aria-describedby={fieldErrors.password ? 'login-password-error' : undefined}
                   className="w-full px-4 py-3 pr-11 rounded-xl text-sm bg-[#f7f7f7] border border-[#e5e5e5] focus:border-[#0f0f0f] focus:bg-white focus-visible:outline-2 focus-visible:outline-[#0f0f0f] focus-visible:outline-offset-2"
                   style={{ color: '#0f0f0f', transition: `border-color 300ms ${EASE}, background-color 300ms ${EASE}` }}
                 />
@@ -421,6 +482,9 @@ export default function LoginPage() {
                   {showPw ? <EyeOff size={15} strokeWidth={1.75} /> : <Eye size={15} strokeWidth={1.75} />}
                 </button>
               </div>
+              {fieldErrors.password && (
+                <p id="login-password-error" className="text-xs" style={{ color: '#b91c1c' }}>{fieldErrors.password[0]}</p>
+              )}
             </div>
 
             {/* Pill CTA with nested arrow island */}

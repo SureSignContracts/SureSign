@@ -12,6 +12,8 @@ import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PromptActionButton from '@/components/prompts/PromptActionButton';
 import PageTourButton from '@/components/tours/PageTourButton';
 import Button from '@/components/ui/Button';
+import Select from '@/components/ui/Select';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   open:             { bg: 'rgba(234,179,8,0.12)',  text: '#facc15' },
@@ -65,7 +67,7 @@ function NewRfiModal({ projectId, onClose }: { projectId: string; onClose: () =>
       toast.success('RFI raised');
       onClose();
     },
-    onError: () => toast.error('Failed to raise RFI'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed to raise RFI')),
   });
 
   const set = (field: keyof RfiForm, value: string | boolean) =>
@@ -95,12 +97,11 @@ function NewRfiModal({ projectId, onClose }: { projectId: string; onClose: () =>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Priority</label>
-              <select value={form.priority} onChange={e => set('priority', e.target.value)}
-                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+              <Select value={form.priority} onChange={e => set('priority', e.target.value)} className="w-full">
                 {(['urgent', 'high', 'normal', 'low'] as const).map(p => (
                   <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Date raised</label>
@@ -160,7 +161,7 @@ function RfiResponseModal({ rfi, projectId, onClose }: { rfi: any; projectId: st
       toast.success('Response recorded');
       onClose();
     },
-    onError: () => toast.error('Failed to record response'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed to record response')),
   });
 
   const inputStyle = { backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' };
@@ -215,7 +216,7 @@ export default function ProjectRfisPage() {
   const [respondRfi, setRespondRfi] = useState<any | null>(null);
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['project-rfis', id],
     queryFn: () => api.get(`/projects/${id}/rfis`).then(r => r.data),
   });
@@ -236,7 +237,7 @@ export default function ProjectRfisPage() {
       queryClient.invalidateQueries({ queryKey: ['project-activities', id] });
       toast.success('RFI closed');
     },
-    onError: () => toast.error('Failed to close RFI'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed to close RFI')),
   });
 
   return (
@@ -320,6 +321,22 @@ export default function ProjectRfisPage() {
                   ))}
                 </tr>
               ))
+            ) : isError ? (
+              // A query failure previously fell through to the empty-state
+              // branch below (data stayed undefined, isLoading settled to
+              // false) — indistinguishable from "no RFIs exist yet". See
+              // internal-docs/error-messaging-recovery-ux-audit.md's Batch 5
+              // fake-empty-state notes.
+              <tr>
+                <td colSpan={7} className="px-5 py-12 text-center">
+                  <MessageSquare size={28} className="mx-auto mb-2" style={{ color: '#f87171' }} />
+                  <p className="text-sm" style={{ color: 'var(--text-primary)' }}>We couldn&rsquo;t load RFIs</p>
+                  <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{getErrorMessage(error, 'Please try again.')}</p>
+                  <Button onClick={() => refetch()} variant="secondary" size="sm" className="mt-3">
+                    Try again
+                  </Button>
+                </td>
+              </tr>
             ) : rfis.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-5 py-12 text-center">

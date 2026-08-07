@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Globe, ExternalLink, X, Check } from 'lucide-react';
+import { Globe, ExternalLink, Trash2, Check } from 'lucide-react';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
+import Modal from '@/components/ui/Modal';
+import Button from '@/components/ui/Button';
 
 interface UrlSlugData {
   url_slug: string | null;
@@ -172,7 +174,7 @@ export default function CustomUrlSection() {
           <div className="flex items-center gap-2">
             <input
               value={slugInput}
-              onChange={e => { setSlugInput(e.target.value); setFieldError(null); }}
+              onChange={e => { setSlugInput(e.target.value.toLowerCase()); setFieldError(null); }}
               placeholder="your-company"
               className="flex-1 px-3 py-2.5 rounded-lg text-sm outline-none font-mono min-w-0"
               style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
@@ -212,68 +214,52 @@ export default function CustomUrlSection() {
       )}
 
       {confirmOpen === 'save' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm p-4" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }} onClick={() => setConfirmOpen(null)}>
-          <div
-            className="w-full max-w-sm rounded-2xl p-6 ss-animate-in"
-            style={{ backgroundColor: 'var(--bg-panel)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between mb-3">
-              <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
-                {data.url_slug ? 'Change your custom URL?' : 'Set your custom URL?'}
-              </h2>
-              <button onClick={() => setConfirmOpen(null)}><X size={16} style={{ color: 'var(--text-muted)' }} /></button>
-            </div>
-            <p className="text-sm mb-5" style={{ color: 'var(--text-secondary)' }}>
-              Your customer-facing links will use <span className="font-mono">{previewFor(slugInput)}</span> going forward.
-              {data.url_slug && ' Links already sent to customers using your previous address will keep working.'}
-            </p>
-            <div className="flex gap-3">
-              <button onClick={() => setConfirmOpen(null)} className="flex-1 py-2.5 rounded-xl text-sm font-medium" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
-                Cancel
-              </button>
-              <button
-                onClick={() => saveMutation.mutate(slugInput.trim())}
-                disabled={saveMutation.isPending}
-                className="flex-1 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
-                style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
-              >
-                {saveMutation.isPending ? 'Saving…' : 'Confirm'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <Modal
+          title={data.url_slug ? 'Change your custom URL?' : 'Set your custom URL?'}
+          icon={Globe}
+          tone="info"
+          onClose={() => setConfirmOpen(null)}
+          busy={saveMutation.isPending}
+        >
+          {(close) => (
+            <>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                Your customer-facing links will use <span className="font-mono">{previewFor(slugInput)}</span> going forward.
+                {data.url_slug && ' Links already sent to customers using your previous address will keep working.'}
+              </p>
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <Button variant="secondary" size="sm" onClick={close} disabled={saveMutation.isPending}>Cancel</Button>
+                <Button variant="primary" size="sm" onClick={() => saveMutation.mutate(slugInput.trim())} disabled={saveMutation.isPending}>
+                  {saveMutation.isPending ? 'Saving…' : 'Confirm'}
+                </Button>
+              </div>
+            </>
+          )}
+        </Modal>
       )}
 
       {confirmOpen === 'remove' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm p-4" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }} onClick={() => setConfirmOpen(null)}>
-          <div
-            className="w-full max-w-sm rounded-2xl p-6 ss-animate-in"
-            style={{ backgroundColor: 'var(--bg-panel)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between mb-3">
-              <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Remove your custom URL?</h2>
-              <button onClick={() => setConfirmOpen(null)}><X size={16} style={{ color: 'var(--text-muted)' }} /></button>
-            </div>
-            <p className="text-sm mb-5" style={{ color: 'var(--text-secondary)' }}>
-              Your customer-facing links will go back to the default SureSign address. Links already sent to customers will keep working.
-            </p>
-            <div className="flex gap-3">
-              <button onClick={() => setConfirmOpen(null)} className="flex-1 py-2.5 rounded-xl text-sm font-medium" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
-                Cancel
-              </button>
-              <button
-                onClick={() => removeMutation.mutate()}
-                disabled={removeMutation.isPending}
-                className="flex-1 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
-                style={{ backgroundColor: '#ef4444', color: '#fff' }}
-              >
-                {removeMutation.isPending ? 'Removing…' : 'Remove'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <Modal
+          title="Remove your custom URL?"
+          icon={Trash2}
+          tone="danger"
+          onClose={() => setConfirmOpen(null)}
+          busy={removeMutation.isPending}
+        >
+          {(close) => (
+            <>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                Your customer-facing links will go back to the default SureSign address. Links already sent to customers will keep working.
+              </p>
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <Button variant="secondary" size="sm" onClick={close} disabled={removeMutation.isPending}>Cancel</Button>
+                <Button variant="danger" size="sm" onClick={() => removeMutation.mutate()} disabled={removeMutation.isPending}>
+                  {removeMutation.isPending ? 'Removing…' : 'Remove'}
+                </Button>
+              </div>
+            </>
+          )}
+        </Modal>
       )}
     </div>
   );

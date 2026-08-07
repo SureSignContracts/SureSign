@@ -18,6 +18,8 @@ import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PromptActionButton from '@/components/prompts/PromptActionButton';
 import PageTourButton from '@/components/tours/PageTourButton';
 import Button from '@/components/ui/Button';
+import Select from '@/components/ui/Select';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 // ─── Status Config ────────────────────────────────────────────────────────────
 
@@ -168,7 +170,7 @@ function NewVariationModal({ projectId, onClose }: { projectId: string; onClose:
       toast.success('Variation created');
       onClose();
     },
-    onError: () => toast.error('Failed to create variation'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed to create variation')),
   });
 
   const set = (field: keyof VariationForm, value: string) =>
@@ -191,13 +193,12 @@ function NewVariationModal({ projectId, onClose }: { projectId: string; onClose:
             <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Details</p>
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Contract *</label>
-              <select value={form.contract_id} onChange={e => set('contract_id', e.target.value)} required
-                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+              <Select value={form.contract_id} onChange={e => set('contract_id', e.target.value)} className="w-full">
                 <option value="">Select contract…</option>
                 {contracts.map(c => (
                   <option key={c.id} value={c.id}>{c.title}{c.reference_number ? ` (${c.reference_number})` : ''}</option>
                 ))}
-              </select>
+              </Select>
               {contracts.length === 0 && <p className="text-xs mt-1" style={{ color: '#f87171' }}>No contracts. Add one first.</p>}
             </div>
             <div>
@@ -213,11 +214,10 @@ function NewVariationModal({ projectId, onClose }: { projectId: string; onClose:
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs mb-1" style={labelStyle}>Type</label>
-                <select value={form.type} onChange={e => set('type', e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+                <Select value={form.type} onChange={e => set('type', e.target.value)} className="w-full">
                   <option value="">Select type…</option>
                   {VARIATION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
+                </Select>
               </div>
               <div>
                 <label className="block text-xs mb-1" style={labelStyle}>Variation Date</label>
@@ -239,19 +239,17 @@ function NewVariationModal({ projectId, onClose }: { projectId: string; onClose:
               </div>
               <div>
                 <label className="block text-xs mb-1" style={labelStyle}>Instruction Method</label>
-                <select value={form.instruction_method} onChange={e => set('instruction_method', e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+                <Select value={form.instruction_method} onChange={e => set('instruction_method', e.target.value)} className="w-full">
                   <option value="written">Written</option>
                   <option value="verbal_emergency">Verbal (Emergency)</option>
-                </select>
+                </Select>
               </div>
               <div>
                 <label className="block text-xs mb-1" style={labelStyle}>Valuation Method</label>
-                <select value={form.valuation_method} onChange={e => set('valuation_method', e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+                <Select value={form.valuation_method} onChange={e => set('valuation_method', e.target.value)} className="w-full">
                   <option value="">Auto (from contract)</option>
                   {VALUATION_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                </select>
+                </Select>
               </div>
               <div>
                 <label className="block text-xs mb-1" style={labelStyle}>Programme Impact (days)</label>
@@ -307,7 +305,7 @@ function EditVariationModal({ variation, projectId, onClose }: { variation: any;
       toast.success('Variation updated');
       onClose();
     },
-    onError: () => toast.error('Failed to update variation'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed to update variation')),
   });
 
   const set = (field: keyof VariationForm, value: string) =>
@@ -350,11 +348,10 @@ function EditVariationModal({ variation, projectId, onClose }: { variation: any;
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs mb-1" style={labelStyle}>Type</label>
-                <select value={form.type} onChange={e => set('type', e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+                <Select value={form.type} onChange={e => set('type', e.target.value)} className="w-full">
                   <option value="">Select type…</option>
                   {VARIATION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
+                </Select>
               </div>
               <div>
                 <label className="block text-xs mb-1" style={labelStyle}>Variation Date</label>
@@ -363,11 +360,10 @@ function EditVariationModal({ variation, projectId, onClose }: { variation: any;
               </div>
               <div>
                 <label className="block text-xs mb-1" style={labelStyle}>Instruction Method</label>
-                <select value={form.instruction_method} onChange={e => set('instruction_method', e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+                <Select value={form.instruction_method} onChange={e => set('instruction_method', e.target.value)} className="w-full">
                   <option value="written">Written</option>
                   <option value="verbal_emergency">Verbal (Emergency)</option>
-                </select>
+                </Select>
               </div>
               <div>
                 <label className="block text-xs mb-1" style={labelStyle}>Programme Impact (days)</label>
@@ -394,11 +390,10 @@ function EditVariationModal({ variation, projectId, onClose }: { variation: any;
               </div>
               <div>
                 <label className="block text-xs mb-1" style={labelStyle}>Valuation Method</label>
-                <select value={form.valuation_method} onChange={e => set('valuation_method', e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+                <Select value={form.valuation_method} onChange={e => set('valuation_method', e.target.value)} className="w-full">
                   <option value="">Not set</option>
                   {VALUATION_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                </select>
+                </Select>
               </div>
               <div>
                 <label className="block text-xs mb-1" style={labelStyle}>Quotation Submitted</label>
@@ -458,7 +453,7 @@ function WorkflowActionModal({
       onClose();
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.message ?? `Failed to ${action.label.toLowerCase()} variation`);
+      toast.error(getErrorMessage(err, `Failed to ${action.label.toLowerCase()} variation`));
     },
   });
 
@@ -572,7 +567,7 @@ function GeneratePdfButton({ variationId }: { variationId: number }) {
   const { mutate, isPending } = useMutation({
     mutationFn: () => api.post(`/variations/${variationId}/generate-pdf`).then(r => r.data),
     onSuccess: () => toast.success('PDF generated, check Documents'),
-    onError: () => toast.error('Failed to generate PDF'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed to generate PDF')),
   });
   return (
     <button onClick={e => { e.stopPropagation(); mutate(); }} disabled={isPending}

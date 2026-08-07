@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { FileText, Search } from 'lucide-react';
+import Select from '@/components/ui/Select';
 
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   drawing:       'Drawing',
@@ -137,16 +138,14 @@ export default function DocumentRegisterPage() {
         </div>
 
         {/* Per page */}
-        <select
+        <Select
           value={perPage}
           onChange={e => { setPerPage(Number(e.target.value)); setPage(1); }}
-          className="px-3 py-2 rounded-lg text-sm outline-none"
-          style={{ ...inputStyle }}
         >
           {PER_PAGE_OPTIONS.map(n => (
             <option key={n} value={n}>{n} per page</option>
           ))}
-        </select>
+        </Select>
       </div>
 
       {/* Table */}

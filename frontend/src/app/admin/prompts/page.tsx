@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  BookOpen, Search, Copy, Heart, Star, Plus, X, ChevronDown,
+  BookOpen, Search, Copy, Heart, Star, Plus, X,
   Edit, Trash2, Check, Tag, Layers, Filter, Grid3X3,
 } from 'lucide-react';
 import api from '@/lib/api';
@@ -11,6 +11,8 @@ import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
 import PromptContextModal from '@/components/prompts/PromptContextModal';
 import PaginationBar from '@/components/ui/PaginationBar';
+import Select from '@/components/ui/Select';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -242,8 +244,8 @@ function PromptFormModal({
       }
       onSaved();
       onClose();
-    } catch {
-      toast.error('Failed to save prompt.');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to save prompt.'));
     } finally {
       setSaving(false);
     }
@@ -292,17 +294,16 @@ function PromptFormModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Category</label>
-              <select
+              <Select
                 value={form.prompt_category_id}
                 onChange={e => setForm(f => ({ ...f, prompt_category_id: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-                style={inputStyle}
+                className="w-full"
               >
                 <option value="">No category</option>
                 {categories.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Module</label>
@@ -496,7 +497,7 @@ export default function AdminPromptsPage() {
       toast.success('Prompt deleted.');
       queryClient.invalidateQueries({ queryKey: ['prompt-templates'] });
     },
-    onError: () => toast.error('Failed to delete prompt.'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed to delete prompt.')),
   });
 
   const handleCopy = useCallback(async (template: PromptTemplate) => {
@@ -668,18 +669,14 @@ export default function AdminPromptsPage() {
 
           {/* Module filter */}
           {modules.length > 0 && (
-            <div className="relative">
-              <select
-                value={activeModule}
-                onChange={e => setActiveModule(e.target.value)}
-                className="appearance-none pl-3 pr-7 py-1.5 rounded-lg text-sm outline-none cursor-pointer"
-                style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
-              >
-                <option value="">All modules</option>
-                {modules.map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
-              <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
-            </div>
+            <Select
+              value={activeModule}
+              onChange={e => setActiveModule(e.target.value)}
+              size="sm"
+            >
+              <option value="">All modules</option>
+              {modules.map(m => <option key={m} value={m}>{m}</option>)}
+            </Select>
           )}
 
           {/* Result count */}

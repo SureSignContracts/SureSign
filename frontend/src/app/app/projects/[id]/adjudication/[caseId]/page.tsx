@@ -16,6 +16,8 @@ import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import toast from 'react-hot-toast';
 import PromptActionButton from '@/components/prompts/PromptActionButton';
 import Button from '@/components/ui/Button';
+import Select from '@/components/ui/Select';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -204,6 +206,10 @@ function AddDocumentModal({
   const set = (k: keyof typeof form) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
       setForm(f => ({ ...f, [k]: e.target.value }));
+  // Narrowed to what the shared `Select` component's onChange provides —
+  // see qa/page.tsx's identical helper for why.
+  const setSelect = (k: keyof typeof form) =>
+    (e: { target: { value: string } }) => setForm(f => ({ ...f, [k]: e.target.value }));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
@@ -253,26 +259,26 @@ function AddDocumentModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Document Type *</label>
-              <select value={form.document_type} onChange={set('document_type')} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+              <Select value={form.document_type} onChange={setSelect('document_type')} className="w-full">
                 {Object.entries(DOC_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Category</label>
-              <select value={form.category} onChange={set('category')} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+              <Select value={form.category} onChange={setSelect('category')} className="w-full">
                 <option value="">No category</option>
                 {Object.entries(DOC_CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Status</label>
-              <select value={form.status} onChange={set('status')} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+              <Select value={form.status} onChange={setSelect('status')} className="w-full">
                 <option value="draft">Draft</option>
                 <option value="pending_review">Pending Review</option>
                 <option value="approved">Approved</option>
                 <option value="issued">Issued</option>
                 <option value="archived">Archived</option>
-              </select>
+              </Select>
             </div>
           </div>
           {mode === 'draft' && (
@@ -311,12 +317,16 @@ function AddDeadlineModal({ caseId, projectId, caseCreatedAt, onClose }: { caseI
       qc.invalidateQueries({ queryKey: ['adjudication-deadlines', caseId] });
       onClose();
     },
-    onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Failed to save deadline.'),
+    onError: (err: any) => toast.error(getErrorMessage(err, 'Failed to save deadline.')),
   });
 
   const set = (k: keyof typeof form) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
       setForm(f => ({ ...f, [k]: e.target.value }));
+  // Narrowed to what the shared `Select` component's onChange provides —
+  // see qa/page.tsx's identical helper for why.
+  const setSelect = (k: keyof typeof form) =>
+    (e: { target: { value: string } }) => setForm(f => ({ ...f, [k]: e.target.value }));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -350,14 +360,14 @@ function AddDeadlineModal({ caseId, projectId, caseCreatedAt, onClose }: { caseI
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Type *</label>
-              <select value={form.deadline_type} onChange={set('deadline_type')} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+              <Select value={form.deadline_type} onChange={setSelect('deadline_type')} className="w-full">
                 <option value="notice_deadline">Notice Deadline</option>
                 <option value="referral_deadline">Referral Deadline</option>
                 <option value="response_deadline">Response Deadline</option>
                 <option value="decision_deadline">Decision Deadline</option>
                 <option value="enforcement_deadline">Enforcement Deadline</option>
                 <option value="custom">Custom</option>
-              </select>
+              </Select>
             </div>
             <div>
               <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Due Date *</label>
@@ -751,7 +761,7 @@ export default function AdjudicationCaseDetailPage() {
       qc.invalidateQueries({ queryKey: ['adjudication-activity', caseId] });
       toast.success('Case status updated');
     },
-    onError: () => toast.error('Failed to update status'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed to update status')),
   });
 
   const archiveMutation = useMutation({
@@ -763,7 +773,7 @@ export default function AdjudicationCaseDetailPage() {
       qc.invalidateQueries({ queryKey: ['project-adjudication-cases', id] });
       toast.success('Case archived');
     },
-    onError: () => toast.error('Failed to archive case'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed to archive case')),
   });
 
   if (isLoading) {

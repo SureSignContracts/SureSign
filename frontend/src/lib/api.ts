@@ -36,6 +36,13 @@ const ACCOUNT_UNAVAILABLE_CODE = 'account_unavailable';
 // any such request would ever fire — treating that 403 as a logout here would
 // undo that gate's whole point of keeping the user authenticated while they
 // complete the required change.
+// Error Messaging & Recovery UX, Batch 1 — a safe, non-sensitive reason code
+// carried on the redirect so the login page can explain why the user landed
+// there instead of showing a bare form (e.g. "Your session has expired.").
+// Never anything more specific than these two fixed enum values — no token,
+// no destination path, no account/organisation detail.
+type AuthNotice = 'session_expired' | 'account_unavailable';
+
 api.interceptors.response.use(
   (res) => res,
   (err) => {
@@ -52,7 +59,8 @@ api.interceptors.response.use(
       // can't stop, since it's caused entirely by stale client storage.
       localStorage.removeItem('suresign_token');
       localStorage.removeItem('suresign-auth');
-      window.location.href = '/login';
+      const notice: AuthNotice = isAccountUnavailable ? 'account_unavailable' : 'session_expired';
+      window.location.href = `/login?authNotice=${notice}`;
     }
     return Promise.reject(err);
   }

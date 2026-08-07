@@ -1,15 +1,9 @@
 'use client';
 
-export function getErrorMessage(error: unknown, fallback: string) {
-  if (typeof error === 'object' && error !== null && 'response' in error) {
-    const resp = (error as Record<string, unknown>).response as Record<string, unknown>;
-    if (resp && 'data' in resp) {
-      const d = resp.data as Record<string, unknown>;
-      if (d && 'message' in d && typeof d.message === 'string') return d.message;
-    }
-  }
-  return fallback;
-}
+// Re-exported for callers importing it from this file — see
+// lib/normalizeApiError.ts for the canonical implementation (identical
+// behaviour, consolidated in Error Messaging & Recovery UX Batch 1).
+export { getErrorMessage } from '@/lib/getErrorMessage';
 
 export const INPUT_STYLE = { backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' };
 

@@ -7,6 +7,8 @@ import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { effectiveTodayYmd } from '@/lib/dateTime';
 import CountUp from '@/components/ui/CountUp';
+import Select from '@/components/ui/Select';
+import Button from '@/components/ui/Button';
 import {
   CalendarDays, Plus, Sparkles, X, ChevronDown, Check,
   AlertTriangle, Clock, BarChart2, List, Info,
@@ -14,6 +16,7 @@ import {
 import toast from 'react-hot-toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PageTourButton from '@/components/tours/PageTourButton';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -854,7 +857,7 @@ function MilestoneModal({
       toast.success(isEdit ? 'Milestone updated' : 'Milestone added');
       onClose();
     },
-    onError: () => toast.error('Failed to save milestone'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed to save milestone')),
   });
 
   const inputStyle = { backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' };
@@ -873,13 +876,12 @@ function MilestoneModal({
           {!isEdit && (
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Contract *</label>
-              <select value={form.contract_id} onChange={e => set('contract_id', e.target.value)} required
-                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+              <Select value={form.contract_id} onChange={e => set('contract_id', e.target.value)} className="w-full">
                 <option value="">Select contract…</option>
                 {contracts.map(c => (
                   <option key={c.id} value={c.id}>{c.title}{c.reference_number ? ` (${c.reference_number})` : ''}</option>
                 ))}
-              </select>
+              </Select>
             </div>
           )}
           <div>
@@ -890,26 +892,23 @@ function MilestoneModal({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Type</label>
-              <select value={form.milestone_type} onChange={e => set('milestone_type', e.target.value)}
-                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+              <Select value={form.milestone_type} onChange={e => set('milestone_type', e.target.value)} className="w-full">
                 {Object.entries(MILESTONE_TYPES).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Responsible party</label>
-              <select value={form.responsible_party} onChange={e => set('responsible_party', e.target.value)}
-                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+              <Select value={form.responsible_party} onChange={e => set('responsible_party', e.target.value)} className="w-full">
                 <option value="contractor">Contractor</option>
                 <option value="employer">Employer</option>
                 <option value="both">Both</option>
-              </select>
+              </Select>
             </div>
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Status</label>
-              <select value={form.status} onChange={e => set('status', e.target.value)}
-                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+              <Select value={form.status} onChange={e => set('status', e.target.value)} className="w-full">
                 {Object.entries(STATUS_CONFIG).map(([v, c]) => <option key={v} value={v}>{c.label}</option>)}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Planned date</label>
@@ -961,10 +960,7 @@ function SeedButton({ projectId, contracts }: { projectId: string; contracts: Co
       toast.success(data.message ?? 'Milestones seeded from AI analysis');
       setOpen(false);
     },
-    onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      toast.error(msg ?? 'Failed to seed milestones');
-    },
+    onError: (err: unknown) => toast.error(getErrorMessage(err, 'Failed to seed milestones')),
   });
 
   if (contracts.length === 1) {
@@ -1013,7 +1009,7 @@ export default function ProjectProgrammePage() {
   const [viewMode, setViewMode] = useState<'table' | 'timeline'>('table');
   const queryClient = useQueryClient();
 
-  const { data: milestones = [], isLoading } = useQuery<Milestone[]>({
+  const { data: milestones = [], isLoading, isError, error, refetch } = useQuery<Milestone[]>({
     queryKey: ['project-programme', id],
     queryFn: () => api.get(`/projects/${id}/programme`).then(r => r.data),
   });
@@ -1030,6 +1026,10 @@ export default function ProjectProgrammePage() {
       queryClient.invalidateQueries({ queryKey: ['project-programme', id] });
       toast.success('Milestone removed');
     },
+    // Previously had no onError — a failed delete (after the user already
+    // confirmed via window.confirm()) gave no indication anything went
+    // wrong; the milestone would just still be there with no explanation.
+    onError: (e: unknown) => toast.error(getErrorMessage(e, "Couldn't remove this milestone. Please try again.")),
   });
 
   const filtered = statusFilter === 'all'
@@ -1095,9 +1095,20 @@ export default function ProjectProgrammePage() {
         </div>
       </div>
 
-      {/* Timeline view */}
-      {viewMode === 'timeline' && !isLoading && (
+      {/* Timeline view — the Table view (this page's default) is where the
+          real error state renders; this just avoids the timeline's own
+          "no milestones with dates" empty state misleadingly appearing
+          during a load failure instead of a genuine empty programme. */}
+      {viewMode === 'timeline' && !isLoading && !isError && (
         <TimelineView milestones={filtered} />
+      )}
+      {viewMode === 'timeline' && isError && (
+        <div className="rounded-2xl p-12 text-center" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+          <CalendarDays size={28} className="mx-auto mb-3" style={{ color: '#f87171' }} />
+          <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>We couldn&rsquo;t load the programme</p>
+          <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>{getErrorMessage(error, 'Please try again.')}</p>
+          <Button onClick={() => refetch()} variant="secondary" size="sm">Try again</Button>
+        </div>
       )}
 
       {/* Table view */}
@@ -1122,6 +1133,15 @@ export default function ProjectProgrammePage() {
                     ))}
                   </tr>
                 ))
+              ) : isError ? (
+                <tr>
+                  <td colSpan={9} className="px-5 py-14 text-center">
+                    <CalendarDays size={28} className="mx-auto mb-3" style={{ color: '#f87171' }} />
+                    <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>We couldn&rsquo;t load the programme</p>
+                    <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>{getErrorMessage(error, 'Please try again.')}</p>
+                    <Button onClick={() => refetch()} variant="secondary" size="sm">Try again</Button>
+                  </td>
+                </tr>
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-5 py-14 text-center">

@@ -17,6 +17,7 @@ import GenerateTradePackageFolderModal from '@/components/documents/GenerateTrad
 import DocumentPreviewModal, { type PreviewTarget } from '@/components/documents/DocumentPreviewModal';
 import Button from '@/components/ui/Button';
 import EmptyState from '@/components/ui/EmptyState';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -433,7 +434,7 @@ export default function AdminDocumentsPage() {
       queryClient.invalidateQueries({ queryKey: ['admin-doc-explorer-companies'] });
       queryClient.invalidateQueries({ queryKey: ['admin-documents'] });
     },
-    onError: () => toast.error('Failed to delete document.'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed to delete document.')),
   });
 
   // ── Handlers ──

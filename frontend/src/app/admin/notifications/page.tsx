@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import {
   Bell, CheckCheck, Circle, X, Trash2, AlertTriangle,
-  ExternalLink, AlertCircle, Clock, Info, ChevronDown,
+  ExternalLink, AlertCircle, Clock, Info,
 } from 'lucide-react';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -13,6 +13,8 @@ import PaginationBar from '@/components/ui/PaginationBar';
 import { type SuresignNotification, type NotificationFilter } from '@/hooks/useNotifications';
 import { formatDateTime } from '@/lib/dateTime';
 import { useAuthStore } from '@/store/authStore';
+import Select from '@/components/ui/Select';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -204,31 +206,31 @@ export default function NotificationsPage() {
   const markReadMutation = useMutation({
     mutationFn: (id: number) => api.patch(`/notifications/${id}/read`),
     onSuccess: () => invalidate(),
-    onError: () => toast.error('Failed to mark as read'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed to mark as read')),
   });
 
   const dismissMutation = useMutation({
     mutationFn: (id: number) => api.patch(`/notifications/${id}/dismiss`),
     onSuccess: () => invalidate(),
-    onError: () => toast.error('Failed to dismiss'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed to dismiss')),
   });
 
   const markAllReadMutation = useMutation({
     mutationFn: () => api.post('/notifications/mark-all-read'),
     onSuccess: () => { invalidate(); toast.success('All notifications marked as read'); },
-    onError: () => toast.error('Failed to mark all as read'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed to mark all as read')),
   });
 
   const clearReadMutation = useMutation({
     mutationFn: () => api.delete('/notifications/clear-read'),
     onSuccess: () => { invalidate(); setSelected(new Set()); setConfirmClearRead(false); toast.success('Read notifications cleared'); },
-    onError: () => toast.error('Failed to clear read notifications'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed to clear read notifications')),
   });
 
   const clearSelectedMutation = useMutation({
     mutationFn: () => api.delete('/notifications/clear-selected', { data: { ids: Array.from(selected) } }),
     onSuccess: () => { invalidate(); setSelected(new Set()); setConfirmClearSelected(false); toast.success('Selected notifications cleared'); },
-    onError: () => toast.error('Failed to clear selected notifications'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Failed to clear selected notifications')),
   });
 
   const handleFilterChange = (filter: NotificationFilter) => {
@@ -313,26 +315,20 @@ export default function NotificationsPage() {
         </div>
 
         {/* Priority dropdown */}
-        <div className="relative">
-          <select value={priorityFilter}
-            onChange={e => { setPriorityFilter(e.target.value); setCategoryFilter(''); setPage(1); }}
-            className="appearance-none pl-3 pr-8 py-1.5 rounded-lg text-sm cursor-pointer"
-            style={{ backgroundColor: priorityFilter ? 'var(--gold)' : 'var(--bg-surface)', color: priorityFilter ? '#000' : 'var(--text-secondary)', border: '1px solid var(--border)' }}>
-            {PRIORITY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-          <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: priorityFilter ? '#000' : 'var(--text-muted)' }} />
-        </div>
+        <Select value={priorityFilter}
+          onChange={e => { setPriorityFilter(e.target.value); setCategoryFilter(''); setPage(1); }}
+          size="sm"
+          style={{ backgroundColor: priorityFilter ? 'var(--gold)' : 'var(--bg-surface)', color: priorityFilter ? '#000' : 'var(--text-secondary)' }}>
+          {PRIORITY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </Select>
 
         {/* Category dropdown */}
-        <div className="relative">
-          <select value={categoryFilter}
-            onChange={e => { setCategoryFilter(e.target.value); setPriorityFilter(''); setPage(1); }}
-            className="appearance-none pl-3 pr-8 py-1.5 rounded-lg text-sm cursor-pointer"
-            style={{ backgroundColor: categoryFilter ? 'var(--gold)' : 'var(--bg-surface)', color: categoryFilter ? '#000' : 'var(--text-secondary)', border: '1px solid var(--border)' }}>
-            {CATEGORY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-          <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: categoryFilter ? '#000' : 'var(--text-muted)' }} />
-        </div>
+        <Select value={categoryFilter}
+          onChange={e => { setCategoryFilter(e.target.value); setPriorityFilter(''); setPage(1); }}
+          size="sm"
+          style={{ backgroundColor: categoryFilter ? 'var(--gold)' : 'var(--bg-surface)', color: categoryFilter ? '#000' : 'var(--text-secondary)' }}>
+          {CATEGORY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </Select>
       </div>
 
       {/* Table */}

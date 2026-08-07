@@ -7,6 +7,7 @@ import { ScrollText, Lock } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
 import PaginationBar from '@/components/ui/PaginationBar';
+import Select from '@/components/ui/Select';
 import Modal from '@/components/ui/Modal';
 import { formatDate } from '@/lib/utils';
 
@@ -69,19 +70,15 @@ export default function AiCreditsTransactionsPage() {
       </div>
 
       <div className="flex items-center gap-3 flex-wrap">
-        <select value={workflow} onChange={e => { setWorkflow(e.target.value); setPage(1); }}
-          className="text-xs px-3 py-2 rounded-lg outline-none"
-          style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+        <Select value={workflow} onChange={e => { setWorkflow(e.target.value); setPage(1); }} size="sm">
           <option value="">All workflows</option>
           <option value="contract_analysis">Contract Analysis</option>
           <option value="trade_package_analysis">Trade Package Analysis</option>
-        </select>
-        <select value={transactionType} onChange={e => { setTransactionType(e.target.value); setPage(1); }}
-          className="text-xs px-3 py-2 rounded-lg outline-none"
-          style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+        </Select>
+        <Select value={transactionType} onChange={e => { setTransactionType(e.target.value); setPage(1); }} size="sm">
           <option value="">All transaction types</option>
           {TRANSACTION_TYPES.map(t => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
-        </select>
+        </Select>
       </div>
 
       <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>

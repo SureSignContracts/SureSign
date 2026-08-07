@@ -10,6 +10,7 @@ import api from '@/lib/api';
 import { Badge } from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import { formatDateTime } from '@/lib/dateTime';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 interface Activity {
   action: string;
@@ -332,32 +333,32 @@ export default function ConsultancyOperatorDetailPage() {
   const notesMutation = useMutation({
     mutationFn: (internal_notes: string) => api.put(`/admin/consultancy/consultations/${id}/notes`, { internal_notes }).then(r => r.data),
     onSuccess: () => { toast.success('Notes saved.'); setNotesError(null); invalidate(); },
-    onError: (err: any) => setNotesError(err?.response?.data?.message ?? 'Failed to save notes.'),
+    onError: (err: any) => setNotesError(getErrorMessage(err, 'Failed to save notes.')),
   });
 
   const summaryMutation = useMutation({
     mutationFn: (customer_summary_draft: string) => api.put(`/admin/consultancy/consultations/${id}/summary`, { customer_summary_draft }).then(r => r.data),
     onSuccess: () => { toast.success('Draft saved.'); setSummaryError(null); invalidate(); },
-    onError: (err: any) => setSummaryError(err?.response?.data?.message ?? 'Failed to save draft.'),
+    onError: (err: any) => setSummaryError(getErrorMessage(err, 'Failed to save draft.')),
   });
 
   const publishMutation = useMutation({
     mutationFn: () => api.post(`/admin/consultancy/consultations/${id}/summary/publish`).then(r => r.data),
     onSuccess: () => { toast.success('Summary published — the customer can now see it.'); setSummaryError(null); invalidate(); },
-    onError: (err: any) => setSummaryError(err?.response?.data?.message ?? 'Failed to publish.'),
+    onError: (err: any) => setSummaryError(getErrorMessage(err, 'Failed to publish.')),
   });
 
   const statusMutation = useMutation({
     mutationFn: (action: 'awaiting-customer' | 'awaiting-consultant' | 'complete') =>
       api.post(`/admin/consultancy/consultations/${id}/status/${action}`).then(r => r.data),
     onSuccess: () => { toast.success('Status updated.'); setStatusError(null); invalidate(); },
-    onError: (err: any) => setStatusError(err?.response?.data?.message ?? 'Failed to update status.'),
+    onError: (err: any) => setStatusError(getErrorMessage(err, 'Failed to update status.')),
   });
 
   const reopenMutation = useMutation({
     mutationFn: () => api.post(`/admin/consultancy/consultations/${id}/reopen`).then(r => r.data),
     onSuccess: () => { toast.success('Engagement reopened.'); setStatusError(null); invalidate(); },
-    onError: (err: any) => setStatusError(err?.response?.data?.message ?? 'Failed to reopen.'),
+    onError: (err: any) => setStatusError(getErrorMessage(err, 'Failed to reopen.')),
   });
 
   const [projectError, setProjectError] = useState<string | null>(null);
@@ -365,13 +366,13 @@ export default function ConsultancyOperatorDetailPage() {
   const linkProjectMutation = useMutation({
     mutationFn: (project_id: number) => api.put(`/admin/consultancy/consultations/${id}/project`, { project_id }).then(r => r.data),
     onSuccess: () => { toast.success('Project linked.'); setProjectError(null); invalidate(); },
-    onError: (err: any) => setProjectError(err?.response?.data?.message ?? 'Failed to link project.'),
+    onError: (err: any) => setProjectError(getErrorMessage(err, 'Failed to link project.')),
   });
 
   const unlinkProjectMutation = useMutation({
     mutationFn: () => api.delete(`/admin/consultancy/consultations/${id}/project`).then(r => r.data),
     onSuccess: () => { toast.success('Project unlinked.'); setProjectError(null); invalidate(); },
-    onError: (err: any) => setProjectError(err?.response?.data?.message ?? 'Failed to unlink project.'),
+    onError: (err: any) => setProjectError(getErrorMessage(err, 'Failed to unlink project.')),
   });
 
   if (isLoading) {

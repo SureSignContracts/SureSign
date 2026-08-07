@@ -10,6 +10,8 @@ import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import OrganisationUrlBrandingSection from '@/components/admin/OrganisationUrlBrandingSection';
 import OrganisationDomainsSection from '@/components/admin/OrganisationDomainsSection';
 import toast from 'react-hot-toast';
+import Select from '@/components/ui/Select';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 import {
   ArrowLeft, Building2, Users, FolderKanban, Search, Plus, X,
   Calendar, DollarSign, ChevronRight, MapPin, Phone, Mail, Hash, User, CreditCard,
@@ -52,7 +54,7 @@ export default function AdminCompanyDetailPage() {
       const errors = err?.response?.data?.errors ?? {};
       setFormErrors(errors);
       if (!Object.keys(errors).length) {
-        toast.error(err?.response?.data?.message ?? 'Failed to create project.');
+        toast.error(getErrorMessage(err, 'Failed to create project.'));
       }
     },
   });
@@ -408,17 +410,16 @@ export default function AdminCompanyDetailPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Status</label>
-                  <select
+                  <Select
                     value={form.status}
                     onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                    style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                    className="w-full"
                   >
                     <option value="active">Active</option>
                     <option value="on_hold">On Hold</option>
                     <option value="completed">Completed</option>
                     <option value="cancelled">Cancelled</option>
-                  </select>
+                  </Select>
                 </div>
               </div>
 

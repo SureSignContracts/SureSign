@@ -13,10 +13,11 @@ import {
   FolderOpen, Folder, Upload, Download, Trash2, Search,
   File, FileImage, ChevronRight, AlertCircle, CheckCircle,
   Clock, Archive, Shield, Banknote, ClipboardList, RefreshCw,
-  BookOpen, Copy, X, Tag, ChevronDown,
+  BookOpen, Copy, X, Tag,
 } from 'lucide-react';
 import PromptContextModal from '@/components/prompts/PromptContextModal';
 import ProjectDocumentsExplorer from '@/components/documents/ProjectDocumentsExplorer';
+import Select from '@/components/ui/Select';
 
 // ─── Folder meta ──────────────────────────────────────────────────────────────
 const FOLDER_META: Record<string, { icon: any; color: string }> = {
@@ -317,18 +318,16 @@ function ProjectPromptsModal({ projectId, onClose }: { projectId: string; onClos
             />
           </div>
           <div className="relative">
-            <select
+            <Select
               value={activeCategory}
               onChange={e => setActiveCategory(e.target.value)}
-              className="appearance-none pl-3 pr-7 py-1.5 rounded-lg text-xs outline-none cursor-pointer"
-              style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+              size="sm"
             >
               <option value="">All categories</option>
               {(categories as any[]).map((c: any) => (
                 <option key={c.id} value={c.slug}>{c.name}</option>
               ))}
-            </select>
-            <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+            </Select>
           </div>
         </div>
 

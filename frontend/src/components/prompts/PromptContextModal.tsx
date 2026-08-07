@@ -15,12 +15,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  X, Copy, Heart, Star, Tag, Check, ChevronDown, AlertTriangle,
+  X, Copy, Heart, Star, Tag, Check, AlertTriangle,
   RefreshCw, BookOpen, Layers,
 } from 'lucide-react';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
+import Combobox from '@/components/ui/Combobox';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -351,19 +352,6 @@ export default function PromptContextModal({
     toast.success(template.is_favorited ? 'Removed from favorites' : 'Added to favorites');
   };
 
-  // ── Style helpers ────────────────────────────────────────────────────────────
-  const inputStyle = {
-    backgroundColor: 'var(--bg-elevated)',
-    border:          '1px solid var(--border)',
-    color:           'var(--text-primary)',
-  };
-
-  const selectStyle = {
-    ...inputStyle,
-    appearance: 'none' as const,
-    cursor:     'pointer',
-  };
-
   // ── Loading / not found state ────────────────────────────────────────────────
   if (!template && templateId) {
     return (
@@ -505,25 +493,19 @@ export default function PromptContextModal({
                     <label className="block text-xs mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                       Project (optional — fills placeholders)
                     </label>
-                    <div className="relative">
-                      <select
-                        value={selectedProjectId ?? ''}
-                        onChange={e => {
-                          setSelectedProjectId(e.target.value ? Number(e.target.value) : null);
-                          setSelectedRecordId(null);
-                        }}
-                        className="w-full px-3 pr-8 py-2 rounded-lg text-sm outline-none"
-                        style={selectStyle}
-                      >
-                        <option value="">No project selected — use fallback placeholders</option>
-                        {projects.map(p => (
-                          <option key={p.id} value={p.id}>
-                            {p.name}{p.code ? ` (${p.code})` : ''}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
-                    </div>
+                    <Combobox
+                      value={selectedProjectId != null ? String(selectedProjectId) : ''}
+                      onValueChange={v => {
+                        setSelectedProjectId(v ? Number(v) : null);
+                        setSelectedRecordId(null);
+                      }}
+                      placeholder="No project selected — use fallback placeholders"
+                      searchPlaceholder="Search projects…"
+                      emptyMessage="No projects found."
+                      clearable
+                      aria-label="Select project"
+                      options={projects.map(p => ({ value: String(p.id), label: `${p.name}${p.code ? ` (${p.code})` : ''}` }))}
+                    />
                   </div>
                 )}
               </div>
@@ -543,20 +525,16 @@ export default function PromptContextModal({
                     </p>
                   </div>
                 ) : (
-                  <div className="relative">
-                    <select
-                      value={selectedRecordId ?? ''}
-                      onChange={e => setSelectedRecordId(e.target.value ? Number(e.target.value) : null)}
-                      className="w-full px-3 pr-8 py-2 rounded-lg text-sm outline-none"
-                      style={selectStyle}
-                    >
-                      <option value="">No {RECORD_TYPE_LABEL[derivedRecordType]?.toLowerCase() ?? 'record'} selected</option>
-                      {records.map(r => (
-                        <option key={r.id} value={r.id}>{r.label}</option>
-                      ))}
-                    </select>
-                    <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
-                  </div>
+                  <Combobox
+                    value={selectedRecordId != null ? String(selectedRecordId) : ''}
+                    onValueChange={v => setSelectedRecordId(v ? Number(v) : null)}
+                    placeholder={`No ${RECORD_TYPE_LABEL[derivedRecordType]?.toLowerCase() ?? 'record'} selected`}
+                    searchPlaceholder={`Search ${RECORD_TYPE_LABEL[derivedRecordType]?.toLowerCase() ?? 'records'}…`}
+                    emptyMessage="No records found."
+                    clearable
+                    aria-label={`Select ${RECORD_TYPE_LABEL[derivedRecordType] ?? 'record'}`}
+                    options={records.map(r => ({ value: String(r.id), label: r.label }))}
+                  />
                 )}
               </div>
             )}

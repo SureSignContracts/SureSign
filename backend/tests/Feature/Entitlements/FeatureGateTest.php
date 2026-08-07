@@ -212,6 +212,34 @@ class FeatureGateTest extends TestCase
         $this->gate->requireFeature($organization, Feature::ADVANCED_REPORTING);
     }
 
+    // Error Messaging & Recovery UX, Batch 1 (P0 fix) — the exception's own
+    // getMessage() must never leak the raw organisation ID or the raw
+    // internal Feature key, since a future caller may forward it verbatim
+    // to a customer response (the existing pattern several controllers
+    // already use for other typed exceptions). The organisation/feature key
+    // must still be available via typed properties for server-side logging.
+    public function test_feature_not_entitled_exception_message_does_not_leak_organisation_or_feature_key(): void
+    {
+        $organization = $this->org();
+
+        try {
+            $this->gate->requireFeature($organization, Feature::ADVANCED_REPORTING);
+            $this->fail('Expected FeatureNotEntitledException was not thrown.');
+        } catch (FeatureNotEntitledException $e) {
+            $this->assertStringNotContainsString((string) $organization->id, $e->getMessage());
+            $this->assertStringNotContainsString(Feature::ADVANCED_REPORTING, $e->getMessage());
+            $this->assertStringNotContainsString('Organisation', $e->getMessage());
+
+            // Internal context must still be fully available — just never
+            // through getMessage().
+            $this->assertSame($organization->id, $e->organization->id);
+            $this->assertSame(Feature::ADVANCED_REPORTING, $e->featureKey);
+            $this->assertSame('feature_not_entitled', $e->errorCode);
+            $this->assertSame($organization->id, $e->logContext()['organization_id']);
+            $this->assertSame(Feature::ADVANCED_REPORTING, $e->logContext()['feature_key']);
+        }
+    }
+
     public function test_require_feature_is_silent_when_entitled(): void
     {
         $organization = $this->org();

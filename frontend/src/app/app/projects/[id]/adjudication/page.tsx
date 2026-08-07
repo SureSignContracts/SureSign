@@ -10,6 +10,7 @@ import { Scale, Plus, Search, X, ChevronRight, AlertCircle, Clock, CheckCircle2 
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
 import Button from '@/components/ui/Button';
+import Select from '@/components/ui/Select';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -116,6 +117,10 @@ function CreateCaseModal({ projectId, onClose }: { projectId: string; onClose: (
   const set = (k: keyof typeof form) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
       setForm(f => ({ ...f, [k]: e.target.value }));
+  // Narrowed to what the shared `Select` component's onChange provides —
+  // see qa/page.tsx's identical helper for why.
+  const setSelect = (k: keyof typeof form) =>
+    (e: { target: { value: string } }) => setForm(f => ({ ...f, [k]: e.target.value }));
 
   const inputStyle = {
     backgroundColor: 'var(--bg-elevated)',
@@ -152,19 +157,19 @@ function CreateCaseModal({ projectId, onClose }: { projectId: string; onClose: (
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Dispute Type *</label>
-              <select value={form.dispute_type} onChange={set('dispute_type')} required className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+              <Select value={form.dispute_type} onChange={setSelect('dispute_type')} className="w-full">
                 {DISPUTE_TYPES.map(t => <option key={t} value={t}>{DISPUTE_TYPE_LABELS[t]}</option>)}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Claim Amount</label>
               <div className="flex gap-2">
-                <select value={form.currency} onChange={set('currency')} className="px-2 py-2 rounded-lg text-sm outline-none" style={{ ...inputStyle, width: '80px' }}>
+                <Select value={form.currency} onChange={setSelect('currency')} className="w-20">
                   <option value="GBP">GBP</option>
                   <option value="USD">USD</option>
                   <option value="EUR">EUR</option>
                   <option value="AUD">AUD</option>
-                </select>
+                </Select>
                 <input type="number" value={form.claim_amount} onChange={set('claim_amount')} placeholder="0.00" min="0" step="0.01"
                   className="flex-1 px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
               </div>
@@ -190,24 +195,24 @@ function CreateCaseModal({ projectId, onClose }: { projectId: string; onClose: (
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Contract</label>
-                <select value={form.contract_id} onChange={set('contract_id')} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+                <Select value={form.contract_id} onChange={setSelect('contract_id')} className="w-full">
                   <option value="">None</option>
                   {contracts.map((c: any) => <option key={c.id} value={c.id}>{c.reference_number ?? c.title}</option>)}
-                </select>
+                </Select>
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Payment Application</label>
-                <select value={form.payment_application_id} onChange={set('payment_application_id')} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+                <Select value={form.payment_application_id} onChange={setSelect('payment_application_id')} className="w-full">
                   <option value="">None</option>
                   {payApps.map((p: any) => <option key={p.id} value={p.id}>App #{p.application_number}</option>)}
-                </select>
+                </Select>
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Variation</label>
-                <select value={form.variation_id} onChange={set('variation_id')} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+                <Select value={form.variation_id} onChange={setSelect('variation_id')} className="w-full">
                   <option value="">None</option>
                   {variations.map((v: any) => <option key={v.id} value={v.id}>Var #{v.variation_number} – {v.title}</option>)}
-                </select>
+                </Select>
               </div>
             </div>
           </div>
@@ -395,28 +400,24 @@ export default function ProjectAdjudicationPage() {
             style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)', minWidth: '220px' }}
           />
         </div>
-        <select
+        <Select
           value={statusFilter}
           onChange={e => setStatusFilter(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm outline-none"
-          style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
         >
           <option value="all">All Statuses</option>
           {STATUSES.map(s => (
             <option key={s} value={s}>{s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>
           ))}
-        </select>
-        <select
+        </Select>
+        <Select
           value={typeFilter}
           onChange={e => setTypeFilter(e.target.value)}
-          className="px-3 py-2 rounded-lg text-sm outline-none"
-          style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
         >
           <option value="all">All Dispute Types</option>
           {DISPUTE_TYPES.map(t => (
             <option key={t} value={t}>{DISPUTE_TYPE_LABELS[t]}</option>
           ))}
-        </select>
+        </Select>
       </div>
 
       {/* Cases list */}

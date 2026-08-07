@@ -33,7 +33,9 @@ import { useAiAnalysisStore } from '@/store/aiAnalysisStore';
 import SharedSection from '@/components/ai/Section';
 import SharedAnalysisLoadingDisplay from '@/components/ai/AnalysisLoadingDisplay';
 import PageTourButton from '@/components/tours/PageTourButton';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 import Button from '@/components/ui/Button';
+import Select from '@/components/ui/Select';
 
 const ANALYSIS_MESSAGES = [
   { at: 0,   text: 'Reading contract document…' },
@@ -123,24 +125,6 @@ type InputFieldProps = {
   options?: ContractTypeOption[];
 };
 
-function getErrorMessage(error: unknown, fallback: string) {
-  if (
-    typeof error === 'object' &&
-    error !== null &&
-    'response' in error &&
-    typeof error.response === 'object' &&
-    error.response !== null &&
-    'data' in error.response &&
-    typeof error.response.data === 'object' &&
-    error.response.data !== null &&
-    'message' in error.response.data &&
-    typeof error.response.data.message === 'string'
-  ) {
-    return error.response.data.message;
-  }
-
-  return fallback;
-}
 
 const CONTRACT_STATUS_LABELS: Record<string, string> = {
   draft:      'Draft',
@@ -184,6 +168,13 @@ function AiAnalysisModal({ contract, projectId, onClose, initialAnalysis, forceN
   const [priorAnalyses, setPriorAnalyses] = useState<any[] | null>(
     initialAnalysis ? [] : null   // if we already have data, skip the picker
   );
+  // Previously a failed fetch here fell through to setPriorAnalyses([]),
+  // which is indistinguishable from "confirmed no prior analyses exist" and
+  // auto-starts a brand-new AI analysis as a side effect of an unrelated
+  // network failure — a real, uncosted-for retry the user never asked for.
+  // This tracks that distinctly so the mount effect can show a real error
+  // state instead of silently taking that action.
+  const [priorAnalysesFetchFailed, setPriorAnalysesFetchFailed] = useState(false);
 
   const startMutation = useMutation({
     mutationFn: (opts?: { forceNew?: boolean }) =>
@@ -213,17 +204,8 @@ function AiAnalysisModal({ contract, projectId, onClose, initialAnalysis, forceN
     onError: (err: any) => toast.error(getErrorMessage(err, 'Failed to start AI analysis.')),
   });
 
-  // On mount: fetch all prior analyses first — never assume which one the user wants
-  useEffect(() => {
-    if (initialAnalysis) return;
-    if (store.analysisId && store.data && store.status === 'completed') return;
-
-    if (forceNew) {
-      setPriorAnalyses([]);
-      startMutation.mutate({ forceNew: true });
-      return;
-    }
-
+  const fetchPriorAnalyses = () => {
+    setPriorAnalysesFetchFailed(false);
     api.get(`/contracts/${contract.id}/ai-analyses`).then(res => {
       const completed = (res.data?.data ?? []).filter((a: any) =>
         ['completed', 'confirmed'].includes(a.status)
@@ -237,10 +219,27 @@ function AiAnalysisModal({ contract, projectId, onClose, initialAnalysis, forceN
         startMutation.mutate(undefined);
       }
     }).catch(() => {
-      // If the fetch fails, fall back to starting new
-      setPriorAnalyses([]);
-      startMutation.mutate(undefined);
+      // Previously silently started a brand-new analysis here too — the
+      // same outcome as "confirmed no prior analyses", even though a fetch
+      // failure proves nothing of the kind (there may be a prior completed
+      // analysis this just couldn't retrieve). Show a real retry choice
+      // instead of an uncosted-for side effect.
+      setPriorAnalysesFetchFailed(true);
     });
+  };
+
+  // On mount: fetch all prior analyses first — never assume which one the user wants
+  useEffect(() => {
+    if (initialAnalysis) return;
+    if (store.analysisId && store.data && store.status === 'completed') return;
+
+    if (forceNew) {
+      setPriorAnalyses([]);
+      startMutation.mutate({ forceNew: true });
+      return;
+    }
+
+    fetchPriorAnalyses();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Poll until complete
@@ -295,7 +294,7 @@ function AiAnalysisModal({ contract, projectId, onClose, initialAnalysis, forceN
       store.clear();
       onClose();
     },
-    onError: () => toast.error('Could not cancel the analysis. It may already have finished.'),
+    onError: (e: unknown) => toast.error(getErrorMessage(e, 'Could not cancel the analysis. It may already have finished.')),
   });
 
   function handleCancelClick() {
@@ -365,10 +364,38 @@ function AiAnalysisModal({ contract, projectId, onClose, initialAnalysis, forceN
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
 
           {/* Loading prior analyses */}
-          {priorAnalyses === null && (
+          {priorAnalyses === null && !priorAnalysesFetchFailed && (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
               <Loader2 size={24} className="animate-spin" style={{ color: 'var(--text-muted)' }} />
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Checking for previous analyses…</p>
+            </div>
+          )}
+
+          {/* Couldn't check for a prior analysis — never silently start a
+              new (potentially unnecessary) one on the user's behalf. */}
+          {priorAnalyses === null && priorAnalysesFetchFailed && (
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <AlertTriangle size={24} style={{ color: '#f87171' }} />
+              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>We couldn&rsquo;t check for previous analyses</p>
+              <p className="text-xs text-center max-w-sm" style={{ color: 'var(--text-muted)' }}>
+                There may already be a completed analysis for this contract. Try again, or start a new one anyway.
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={fetchPriorAnalyses}
+                  className="mt-1 px-3 py-1.5 rounded-lg text-xs font-medium active:scale-[0.98]"
+                  style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
+                >
+                  Try again
+                </button>
+                <button
+                  onClick={() => { setPriorAnalyses([]); setPriorAnalysesFetchFailed(false); startMutation.mutate(undefined); }}
+                  className="mt-1 px-3 py-1.5 rounded-lg text-xs font-medium active:scale-[0.98]"
+                  style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}
+                >
+                  Start new anyway
+                </button>
+              </div>
             </div>
           )}
 
@@ -462,14 +489,27 @@ function AiAnalysisModal({ contract, projectId, onClose, initialAnalysis, forceN
             </div>
           )}
 
-          {/* Failed */}
+          {/* Failed — the document itself is untouched (see error copy
+              below); previously had no recovery action here at all, so the
+              only way to retry was to close this and reopen it (which
+              happens to work, since startAnalysis() treats a failed
+              analysis as no longer "in progress" — but nothing told the
+              user that). Reuses the exact same forceNew action already
+              used above for "Run New Analysis". */}
           {analysis?.status === 'failed' && (
             <div className="flex flex-col items-center justify-center py-12 gap-3">
               <AlertTriangle size={28} style={{ color: '#f87171' }} />
               <p className="text-sm font-medium" style={{ color: '#f87171' }}>Analysis failed</p>
               <p className="text-xs text-center max-w-sm" style={{ color: 'var(--text-muted)' }}>
-                {analysis.error_message ?? 'An unexpected error occurred. Please try again.'}
+                {analysis.error_message ?? 'An unexpected error occurred. Please try again.'} The uploaded document is still available.
               </p>
+              <button
+                onClick={() => { setPriorAnalyses([]); startMutation.mutate({ forceNew: true }); }}
+                className="mt-1 px-3 py-1.5 rounded-lg text-xs font-medium active:scale-[0.98]"
+                style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
+              >
+                Try Again
+              </button>
             </div>
           )}
 
@@ -981,11 +1021,9 @@ function EditContractModal({ contract, projectId, onClose }: { contract: Project
             <InputField label="Contract Type" name="type" value={form.type} onChange={handleChange} required options={CONTRACT_TYPES} />
             <div>
               <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Status</label>
-              <select name="status" value={status} onChange={e => setStatus(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-                style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
+              <Select name="status" value={status} onChange={e => setStatus(e.target.value)} className="w-full">
                 {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
+              </Select>
             </div>
             <InputField label="Reference Number" name="reference_number" value={form.reference_number} onChange={handleChange} />
             <InputField label="Contracting Party" name="party_name" value={form.party_name} onChange={handleChange} />
@@ -1064,10 +1102,15 @@ function InputField({ label, name, type = 'text', required = false, value, onCha
     return (
       <div>
         <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{label}{required && ' *'}</label>
-        <select name={name} value={value} onChange={onChange} required={required} className={base} style={style}>
+        {/* `onChange` is typed for a real `FormChangeEvent` (this file's
+            `handleChange`s key off `.target.name`) — `Select`'s own
+            synthetic event provides exactly `.name`/`.value`, so this cast
+            is a safe, deliberate bridge, same as commercial/page.tsx's
+            `SelectField`. */}
+        <Select name={name} value={value} onChange={onChange as (e: { target: { value: string; name?: string } }) => void} className={base}>
           <option value="">Select…</option>
           {options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-        </select>
+        </Select>
       </div>
     );
   }
@@ -1335,8 +1378,8 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
       try {
         const res = await api.post(`/ai/analyses/${analysisId}/cancel`);
         toast.success(res.data?.message ?? 'Analysis cancelled.');
-      } catch {
-        toast.error('Could not cancel the analysis. It may already have finished.');
+      } catch (err) {
+        toast.error(getErrorMessage(err, 'Could not cancel the analysis. It may already have finished.'));
       }
     }
 

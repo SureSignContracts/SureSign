@@ -28,15 +28,27 @@ class AuthController extends Controller
             ->first();
 
         if (! $user || ! Hash::check($request->password, $user->password)) {
-            return response()->json(['message' => 'Invalid credentials.'], 401);
+            // Deliberately identical wording/status regardless of whether the
+            // email exists — never reveal which of the two was wrong (see
+            // AuthRateLimitingTest::test_login_response_does_not_reveal_whether_the_email_exists).
+            return response()->json(['message' => 'The email or password is incorrect.'], 401);
         }
 
-        if (! $user->is_active) {
-            return response()->json(['message' => 'Your account has been deactivated.'], 403);
-        }
-
-        if ($user->isBanned()) {
-            return response()->json(['message' => 'Your account has been banned.'], 403);
+        // Same wording/code as EnsureAccountIsActive's mid-session check
+        // (below the frontend's account_unavailable interceptor handling in
+        // lib/api.ts) — a deactivated/banned account is the same customer
+        // situation whether it's caught here (before a token is even issued)
+        // or on a later request against an already-issued token; the two
+        // paths previously used different, untagged wording for the same
+        // state (see internal-docs/error-messaging-recovery-ux-audit.md §7
+        // P2-1). Deliberately does not distinguish deactivated vs. banned in
+        // the customer-facing message — same reasoning as not revealing
+        // which credential was wrong above.
+        if (! $user->is_active || $user->isBanned()) {
+            return response()->json([
+                'message' => 'Your account is not currently permitted to access the platform.',
+                'code'    => 'account_unavailable',
+            ], 403);
         }
 
         $user->update(['last_login_at' => now()]);

@@ -13,6 +13,7 @@ import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import { Badge } from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 interface AppointmentType {
   id: number; name: string; slug: string; duration_minutes: number;
@@ -60,7 +61,7 @@ export default function AppointmentTypesPage() {
     onError: (err: any) => {
       const errors = err?.response?.data?.errors ?? {};
       setFormErrors(errors);
-      if (!Object.keys(errors).length) toast.error(err?.response?.data?.message ?? 'Failed to save.');
+      if (!Object.keys(errors).length) toast.error(getErrorMessage(err, 'Failed to save.'));
     },
   });
 

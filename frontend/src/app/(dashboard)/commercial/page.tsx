@@ -10,6 +10,7 @@ import api from '@/lib/api';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import EmptyState from '@/components/ui/EmptyState';
 import { EASE, staggerDelay } from '@/lib/motion';
+import { getErrorMessage as getApiErrorMessage } from '@/lib/getErrorMessage';
 
 // ── Types (mirrors CommercialOverviewService::build()) ──────────────────────
 
@@ -150,8 +151,7 @@ export default function CommercialPage() {
 }
 
 function getErrorMessage(error: unknown): string {
-  const err = error as { response?: { data?: { message?: string } } } | null;
-  return err?.response?.data?.message || 'Could not load the organisation-wide commercial position.';
+  return getApiErrorMessage(error, 'Could not load the organisation-wide commercial position.');
 }
 
 function ErrorState({ onRetry, message }: { onRetry: () => void; message: string }) {

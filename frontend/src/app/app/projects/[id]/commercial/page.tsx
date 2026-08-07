@@ -18,6 +18,8 @@ import { FinalAccountTab } from './FinalAccountTab';
 import toast from 'react-hot-toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PageTourButton from '@/components/tours/PageTourButton';
+import Select from '@/components/ui/Select';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -221,17 +223,6 @@ const HEALTH_DOT: Record<HealthStatus, string> = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function getErrorMessage(error: unknown, fallback: string) {
-  if (typeof error === 'object' && error !== null && 'response' in error) {
-    const resp = (error as Record<string, unknown>).response as Record<string, unknown>;
-    if (resp && 'data' in resp) {
-      const d = resp.data as Record<string, unknown>;
-      if (d && 'message' in d && typeof d.message === 'string') return d.message;
-    }
-  }
-  return fallback;
-}
-
 function fmt(v: number | string | null | undefined): number {
   return typeof v === 'string' ? parseFloat(v) || 0 : Number(v) || 0;
 }
@@ -279,11 +270,15 @@ function SelectField({ label, name, required = false, value, onChange, children 
   return (
     <div>
       <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{label}{required && ' *'}</label>
-      <select name={name} value={value} onChange={onChange} required={required}
-        className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-        style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
+      {/* `onChange` is typed for a real `FormChangeEvent` (this file's callers
+          read only `.target.name`/`.target.value`, keyed via the shared
+          `setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))`
+          pattern) — `Select`'s own synthetic event provides exactly those
+          two fields, so this cast is a safe, deliberate bridge at this one
+          adapter point, not a loosening of either type. */}
+      <Select name={name} value={value} onChange={onChange as (e: { target: { value: string; name?: string } }) => void} className="w-full">
         {children}
-      </select>
+      </Select>
     </div>
   );
 }
@@ -566,12 +561,10 @@ function NewPaymentAppModal({ projectId, onClose, initialTradePackageId, initial
             {sourceType === 'contract' ? (
               <div>
                 <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Contract *</label>
-                <select value={contractId} onChange={e => handleContractChange(e.target.value)} required
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-                  style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
+                <Select value={contractId} onChange={e => handleContractChange(e.target.value)} className="w-full">
                   <option value="">Select contract…</option>
                   {contracts.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
-                </select>
+                </Select>
                 {selectedContract?.retention_percentage && (
                   <p className="text-xs mt-1" style={{ color: '#facc15' }}>Retention {selectedContract.retention_percentage}% (auto-calculated)</p>
                 )}
@@ -579,12 +572,10 @@ function NewPaymentAppModal({ projectId, onClose, initialTradePackageId, initial
             ) : (
               <div>
                 <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Trade Package *</label>
-                <select value={tradePackageId} onChange={e => setTradePackageId(e.target.value)} required
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-                  style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
+                <Select value={tradePackageId} onChange={e => setTradePackageId(e.target.value)} className="w-full">
                   <option value="">Select package…</option>
                   {tradePackages.map(tp => <option key={tp.id} value={tp.id}>{tp.name}{tp.contractor_name ? ` (${tp.contractor_name})` : ''}</option>)}
-                </select>
+                </Select>
               </div>
             )}
 
@@ -695,11 +686,20 @@ function CertifyModal({ pa, projectId, onClose }: { pa: PaymentApplication; proj
       certificate_reference: certRef || undefined,
       certificate_notes: certNotes || undefined,
     }).then(r => r.data),
-    onSuccess: () => {
+    onSuccess: (data: { certificate_generated?: boolean }) => {
       queryClient.invalidateQueries({ queryKey: ['project-payment-apps', projectId] });
       queryClient.invalidateQueries({ queryKey: ['project-activities', projectId] });
       queryClient.invalidateQueries({ queryKey: ['project-stats', projectId] });
-      toast.success('Application certified, certificate PDF saved to documents');
+      // Certification is saved regardless — only the certificate PDF can
+      // fail independently (see PaymentApplicationController::certify()).
+      // Previously this always claimed the PDF was saved even when it
+      // wasn't; a real recovery action exists (regenerate from the
+      // application), so it's offered here rather than just apologising.
+      if (data.certificate_generated === false) {
+        toast.error("Application certified, but we couldn't generate the certificate PDF. Try generating it again from the application.");
+      } else {
+        toast.success('Application certified, certificate PDF saved to documents');
+      }
       onClose();
     },
     onError: (error: unknown) => toast.error(getErrorMessage(error, 'Certification failed')),
@@ -844,7 +844,13 @@ function PaymentNoticeModal({ pa, projectId, onClose }: { pa: PaymentApplication
         blobDownload(data.document as { id: number; file_name?: string });
         toast.success('Payment Notice issued, downloading PDF');
       } else {
-        toast.success('Payment Notice issued, PDF saved to documents');
+        // The notice itself is saved and valid regardless — only the PDF
+        // failed to generate (backend swallows that failure independently;
+        // see PaymentApplicationController::createPaymentNotice). No
+        // recovery action exists for this document type yet, so this
+        // deliberately doesn't invent one — see
+        // internal-docs/error-messaging-recovery-ux-audit.md's Batch 3 notes.
+        toast.error("Payment Notice issued, but we couldn't generate the PDF. Contact SureSign support if you need the document.");
       }
       onClose();
     },
@@ -951,8 +957,14 @@ function PayLessNoticeModal({ pa, projectId, onClose }: { pa: PaymentApplication
       queryClient.invalidateQueries({ queryKey: ['project-payment-apps', projectId] });
       queryClient.invalidateQueries({ queryKey: ['project-pay-less-notices', projectId] });
       queryClient.invalidateQueries({ queryKey: ['project-activities', projectId] });
-      toast.success('Pay Less Notice issued, PDF saved to documents');
-      if (data.document) blobDownload(data.document);
+      if (data.document) {
+        toast.success('Pay Less Notice issued, PDF saved to documents');
+        blobDownload(data.document);
+      } else {
+        // Same honest-partial-success treatment as the Payment Notice
+        // mutation above — the notice itself is saved regardless.
+        toast.error("Pay Less Notice issued, but we couldn't generate the PDF. Contact SureSign support if you need the document.");
+      }
       onClose();
     },
     onError: (error: unknown) => toast.error(getErrorMessage(error, 'Failed to create')),

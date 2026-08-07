@@ -6,6 +6,7 @@ import { CheckCircle2, LifeBuoy, Send, X, Paperclip, Info } from 'lucide-react';
 import api from '@/lib/api';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import { collectDiagnostics, parseRouteContext, SUPPORT_CATEGORIES } from '@/lib/supportContext';
+import Select from '@/components/ui/Select';
 
 const MAX_SCREENSHOT_BYTES = 5 * 1024 * 1024;
 const ALLOWED_SCREENSHOT_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
@@ -169,17 +170,16 @@ export function ContactSupportForm({
               </div>
             )}
 
-            <select
+            <Select
               value={category}
               onChange={e => setCategory(e.target.value)}
               aria-label="Category"
-              className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none"
-              style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+              className="w-full"
             >
               {SUPPORT_CATEGORIES.map(c => (
                 <option key={c.value} value={c.value}>{c.label}</option>
               ))}
-            </select>
+            </Select>
             <input
               value={subject}
               onChange={e => setSubject(e.target.value)}

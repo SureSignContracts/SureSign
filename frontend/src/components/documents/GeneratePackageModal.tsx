@@ -6,7 +6,9 @@ import { CheckSquare, Download, FileText, Square, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
 import Button from '@/components/ui/Button';
+import Select from '@/components/ui/Select';
 import { cn } from '@/lib/utils';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 type TemplateItem = {
   id: number;
@@ -279,7 +281,7 @@ export default function GeneratePackageModal({
       toast.success(data.message || 'Document generated successfully');
     },
     onError: (error: ApiError) => {
-      toast.error(error?.response?.data?.message || 'Failed to generate package');
+      toast.error(getErrorMessage(error, 'Failed to generate package'));
     },
   });
 
@@ -416,11 +418,10 @@ export default function GeneratePackageModal({
             {generationType === 'complete_package' && (
               <div>
                 <label className="mb-1 block text-xs" style={{ color: 'var(--text-muted)' }}>Template</label>
-                <select
+                <Select
                   value={activeMasterTemplateId ?? ''}
                   onChange={(e) => setSelectedTemplateId(Number(e.target.value))}
-                  className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                  style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                  className="w-full"
                   disabled={templatesLoading}
                 >
                   <option value="" disabled>
@@ -429,7 +430,7 @@ export default function GeneratePackageModal({
                   {(masterTemplates.length > 0 ? masterTemplates : allTemplates).map((t) => (
                     <option key={t.id} value={t.id}>{t.name}</option>
                   ))}
-                </select>
+                </Select>
                 {masterTemplates.length === 0 && !templatesLoading && (
                   <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
                     No master package templates found. Upload a template with type "Master Package" first.

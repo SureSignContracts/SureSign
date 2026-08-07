@@ -6,6 +6,7 @@ import { X, Box } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
 import Button from '@/components/ui/Button';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 // ── constants ──────────────────────────────────────────────────────────────
 
@@ -188,7 +189,7 @@ export default function GenerateTradePackageFolderModal({
       toast.success(`${data.created.length} package${data.created.length !== 1 ? 's' : ''} created`);
     },
     onError: (error: { response?: { data?: { message?: string } } }) => {
-      toast.error(error?.response?.data?.message || 'Failed to generate trade packages');
+      toast.error(getErrorMessage(error, 'Failed to generate trade packages'));
     },
   });
 

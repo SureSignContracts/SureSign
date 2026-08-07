@@ -594,6 +594,14 @@ class PaymentApplicationController extends Controller
         $paymentApplication->load(['contract', 'tradePackage']);
         $certifiedByUser = $request->user();
 
+        // Certification itself is the business-critical part and is always
+        // saved above regardless of what happens next — PDF generation is
+        // deliberately non-blocking. `$certificateGenerated` is surfaced in
+        // the response below so the frontend can tell the customer the
+        // truth instead of unconditionally claiming the PDF was saved (see
+        // internal-docs/error-messaging-recovery-ux-audit.md's Batch 3
+        // notes — this was a confirmed silent partial-success gap).
+        $certificateGenerated = true;
         try {
             $certRef = $paymentApplication->certificate_reference ?? "CERT-{$paymentApplication->application_number}";
             DocumentGenerationService::generatePdf(
@@ -604,6 +612,7 @@ class PaymentApplicationController extends Controller
                 'payment_certificate', '02_Commercial', $certRef, $paymentApplication, false, $paymentApplication->tradePackage
             );
         } catch (\Throwable $e) {
+            $certificateGenerated = false;
             \Log::warning("Certificate PDF generation failed: " . $e->getMessage());
         }
 
@@ -644,7 +653,14 @@ class PaymentApplicationController extends Controller
             $project->organization
         );
 
-        return response()->json($paymentApplication->fresh());
+        // `certificate_generated` merged onto the existing flat model shape
+        // (never nested) — preserves every existing consumer of this
+        // response untouched, while giving the frontend a real signal it
+        // previously had no way to read at all.
+        return response()->json(array_merge(
+            $paymentApplication->fresh()->toArray(),
+            ['certificate_generated' => $certificateGenerated]
+        ));
     }
 
     // POST /payment-applications/{paymentApplication}/mark-paid
