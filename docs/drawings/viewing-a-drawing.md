@@ -12,8 +12,17 @@ From the [Drawing Register](overview.md), select **View** on a drawing
 row (or click the row itself) to open its Drawing Viewer.
 
 The viewer header shows the Drawing Number, Title, Discipline, Status,
-Location Reference, and the linked document's file name, alongside
-**Back to Drawing Register** and **Download** actions.
+Location Reference, the current revision (if the drawing has revision
+history — see [Drawing Revisions](revisions.md)), and the document's file
+name, alongside **Revisions**, **Download**, and Back actions.
+
+## Viewing a historical revision
+
+If you open an older revision from the [Revisions](revisions.md) panel,
+the viewer clearly marks it **Historical** and shows a banner naming the
+actual current revision, with a link to jump straight back to it. This
+never changes which revision is current — it's a read-only look at what
+was issued at that point.
 
 ## Page navigation
 
@@ -52,4 +61,5 @@ instead of leaving a blank screen.
 ## Related
 
 - [Drawing Register overview](overview.md)
+- [Drawing Revisions](revisions.md)
 - [Previewing documents](../documents/previewing.md)

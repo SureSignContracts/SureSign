@@ -3,14 +3,16 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Download, FileWarning } from 'lucide-react';
+import { ArrowLeft, Download, FileWarning, History } from 'lucide-react';
 import api from '@/lib/api';
 import { getErrorMessage } from '@/lib/getErrorMessage';
+import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import { drawingStatusColor } from '@/components/drawings/drawingConstants';
-import type { DrawingRecord } from '@/components/drawings/DrawingModal';
+import type { DrawingRecord, DrawingDocumentSummary } from '@/components/drawings/DrawingModal';
+import DrawingRevisionPanel from '@/components/drawings/DrawingRevisionPanel';
 
 // PDF.js touches `window`/`Worker`/canvas at module scope — client-only,
 // loaded only once the viewer actually needs to render (same dynamic-
@@ -87,27 +89,53 @@ function DrawingImageView({ documentId, alt, onUnsupported }: { documentId: numb
   );
 }
 
+type RevisionShowResponse = {
+  revision: {
+    id: number;
+    revision_code: string | null;
+    status: string | null;
+    document: DrawingDocumentSummary;
+  };
+  drawing: { id: number; drawing_number: string; title: string };
+  is_current: boolean;
+};
+
 export default function DrawingViewerPage() {
   const { id: projectId, drawingId } = useParams<{ id: string; drawingId: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const qc = useQueryClient();
+  const { canOperate } = useProjectPermissions();
+  const revisionParam = searchParams.get('revision');
+
   // Tracks the *document id* that failed, not a bare boolean — so
   // navigating straight to a different (valid) image Document is never
   // stuck showing the previous document's failure state.
   const [unsupportedDocId, setUnsupportedDocId] = useState<number | null>(null);
+  const [showRevisions, setShowRevisions] = useState(false);
 
+  const drawingQueryKey = ['project-drawing', projectId, drawingId];
   const { data: drawing, isLoading, isError, error } = useQuery<DrawingRecord>({
-    queryKey: ['project-drawing', projectId, drawingId],
+    queryKey: drawingQueryKey,
     queryFn: () => api.get(`/projects/${projectId}/drawings/${drawingId}`).then(r => r.data),
   });
 
-  function handleDownload() {
-    if (!drawing) return;
-    api.get(`/documents/${drawing.document.id}/download`, { responseType: 'blob' })
+  // Opening an older revision (Part N) must NEVER change current_revision_id
+  // — this is a pure read, a separate query keyed by the requested revision
+  // id, never a mutation of the Drawing's own current-revision state.
+  const { data: revisionData, isLoading: isRevisionLoading, isError: isRevisionError } = useQuery<RevisionShowResponse>({
+    queryKey: ['drawing-revision', projectId, drawingId, revisionParam],
+    queryFn: () => api.get(`/projects/${projectId}/drawings/${drawingId}/revisions/${revisionParam}`).then(r => r.data),
+    enabled: !!revisionParam,
+  });
+
+  function handleDownload(document: DrawingDocumentSummary) {
+    api.get(`/documents/${document.id}/download`, { responseType: 'blob' })
       .then((res) => {
         const url = URL.createObjectURL(res.data as Blob);
-        const a = document.createElement('a');
+        const a = window.document.createElement('a');
         a.href = url;
-        a.download = drawing.document.file_name || drawing.document.title;
+        a.download = document.file_name || document.title;
         a.click();
         URL.revokeObjectURL(url);
       })
@@ -116,7 +144,7 @@ export default function DrawingViewerPage() {
 
   const backHref = `/app/projects/${projectId}/drawings`;
 
-  if (isLoading) {
+  if (isLoading || (revisionParam && isRevisionLoading)) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Loading drawing metadata…</p>
@@ -124,7 +152,7 @@ export default function DrawingViewerPage() {
     );
   }
 
-  if (isError || !drawing) {
+  if (isError || !drawing || (revisionParam && isRevisionError)) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] gap-3 text-center px-6">
         <FileWarning size={28} style={{ color: '#f87171' }} />
@@ -138,14 +166,30 @@ export default function DrawingViewerPage() {
     );
   }
 
+  // Viewing a specific (possibly historical) revision resolves its OWN
+  // document; otherwise the Drawing's already-effective document (current
+  // revision's, or the legacy fallback) is used — one variable the rest of
+  // the page renders from, so the PDF/image branches below never need to
+  // know which case they're in.
+  const viewingRevision = revisionParam ? revisionData?.revision : null;
+  const activeDocument = viewingRevision?.document ?? drawing.document;
+  const isHistorical = !!revisionParam && revisionData?.is_current === false;
+
   const statusColor = drawingStatusColor(drawing.status);
-  const fileType = classifyDocument(drawing.document);
+  const fileType = classifyDocument(activeDocument);
+
+  const currentRevisionLabel = drawing.current_revision
+    ? (drawing.current_revision.revision_code ?? 'Revision not recorded')
+    : null;
+  const viewingRevisionLabel = viewingRevision
+    ? (viewingRevision.revision_code ?? 'Revision not recorded')
+    : null;
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)]">
       {/* Header — construction metadata context, not a Document-preview
-          header (Part G). Kept deliberately restrained: no revision, no
-          hotspot count, no approval percentage, no AI summary. */}
+          header (Part G). Kept deliberately restrained: no hotspot count,
+          no approval percentage, no AI summary. */}
       <div
         className="flex items-center justify-between gap-3 px-4 py-3 flex-wrap flex-shrink-0"
         style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)' }}
@@ -178,44 +222,85 @@ export default function DrawingViewerPage() {
               {drawing.location_reference && (
                 <span className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{drawing.location_reference}</span>
               )}
+              {/* Revision context — real metadata only, never an invented
+                  label for a migrated/unrecorded revision (Part Q/R). */}
+              {viewingRevisionLabel ? (
+                <span className="text-xs font-medium" style={{ color: isHistorical ? '#fb923c' : 'var(--gold)' }}>
+                  Revision {viewingRevisionLabel} {isHistorical ? '· Historical' : '· Current'}
+                </span>
+              ) : currentRevisionLabel ? (
+                <span className="text-xs font-medium" style={{ color: 'var(--gold)' }}>
+                  Revision {currentRevisionLabel} · Current
+                </span>
+              ) : null}
               <span className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
-                &middot; {drawing.document.file_name || drawing.document.title}
+                &middot; {activeDocument.file_name || activeDocument.title}
               </span>
             </div>
           </div>
         </div>
 
-        <button
-          onClick={handleDownload}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium flex-shrink-0 transition-colors hover:bg-[var(--bg-hover)]"
-          style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
-        >
-          <Download size={13} /> Download
-        </button>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={() => setShowRevisions(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors hover:bg-[var(--bg-hover)]"
+            style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+          >
+            <History size={13} /> Revisions
+          </button>
+          <button
+            onClick={() => handleDownload(activeDocument)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors hover:bg-[var(--bg-hover)]"
+            style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+          >
+            <Download size={13} /> Download
+          </button>
+        </div>
       </div>
+
+      {/* Historical banner — never let historical content look current
+          (Part N, mandatory). */}
+      {isHistorical && (
+        <div
+          className="flex items-center justify-between gap-3 px-4 py-2 flex-wrap flex-shrink-0"
+          style={{ backgroundColor: 'rgba(249,115,22,0.1)', borderBottom: '1px solid rgba(249,115,22,0.3)' }}
+        >
+          <p className="text-xs font-medium" style={{ color: '#fb923c' }}>
+            Viewing revision {viewingRevisionLabel} — not the current revision.
+            {currentRevisionLabel && ` Current revision: ${currentRevisionLabel}.`}
+          </p>
+          <button
+            onClick={() => router.push(`/app/projects/${projectId}/drawings/${drawingId}`)}
+            className="text-xs font-medium flex-shrink-0"
+            style={{ color: '#fb923c', textDecoration: 'underline' }}
+          >
+            View current revision
+          </button>
+        </div>
+      )}
 
       {/* Viewer body */}
       <div className="flex-1 min-h-0">
         {fileType === 'pdf' && (
           // key={document.id} forces a fresh instance per Document — this
-          // route can navigate from one Drawing straight to another without
-          // unmounting (same route pattern, only the drawingId param
-          // changes), and DrawingPdfCanvas's own load effect relies on a
-          // true remount (not a prop update) to reset to its initial
-          // loading state safely.
-          <DrawingPdfCanvas key={drawing.document.id} previewEndpoint={`/documents/${drawing.document.id}/preview`} />
+          // route can navigate from one Drawing/revision straight to
+          // another without unmounting (same route pattern, only the
+          // drawingId/revision param changes), and DrawingPdfCanvas's own
+          // load effect relies on a true remount (not a prop update) to
+          // reset to its initial loading state safely.
+          <DrawingPdfCanvas key={activeDocument.id} previewEndpoint={`/documents/${activeDocument.id}/preview`} />
         )}
 
-        {fileType === 'image' && unsupportedDocId !== drawing.document.id && (
+        {fileType === 'image' && unsupportedDocId !== activeDocument.id && (
           <DrawingImageView
-            key={drawing.document.id}
-            documentId={drawing.document.id}
+            key={activeDocument.id}
+            documentId={activeDocument.id}
             alt={drawing.title}
-            onUnsupported={() => setUnsupportedDocId(drawing.document.id)}
+            onUnsupported={() => setUnsupportedDocId(activeDocument.id)}
           />
         )}
 
-        {(fileType === 'unsupported' || unsupportedDocId === drawing.document.id) && (
+        {(fileType === 'unsupported' || unsupportedDocId === activeDocument.id) && (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-6">
             <FileWarning size={28} style={{ color: 'var(--text-muted)' }} />
             <p className="text-sm" style={{ color: 'var(--text-primary)' }}>
@@ -227,6 +312,16 @@ export default function DrawingViewerPage() {
           </div>
         )}
       </div>
+
+      {showRevisions && (
+        <DrawingRevisionPanel
+          projectId={projectId}
+          drawingId={Number(drawingId)}
+          canOperate={canOperate}
+          onClose={() => setShowRevisions(false)}
+          onRevisionsChanged={() => qc.invalidateQueries({ queryKey: drawingQueryKey })}
+        />
+      )}
     </div>
   );
 }

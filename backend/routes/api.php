@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\DelayEventController;
 use App\Http\Controllers\Api\RiskController;
 use App\Http\Controllers\Api\DeliveryDocumentController;
 use App\Http\Controllers\Api\DrawingController;
+use App\Http\Controllers\Api\DrawingRevisionController;
 use App\Http\Controllers\Api\LossAndExpenseClaimController;
 use App\Http\Controllers\Api\PayLessNoticeController;
 use App\Http\Controllers\Api\SiteInstructionController;
@@ -543,6 +544,15 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
         // Global Documents above).
         Route::get('/drawings/eligible-documents', [DrawingController::class, 'eligibleDocuments']);
         Route::apiResource('drawings', DrawingController::class)->shallow();
+
+        // Drawing Revision history (Phase 4) — explicit nested routes,
+        // matching this codebase's existing convention for sub-resources
+        // (e.g. adjudication-deadlines) rather than a chained apiResource.
+        Route::get('/drawings/{drawing}/eligible-revision-documents', [DrawingController::class, 'eligibleRevisionDocuments']);
+        Route::get('/drawings/{drawing}/revisions', [DrawingRevisionController::class, 'index']);
+        Route::post('/drawings/{drawing}/revisions', [DrawingRevisionController::class, 'store']);
+        Route::get('/drawings/{drawing}/revisions/{revision}', [DrawingRevisionController::class, 'show']);
+        Route::put('/drawings/{drawing}/revisions/{revision}', [DrawingRevisionController::class, 'update']);
 
         Route::apiResource('pay-less-notices', PayLessNoticeController::class)->shallow();
 

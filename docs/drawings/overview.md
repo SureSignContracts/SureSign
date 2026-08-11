@@ -46,9 +46,17 @@ approval workflow.
 
 ## Search and filters
 
-Search matches drawing number, title, and the linked document's title or
-reference number. Filter the register by discipline or status; clear all
-filters with one action.
+Search matches drawing number, title, and the current revision's (or
+linked) document title or reference number. Filter the register by
+discipline or status; clear all filters with one action.
+
+## Current Revision
+
+Once a drawing has revision history, the register's **Current Revision**
+column shows its current revision code — see [Drawing
+Revisions](revisions.md). A drawing with no revision history yet shows
+"—"; a revision that exists but has no recorded code (for example, one
+carried over from before revision tracking existed) shows "Not recorded".
 
 ## Viewing a drawing
 
@@ -80,6 +88,7 @@ registered again as a new drawing at any time.
 ## Related
 
 - [Viewing a Drawing](viewing-a-drawing.md)
+- [Drawing Revisions](revisions.md)
 - [Documents overview](../documents/overview.md)
 - [Previewing documents](../documents/previewing.md)
 - [Downloading documents](../documents/downloading.md)

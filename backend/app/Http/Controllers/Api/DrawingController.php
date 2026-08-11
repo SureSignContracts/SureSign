@@ -48,6 +48,26 @@ class DrawingController extends Controller
     }
 
     /**
+     * Eager-loads what effectiveDocument() and the `current_revision`
+     * summary need, then overwrites the `document` relation with the
+     * resolved effective Document (Phase 4 Part H/J) — the single place
+     * this happens, so every response below carries the correct file
+     * under the exact same `document` key the frontend has always read,
+     * with zero frontend awareness of the legacy-fallback mechanism.
+     */
+    private function presentDrawing(Drawing $drawing): Drawing
+    {
+        $drawing->loadMissing([
+            'currentRevision.document:'.implode(',', $this->documentSummary()),
+            'document:'.implode(',', $this->documentSummary()),
+            'creator:id,name',
+        ]);
+        $drawing->setRelation('document', $drawing->effectiveDocument());
+
+        return $drawing;
+    }
+
+    /**
      * Eligible-document lookup for the Register Drawing selector (Phase 1B,
      * Part L). Deliberately NOT reusing DocumentController::index() —
      * that endpoint has no `search` at all (only exact-match `type`/
@@ -83,12 +103,52 @@ class DrawingController extends Controller
         );
     }
 
+    /**
+     * Eligible-document lookup for the Add Revision selector (Phase 4 Part
+     * L) — deliberately a SEPARATE endpoint from eligibleDocuments() above,
+     * not a reuse, because the eligibility rule is genuinely different: a
+     * Document already tied to a DIFFERENT Drawing is perfectly legitimate
+     * here (that rule only ever existed to stop a single Document being
+     * registered as two different Drawings), while a Document already used
+     * by ANOTHER revision of THIS SAME Drawing is excluded (reusing one
+     * file across two revisions of one drawing is never meaningful).
+     */
+    public function eligibleRevisionDocuments(Request $request, Project $project, Drawing $drawing)
+    {
+        $this->authorize($request, $drawing);
+
+        $query = Document::where('project_id', $project->id)
+            ->whereDoesntHave('revisions', function ($q) use ($drawing) {
+                $q->where('drawing_id', $drawing->id);
+            })
+            ->orderByDesc('created_at');
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                    ->orWhere('file_name', 'like', "%{$search}%")
+                    ->orWhere('reference_number', 'like', "%{$search}%");
+            });
+        }
+
+        return response()->json(
+            $query->paginate($request->integer('per_page', 25), [
+                'id', 'title', 'file_name', 'reference_number', 'category', 'type',
+            ])
+        );
+    }
+
     public function index(Request $request, Project $project)
     {
         $this->authorize($request, $project);
 
         $query = Drawing::where('project_id', $project->id)
-            ->with(['document:'.implode(',', $this->documentSummary()), 'creator:id,name']);
+            ->with([
+                'currentRevision.document:'.implode(',', $this->documentSummary()),
+                'document:'.implode(',', $this->documentSummary()),
+                'creator:id,name',
+            ]);
 
         if ($request->filled('discipline')) {
             $query->where('discipline', $request->discipline);
@@ -100,17 +160,28 @@ class DrawingController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->search;
+            // Searches whichever Document is actually effective for each
+            // Drawing (current revision's, or the legacy fallback) — a
+            // Drawing with revision history must remain findable by its
+            // current file's title/reference, not only its original one.
             $query->where(function ($q) use ($search) {
                 $q->where('drawing_number', 'like', "%{$search}%")
                     ->orWhere('title', 'like', "%{$search}%")
                     ->orWhereHas('document', function ($dq) use ($search) {
                         $dq->where('title', 'like', "%{$search}%")
                             ->orWhere('reference_number', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('currentRevision.document', function ($dq) use ($search) {
+                        $dq->where('title', 'like', "%{$search}%")
+                            ->orWhere('reference_number', 'like', "%{$search}%");
                     });
             });
         }
 
-        return response()->json($query->latest()->paginate($request->integer('per_page', 25)));
+        $paginated = $query->latest()->paginate($request->integer('per_page', 25));
+        $paginated->getCollection()->each(fn (Drawing $d) => $d->setRelation('document', $d->effectiveDocument()));
+
+        return response()->json($paginated);
     }
 
     public function store(Request $request, Project $project)
@@ -180,10 +251,7 @@ class DrawingController extends Controller
             $drawing
         );
 
-        return response()->json(
-            $drawing->load(['document:'.implode(',', $this->documentSummary()), 'creator:id,name']),
-            201
-        );
+        return response()->json($this->presentDrawing($drawing), 201);
     }
 
     // Not shallow (api/projects/{project}/drawings/{drawing}) — both
@@ -194,9 +262,7 @@ class DrawingController extends Controller
     {
         $this->authorize($request, $drawing);
 
-        return response()->json(
-            $drawing->load(['document:'.implode(',', $this->documentSummary()), 'creator:id,name'])
-        );
+        return response()->json($this->presentDrawing($drawing));
     }
 
     public function update(Request $request, Project $project, Drawing $drawing)
@@ -213,9 +279,7 @@ class DrawingController extends Controller
         ]));
 
         if (empty($validated)) {
-            return response()->json(
-                $drawing->load(['document:'.implode(',', $this->documentSummary()), 'creator:id,name'])
-            );
+            return response()->json($this->presentDrawing($drawing));
         }
 
         $drawing->update($validated);
@@ -229,9 +293,7 @@ class DrawingController extends Controller
             $drawing
         );
 
-        return response()->json(
-            $drawing->fresh()->load(['document:'.implode(',', $this->documentSummary()), 'creator:id,name'])
-        );
+        return response()->json($this->presentDrawing($drawing->fresh()));
     }
 
     public function destroy(Request $request, Project $project, Drawing $drawing)

@@ -156,6 +156,7 @@ nav:
   - Drawings:
       - drawings/overview.md
       - drawings/viewing-a-drawing.md
+      - drawings/revisions.md
   - Adjudication:
       - adjudication/overview.md
   - Closeout:

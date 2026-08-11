@@ -45,6 +45,21 @@ function StatusPill({ status }: { status: string | null }) {
   );
 }
 
+/**
+ * "—" (no revision added yet — the Drawing relies entirely on its legacy
+ * document fallback) is deliberately distinct from "Not recorded" (a real
+ * revision exists but its code wasn't captured, e.g. a migrated legacy
+ * Drawing) — never conflate the two states (Phase 4 Part R).
+ */
+function CurrentRevisionCell({ currentRevision }: { currentRevision: DrawingRecord['current_revision'] }) {
+  if (!currentRevision) return <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>;
+  return (
+    <span className="font-mono text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+      {currentRevision.revision_code ?? 'Not recorded'}
+    </span>
+  );
+}
+
 export default function ProjectDrawingsPage() {
   const { id: projectId } = useParams<{ id: string }>();
   const router = useRouter();
@@ -232,7 +247,7 @@ export default function ProjectDrawingsPage() {
             <table className="w-full min-w-[760px] text-sm">
               <thead>
                 <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
-                  {['Drawing No.', 'Title', 'Discipline', 'Status', 'Location', 'Document', 'Updated', ''].map(h => (
+                  {['Drawing No.', 'Title', 'Discipline', 'Status', 'Location', 'Current Revision', 'Document', 'Updated', ''].map(h => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{h}</th>
                   ))}
                 </tr>
@@ -251,6 +266,9 @@ export default function ProjectDrawingsPage() {
                     <td className="px-4 py-3"><StatusPill status={d.status} /></td>
                     <td className="px-4 py-3 max-w-[160px] truncate text-xs" style={{ color: 'var(--text-secondary)' }} title={d.location_reference ?? undefined}>
                       {d.location_reference || '—'}
+                    </td>
+                    <td className="px-4 py-3">
+                      <CurrentRevisionCell currentRevision={d.current_revision} />
                     </td>
                     <td className="px-4 py-3 max-w-[200px]">
                       <div className="flex items-center gap-1.5 min-w-0">
@@ -315,6 +333,11 @@ export default function ProjectDrawingsPage() {
                   <DisciplineBadge discipline={d.discipline} />
                   {d.location_reference && (
                     <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{d.location_reference}</span>
+                  )}
+                  {d.current_revision && (
+                    <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+                      Rev {d.current_revision.revision_code ?? 'not recorded'}
+                    </span>
                   )}
                 </div>
                 <div className="flex items-center justify-between pt-2" style={{ borderTop: '1px solid var(--border)' }}>

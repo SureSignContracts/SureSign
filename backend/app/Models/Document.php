@@ -38,5 +38,8 @@ class Document extends Model
 
     /** The active Drawing registration for this Document, if any — see DrawingController::eligibleDocuments(). */
     public function drawing() { return $this->hasOne(Drawing::class); }
+
+    /** Every DrawingRevision (of any Drawing) this Document has been used for — see DrawingController::eligibleRevisionDocuments(). */
+    public function revisions() { return $this->hasMany(DrawingRevision::class); }
 }
 

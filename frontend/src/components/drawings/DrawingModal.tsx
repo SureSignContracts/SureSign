@@ -11,7 +11,31 @@ import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
 import Combobox, { type ComboboxOption } from '@/components/ui/Combobox';
 import DocumentPreviewModal, { type PreviewTarget } from '@/components/documents/DocumentPreviewModal';
-import { DISCIPLINE_OPTIONS, STATUS_OPTIONS } from '@/components/drawings/drawingConstants';
+import DrawingRevisionPanel from '@/components/drawings/DrawingRevisionPanel';
+import { DISCIPLINE_OPTIONS, STATUS_OPTIONS, drawingStatusColor } from '@/components/drawings/drawingConstants';
+
+export type DrawingDocumentSummary = {
+  id: number;
+  title: string;
+  file_name: string | null;
+  reference_number: string | null;
+  category: string | null;
+  type: string | null;
+  mime_type: string | null;
+};
+
+export type DrawingRevisionSummary = {
+  id: number;
+  revision_code: string | null;
+  status: string | null;
+  issued_date: string | null;
+  issued_by: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  document: DrawingDocumentSummary;
+  creator: { id: number; name: string } | null;
+};
 
 export type DrawingRecord = {
   id: number;
@@ -22,14 +46,17 @@ export type DrawingRecord = {
   location_reference: string | null;
   created_at: string;
   updated_at: string;
-  document: {
-    id: number;
-    title: string;
-    file_name: string | null;
-    reference_number: string | null;
-    category: string | null;
-    type: string | null;
-  };
+  // Always the EFFECTIVE document (current revision's, or the legacy
+  // fallback) — resolved server-side via Drawing::effectiveDocument()
+  // (Phase 4 Part H). Never read document_id/current_revision_id
+  // separately to work this out on the frontend.
+  document: DrawingDocumentSummary;
+  // null for a Drawing that has never had an explicit revision added yet
+  // (a freshly-registered or pre-Phase-4 Drawing relying entirely on the
+  // legacy document fallback) — genuinely distinct from a revision that
+  // exists but has a null revision_code (Part F's "Revision not
+  // recorded" case). Never conflate the two in the UI.
+  current_revision: DrawingRevisionSummary | null;
   creator: { id: number; name: string } | null;
 };
 
@@ -91,6 +118,7 @@ export default function DrawingModal({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
+  const [showRevisions, setShowRevisions] = useState(false);
 
   const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }));
 
@@ -171,7 +199,33 @@ export default function DrawingModal({
                 appears in create mode (Phase 1 Part N/R). */}
             {isEdit ? (
               <div className="rounded-xl p-3 space-y-2" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
-                <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Linked Document</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+                    {drawing.current_revision ? 'Current Revision Document' : 'Linked Document'}
+                  </p>
+                  <button
+                    onClick={() => setShowRevisions(true)}
+                    className="text-xs font-medium transition-colors hover:opacity-80"
+                    style={{ color: 'var(--gold)' }}
+                  >
+                    Revisions
+                  </button>
+                </div>
+                {drawing.current_revision && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-mono text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>
+                      {drawing.current_revision.revision_code ?? 'Revision not recorded'}
+                    </span>
+                    {drawing.current_revision.status && (
+                      <span
+                        className="px-2 py-0.5 rounded-full text-xs font-medium"
+                        style={{ backgroundColor: drawingStatusColor(drawing.current_revision.status).bg, color: drawingStatusColor(drawing.current_revision.status).text }}
+                      >
+                        {drawing.current_revision.status}
+                      </span>
+                    )}
+                  </div>
+                )}
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex items-start gap-2">
                     <FileText size={15} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--text-muted)' }} />
@@ -204,7 +258,9 @@ export default function DrawingModal({
                   </button>
                 </div>
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                  To link a different document, remove this registration and register the correct document instead.
+                  {drawing.current_revision
+                    ? 'Use Revisions above to add a new revision or view revision history.'
+                    : 'To link a different document, remove this registration and register the correct document instead.'}
                 </p>
               </div>
             ) : (
@@ -319,6 +375,19 @@ export default function DrawingModal({
 
       {previewTarget && (
         <DocumentPreviewModal target={previewTarget} onClose={() => setPreviewTarget(null)} />
+      )}
+
+      {showRevisions && drawing && (
+        <DrawingRevisionPanel
+          projectId={projectId}
+          drawingId={drawing.id}
+          canOperate={canOperate}
+          onClose={() => setShowRevisions(false)}
+          onRevisionsChanged={() => {
+            qc.invalidateQueries({ queryKey: ['project-drawings', projectId] });
+            qc.invalidateQueries({ queryKey: ['project-drawing', projectId, String(drawing.id)] });
+          }}
+        />
       )}
     </>
   );
