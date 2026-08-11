@@ -11,7 +11,7 @@ import {
   LayoutDashboard, FileText, DollarSign, MessageSquare, GitBranch,
   ClipboardList, Users2, Bell, CheckSquare, FolderOpen, Package, Archive,
   ArrowLeft, FolderKanban, Scale, CalendarDays, ShieldAlert, BarChart2,
-  ChevronRight, Briefcase, HardHat, Clock, FileStack,
+  ChevronRight, Briefcase, HardHat, Clock, FileStack, Ruler,
 } from 'lucide-react';
 
 interface ProjectSidebarProps {
@@ -74,6 +74,7 @@ const groups = (id: string): NavGroup[] => [
       { href: `/app/projects/${id}/snagging`,              label: 'Snagging',           icon: Package },
       { href: `/app/projects/${id}/site-reports`,          label: 'Site Reports',       icon: ClipboardList },
       { href: `/app/projects/${id}/delivery-documents`,    label: 'Delivery Documents', icon: FileStack },
+      { href: `/app/projects/${id}/drawings`,              label: 'Drawings',           icon: Ruler },
       { href: `/app/projects/${id}/closeout`,              label: 'Closeout',           icon: Archive },
     ],
   },

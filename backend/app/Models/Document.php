@@ -35,5 +35,8 @@ class Document extends Model
     public function approvals()    { return $this->hasMany(DocumentApproval::class); }
     public function documentable() { return $this->morphTo(); }
     public function tradePackage() { return $this->belongsTo(TradePackage::class); }
+
+    /** The active Drawing registration for this Document, if any — see DrawingController::eligibleDocuments(). */
+    public function drawing() { return $this->hasOne(Drawing::class); }
 }
 

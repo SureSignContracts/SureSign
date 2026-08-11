@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\EotRequestController;
 use App\Http\Controllers\Api\DelayEventController;
 use App\Http\Controllers\Api\RiskController;
 use App\Http\Controllers\Api\DeliveryDocumentController;
+use App\Http\Controllers\Api\DrawingController;
 use App\Http\Controllers\Api\LossAndExpenseClaimController;
 use App\Http\Controllers\Api\PayLessNoticeController;
 use App\Http\Controllers\Api\SiteInstructionController;
@@ -535,6 +536,14 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
         Route::post('/delivery-documents', [DeliveryDocumentController::class, 'storeForProject']);
         Route::put('/delivery-documents/{deliveryDocument}', [DeliveryDocumentController::class, 'update']);
         Route::delete('/delivery-documents/{deliveryDocument}', [DeliveryDocumentController::class, 'destroy']);
+
+        // Drawing Register — eligible-documents lookup registered before the
+        // apiResource below so this literal path is matched first, not
+        // swallowed by the {drawing} wildcard binding (same precedent as
+        // Global Documents above).
+        Route::get('/drawings/eligible-documents', [DrawingController::class, 'eligibleDocuments']);
+        Route::apiResource('drawings', DrawingController::class)->shallow();
+
         Route::apiResource('pay-less-notices', PayLessNoticeController::class)->shallow();
 
         Route::apiResource('site-instructions', SiteInstructionController::class)->shallow();
