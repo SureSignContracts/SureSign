@@ -40,7 +40,11 @@ class DrawingController extends Controller
 
     private function documentSummary(): array
     {
-        return ['id', 'title', 'file_name', 'reference_number', 'category', 'type'];
+        // mime_type added for Drawing Phase 3 — lets the Drawing Viewer
+        // decide PDF vs. image vs. unsupported before making a preview
+        // request, without duplicating Document's own preview-conversion
+        // logic here.
+        return ['id', 'title', 'file_name', 'reference_number', 'category', 'type', 'mime_type'];
     }
 
     /**

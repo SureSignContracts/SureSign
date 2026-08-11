@@ -50,11 +50,19 @@ Search matches drawing number, title, and the linked document's title or
 reference number. Filter the register by discipline or status; clear all
 filters with one action.
 
-## Viewing, previewing, and downloading
+## Viewing a drawing
 
-Select a drawing row to view its full details, including the linked
-document. Use **Preview** to open the document using the same viewer as
-Documents, with a **Download** option inside.
+Select **View** on a drawing row to open it in the dedicated Drawing
+Viewer — see [Viewing a Drawing](viewing-a-drawing.md) for page navigation,
+zoom, and Fit Width. Clicking anywhere else on the row opens the same
+viewer directly.
+
+## Drawing details, editing, and removal
+
+Use the **Edit** (pencil) action on a drawing row to open its details for
+editing, or **Remove** (bin) to remove the registration. The details view
+also shows the linked document and offers a quick **Preview** using the
+same viewer as Documents.
 
 ## Editing a drawing
 
@@ -71,6 +79,7 @@ registered again as a new drawing at any time.
 
 ## Related
 
+- [Viewing a Drawing](viewing-a-drawing.md)
 - [Documents overview](../documents/overview.md)
 - [Previewing documents](../documents/previewing.md)
 - [Downloading documents](../documents/downloading.md)

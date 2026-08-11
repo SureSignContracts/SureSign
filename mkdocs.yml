@@ -155,6 +155,7 @@ nav:
       - delivery-documents/trade-package-delivery-documents.md
   - Drawings:
       - drawings/overview.md
+      - drawings/viewing-a-drawing.md
   - Adjudication:
       - adjudication/overview.md
   - Closeout:

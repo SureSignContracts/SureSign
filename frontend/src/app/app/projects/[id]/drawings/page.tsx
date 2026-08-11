@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Ruler, Plus, Search, FileText } from 'lucide-react';
+import { Ruler, Plus, Search, FileText, Eye, Pencil, Trash2 } from 'lucide-react';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/getErrorMessage';
@@ -47,6 +47,7 @@ function StatusPill({ status }: { status: string | null }) {
 
 export default function ProjectDrawingsPage() {
   const { id: projectId } = useParams<{ id: string }>();
+  const router = useRouter();
   const qc = useQueryClient();
   const { canOperate } = useProjectPermissions();
 
@@ -242,7 +243,7 @@ export default function ProjectDrawingsPage() {
                     key={d.id}
                     className="hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
                     style={{ borderBottom: '1px solid var(--border)' }}
-                    onClick={() => setModal({ open: true, drawing: d })}
+                    onClick={() => router.push(`/app/projects/${projectId}/drawings/${d.id}`)}
                   >
                     <td className="px-4 py-3 font-mono text-[11px] font-semibold whitespace-nowrap" style={{ color: 'var(--gold)' }}>{d.drawing_number}</td>
                     <td className="px-4 py-3 max-w-[220px] truncate font-medium" style={{ color: 'var(--text-primary)' }} title={d.title}>{d.title}</td>
@@ -259,13 +260,34 @@ export default function ProjectDrawingsPage() {
                     </td>
                     <td className="px-4 py-3 text-xs tabular-nums whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>{formatDate(d.updated_at)}</td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setModal({ open: true, drawing: d }); }}
-                        className="text-xs font-medium px-2 py-1 rounded-lg hover:bg-[var(--bg-elevated)] transition-colors"
-                        style={{ color: 'var(--text-secondary)' }}
-                      >
-                        View
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); router.push(`/app/projects/${projectId}/drawings/${d.id}`); }}
+                          title="View Drawing"
+                          className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg hover:bg-[var(--bg-elevated)] transition-colors"
+                          style={{ color: 'var(--text-secondary)' }}
+                        >
+                          <Eye size={12} /> View
+                        </button>
+                        {canOperate && (
+                          <>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setModal({ open: true, drawing: d }); }}
+                              title="Edit Drawing"
+                              className="p-1.5 rounded-lg hover:bg-[var(--bg-elevated)] transition-colors"
+                            >
+                              <Pencil size={12} style={{ color: 'var(--text-muted)' }} />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setRemoveTarget(d); }}
+                              title="Remove Drawing"
+                              className="p-1.5 rounded-lg hover:bg-[var(--bg-elevated)] transition-colors"
+                            >
+                              <Trash2 size={12} style={{ color: '#f87171' }} />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -276,10 +298,10 @@ export default function ProjectDrawingsPage() {
           {/* Mobile cards */}
           <div className="md:hidden space-y-2" style={{ opacity: isFetching ? 0.6 : 1 }}>
             {rows.map(d => (
-              <button
+              <div
                 key={d.id}
-                onClick={() => setModal({ open: true, drawing: d })}
-                className="block w-full text-left rounded-2xl p-4 space-y-2"
+                onClick={() => router.push(`/app/projects/${projectId}/drawings/${d.id}`)}
+                className="rounded-2xl p-4 space-y-2 cursor-pointer"
                 style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -302,7 +324,25 @@ export default function ProjectDrawingsPage() {
                   </div>
                   <span className="text-xs tabular-nums flex-shrink-0" style={{ color: 'var(--text-muted)' }}>{formatDate(d.updated_at)}</span>
                 </div>
-              </button>
+                {canOperate && (
+                  <div className="flex items-center gap-2 pt-2" style={{ borderTop: '1px solid var(--border)' }}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setModal({ open: true, drawing: d }); }}
+                      className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg"
+                      style={{ color: 'var(--text-secondary)' }}
+                    >
+                      <Pencil size={12} /> Edit
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setRemoveTarget(d); }}
+                      className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg"
+                      style={{ color: '#f87171' }}
+                    >
+                      <Trash2 size={12} /> Remove
+                    </button>
+                  </div>
+                )}
+              </div>
             ))}
           </div>
 
