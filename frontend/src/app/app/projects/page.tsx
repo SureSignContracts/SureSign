@@ -83,12 +83,20 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
   const [form, setForm] = useState({
     name: '', code: '', contract_type: '', type: '', status: 'active',
     contract_value: '', start_date: '', end_date: '', description: '', currency: '',
+    address: '', city: '', state: '', postcode: '', country: '', latitude: '', longitude: '',
   });
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
 
   const mutation = useMutation({
-    mutationFn: (data: typeof form) => api.post('/projects', { ...data, currency: data.currency || null }).then(r => r.data),
+    mutationFn: (data: typeof form) => api.post('/projects', {
+      ...data,
+      currency: data.currency || null,
+      // Empty string must become `null`, never 0 — 0,0 is a real coordinate,
+      // never a stand-in for "not entered" (see backend validation).
+      latitude: data.latitude === '' ? null : data.latitude,
+      longitude: data.longitude === '' ? null : data.longitude,
+    }).then(r => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects-portfolio'] });
       onClose();
@@ -237,6 +245,70 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
                   The completion date cannot be earlier than the start date.
                 </p>
               )}
+            </div>
+          </div>
+
+          {/* Project Location — address fields already existed on the model
+              but had no form anywhere in the app; coordinates are new
+              (Dashboard Project Map). Both are grouped together since they
+              describe the same thing: where this project physically is. */}
+          <div className="pt-2" style={{ borderTop: '1px solid var(--border)' }}>
+            <p className="text-sm font-medium mb-3" style={{ color: 'var(--text-primary)' }}>Project Location</p>
+
+            <div className="space-y-3">
+              <div>
+                <label style={labelStyle}>Address</label>
+                <input className={INPUT_CLS} style={inputStyle} value={form.address} onChange={e => set('address', e.target.value)} placeholder="Street address" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label style={labelStyle}>City</label>
+                  <input className={INPUT_CLS} style={inputStyle} value={form.city} onChange={e => set('city', e.target.value)} />
+                </div>
+                <div>
+                  <label style={labelStyle}>State / Region</label>
+                  <input className={INPUT_CLS} style={inputStyle} value={form.state} onChange={e => set('state', e.target.value)} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label style={labelStyle}>Postcode / ZIP</label>
+                  <input className={INPUT_CLS} style={inputStyle} value={form.postcode} onChange={e => set('postcode', e.target.value)} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Country</label>
+                  <input className={INPUT_CLS} style={inputStyle} value={form.country} onChange={e => set('country', e.target.value)} placeholder="e.g. United Kingdom" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label style={labelStyle}>Latitude</label>
+                  <input
+                    className={INPUT_CLS} style={inputStyle} type="number" step="any"
+                    value={form.latitude} onChange={e => set('latitude', e.target.value)} placeholder="e.g. 51.5074"
+                    aria-invalid={fieldErrors.latitude ? true : undefined}
+                    aria-describedby={fieldErrors.latitude ? 'project-latitude-error' : undefined}
+                  />
+                  {fieldErrors.latitude && (
+                    <p id="project-latitude-error" className="text-xs mt-1" style={{ color: '#f87171' }}>{fieldErrors.latitude[0]}</p>
+                  )}
+                </div>
+                <div>
+                  <label style={labelStyle}>Longitude</label>
+                  <input
+                    className={INPUT_CLS} style={inputStyle} type="number" step="any"
+                    value={form.longitude} onChange={e => set('longitude', e.target.value)} placeholder="e.g. -0.1278"
+                    aria-invalid={fieldErrors.longitude ? true : undefined}
+                    aria-describedby={fieldErrors.longitude ? 'project-longitude-error' : undefined}
+                  />
+                  {fieldErrors.longitude && (
+                    <p id="project-longitude-error" className="text-xs mt-1" style={{ color: '#f87171' }}>{fieldErrors.longitude[0]}</p>
+                  )}
+                </div>
+              </div>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Optional. Used to position this project on the organisation Project Map.
+              </p>
             </div>
           </div>
 

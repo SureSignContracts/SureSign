@@ -1,17 +1,65 @@
 'use client';
 
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import dynamic from 'next/dynamic';
+import toast from 'react-hot-toast';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { effectiveTodayYmd, parseDateOnly } from '@/lib/dateTime';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import CountUp from '@/components/ui/CountUp';
-import { DollarSign, FileText, MessageSquare, GitBranch, AlertCircle, Activity, BarChart2, ChevronRight, ShieldAlert, TrendingUp, Zap, FileCheck, HeartHandshake } from 'lucide-react';
+import { DollarSign, FileText, MessageSquare, GitBranch, AlertCircle, Activity, BarChart2, ChevronRight, ShieldAlert, TrendingUp, Zap, FileCheck, HeartHandshake, Pencil, MapPin, ExternalLink, Copy } from 'lucide-react';
 import PageTourButton from '@/components/tours/PageTourButton';
 import Link from 'next/link';
 import { formatDateTime } from '@/lib/dateTime';
+import EditProjectModal from '@/components/projects/EditProjectModal';
+
+// Leaflet reads `window`/`document` at import time — client-only, and only
+// loaded once the Site Location section actually renders.
+const SiteLocationMap = dynamic(() => import('@/components/projects/SiteLocationMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+      <MapPin size={20} style={{ color: 'var(--text-muted)', opacity: 0.5 }} />
+    </div>
+  ),
+});
+
+/** Same small local-helper pattern already used elsewhere in the app
+ *  (e.g. admin/prompts/page.tsx) — no shared clipboard utility exists to
+ *  import instead. */
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    try {
+      const el = document.createElement('textarea');
+      el.value = text;
+      el.style.position = 'fixed';
+      el.style.opacity = '0';
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
+/** Google's own officially documented, no-API-key URL mechanism — see
+ *  https://developers.google.com/maps/documentation/urls/get-started.
+ *  Accepts a raw coordinate pair directly; satellite view cannot be forced
+ *  reliably through this documented mechanism, so this deliberately opens
+ *  the standard map view and lets the user switch views themselves. */
+function googleMapsUrl(lat: number, lng: number): string {
+  return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+}
 
 // ── Health ─────────────────────────────────────────────────────────────────
 
@@ -477,6 +525,24 @@ const ACTIVITY_ICONS: Record<string, React.ElementType> = {
 
 // ─── Programme helpers ────────────────────────────────────────────────────────
 
+/**
+ * Whole-calendar-day difference between two dates, safe whether each side is
+ * a bare "YYYY-MM-DD" string or a full ISO datetime — `ContractProgrammeMilestone`'s
+ * `planned_date`/`forecast_date` are Eloquent `date` casts, which serialize
+ * to JSON as e.g. `"2024-04-29T00:00:00.000000Z"`, not a bare date. The
+ * previous `new Date(dateStr + 'T00:00:00')` pattern silently assumed the
+ * latter and, given the former, built an invalid string
+ * ("...000000ZT00:00:00") whose `getTime()` is `NaN` — the direct cause of
+ * this widget's "NaNd remaining" and a second, silent bug in the "Due Soon"
+ * health check below (`NaN >= 0` is always `false`). `.slice(0, 10)` takes
+ * only the calendar-date portion before reparsing, exactly as
+ * `DeadlineClassifier` does server-side — never diff `Date` instances
+ * directly, always reparse from date-only strings first.
+ */
+function daysBetweenDateOnly(from: string, to: string): number {
+  return Math.round((parseDateOnly(to.slice(0, 10)).getTime() - parseDateOnly(from.slice(0, 10)).getTime()) / 86_400_000);
+}
+
 function calcProgrammeHealth(milestones: any[], today: string): string {
   if (milestones.length === 0) return 'no_data';
   const active = milestones.filter((m: any) => m.status !== 'complete');
@@ -484,7 +550,7 @@ function calcProgrammeHealth(milestones: any[], today: string): string {
   if (milestones.some((m: any) => m.status === 'delayed' || m.status === 'at_risk')) return 'delayed';
   if (active.some((m: any) => {
     if (!m.planned_date) return false;
-    const diff = Math.round((new Date(m.planned_date + 'T00:00:00').getTime() - new Date(today + 'T00:00:00').getTime()) / 86_400_000);
+    const diff = daysBetweenDateOnly(today, m.planned_date);
     return diff >= 0 && diff <= 14;
   })) return 'due_soon';
   return 'on_track';
@@ -510,9 +576,7 @@ function ProgrammeOverviewWidget({ milestones, projectId }: { milestones: any[];
     .filter((m: any) => m.status !== 'complete' && (m.planned_date || m.forecast_date))
     .sort((a: any, b: any) => (a.planned_date || a.forecast_date || '').localeCompare(b.planned_date || b.forecast_date || ''))[0] ?? null;
   const nextDate = next?.planned_date || next?.forecast_date;
-  const daysToNext = nextDate
-    ? Math.round((new Date(nextDate + 'T00:00:00').getTime() - new Date(today + 'T00:00:00').getTime()) / 86_400_000)
-    : null;
+  const daysToNext = nextDate ? daysBetweenDateOnly(today, nextDate) : null;
 
   return (
     <div className="ss-animate-in rounded-2xl p-5 flex flex-col gap-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
@@ -603,7 +667,8 @@ export default function ProjectOverviewPage() {
   const formatCurrency = useCurrencyFormatter();
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { isPlatformOperator } = useProjectPermissions();
+  const { isPlatformOperator, canOperate } = useProjectPermissions();
+  const [editOpen, setEditOpen] = useState(false);
 
   const { data: project, isLoading } = useQuery({
     queryKey: ['project', id],
@@ -701,13 +766,28 @@ export default function ProjectOverviewPage() {
             </p>
           )}
         </div>
-        <span
-          className="px-3 py-1 rounded-full text-xs font-medium capitalize"
-          style={{ backgroundColor: badge.bg, color: badge.text }}
-        >
-          {project?.status?.replace(/_/g, ' ')}
-        </span>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span
+            className="px-3 py-1 rounded-full text-xs font-medium capitalize"
+            style={{ backgroundColor: badge.bg, color: badge.text }}
+          >
+            {project?.status?.replace(/_/g, ' ')}
+          </span>
+          {canOperate && (
+            <button
+              onClick={() => setEditOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors hover:bg-[var(--bg-hover)]"
+              style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+            >
+              <Pencil size={12} /> Edit Project
+            </button>
+          )}
+        </div>
       </div>
+
+      {editOpen && project && (
+        <EditProjectModal project={project} projectId={id} onClose={() => setEditOpen(false)} />
+      )}
 
       {/* Clickable stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" data-tour="overview-stats">
@@ -815,6 +895,92 @@ export default function ProjectOverviewPage() {
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No client linked to this project.</p>
           )}
         </div>
+      </div>
+
+      {/* Site Location — reuses the project data already loaded above; no
+          extra request. Coordinates power the embedded map/external link;
+          address is displayed as recorded, never geocoded from/into either. */}
+      <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Site Location</h2>
+          {canOperate && (
+            <button
+              onClick={() => setEditOpen(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors hover:bg-[var(--bg-hover)]"
+              style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+            >
+              <Pencil size={11} /> Edit Project
+            </button>
+          )}
+        </div>
+
+        {project?.latitude != null && project?.longitude != null ? (
+          <div className="grid md:grid-cols-2 gap-5">
+            <div className="rounded-xl overflow-hidden" style={{ height: 260, border: '1px solid var(--border)' }}>
+              <SiteLocationMap latitude={Number(project.latitude)} longitude={Number(project.longitude)} />
+            </div>
+            <div className="flex flex-col justify-between gap-4 min-w-0">
+              <div className="space-y-3 min-w-0">
+                {(project?.address || project?.city || project?.country) && (
+                  <div className="min-w-0">
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Project address</p>
+                    <p className="text-sm mt-0.5 break-words" style={{ color: 'var(--text-primary)' }}>
+                      {project?.address && <span>{project.address}<br /></span>}
+                      {[project?.city, project?.state, project?.postcode, project?.country].filter(Boolean).join(', ')}
+                    </p>
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Coordinates</p>
+                  <p className="text-sm mt-0.5 tabular-nums break-all" style={{ color: 'var(--text-primary)' }}>
+                    {Number(project.latitude).toFixed(7)}, {Number(project.longitude).toFixed(7)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <a
+                  href={googleMapsUrl(Number(project.latitude), Number(project.longitude))}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors hover:bg-[var(--bg-hover)]"
+                  style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                >
+                  Open in Google Maps <ExternalLink size={11} />
+                </a>
+                <button
+                  onClick={async () => {
+                    const ok = await copyToClipboard(`${Number(project.latitude).toFixed(7)}, ${Number(project.longitude).toFixed(7)}`);
+                    toast[ok ? 'success' : 'error'](ok ? 'Coordinates copied' : 'Could not copy coordinates');
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors hover:bg-[var(--bg-hover)]"
+                  style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                >
+                  <Copy size={11} /> Copy coordinates
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center text-center px-6 py-10 gap-3">
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+              <MapPin size={20} style={{ color: 'var(--text-muted)' }} />
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>No project location has been added yet</p>
+              <p className="text-xs max-w-xs" style={{ color: 'var(--text-muted)' }}>Add geographic coordinates to view this project on the map.</p>
+            </div>
+            {canOperate && (
+              <button
+                onClick={() => setEditOpen(true)}
+                className="mt-1 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors hover:bg-[var(--bg-hover)]"
+                style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+              >
+                <Pencil size={11} /> Edit Project
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Consultancy — Super Admin/Admin only (see ConsultancyWidget docblock) */}

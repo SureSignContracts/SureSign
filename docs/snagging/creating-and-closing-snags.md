@@ -27,6 +27,14 @@ date/time when this happens.
 
 Snags can be edited at any time, and deleted with a confirmation prompt.
 
+## Attaching evidence
+
+Open a snag and use the **Evidence** section to attach defect photographs
+and supporting documents (JPEG, PNG, PDF, and common office document
+formats) directly to that snag. Attach as many files as needed. Each
+attachment can be previewed, downloaded, or removed individually — removing
+one attachment never affects the others or the snag itself.
+
 ## Filters
 
 Use the search box and status/priority filters on the Snagging list to find

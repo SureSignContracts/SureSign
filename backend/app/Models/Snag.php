@@ -21,4 +21,7 @@ class Snag extends Model
     public function organization() { return $this->belongsTo(Organization::class); }
     public function creator()      { return $this->belongsTo(User::class, 'created_by'); }
     public function assignee()     { return $this->belongsTo(User::class, 'assigned_to'); }
+
+    /** Evidence/defect photos and supporting files attached specifically to this Snag — see FileUpload::attachable(). */
+    public function fileUploads() { return $this->morphMany(FileUpload::class, 'attachable'); }
 }

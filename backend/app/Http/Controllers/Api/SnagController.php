@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\FileUpload;
 use App\Models\Project;
 use App\Models\Snag;
+use App\Services\Documents\RecordAttachmentService;
 use App\Services\ProjectActivityService;
 use Illuminate\Http\Request;
 
@@ -149,6 +151,43 @@ class SnagController extends Controller
         $this->authorize($request, $snagging);
 
         $snagging->delete();
+        return response()->json(null, 204);
+    }
+
+    // ── Evidence attachments (Phase 0) ───────────────────────────────────
+    // See App\Services\Documents\RecordAttachmentService — the same shared
+    // service backs Rfi/QaReport's identical methods below.
+
+    public function attachments(Request $request, Project $project, Snag $snagging)
+    {
+        $this->authorize($request, $snagging);
+
+        return response()->json(
+            (new RecordAttachmentService())->list($snagging)
+        );
+    }
+
+    public function uploadAttachment(Request $request, Project $project, Snag $snagging)
+    {
+        $this->authorize($request, $snagging);
+
+        $upload = (new RecordAttachmentService())->upload(
+            $request, $project, $snagging, $request->user(),
+            'snagging', "Snag #{$snagging->snag_number}", 'snag_evidence_uploaded',
+        );
+
+        return response()->json($upload, 201);
+    }
+
+    public function deleteAttachment(Request $request, Project $project, Snag $snagging, FileUpload $fileUpload)
+    {
+        $this->authorize($request, $snagging);
+
+        (new RecordAttachmentService())->delete(
+            $fileUpload, $snagging, $project, $request->user(),
+            "Snag #{$snagging->snag_number}", 'snag_evidence_removed',
+        );
+
         return response()->json(null, 204);
     }
 }

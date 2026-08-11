@@ -23,4 +23,7 @@ class Rfi extends Model
 
     public function creator() { return $this->belongsTo(User::class, 'created_by'); }
     public function project() { return $this->belongsTo(Project::class); }
+
+    /** Evidence/supporting files attached specifically to this RFI — see FileUpload::attachable(). */
+    public function fileUploads() { return $this->morphMany(FileUpload::class, 'attachable'); }
 }

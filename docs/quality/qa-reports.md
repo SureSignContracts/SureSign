@@ -30,6 +30,13 @@ Draft, Open, Failed, Passed, Closed.
 
 A delete action is available, with a confirmation prompt.
 
+## Attaching evidence
+
+Open a QA report and use the **Evidence** section to attach inspection
+photographs and supporting certificates or documents (JPEG, PNG, PDF, and
+common office document formats). Attach as many files as needed, and
+preview, download, or remove any attachment individually.
+
 ## Related
 
 - [Inspections](inspections.md)

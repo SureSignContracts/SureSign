@@ -327,4 +327,62 @@ class OrganisationDashboardActionCentreTest extends TestCase
         $this->assertContains('Uploaded a file', $descriptions);
         $this->assertNotContains('Secret Beta activity', $descriptions);
     }
+
+    // ── Project Map ───────────────────────────────────────────────────────
+
+    public function test_project_map_only_includes_projects_with_both_coordinates(): void
+    {
+        $org = $this->makeOrg('map');
+        $user = User::factory()->create(['organization_id' => $org->id]);
+        $mapped = $this->makeProject($org, $user, ['name' => 'Mapped Site', 'latitude' => 51.5074, 'longitude' => -0.1278]);
+        $this->makeProject($org, $user, ['name' => 'No Coordinates']);
+        $this->makeProject($org, $user, ['name' => 'Latitude Only', 'latitude' => 51.5]);
+
+        Sanctum::actingAs($user);
+        $response = $this->getJson('/api/dashboard/action-centre')->assertStatus(200);
+
+        $map = $response->json('project_map');
+        $this->assertEquals(3, $map['total_projects']);
+        $this->assertEquals(1, $map['mapped_projects']);
+        $this->assertCount(1, $map['projects']);
+        $this->assertEquals('Mapped Site', $map['projects'][0]['name']);
+        $this->assertEquals(51.5074, $map['projects'][0]['latitude']);
+        $this->assertEquals(-0.1278, $map['projects'][0]['longitude']);
+        $this->assertEquals($mapped->id, $map['projects'][0]['id']);
+        $this->assertEquals("/app/projects/{$mapped->id}/overview", $map['projects'][0]['action_url']);
+    }
+
+    public function test_project_map_is_tenant_scoped(): void
+    {
+        $orgA = $this->makeOrg('map-a');
+        $userA = User::factory()->create(['organization_id' => $orgA->id]);
+        $this->makeProject($orgA, $userA, ['name' => 'Visible Site', 'latitude' => 10, 'longitude' => 10]);
+
+        $orgB = $this->makeOrg('map-b');
+        $userB = User::factory()->create(['organization_id' => $orgB->id]);
+        $this->makeProject($orgB, $userB, ['name' => 'Hidden Site', 'latitude' => 20, 'longitude' => 20]);
+
+        Sanctum::actingAs($userA);
+        $response = $this->getJson('/api/dashboard/action-centre')->assertStatus(200);
+
+        $names = collect($response->json('project_map.projects'))->pluck('name')->all();
+        $this->assertContains('Visible Site', $names);
+        $this->assertNotContains('Hidden Site', $names);
+    }
+
+    public function test_project_map_reports_overdue_and_due_soon_counts_from_existing_items(): void
+    {
+        $org = $this->makeOrg('map-counts');
+        $user = User::factory()->create(['organization_id' => $org->id]);
+        $project = $this->makeProject($org, $user, ['latitude' => 1, 'longitude' => 1]);
+        $this->makeRfi($project, $user, ['response_due_date' => now()->subDays(1)->toDateString()]);
+        $this->makeRfi($project, $user, ['response_due_date' => now()->addDays(1)->toDateString()]);
+
+        Sanctum::actingAs($user);
+        $response = $this->getJson('/api/dashboard/action-centre')->assertStatus(200);
+
+        $marker = $response->json('project_map.projects.0');
+        $this->assertEquals(1, $marker['overdue_count']);
+        $this->assertEquals(1, $marker['due_soon_count']);
+    }
 }

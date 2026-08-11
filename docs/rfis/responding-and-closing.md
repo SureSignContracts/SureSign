@@ -6,7 +6,11 @@
 2. Select **Respond**.
 3. Enter your response text (required), the response date, and who is
    responding.
-4. Save. The RFI's status becomes **Responded**.
+4. Optionally attach **supporting documents** — sketches, marked-up
+   drawings, or other files relevant to the response — under **Supporting
+   documents**. Attach as many as needed, and preview, download, or remove
+   any of them individually.
+5. Save. The RFI's status becomes **Responded**.
 
 ## How to close
 

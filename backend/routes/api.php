@@ -480,6 +480,10 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
 
     // Site Administration
     Route::apiResource('projects.rfis', RfiController::class)->shallow();
+    // Evidence attachments (Phase 0) — flat/shallow, matching show/update/destroy above.
+    Route::get('/rfis/{rfi}/attachments',    [RfiController::class, 'attachments']);
+    Route::post('/rfis/{rfi}/attachments',   [RfiController::class, 'uploadAttachment']);
+    Route::delete('/rfis/{rfi}/attachments/{fileUpload}', [RfiController::class, 'deleteAttachment']);
 
     // Project sub-resources
     Route::prefix('projects/{project}')->group(function () {
@@ -537,9 +541,17 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
 
         // Snagging
         Route::apiResource('snagging', SnagController::class)->shallow();
+        // Evidence attachments (Phase 0)
+        Route::get('/snagging/{snagging}/attachments',    [SnagController::class, 'attachments']);
+        Route::post('/snagging/{snagging}/attachments',   [SnagController::class, 'uploadAttachment']);
+        Route::delete('/snagging/{snagging}/attachments/{fileUpload}', [SnagController::class, 'deleteAttachment']);
 
         // QA Reports
         Route::apiResource('qa-reports', QaReportController::class)->shallow();
+        // Evidence attachments (Phase 0)
+        Route::get('/qa-reports/{qaReport}/attachments',    [QaReportController::class, 'attachments']);
+        Route::post('/qa-reports/{qaReport}/attachments',   [QaReportController::class, 'uploadAttachment']);
+        Route::delete('/qa-reports/{qaReport}/attachments/{fileUpload}', [QaReportController::class, 'deleteAttachment']);
 
         // Closeout
         Route::get('/closeout',              [CloseoutController::class, 'show']);

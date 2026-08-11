@@ -52,7 +52,8 @@ class OrganisationDashboardService
     public function build(User $user): array
     {
         $projectIds = $this->aggregation->scopedProjectIds($user);
-        $projects   = Project::whereIn('id', $projectIds)->with('organization:id,currency')->get(['id', 'name', 'status', 'currency', 'organization_id']);
+        $projects   = Project::whereIn('id', $projectIds)->with('organization:id,currency')
+            ->get(['id', 'name', 'status', 'currency', 'organization_id', 'city', 'country', 'latitude', 'longitude']);
         $projectsById = $projects->keyBy('id');
         $today = TimezoneResolver::today($user, $user->organization);
 
@@ -87,6 +88,7 @@ class OrganisationDashboardService
                 'items_due_soon'              => $counts['due_soon'],
             ],
             'commercial_snapshot' => $this->buildCommercialSnapshot($projects, $projectIds, $paTotals, $retentionReleased, $allItems),
+            'project_map'         => $this->buildProjectMap($projects, $allItems),
             'recent_activity'     => $this->buildRecentActivity($projectIds, $user),
             'meta' => [
                 'effective_timezone'       => TimezoneResolver::effectiveTimezone($user, $user->organization),
@@ -422,6 +424,49 @@ class OrganisationDashboardService
             'awaiting_certification_count'  => $awaitingCertificationCount,
             'commercial_deadline_count'     => $commercialDeadlineCount,
             'action_url'                    => '/app/commercial',
+        ];
+    }
+
+    // ── Project Map ───────────────────────────────────────────────────────
+
+    /**
+     * Dashboard Project Map (Dashboard Command Center, Part D) — a minimal,
+     * pre-scoped marker payload. Only projects with a real, manually-entered
+     * latitude AND longitude are included; a project missing either is
+     * simply omitted, never plotted at a guessed or 0,0 location. Reuses
+     * the same `$projects` collection and `$allItems` set already loaded/
+     * collected in build() — no second project query, no per-marker
+     * queries. Overdue/due-soon counts come from grouping the already-
+     * collected items in memory, not a new aggregation.
+     */
+    private function buildProjectMap(Collection $projects, Collection $allItems): array
+    {
+        $itemsByProject = $allItems->groupBy('project_id');
+
+        $mapped = $projects
+            ->filter(fn (Project $p) => $p->latitude !== null && $p->longitude !== null)
+            ->map(function (Project $p) use ($itemsByProject) {
+                $projectItems = $itemsByProject->get($p->id, collect());
+
+                return [
+                    'id'           => $p->id,
+                    'name'         => $p->name,
+                    'status'       => $p->status,
+                    'city'         => $p->city,
+                    'country'      => $p->country,
+                    'latitude'     => (float) $p->latitude,
+                    'longitude'    => (float) $p->longitude,
+                    'overdue_count'  => $projectItems->where('status', 'overdue')->count(),
+                    'due_soon_count' => $projectItems->whereIn('status', ['due_today', 'due_soon'])->count(),
+                    'action_url'   => "/app/projects/{$p->id}/overview",
+                ];
+            })
+            ->values();
+
+        return [
+            'projects'         => $mapped->all(),
+            'total_projects'   => $projects->count(),
+            'mapped_projects'  => $mapped->count(),
         ];
     }
 

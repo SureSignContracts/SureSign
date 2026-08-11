@@ -11,6 +11,7 @@ import PageTourButton from '@/components/tours/PageTourButton';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
 import { getErrorMessage } from '@/lib/getErrorMessage';
+import EvidenceSection from '@/components/documents/EvidenceSection';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -146,6 +147,15 @@ function QaModal({ projectId, report, onClose }: { projectId: string; report?: a
             </button>
           </div>
         </form>
+        {isEdit && (
+          <div className="px-6 pb-6">
+            <EvidenceSection
+              attachmentsUrl={`/projects/${projectId}/qa-reports/${report.id}/attachments`}
+              queryKey={['qa-report-attachments', report.id]}
+              label="Evidence"
+            />
+          </div>
+        )}
       </div>
     </div>
   );

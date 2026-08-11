@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\GenerateProjectNotificationsJob;
+use App\Models\FileUpload;
 use App\Models\Project;
 use App\Models\Rfi;
 use App\Models\SuresignNotification;
+use App\Services\Documents\RecordAttachmentService;
 use App\Services\NotificationService;
 use App\Services\ProjectActivityService;
 use App\Services\TradePackages\WorkspaceNavigationResolver;
@@ -174,6 +176,45 @@ class RfiController extends Controller
         // outstanding notification for it immediately rather than leaving it
         // live until an unrelated trigger next regenerates notifications.
         GenerateProjectNotificationsJob::dispatch($projectId);
+
+        return response()->json(null, 204);
+    }
+
+    // ── Evidence attachments (Phase 0) ───────────────────────────────────
+    // See App\Services\Documents\RecordAttachmentService — the same shared
+    // service backs Snag/QaReport's identical methods. Shallow route
+    // (matches show/update/destroy above), so $project is derived from the
+    // RFI itself rather than a route parameter.
+
+    public function attachments(Request $request, Rfi $rfi)
+    {
+        $this->authorize($request, $rfi);
+
+        return response()->json(
+            (new RecordAttachmentService())->list($rfi)
+        );
+    }
+
+    public function uploadAttachment(Request $request, Rfi $rfi)
+    {
+        $this->authorize($request, $rfi);
+
+        $upload = (new RecordAttachmentService())->upload(
+            $request, $rfi->project, $rfi, $request->user(),
+            'rfis', "RFI #{$rfi->rfi_number}", 'rfi_evidence_uploaded',
+        );
+
+        return response()->json($upload, 201);
+    }
+
+    public function deleteAttachment(Request $request, Rfi $rfi, FileUpload $fileUpload)
+    {
+        $this->authorize($request, $rfi);
+
+        (new RecordAttachmentService())->delete(
+            $fileUpload, $rfi, $rfi->project, $request->user(),
+            "RFI #{$rfi->rfi_number}", 'rfi_evidence_removed',
+        );
 
         return response()->json(null, 204);
     }

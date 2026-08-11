@@ -39,4 +39,18 @@ class FileUpload extends Model
     {
         return $this->belongsTo(TradePackage::class);
     }
+
+    /**
+     * The construction record this file evidences (Snag/Rfi/QaReport — see
+     * their own `fileUploads()` inverse relation) — or Contract/SupportTicket/
+     * SupportTicketMessage for the other real, pre-existing `attachable_type`
+     * values (see `App\Services\Documents\DocumentSourceMapper`'s docblock
+     * for the exhaustive audited list). Was previously unused: every existing
+     * caller queried `attachable_type`/`attachable_id` directly rather than
+     * through a relation — adding this doesn't change any of that.
+     */
+    public function attachable()
+    {
+        return $this->morphTo();
+    }
 }

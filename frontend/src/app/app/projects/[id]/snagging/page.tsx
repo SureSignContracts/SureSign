@@ -11,6 +11,7 @@ import PageTourButton from '@/components/tours/PageTourButton';
 import Button from '@/components/ui/Button';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import Select from '@/components/ui/Select';
+import EvidenceSection from '@/components/documents/EvidenceSection';
 
 const PRIORITY_COLORS: Record<string, { bg: string; text: string }> = {
   low:      { bg: 'rgba(90,86,82,0.2)',    text: '#9a9490' },
@@ -158,6 +159,15 @@ function SnagModal({ projectId, snag, onClose }: { projectId: string; snag?: any
             </button>
           </div>
         </form>
+        {isEdit && (
+          <div className="px-6 pb-6">
+            <EvidenceSection
+              attachmentsUrl={`/projects/${projectId}/snagging/${snag.id}/attachments`}
+              queryKey={['snag-attachments', snag.id]}
+              label="Evidence"
+            />
+          </div>
+        )}
       </div>
     </div>
   );

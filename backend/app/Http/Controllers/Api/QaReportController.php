@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\FileUpload;
 use App\Models\Project;
 use App\Models\QaReport;
 use App\Models\SuresignNotification;
+use App\Services\Documents\RecordAttachmentService;
 use App\Services\NotificationService;
 use App\Services\ProjectActivityService;
 use App\Services\TradePackages\WorkspaceNavigationResolver;
@@ -153,6 +155,43 @@ class QaReportController extends Controller
         $this->authorize($request, $qaReport);
 
         $qaReport->delete();
+        return response()->json(null, 204);
+    }
+
+    // ── Evidence attachments (Phase 0) ───────────────────────────────────
+    // See App\Services\Documents\RecordAttachmentService — the same shared
+    // service backs Snag/Rfi's identical methods.
+
+    public function attachments(Request $request, Project $project, QaReport $qaReport)
+    {
+        $this->authorize($request, $qaReport);
+
+        return response()->json(
+            (new RecordAttachmentService())->list($qaReport)
+        );
+    }
+
+    public function uploadAttachment(Request $request, Project $project, QaReport $qaReport)
+    {
+        $this->authorize($request, $qaReport);
+
+        $upload = (new RecordAttachmentService())->upload(
+            $request, $project, $qaReport, $request->user(),
+            'qa', "QA Report #{$qaReport->report_number}", 'qa_report_evidence_uploaded',
+        );
+
+        return response()->json($upload, 201);
+    }
+
+    public function deleteAttachment(Request $request, Project $project, QaReport $qaReport, FileUpload $fileUpload)
+    {
+        $this->authorize($request, $qaReport);
+
+        (new RecordAttachmentService())->delete(
+            $fileUpload, $qaReport, $project, $request->user(),
+            "QA Report #{$qaReport->report_number}", 'qa_report_evidence_removed',
+        );
+
         return response()->json(null, 204);
     }
 

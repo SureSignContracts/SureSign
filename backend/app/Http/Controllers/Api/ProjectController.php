@@ -80,6 +80,13 @@ class ProjectController extends Controller
             'city'                      => 'nullable|string',
             'state'                     => 'nullable|string',
             'postcode'                  => 'nullable|string',
+            'country'                   => 'nullable|string',
+            // Geographic site coordinates (Dashboard Project Map) — a pair or
+            // neither, never one alone; see `required_with` below. 0,0 is a
+            // legitimate coordinate, so absence is represented as `null`
+            // (never defaulted) rather than 0,0 standing in for "not set".
+            'latitude'                  => 'nullable|numeric|between:-90,90|required_with:longitude',
+            'longitude'                 => 'nullable|numeric|between:-180,180|required_with:latitude',
             // Optional explicit override — never inferred from country/location.
             // Omitted (null) means "inherit from organisation, then platform,
             // then GBP" (see CurrencyService::resolveCode). Explicitly included
@@ -89,12 +96,25 @@ class ProjectController extends Controller
             'currency'                  => 'nullable|string|size:3',
         ]);
 
+        // `country` is NOT NULL with a DB-level default ('AU', pre-existing —
+        // see project-context.md/CLAUDE.md's note on this) — an empty
+        // submission must be omitted entirely so that default still applies,
+        // never sent through as an explicit empty string.
+        if (empty($validated['country'] ?? null)) {
+            unset($validated['country']);
+        }
+
         $project = Project::create(array_merge($validated, [
             'organization_id' => $request->user()->organization_id,
             'created_by'      => $request->user()->id,
             'status'          => $validated['status'] ?? 'active',
             'currency'        => isset($validated['currency']) ? strtoupper($validated['currency']) : null,
         ]));
+        // `country` may have been omitted above so the column's own DB
+        // default applies — refresh so the in-memory model (and therefore
+        // the JSON response) reflects that real default rather than showing
+        // null for a column that's actually 'AU' in the database.
+        $project->refresh();
 
         // Auto-create standard folder structure (DB records)
         $this->createDefaultFolders($project);
@@ -139,8 +159,15 @@ class ProjectController extends Controller
             'state'            => 'nullable|string',
             'postcode'         => 'nullable|string',
             'country'          => 'nullable|string',
+            'latitude'         => 'nullable|numeric|between:-90,90|required_with:longitude',
+            'longitude'        => 'nullable|numeric|between:-180,180|required_with:latitude',
             'currency'         => 'nullable|string|size:3',
         ]);
+
+        // Same NOT NULL/DB-default guard as store() above.
+        if (empty($validated['country'] ?? null)) {
+            unset($validated['country']);
+        }
 
         $project = Project::create(array_merge($validated, [
             'organization_id' => $organization->id,
@@ -148,6 +175,7 @@ class ProjectController extends Controller
             'status'          => $validated['status'] ?? 'active',
             'currency'        => isset($validated['currency']) ? strtoupper($validated['currency']) : null,
         ]));
+        $project->refresh(); // see store()'s identical comment above.
 
         $this->createDefaultFolders($project);
         ProjectStorageService::createProjectFolders($project);
@@ -189,6 +217,15 @@ class ProjectController extends Controller
             'end_date'                 => 'nullable|date',
             'practical_completion_date'=> 'nullable|date',
             'address'                  => 'nullable|string',
+            'city'                     => 'nullable|string',
+            'state'                    => 'nullable|string',
+            'postcode'                 => 'nullable|string',
+            'country'                  => 'nullable|string',
+            // Geographic site coordinates (Dashboard Project Map) — see the
+            // identical rule in store() above for why 0,0 is never a
+            // stand-in default and why the pair is required together.
+            'latitude'                 => 'nullable|numeric|between:-90,90|required_with:longitude',
+            'longitude'                => 'nullable|numeric|between:-180,180|required_with:latitude',
             // 'sometimes' — omitting `currency` entirely from an update
             // request (e.g. editing only the name) must leave the project's
             // existing currency untouched, not reset it to null/inherited.
@@ -198,6 +235,11 @@ class ProjectController extends Controller
         ]);
         if (array_key_exists('currency', $validated) && $validated['currency'] !== null) {
             $validated['currency'] = strtoupper($validated['currency']);
+        }
+        // Same NOT NULL/DB-default guard as store() — an explicit empty
+        // submission must not overwrite an existing country with ''.
+        if (array_key_exists('country', $validated) && empty($validated['country'])) {
+            unset($validated['country']);
         }
         $project->update($validated);
         return response()->json($project->fresh());

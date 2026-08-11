@@ -24,4 +24,7 @@ class QaReport extends Model
     public function organization(){ return $this->belongsTo(Organization::class); }
     public function creator()    { return $this->belongsTo(User::class, 'created_by'); }
     public function inspector()  { return $this->belongsTo(User::class, 'inspected_by'); }
+
+    /** Inspection photographs and supporting certificates attached specifically to this QA Report — see FileUpload::attachable(). */
+    public function fileUploads() { return $this->morphMany(FileUpload::class, 'attachable'); }
 }
