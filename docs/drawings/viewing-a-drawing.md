@@ -48,6 +48,14 @@ used.
 Select **Download** in the viewer header to download the linked document
 — the same secured download used throughout SureSign.
 
+## Drawing locations
+
+A drawing revision may have specific locations marked on it, shown as small
+markers on the relevant page. Select a marker to see its label. Locations
+belong to the exact revision they were added to — switching to a different
+revision, or viewing an older one, shows only that revision's own
+locations. There is no way to add or edit locations yet.
+
 ## Supported file types
 
 The viewer displays the linked document exactly as Documents itself would

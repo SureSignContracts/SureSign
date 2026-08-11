@@ -35,7 +35,29 @@ const PAGE_PADDING = 32; // px — matches the viewer shell's own padding, kept 
 
 type LoadState = 'loading' | 'ready' | 'error';
 
-export default function DrawingPdfCanvas({ previewEndpoint }: { previewEndpoint: string }) {
+export type PageGeometry = { width: number; height: number; pageNumber: number };
+
+export default function DrawingPdfCanvas({ previewEndpoint, onPageGeometryChange, children }: {
+  previewEndpoint: string;
+  /**
+   * Reports the CSS-rendered page's display dimensions (Drawing Phase 5
+   * Part B) — always `viewport.width`/`viewport.height` from pdf.js, i.e.
+   * exactly `canvas.style.width`/`canvas.style.height` below, NEVER
+   * `canvas.width`/`canvas.height` (the devicePixelRatio-scaled backing
+   * store). This is the only geometry a hotspot overlay may use to convert
+   * normalized (0-1) coordinates into on-screen placement. Called with
+   * `null` whenever no page is currently rendered (loading/error/unmount)
+   * so a consumer never positions markers against stale dimensions.
+   * DrawingPdfCanvas itself has no knowledge of hotspots — this is its
+   * entire contract with any overlay a caller chooses to compose via
+   * `children`.
+   */
+  onPageGeometryChange?: (geometry: PageGeometry | null) => void;
+  /** Rendered inside the same relative-positioned page wrapper as the
+   *  canvas, so an absolutely-positioned overlay naturally aligns to the
+   *  page — see the wrapper div below. */
+  children?: React.ReactNode;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pdfDocRef = useRef<PDFDocumentProxy | null>(null);
@@ -129,7 +151,16 @@ export default function DrawingPdfCanvas({ previewEndpoint }: { previewEndpoint:
       renderTaskRef.current = null;
       pdfDocRef.current?.destroy();
       pdfDocRef.current = null;
+      // Deliberately NOT in this effect's deps — onPageGeometryChange is
+      // intentionally excluded so an unmemoized inline callback from the
+      // parent can never cause this effect to refire and reload the PDF
+      // binary on an unrelated re-render (Part N). The closure captured
+      // when this effect instance was created is a perfectly valid
+      // "geometry is now gone" signal regardless of whether a newer
+      // callback reference exists by the time this runs.
+      onPageGeometryChange?.(null);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [previewEndpoint]);
 
   // ── Container width tracking (ResizeObserver) — drives Fit Width ────────
@@ -207,7 +238,18 @@ export default function DrawingPdfCanvas({ previewEndpoint }: { previewEndpoint:
     if (fitWidth && renderGenerationRef.current === myRenderGeneration && Math.abs(effectiveScale - scale) > 0.001) {
       setScale(effectiveScale);
     }
-  }, [pageNum, scale, fitWidth, containerWidth]);
+
+    // Report the CSS-rendered page dimensions (Drawing Phase 5 Part B) —
+    // viewport.width/height, i.e. exactly canvas.style.width/height above,
+    // never the DPR-scaled canvas.width/height backing store. Guarded by
+    // the same render-generation check as everything else here so a
+    // superseded render (e.g. a page/zoom change that fired mid-render)
+    // never reports geometry for a page that's no longer the one on
+    // screen.
+    if (renderGenerationRef.current === myRenderGeneration) {
+      onPageGeometryChange?.({ width: viewport.width, height: viewport.height, pageNumber: pageNum });
+    }
+  }, [pageNum, scale, fitWidth, containerWidth, onPageGeometryChange]);
 
   useEffect(() => {
     if (state !== 'ready') return;
@@ -319,10 +361,12 @@ export default function DrawingPdfCanvas({ previewEndpoint }: { previewEndpoint:
         </button>
       </div>
 
-      {/* Page viewport — future overlay layer (hotspots, a later phase) can
-          be added as an absolutely-positioned sibling inside this same
-          relative container, sharing the canvas' exact rendered dimensions.
-          No overlay exists yet — this is structure only (Part S/H). */}
+      {/* Page viewport — `children` (Drawing Phase 5's DrawingHotspotOverlay,
+          composed by the caller) renders as an absolutely-positioned
+          sibling inside this same relative wrapper, sharing the canvas'
+          exact rendered CSS dimensions. This component has no knowledge of
+          what `children` actually is (Part Z/AA) — geometry is reported
+          separately via onPageGeometryChange. */}
       <div
         ref={containerRef}
         className="flex-1 min-h-0 overflow-auto flex items-start justify-center p-4"
@@ -341,6 +385,7 @@ export default function DrawingPdfCanvas({ previewEndpoint }: { previewEndpoint:
             className={state === 'ready' ? 'shadow-lg' : 'hidden'}
             style={{ backgroundColor: '#fff' }}
           />
+          {state === 'ready' && children}
         </div>
       </div>
     </div>

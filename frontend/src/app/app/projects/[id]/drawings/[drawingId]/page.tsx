@@ -13,6 +13,8 @@ import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import { drawingStatusColor } from '@/components/drawings/drawingConstants';
 import type { DrawingRecord, DrawingDocumentSummary } from '@/components/drawings/DrawingModal';
 import DrawingRevisionPanel from '@/components/drawings/DrawingRevisionPanel';
+import DrawingHotspotOverlay, { type Hotspot } from '@/components/drawings/DrawingHotspotOverlay';
+import type { PageGeometry } from '@/components/drawings/DrawingPdfCanvas';
 
 // PDF.js touches `window`/`Worker`/canvas at module scope — client-only,
 // loaded only once the viewer actually needs to render (same dynamic-
@@ -113,6 +115,7 @@ export default function DrawingViewerPage() {
   // stuck showing the previous document's failure state.
   const [unsupportedDocId, setUnsupportedDocId] = useState<number | null>(null);
   const [showRevisions, setShowRevisions] = useState(false);
+  const [pageGeometry, setPageGeometry] = useState<PageGeometry | null>(null);
 
   const drawingQueryKey = ['project-drawing', projectId, drawingId];
   const { data: drawing, isLoading, isError, error } = useQuery<DrawingRecord>({
@@ -128,6 +131,23 @@ export default function DrawingViewerPage() {
     queryFn: () => api.get(`/projects/${projectId}/drawings/${drawingId}/revisions/${revisionParam}`).then(r => r.data),
     enabled: !!revisionParam,
   });
+
+  // The exact revision currently being displayed — whichever the URL names
+  // historically, else the Drawing's own current revision. `null` when the
+  // Drawing has no revision at all yet (legacy/not-yet-revisioned) — Part R
+  // is explicit that hotspot functionality is simply unavailable then,
+  // never silently attached to Drawing.document_id/effectiveDocument().
+  const activeRevisionId = revisionParam ? Number(revisionParam) : (drawing?.current_revision?.id ?? null);
+
+  // Fetched once per revision (Part J) — never refetched merely because
+  // zoom/Fit Width/page changes; DrawingHotspotOverlay filters this same
+  // already-loaded list by the canvas' own reported active page.
+  const { data: hotspotsData } = useQuery<{ data: Hotspot[] }>({
+    queryKey: ['drawing-hotspots', projectId, drawingId, activeRevisionId],
+    queryFn: () => api.get(`/projects/${projectId}/drawings/${drawingId}/revisions/${activeRevisionId}/hotspots`).then(r => r.data),
+    enabled: !!activeRevisionId,
+  });
+  const hotspots = hotspotsData?.data ?? [];
 
   function handleDownload(document: DrawingDocumentSummary) {
     api.get(`/documents/${document.id}/download`, { responseType: 'blob' })
@@ -288,7 +308,13 @@ export default function DrawingViewerPage() {
           // drawingId/revision param changes), and DrawingPdfCanvas's own
           // load effect relies on a true remount (not a prop update) to
           // reset to its initial loading state safely.
-          <DrawingPdfCanvas key={activeDocument.id} previewEndpoint={`/documents/${activeDocument.id}/preview`} />
+          <DrawingPdfCanvas
+            key={activeDocument.id}
+            previewEndpoint={`/documents/${activeDocument.id}/preview`}
+            onPageGeometryChange={setPageGeometry}
+          >
+            <DrawingHotspotOverlay hotspots={hotspots} pageGeometry={pageGeometry} />
+          </DrawingPdfCanvas>
         )}
 
         {fileType === 'image' && unsupportedDocId !== activeDocument.id && (

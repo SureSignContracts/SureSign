@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\DelayEventController;
 use App\Http\Controllers\Api\RiskController;
 use App\Http\Controllers\Api\DeliveryDocumentController;
 use App\Http\Controllers\Api\DrawingController;
+use App\Http\Controllers\Api\DrawingHotspotController;
 use App\Http\Controllers\Api\DrawingRevisionController;
 use App\Http\Controllers\Api\LossAndExpenseClaimController;
 use App\Http\Controllers\Api\PayLessNoticeController;
@@ -553,6 +554,13 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
         Route::post('/drawings/{drawing}/revisions', [DrawingRevisionController::class, 'store']);
         Route::get('/drawings/{drawing}/revisions/{revision}', [DrawingRevisionController::class, 'show']);
         Route::put('/drawings/{drawing}/revisions/{revision}', [DrawingRevisionController::class, 'update']);
+
+        // Drawing Hotspot foundation (Phase 5) — read-only from the normal
+        // customer UI; store() exists for tests/live verification/future
+        // Phase 6 authoring reuse only, never a customer-facing "place
+        // marker" control.
+        Route::get('/drawings/{drawing}/revisions/{revision}/hotspots', [DrawingHotspotController::class, 'index']);
+        Route::post('/drawings/{drawing}/revisions/{revision}/hotspots', [DrawingHotspotController::class, 'store']);
 
         Route::apiResource('pay-less-notices', PayLessNoticeController::class)->shallow();
 

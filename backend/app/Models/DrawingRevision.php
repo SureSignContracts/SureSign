@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Phase 4 — the actual issued file for one revision of a Drawing. Append-
@@ -45,5 +46,11 @@ class DrawingRevision extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /** Phase 5 — see App\Models\DrawingHotspot's docblock for the ownership rule this relation exists to serve. */
+    public function hotspots(): HasMany
+    {
+        return $this->hasMany(DrawingHotspot::class);
     }
 }
