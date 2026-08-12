@@ -282,6 +282,16 @@ select:focus-visible, [tabindex]:focus-visible {
   animation: ss-authenticated-entrance-in 0.82s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
+@keyframes ss-welcome-screen-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.ss-welcome-screen {
+  opacity: 0;
+  animation: ss-welcome-screen-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
 /* Desktop sidebars are real layout columns. Animate those columns directly so
    the navigation arrives from the left before the workspace settles. Mobile
    drawers are intentionally excluded because their translate transform is
@@ -440,6 +450,7 @@ select:focus-visible, [tabindex]:focus-visible {
   .ss-access-reveal, .ss-access-form, .ss-access-status,
   .ss-login-panel-left, .ss-login-panel-right, .ss-login-reveal,
   .ss-login-rule, .ss-login-status, .ss-authenticated-entrance,
+  .ss-welcome-screen,
   .ss-authenticated-entrance > aside,
   .ss-authenticated-entrance > aside + div,
   .ss-authenticated-entrance > aside + main,
@@ -513,33 +524,49 @@ select:focus-visible, [tabindex]:focus-visible {
   transition: opacity 0.25s ease;
 }
 
-/* Highlighted element: a soft brand-coloured halo instead of a hard outline
-   box. box-shadow follows the element's own border-radius automatically, so
+/* Highlighted element: a soft neutral halo instead of a hard outline box.
+   Deliberately NOT tinted to the org's branded accent colour (`--gold` —
+   which is dynamically overridden per organisation, e.g. rendering green
+   for some orgs) unlike this app's ordinary :focus-visible ring — a tour
+   highlight should read as SureSign's own guidance UI, not blend into
+   whatever colour a given organisation happens to have branded the app.
+   box-shadow follows the element's own border-radius automatically, so
    pills stay pills and cards stay cards — no rectangular box slapped over a
    rounded/irregular shape. !important is needed since most cards/tables in
    this app already set their own inline boxShadow (var(--shadow-card)).
-   A slight lift (translateY + scale) makes the target feel picked up off
-   the page rather than merely boxed — transforms don't affect layout flow,
-   so this can't cause reflow/layout shift on any surrounding content. */
+   A slight lift (translateY) makes the target feel picked up off the page
+   rather than merely boxed — transforms don't affect layout flow, so this
+   can't cause reflow/layout shift on any surrounding content.
+
+   Deliberately `transition`, never `animation`, for this lift: any tour
+   target that also carries its own entrance animation (`.ss-animate-in`
+   and friends — opacity:0 with a `forwards`-filled fade, used across the
+   app for page-content cards) would have that animation's `animation`
+   property REPLACED outright by an `animation` declared here at the same
+   specificity, since both are single-class selectors and this rule comes
+   later in the file. Once replaced, the old fade's forwards-fill "hold at
+   opacity:1" is gone for good — and since the replacement animation
+   (previously ss-tour-target-settle) never touched opacity either, the
+   element permanently falls back to `.ss-animate-in`'s own static
+   `opacity: 0`, i.e. invisible, for as long as it's the highlighted step.
+   This is exactly what made the dashboard's `[data-tour="dashboard-header"]`
+   card (which carries `.ss-animate-in`) render as a blank box for the
+   entire first tour step. `transition` has no such hazard — it never
+   replaces an unrelated `animation` already controlling the element. */
 .driver-active-element {
   box-shadow:
-    0 0 0 4px color-mix(in srgb, var(--gold) 24%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--text-primary) 16%, transparent),
     0 14px 32px rgba(0, 0, 0, 0.2) !important;
   transform: translateY(-2px);
   transition: box-shadow 0.25s ease, transform 0.25s ease;
-  animation: ss-tour-target-settle 0.35s ease-out;
 }
 
-@keyframes ss-tour-target-settle {
-  from { transform: translateY(-2px) scale(0.985); }
-  to   { transform: translateY(-2px) scale(1); }
-}
-
-/* Visually threads the popover back to its target: a soft gold-tinted glow
+/* Visually threads the popover back to its target: a soft neutral glow
    behind the connecting arrow, rather than the arrow reading as a disconnected
-   little triangle. */
+   little triangle. Neutral for the same reason as .driver-active-element
+   above — not tinted to the org's branded (per-organisation) accent colour. */
 .ss-tour-popover .driver-popover-arrow {
-  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--gold) 35%, transparent));
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--text-primary) 25%, transparent));
 }
 
 .ss-tour-popover.driver-popover {
@@ -600,9 +627,18 @@ select:focus-visible, [tabindex]:focus-visible {
 
 @media (prefers-reduced-motion: reduce) {
   .driver-overlay,
-  .driver-active-element,
   .ss-tour-popover.driver-popover {
     transition: none !important;
     animation: none !important;
+  }
+  /* `.driver-active-element` is excluded from the blanket `animation: none`
+     above deliberately — see this class's own rule above for why setting
+     `animation` here at all (even to `none`) would permanently zero out
+     the opacity of any highlighted element that carries its own
+     `forwards`-filled entrance animation, with no reduced-motion escape
+     hatch to recover it. It never declares its own `animation` anymore,
+     so there's nothing to suppress. */
+  .driver-active-element {
+    transition: none !important;
   }
 }
