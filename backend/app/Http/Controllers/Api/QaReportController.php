@@ -3,15 +3,20 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\DrawingHotspot;
 use App\Models\FileUpload;
 use App\Models\Project;
 use App\Models\QaReport;
 use App\Models\SuresignNotification;
 use App\Services\Documents\RecordAttachmentService;
+use App\Services\Drawings\DrawingHotspotLinkService;
 use App\Services\NotificationService;
 use App\Services\ProjectActivityService;
 use App\Services\TradePackages\WorkspaceNavigationResolver;
+use App\Support\Drawings\DrawingLinkableType;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class QaReportController extends Controller
 {
@@ -45,7 +50,7 @@ class QaReportController extends Controller
         return response()->json($query->latest()->paginate(50));
     }
 
-    public function store(Request $request, Project $project)
+    public function store(Request $request, Project $project, DrawingHotspotLinkService $linkService)
     {
         $this->authorize($request, $project);
 
@@ -60,28 +65,52 @@ class QaReportController extends Controller
             'observations'       => 'nullable|string',
             'corrective_action'  => 'nullable|string',
             'follow_up_required' => 'nullable|boolean',
+            // Drawing Phase 7B1 — optional; see SnagController::store()'s
+            // identical field for the full rationale.
+            'drawing_hotspot_id' => 'nullable|integer|exists:drawing_hotspots,id',
         ]);
 
-        $reportNumber = (QaReport::where('project_id', $project->id)->max('report_number') ?? 0) + 1;
+        // Record creation + optional hotspot link are atomic; notifyQaReport
+        // (below) is deliberately outside this closure so it only ever
+        // fires for a report that actually survived the transaction.
+        $report = DB::transaction(function () use ($request, $project, $validated, $linkService) {
+            $reportNumber = (QaReport::where('project_id', $project->id)->max('report_number') ?? 0) + 1;
 
-        $report = QaReport::create(array_merge($validated, [
-            'project_id'      => $project->id,
-            'organization_id' => $project->organization_id,
-            'created_by'      => $request->user()->id,
-            'report_number'   => $reportNumber,
-            'status'          => $validated['status'] ?? 'draft',
-            'follow_up_required' => $validated['follow_up_required'] ?? false,
-        ]));
+            $report = QaReport::create(array_merge(
+                collect($validated)->except('drawing_hotspot_id')->all(),
+                [
+                    'project_id'      => $project->id,
+                    'organization_id' => $project->organization_id,
+                    'created_by'      => $request->user()->id,
+                    'report_number'   => $reportNumber,
+                    'status'          => $validated['status'] ?? 'draft',
+                    'follow_up_required' => $validated['follow_up_required'] ?? false,
+                ]
+            ));
 
-        ProjectActivityService::record(
-            $project,
-            $request->user(),
-            'qa_report_created',
-            "QA Report #{$reportNumber} created: {$report->title}",
-            null,
-            $report
-        );
+            ProjectActivityService::record(
+                $project,
+                $request->user(),
+                'qa_report_created',
+                "QA Report #{$reportNumber} created: {$report->title}",
+                null,
+                $report
+            );
 
+            if (! empty($validated['drawing_hotspot_id'])) {
+                $hotspot = DrawingHotspot::find($validated['drawing_hotspot_id']);
+                if (! $hotspot) {
+                    throw ValidationException::withMessages([
+                        'drawing_hotspot_id' => 'The selected drawing location could not be found.',
+                    ]);
+                }
+                $linkService->linkOrFail($hotspot, DrawingLinkableType::QA_REPORT, $report, $request->user());
+            }
+
+            return $report;
+        });
+
+        // Only reached once the transaction above has committed.
         $this->notifyQaReport($request, $project, $report, 'created', 'created', $report->title);
 
         return response()->json($report->load(['creator:id,name', 'inspector:id,name']), 201);

@@ -8,12 +8,12 @@ use App\Models\DrawingHotspot;
 use App\Models\DrawingHotspotLink;
 use App\Models\DrawingRevision;
 use App\Models\Project;
+use App\Services\Drawings\DrawingHotspotLinkService;
 use App\Services\ProjectActivityService;
 use App\Services\TradePackages\WorkspaceNavigationResolver;
 use App\Support\Drawings\DrawingLinkableType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -114,17 +114,23 @@ class DrawingHotspotLinkController extends Controller
     /**
      * Part P/Q/R/S — allowlisted type, record must belong to the same
      * Project (and organisation) as the hotspot's own Drawing, duplicate
-     * links rejected. Linking, like authoring, is only available on the
-     * current revision (Part AD — linking requires normal operational
-     * access to both the Drawing and the target record).
+     * links rejected. Ownership/duplicate validation and link creation are
+     * delegated to DrawingHotspotLinkService (Phase 7B1) — the exact same
+     * rules a future Create + Auto-Link path uses, so the two never
+     * diverge.
+     *
+     * Phase 7B1, Part 3 — deliberately NOT restricted to the current
+     * revision. A hotspot on a historical DrawingRevision is still a real,
+     * valid location; linking an operational record to it changes only
+     * that relationship, never the historical Drawing/hotspot itself. This
+     * is a distinct restriction from hotspot AUTHORING (add/edit/move/
+     * delete a hotspot), which remains current-revision-only in
+     * DrawingHotspotController — see that controller's
+     * assertCurrentRevision().
      */
-    public function store(Request $request, Project $project, Drawing $drawing, DrawingRevision $revision, DrawingHotspot $hotspot)
+    public function store(Request $request, Project $project, Drawing $drawing, DrawingRevision $revision, DrawingHotspot $hotspot, DrawingHotspotLinkService $linkService)
     {
         $this->resolveHotspot($request, $project, $drawing, $revision, $hotspot);
-
-        if ($drawing->current_revision_id !== $revision->id) {
-            abort(422, 'Drawing locations can only be linked to records on the current revision.');
-        }
 
         $validated = $request->validate([
             'type' => 'required|string',
@@ -138,55 +144,25 @@ class DrawingHotspotLinkController extends Controller
         $modelClass = DrawingLinkableType::modelFor($validated['type']);
         $record = $modelClass::find($validated['record_id']);
 
-        // Ownership validated directly off the record's own project_id —
-        // every one of the four supported models carries this column
-        // itself (Part R — confirmed by inspection rather than assumed
-        // uniform); no derived/duplicate ownership field is introduced.
-        if (! $record || (int) $record->project_id !== $project->id) {
+        if (! $record) {
             throw ValidationException::withMessages(['record_id' => 'The selected record could not be found for this project.']);
         }
-        if ((int) $record->organization_id !== $drawing->organization_id) {
-            abort(403, 'Access denied.');
-        }
 
-        $link = DB::transaction(function () use ($hotspot, $modelClass, $record, $request) {
-            $duplicate = DrawingHotspotLink::where('drawing_hotspot_id', $hotspot->id)
-                ->where('linkable_type', $modelClass)
-                ->where('linkable_id', $record->id)
-                ->lockForUpdate()
-                ->first();
-
-            if ($duplicate) {
-                throw ValidationException::withMessages(['record_id' => 'This location is already linked to that record.']);
-            }
-
-            return DrawingHotspotLink::create([
-                'drawing_hotspot_id' => $hotspot->id,
-                'linkable_type' => $modelClass,
-                'linkable_id' => $record->id,
-                'created_by' => $request->user()->id,
-            ]);
-        });
-
-        ProjectActivityService::record(
-            $project,
-            $request->user(),
-            'drawing_hotspot_record_linked',
-            "Drawing location linked: {$drawing->drawing_number} — {$revision->revision_code}",
-            null,
-            $link
-        );
+        $link = $linkService->linkOrFail($hotspot, $validated['type'], $record, $request->user());
 
         return response()->json($this->present($link), 201);
     }
 
+    /**
+     * Phase 7B1, Part 3 — same relaxation as store() above: unlinking a
+     * historical hotspot's link is intentionally supported. Deleting a
+     * DrawingHotspotLink never deletes/affects the target record itself
+     * (unchanged from Phase 6B).
+     */
     public function destroy(Request $request, Project $project, Drawing $drawing, DrawingRevision $revision, DrawingHotspot $hotspot, DrawingHotspotLink $link)
     {
         $this->resolveHotspot($request, $project, $drawing, $revision, $hotspot);
 
-        if ($drawing->current_revision_id !== $revision->id) {
-            abort(422, 'Drawing location links can only be removed on the current revision.');
-        }
         if ($link->drawing_hotspot_id !== $hotspot->id) {
             abort(404, 'Link not found for this location.');
         }

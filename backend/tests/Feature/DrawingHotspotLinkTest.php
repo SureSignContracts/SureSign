@@ -274,9 +274,12 @@ class DrawingHotspotLinkTest extends TestCase
         $this->assertSame(1, DrawingHotspotLink::count());
     }
 
-    // ── Current-revision-only linking ──────────────────────────────────────
+    // ── Historical-revision linking (Phase 7B1, Part 3 — deliberately
+    //    relaxed: a hotspot on a historical revision is a real location;
+    //    linking to it changes only the operational relationship, never
+    //    the historical Drawing/hotspot itself) ─────────────────────────
 
-    public function test_link_rejected_on_historical_revision(): void
+    public function test_link_allowed_on_historical_revision(): void
     {
         [$org, $user] = $this->makeOrgAndUser('histlink');
         $project = $this->makeProject($org, $user);
@@ -290,9 +293,62 @@ class DrawingHotspotLinkTest extends TestCase
             'document_id' => $docC01->id, 'revision_code' => 'C01',
         ])->assertStatus(201);
 
+        // P01 is no longer current (the new revision above became current) —
+        // linking to its hotspot must still succeed.
         $response = $this->postJson($this->linksUrl($project, $drawing, $revisionP01, $hotspot), ['type' => 'snag', 'record_id' => $snag->id]);
 
+        $response->assertStatus(201);
+        $this->assertDatabaseHas('drawing_hotspot_links', [
+            'drawing_hotspot_id' => $hotspot->id, 'linkable_type' => Snag::class, 'linkable_id' => $snag->id,
+        ]);
+        // The hotspot itself stays attached to P01 — no carry-forward, no
+        // coordinate translation, no revision change.
+        $this->assertSame($revisionP01->id, $hotspot->fresh()->drawing_revision_id);
+    }
+
+    public function test_unlink_allowed_on_historical_revision(): void
+    {
+        [$org, $user] = $this->makeOrgAndUser('histunlink');
+        $project = $this->makeProject($org, $user);
+        [$drawing, $revisionP01] = $this->makeDrawingWithCurrentRevision($project, $user, $this->makeDocument($project, $user));
+        $hotspot = $this->makeHotspot($revisionP01, $user);
+        $snag = $this->makeSnag($project, $user);
+        $docC01 = $this->makeDocument($project, $user, 'c01.pdf');
+
+        Sanctum::actingAs($user);
+        $link = $this->postJson($this->linksUrl($project, $drawing, $revisionP01, $hotspot), ['type' => 'snag', 'record_id' => $snag->id])->json();
+        $this->postJson("/api/projects/{$project->id}/drawings/{$drawing->id}/revisions", [
+            'document_id' => $docC01->id, 'revision_code' => 'C01',
+        ])->assertStatus(201);
+
+        $response = $this->deleteJson($this->linksUrl($project, $drawing, $revisionP01, $hotspot)."/{$link['id']}");
+
+        $response->assertStatus(204);
+        $this->assertDatabaseMissing('drawing_hotspot_links', ['id' => $link['id']]);
+        $this->assertDatabaseHas('snags', ['id' => $snag->id]);
+    }
+
+    public function test_hotspot_authoring_still_blocked_on_historical_revision(): void
+    {
+        // Regression guard (Part 10) — the relaxation above is scoped
+        // exclusively to linking/unlinking, never to hotspot authoring.
+        [$org, $user] = $this->makeOrgAndUser('histauthor');
+        $project = $this->makeProject($org, $user);
+        [$drawing, $revisionP01] = $this->makeDrawingWithCurrentRevision($project, $user, $this->makeDocument($project, $user));
+        $docC01 = $this->makeDocument($project, $user, 'c01.pdf');
+
+        Sanctum::actingAs($user);
+        $this->postJson("/api/projects/{$project->id}/drawings/{$drawing->id}/revisions", [
+            'document_id' => $docC01->id, 'revision_code' => 'C01',
+        ])->assertStatus(201);
+
+        $response = $this->postJson(
+            "/api/projects/{$project->id}/drawings/{$drawing->id}/revisions/{$revisionP01->id}/hotspots",
+            ['page_number' => 1, 'x' => 0.5, 'y' => 0.5],
+        );
+
         $response->assertStatus(422);
+        $this->assertSame(0, DrawingHotspot::where('drawing_revision_id', $revisionP01->id)->count());
     }
 
     // ── Unlink / delete preserve the record ─────────────────────────────────

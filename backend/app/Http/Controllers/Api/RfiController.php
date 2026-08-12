@@ -4,15 +4,20 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\GenerateProjectNotificationsJob;
+use App\Models\DrawingHotspot;
 use App\Models\FileUpload;
 use App\Models\Project;
 use App\Models\Rfi;
 use App\Models\SuresignNotification;
 use App\Services\Documents\RecordAttachmentService;
+use App\Services\Drawings\DrawingHotspotLinkService;
 use App\Services\NotificationService;
 use App\Services\ProjectActivityService;
 use App\Services\TradePackages\WorkspaceNavigationResolver;
+use App\Support\Drawings\DrawingLinkableType;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class RfiController extends Controller
 {
@@ -37,7 +42,7 @@ class RfiController extends Controller
         return response()->json($query->latest()->paginate(25));
     }
 
-    public function store(Request $request, Project $project)
+    public function store(Request $request, Project $project, DrawingHotspotLinkService $linkService)
     {
         $this->authorize($request, $project);
 
@@ -51,30 +56,59 @@ class RfiController extends Controller
             'programme_impact'     => 'nullable|boolean',
             'programme_impact_days'=> 'nullable|integer|min:0',
             'cost_impact_amount'   => 'nullable|numeric|min:0',
+            // Drawing Phase 7B1 — optional; see SnagController::store()'s
+            // identical field for the full rationale.
+            'drawing_hotspot_id'   => 'nullable|integer|exists:drawing_hotspots,id',
         ]);
 
-        $rfiNumber = (Rfi::where('project_id', $project->id)->max('rfi_number') ?? 0) + 1;
+        // Record creation + optional hotspot link are atomic. Notification/
+        // job side effects (below) are deliberately OUTSIDE this closure —
+        // Phase 7A found these previously fired synchronously with no
+        // transaction at all; now that record creation can roll back (an
+        // invalid hotspot), they must never fire for an RFI that didn't
+        // actually survive the transaction.
+        $rfi = DB::transaction(function () use ($request, $project, $validated, $linkService) {
+            $rfiNumber = (Rfi::where('project_id', $project->id)->max('rfi_number') ?? 0) + 1;
 
-        $rfi = Rfi::create(array_merge($validated, [
-            'project_id'      => $project->id,
-            'organization_id' => $project->organization_id,
-            'created_by'      => $request->user()->id,
-            'rfi_number'      => $rfiNumber,
-            'status'          => $validated['status'] ?? 'open',
-            // Business-day default (today, for this project's organisation)
-            // when no raised_date is supplied.
-            'raised_date'     => $validated['raised_date'] ?? \App\Services\TimezoneResolver::today(null, $project->organization)->toDateString(),
-        ]));
+            $rfi = Rfi::create(array_merge(
+                collect($validated)->except('drawing_hotspot_id')->all(),
+                [
+                    'project_id'      => $project->id,
+                    'organization_id' => $project->organization_id,
+                    'created_by'      => $request->user()->id,
+                    'rfi_number'      => $rfiNumber,
+                    'status'          => $validated['status'] ?? 'open',
+                    // Business-day default (today, for this project's organisation)
+                    // when no raised_date is supplied.
+                    'raised_date'     => $validated['raised_date'] ?? \App\Services\TimezoneResolver::today(null, $project->organization)->toDateString(),
+                ]
+            ));
 
-        ProjectActivityService::record(
-            $project,
-            $request->user(),
-            'rfi_raised',
-            "RFI #{$rfiNumber} raised: {$rfi->subject}",
-            null,
-            $rfi
-        );
+            ProjectActivityService::record(
+                $project,
+                $request->user(),
+                'rfi_raised',
+                "RFI #{$rfiNumber} raised: {$rfi->subject}",
+                null,
+                $rfi
+            );
 
+            if (! empty($validated['drawing_hotspot_id'])) {
+                $hotspot = DrawingHotspot::find($validated['drawing_hotspot_id']);
+                if (! $hotspot) {
+                    throw ValidationException::withMessages([
+                        'drawing_hotspot_id' => 'The selected drawing location could not be found.',
+                    ]);
+                }
+                $linkService->linkOrFail($hotspot, DrawingLinkableType::RFI, $rfi, $request->user());
+            }
+
+            return $rfi;
+        });
+
+        // Only reached once the transaction above has actually committed —
+        // an RFI that rolled back (e.g. invalid drawing_hotspot_id) never
+        // reaches this line at all, so neither of these can fire for it.
         if ($rfi->status !== 'draft') {
             $this->notifyRfi($request, $project, $rfi, 'submitted', 'submitted', $rfi->subject);
         }
@@ -82,8 +116,11 @@ class RfiController extends Controller
         // A new RFI can immediately be operationally relevant (e.g. created
         // with a near-term response_due_date) — regenerate notifications now
         // rather than waiting for an unrelated AI-confirm/calendar-sync run to
-        // eventually pick it up.
-        GenerateProjectNotificationsJob::dispatch($project->id);
+        // eventually pick it up. ->afterCommit() is a defensive no-op here
+        // (the transaction above has already committed by this point) —
+        // kept so this dispatch stays correct even if a future change moves
+        // it back inside a transaction.
+        GenerateProjectNotificationsJob::dispatch($project->id)->afterCommit();
 
         return response()->json($rfi->load('creator:id,name'), 201);
     }

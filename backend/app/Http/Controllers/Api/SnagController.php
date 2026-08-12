@@ -3,12 +3,16 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\DrawingHotspot;
 use App\Models\FileUpload;
 use App\Models\Project;
 use App\Models\Snag;
 use App\Services\Documents\RecordAttachmentService;
+use App\Services\Drawings\DrawingHotspotLinkService;
 use App\Services\ProjectActivityService;
+use App\Support\Drawings\DrawingLinkableType;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class SnagController extends Controller
 {
@@ -46,7 +50,7 @@ class SnagController extends Controller
         return response()->json($query->latest()->paginate(50));
     }
 
-    public function store(Request $request, Project $project)
+    public function store(Request $request, Project $project, DrawingHotspotLinkService $linkService)
     {
         $this->authorize($request, $project);
 
@@ -60,28 +64,60 @@ class SnagController extends Controller
             'assigned_to' => 'nullable|integer|exists:users,id',
             'due_date'    => 'nullable|date',
             'notes'       => 'nullable|string',
+            // Drawing Phase 7B1 — optional; absent behaves exactly as
+            // before. `exists:drawing_hotspots,id` only checks the row
+            // exists at all (any organisation) — same-Project/same-
+            // Organisation ownership is re-checked below via
+            // DrawingHotspotLinkService, never trusted from this alone.
+            'drawing_hotspot_id' => 'nullable|integer|exists:drawing_hotspots,id',
         ]);
 
-        $snagNumber = (Snag::where('project_id', $project->id)->max('snag_number') ?? 0) + 1;
+        // Record creation + optional hotspot link are atomic — either both
+        // exist or neither does. See DrawingHotspotLinkService's own
+        // docblock for why ownership is resolved from the hotspot's own
+        // Drawing rather than a separately-trusted client value.
+        $snag = DB::transaction(function () use ($request, $project, $validated, $linkService) {
+            $snagNumber = (Snag::where('project_id', $project->id)->max('snag_number') ?? 0) + 1;
 
-        $snag = Snag::create(array_merge($validated, [
-            'project_id'      => $project->id,
-            'organization_id' => $project->organization_id,
-            'created_by'      => $request->user()->id,
-            'snag_number'     => $snagNumber,
-            'status'          => $validated['status'] ?? 'open',
-            'priority'        => $validated['priority'] ?? 'medium',
-        ]));
+            $snag = Snag::create(array_merge(
+                collect($validated)->except('drawing_hotspot_id')->all(),
+                [
+                    'project_id'      => $project->id,
+                    'organization_id' => $project->organization_id,
+                    'created_by'      => $request->user()->id,
+                    'snag_number'     => $snagNumber,
+                    'status'          => $validated['status'] ?? 'open',
+                    'priority'        => $validated['priority'] ?? 'medium',
+                ]
+            ));
 
-        ProjectActivityService::record(
-            $project,
-            $request->user(),
-            'snag_created',
-            "Snag #{$snagNumber} raised: {$snag->title}",
-            null,
-            $snag
-        );
+            ProjectActivityService::record(
+                $project,
+                $request->user(),
+                'snag_created',
+                "Snag #{$snagNumber} raised: {$snag->title}",
+                null,
+                $snag
+            );
 
+            if (! empty($validated['drawing_hotspot_id'])) {
+                $hotspot = DrawingHotspot::find($validated['drawing_hotspot_id']);
+                if (! $hotspot) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'drawing_hotspot_id' => 'The selected drawing location could not be found.',
+                    ]);
+                }
+                // linkOrFail() throws ValidationException on any ownership/
+                // type/duplicate failure — propagating out of this closure
+                // rolls back the Snag create above along with it.
+                $linkService->linkOrFail($hotspot, DrawingLinkableType::SNAG, $snag, $request->user());
+            }
+
+            return $snag;
+        });
+
+        // No notification/job side effect exists for Snag creation today
+        // (Phase 7A confirmed) — nothing to defer to after-commit here.
         return response()->json($snag->load(['creator:id,name', 'assignee:id,name']), 201);
     }
 
