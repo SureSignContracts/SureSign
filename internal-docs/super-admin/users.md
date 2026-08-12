@@ -23,6 +23,16 @@ and cannot be reused once they've completed setup. If they haven't provided a
 first name, the email uses a generic greeting rather than guessing one from
 their email address.
 
+After setup, the recipient is taken to Login with a short-lived "Your
+SureSign account is ready" message and their email address already filled
+in — this is purely presentational and disappears on any later, ordinary
+visit to Login. Signing in then takes them to the right place automatically:
+a Client with no Organisation yet (every invited Client, until they complete
+onboarding) or an Organisation that hasn't finished onboarding lands on the
+Organisation onboarding wizard; an already-onboarded Client lands on their
+normal workspace; Admin/Super Admin follow their normal admin destination —
+they are never sent through customer Organisation onboarding.
+
 Until the invitation is accepted, the account shows as **Unverified** on the
 Users list — the same badge a self-registered user who hasn't verified their
 email yet would show. There is currently no separate "Pending Invitation"

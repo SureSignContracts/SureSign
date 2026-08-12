@@ -110,11 +110,16 @@ class UserController extends Controller
         $user = User::findOrFail($id);
 
         if ($user->organization_id === null) {
-            // Super Admin / Admin are platform-wide operators with no
-            // organisation of their own — never show a fake plan or usage
-            // figures for them (Stage 3's explicit requirement).
+            // No organisation means there's nothing to fetch intelligence
+            // for regardless of role — but is_platform_operator itself must
+            // be role-based, not inferred from this null check: a Client
+            // can legitimately have no organisation yet (invited, not yet
+            // onboarded), and must never be reported as a platform
+            // operator. Super Admin / Admin are platform-wide operators
+            // with no organisation of their own — never show a fake plan
+            // or usage figures for them (Stage 3's explicit requirement).
             return response()->json(['data' => [
-                'is_platform_operator' => true,
+                'is_platform_operator' => $user->hasRole('Super Admin') || $user->hasRole('Admin'),
             ]]);
         }
 
@@ -509,9 +514,15 @@ class UserController extends Controller
             'created_at'            => $u->created_at,
             // G4A — platform operators (Super Admin/Admin) have no
             // organisation of their own; never show a fake plan for them.
+            // is_platform_operator is role-based, NOT inferred from
+            // organization_id — a Client can legitimately have no
+            // organisation yet (invited, not yet onboarded) without being a
+            // platform operator. organization_subscription still correctly
+            // has nothing to show for ANY null-organisation user (platform
+            // operator or not), so that condition stays on organization_id.
             'organization_id'       => $u->organization_id,
             'organization_name'     => $u->organization?->name,
-            'is_platform_operator'  => $u->organization_id === null,
+            'is_platform_operator'  => $u->hasRole('Super Admin') || $u->hasRole('Admin'),
             'organization_subscription' => $u->organization_id === null ? null : $organizationSubscription,
         ];
     }

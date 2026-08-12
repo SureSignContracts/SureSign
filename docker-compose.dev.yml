@@ -58,6 +58,21 @@ services:
       - APP_DEBUG=true
       - APP_URL=http://localhost:8000
       - FRONTEND_URL=http://localhost:3001
+      # Explicit here rather than left to whatever the container's base
+      # environment happened to already contain (traced during a real
+      # debugging session: the container's raw MARKETING_URL was silently
+      # resolving to a production value from a source neither this file,
+      # the Dockerfile, nor backend/.env accounted for — dotenv never
+      # overwrites an OS env var that's already set, so backend/.env's own
+      # MARKETING_URL was being silently ignored). OrganisationUrlGenerator
+      # derives a branded preview URL's SCHEME from this value by design,
+      # so a wrong https:// here breaks local http://*.localhost testing.
+      - MARKETING_URL=http://localhost:3002
+      # Local dev: lets a saved url_slug (Organisation URL Branding) build
+      # a real, openable *.localhost preview URL — browsers resolve any
+      # *.localhost host to 127.0.0.1 natively, no /etc/hosts edit needed.
+      # See config/organisation_branding.php's own docblock.
+      - ORGANISATION_BRANDED_ROOT_DOMAIN=localhost
       - APP_LOCALE=en
       - APP_FALLBACK_LOCALE=en
       - APP_FAKER_LOCALE=en_US

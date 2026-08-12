@@ -110,6 +110,54 @@ class UserInheritedSubscriptionApiTest extends TestCase
         $this->assertNull($row['organization_subscription']);
     }
 
+    public function test_super_admin_with_no_organisation_is_platform_operator(): void
+    {
+        $this->actingAsSuperAdmin();
+        $operator = User::factory()->create(['organization_id' => null]);
+        $operator->assignRole(Role::firstOrCreate(['name' => 'Super Admin', 'guard_name' => 'web']));
+
+        $response = $this->getJson('/api/users')->assertOk();
+        $row = collect($response->json('data'))->firstWhere('id', $operator->id);
+
+        $this->assertTrue($row['is_platform_operator']);
+        $this->assertNull($row['organization_subscription']);
+    }
+
+    /**
+     * Invitation & First-Time Account Setup follow-up — is_platform_operator
+     * must be role-based, never inferred from organization_id === null. An
+     * invited Client legitimately has no organisation until they complete
+     * onboarding, and must never be labelled/treated as a platform operator
+     * in the Admin Users list because of that.
+     */
+    public function test_client_with_no_organisation_is_not_platform_operator(): void
+    {
+        $this->actingAsSuperAdmin();
+        $client = User::factory()->create(['organization_id' => null]);
+        $client->assignRole(Role::firstOrCreate(['name' => 'Client', 'guard_name' => 'web']));
+
+        $response = $this->getJson('/api/users')->assertOk();
+        $row = collect($response->json('data'))->firstWhere('id', $client->id);
+
+        $this->assertFalse($row['is_platform_operator']);
+        $this->assertNull($row['organization_name']);
+        $this->assertNull($row['organization_subscription']);
+    }
+
+    public function test_client_with_organisation_is_not_platform_operator_and_shows_real_organisation(): void
+    {
+        $this->actingAsSuperAdmin();
+        $org = $this->org('Bravo');
+        $client = User::factory()->create(['organization_id' => $org->id]);
+        $client->assignRole(Role::firstOrCreate(['name' => 'Client', 'guard_name' => 'web']));
+
+        $response = $this->getJson('/api/users')->assertOk();
+        $row = collect($response->json('data'))->firstWhere('id', $client->id);
+
+        $this->assertFalse($row['is_platform_operator']);
+        $this->assertSame('Bravo', $row['organization_name']);
+    }
+
     public function test_single_user_subscription_endpoint_returns_inherited_organisation_data(): void
     {
         $this->actingAsSuperAdmin();
@@ -123,14 +171,44 @@ class UserInheritedSubscriptionApiTest extends TestCase
         $this->assertSame('full', $response->json('data.subscription.access.mode'));
     }
 
-    public function test_single_user_subscription_endpoint_reports_platform_operator_for_users_with_no_organisation(): void
+    public function test_single_user_subscription_endpoint_reports_platform_operator_for_super_admin_with_no_organisation(): void
     {
         $this->actingAsSuperAdmin();
         $operator = User::factory()->create(['organization_id' => null]);
+        $operator->assignRole(Role::firstOrCreate(['name' => 'Super Admin', 'guard_name' => 'web']));
 
         $response = $this->getJson("/api/users/{$operator->id}/subscription")->assertOk();
 
         $this->assertTrue($response->json('data.is_platform_operator'));
+    }
+
+    public function test_single_user_subscription_endpoint_reports_platform_operator_for_admin_with_no_organisation(): void
+    {
+        $this->actingAsSuperAdmin();
+        $operator = User::factory()->create(['organization_id' => null]);
+        $operator->assignRole(Role::firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']));
+
+        $response = $this->getJson("/api/users/{$operator->id}/subscription")->assertOk();
+
+        $this->assertTrue($response->json('data.is_platform_operator'));
+    }
+
+    /**
+     * Invitation & First-Time Account Setup follow-up — a Client can now
+     * legitimately have organization_id === null (invited, not yet
+     * onboarded). is_platform_operator must be role-based, never inferred
+     * from organisation nullity, or an invited Client would be wrongly
+     * reported as a platform operator here too.
+     */
+    public function test_single_user_subscription_endpoint_does_not_report_platform_operator_for_client_with_no_organisation(): void
+    {
+        $this->actingAsSuperAdmin();
+        $client = User::factory()->create(['organization_id' => null]);
+        $client->assignRole(Role::firstOrCreate(['name' => 'Client', 'guard_name' => 'web']));
+
+        $response = $this->getJson("/api/users/{$client->id}/subscription")->assertOk();
+
+        $this->assertFalse($response->json('data.is_platform_operator'));
     }
 
     public function test_client_cannot_access_user_subscription_endpoint(): void

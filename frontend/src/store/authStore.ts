@@ -1,6 +1,14 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import api from '@/lib/api';
+import {
+  clearStoredAuthBlob,
+  clearStoredToken,
+  getRememberPreference,
+  getStoredToken,
+  rememberAwareStorage,
+  setStoredToken,
+} from '@/lib/authStorage';
 
 interface Organization {
   id: number;
@@ -58,7 +66,7 @@ interface AuthState {
   _hasHydrated: boolean;
   setHasHydrated: (val: boolean) => void;
   setToken: (token: string) => void;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, remember?: boolean) => Promise<void>;
   logout: () => Promise<void>;
   fetchUser: () => Promise<void>;
   hasRole: (role: string) => boolean;
@@ -88,7 +96,13 @@ export const useAuthStore = create<AuthState>()(
         get().fetchUser();
       },
 
-      login: async (email, password) => {
+      // `remember` defaults to true — this app's only behavior before
+      // "Remember me" existed, so an existing caller/session is unaffected.
+      // Written to storage via setStoredToken() BEFORE the `set()` call
+      // below, so the persist middleware's own write (triggered by that
+      // set(), via rememberAwareStorage) reads the matching, already-updated
+      // preference rather than racing it.
+      login: async (email, password, remember = true) => {
         set({ isLoading: true });
         try {
           const { data } = await api.post('/auth/login', { email, password });
@@ -105,7 +119,7 @@ export const useAuthStore = create<AuthState>()(
             set({ isLoading: false });
             throw { response: { data, status: 401 } };
           }
-          localStorage.setItem('suresign_token', data.token);
+          setStoredToken(data.token, remember);
           set({ token: data.token, user: data.user, isLoading: false });
         } catch (err) {
           set({ isLoading: false });
@@ -115,7 +129,8 @@ export const useAuthStore = create<AuthState>()(
 
       logout: async () => {
         try { await api.post('/auth/logout'); } catch {}
-        localStorage.removeItem('suresign_token');
+        clearStoredToken();
+        clearStoredAuthBlob();
         set({ user: null, token: null });
       },
 
@@ -131,6 +146,12 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'suresign-auth',
+      // "Remember me" — writes/reads this blob to/from localStorage or
+      // sessionStorage depending on the preference setStoredToken() records
+      // at login, so a "don't remember" session is actually forgotten (not
+      // resurrected from this blob still sitting in localStorage) — see
+      // authStorage.ts's own docblock.
+      storage: createJSONStorage(() => rememberAwareStorage),
       partialize: (s) => ({ token: s.token, user: s.user }),
       onRehydrateStorage: () => (state) => {
         // Two independent copies of the token exist — the raw `suresign_token`
@@ -142,14 +163,15 @@ export const useAuthStore = create<AuthState>()(
         // wiped out a perfectly valid session and caused AppLayout's auth
         // guard and the login page's "already authenticated" check to
         // disagree forever (bounce loop between /login and /app/projects).
-        // Reconcile by trusting whichever side actually has a token.
-        const rawToken = localStorage.getItem('suresign_token');
+        // Reconcile by trusting whichever side actually has a token — both
+        // reads/writes go through the same remember-aware storage as above.
+        const rawToken = getStoredToken();
         if (state?.token) {
-          localStorage.setItem('suresign_token', state.token);
+          setStoredToken(state.token, getRememberPreference());
         } else if (rawToken) {
           state?.setToken?.(rawToken);
         } else {
-          localStorage.removeItem('suresign_token');
+          clearStoredToken();
         }
         state?.setHasHydrated(true);
       },

@@ -9,7 +9,6 @@ import {
   User, Building2, Palette, ArrowRight, ArrowLeft,
   Check, Upload, X, AlertCircle,
 } from 'lucide-react';
-import PasswordStrengthChecker, { checkPassword, isPasswordValid } from '@/components/ui/PasswordStrengthChecker';
 import { Card } from '@/components/ui/Card';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 
@@ -20,8 +19,6 @@ interface ProfileForm {
   last_name: string;
   phone: string;
   email: string;
-  password: string;
-  password_confirmation: string;
   address: string;
   city: string;
   province: string;
@@ -137,7 +134,7 @@ function ImageUploadCard({
 
 export default function OnboardingPage() {
   const router  = useRouter();
-  const { fetchUser, user } = useAuthStore();
+  const { fetchUser, user, logout } = useAuthStore();
   const qc      = useQueryClient();
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
@@ -151,8 +148,6 @@ export default function OnboardingPage() {
     last_name:  user?.last_name  ?? '',
     phone:      user?.phone      ?? '',
     email:      user?.email      ?? '',
-    password:   '',
-    password_confirmation: '',
     address:     user?.address     ?? '',
     city:        user?.city        ?? '',
     province:    user?.province    ?? '',
@@ -180,13 +175,6 @@ export default function OnboardingPage() {
     if (!profile.email.trim())      errs.email      = 'Email is required.';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.email))
       errs.email = 'Please enter a valid email address.';
-    if (profile.password) {
-      const rules = checkPassword(profile.password);
-      if (!isPasswordValid(rules))
-        errs.password = 'Password does not meet all requirements.';
-      if (profile.password !== profile.password_confirmation)
-        errs.password_confirmation = 'Passwords do not match.';
-    }
     setProfileErrors(errs);
     return Object.keys(errs).length === 0;
   }
@@ -210,8 +198,6 @@ export default function OnboardingPage() {
         last_name:             profile.last_name,
         email:                 profile.email,
         phone:                 profile.phone      || undefined,
-        password:              profile.password   || undefined,
-        password_confirmation: profile.password   ? profile.password_confirmation : undefined,
         address:               profile.address    || undefined,
         city:                  profile.city       || undefined,
         province:              profile.province   || undefined,
@@ -227,8 +213,6 @@ export default function OnboardingPage() {
         if (msgs.last_name)             mapped.last_name             = msgs.last_name[0];
         if (msgs.email)                 mapped.email                 = msgs.email[0];
         if (msgs.phone)                 mapped.phone                 = msgs.phone[0];
-        if (msgs.password)              mapped.password              = msgs.password[0];
-        if (msgs.password_confirmation) mapped.password_confirmation = msgs.password_confirmation[0];
         setProfileErrors(mapped);
       } else {
         setGlobalError(getErrorMessage(e, 'Failed to save profile. Please try again.'));
@@ -324,7 +308,7 @@ export default function OnboardingPage() {
         {/* Exit button */}
         <div className="mb-6 flex justify-end">
           <button
-            onClick={() => { useAuthStore.setState({ token: null, user: null }); router.push('/login'); }}
+            onClick={() => { logout().finally(() => router.push('/login')); }}
             className="text-xs font-medium px-3 py-1.5 rounded-lg"
             style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
           >
@@ -401,30 +385,6 @@ export default function OnboardingPage() {
                 <Field label="Email Address" required type="email"
                   value={profile.email} onChange={setP('email')}
                   placeholder="john@example.com" error={profileErrors.email} />
-              </div>
-
-              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem' }} className="space-y-4">
-                <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
-                  Set New Password
-                </p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Field label="New Password" type="password"
-                      value={profile.password} onChange={setP('password')}
-                      placeholder="Min 8 chars, mixed case, number, symbol" error={profileErrors.password} />
-                    <PasswordStrengthChecker password={profile.password} />
-                  </div>
-                  <div>
-                    <Field label="Confirm New Password" type="password"
-                      value={profile.password_confirmation} onChange={setP('password_confirmation')}
-                      placeholder="Repeat password" error={profileErrors.password_confirmation} />
-                    <PasswordStrengthChecker
-                      password={profile.password}
-                      confirmPassword={profile.password_confirmation}
-                      showConfirmMatch
-                    />
-                  </div>
-                </div>
               </div>
 
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem' }} className="space-y-3">

@@ -95,6 +95,14 @@ function AcceptInvitationContent() {
     ? `You've been invited to join ${details.organization_name} on SureSign.`
     : "You've been invited to join SureSign.";
 
+  // Carries only a short-lived, non-secret success marker and the invited
+  // email address into Login (see the matching effect there) — the
+  // invitation itself is already fully consumed by this point, so nothing
+  // from its signed URL (user id, expires, signature) is ever included.
+  const loginParams = new URLSearchParams({ invited: '1' });
+  if (details?.email) loginParams.set('email', details.email);
+  const loginHref = `/login?${loginParams.toString()}`;
+
   return (
     <div className="min-h-dvh flex items-center justify-center px-6" style={{ backgroundColor: '#ffffff' }}>
       <div className="w-full max-w-[380px] space-y-6">
@@ -151,7 +159,7 @@ function AcceptInvitationContent() {
             </h2>
             <p className="text-sm" style={{ color: '#737373' }}>Your account has been set up successfully.</p>
             <a
-              href="/login"
+              href={loginHref}
               className="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-medium hover:bg-[#262626]"
               style={{ backgroundColor: '#0f0f0f', color: '#ffffff' }}
             >

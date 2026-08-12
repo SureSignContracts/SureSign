@@ -44,14 +44,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             see useTheme.ts) — this reads the SAME key that hook reads, by
             pulling the current user id out of the auth store's own
             Zustand-persisted blob (`suresign-auth`, written synchronously to
-            localStorage on every login/logout — see authStore.ts), rather
-            than a second, inconsistent bootstrap key. Falls back to the
-            'guest' bucket useTheme.ts itself uses when no user is logged in
-            yet. Only a numeric id is ever read here — no email/roles/other
-            user data touches this script. */}
+            localStorage OR sessionStorage depending on "Remember me" — see
+            authStore.ts / lib/authStorage.ts), rather than a second,
+            inconsistent bootstrap key. Checks both storages since a raw
+            inline script can't import the shared authStorage helper other
+            call sites use. Falls back to the 'guest' bucket useTheme.ts
+            itself uses when no user is logged in yet. Only a numeric id is
+            ever read here — no email/roles/other user data touches this
+            script. */}
         <script dangerouslySetInnerHTML={{ __html: `try{
   var uid='guest';
-  var raw=localStorage.getItem('suresign-auth');
+  var raw=localStorage.getItem('suresign-auth')||sessionStorage.getItem('suresign-auth');
   if(raw){var parsed=JSON.parse(raw);var u=parsed&&parsed.state&&parsed.state.user;if(u&&u.id)uid=u.id;}
   var t=localStorage.getItem('suresign-theme-'+uid)||'light';
   document.documentElement.setAttribute('data-theme',t);

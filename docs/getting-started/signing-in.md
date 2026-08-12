@@ -18,8 +18,16 @@ already signed in.
 2. Enter your email address and password.
 3. Select **Sign in**.
 
-If your credentials are correct, you are taken to your dashboard (or, for Super
-Admin and Admin accounts, the admin dashboard).
+If your credentials are correct, you are taken to the right place
+automatically: your dashboard, the admin dashboard for Super Admin and Admin
+accounts, or the Organisation onboarding wizard if your organisation hasn't
+finished setup yet (see [First-day checklist](first-day-checklist.md)).
+
+!!! note "Arriving from an invitation"
+    If you just accepted a SureSign invitation, the sign-in page shows **Your
+    SureSign account is ready** with your email address already filled in —
+    just enter the password you chose and sign in. This message is temporary
+    and disappears the next time you visit the sign-in page normally.
 
 ## If your details are wrong
 

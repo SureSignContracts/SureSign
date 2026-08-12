@@ -51,6 +51,7 @@ use App\Http\Controllers\Api\PromptController;
 use App\Http\Controllers\Api\CompaniesHouseController;
 use App\Http\Controllers\Api\DemoRequestController;
 use App\Http\Controllers\Api\MarketingContactController;
+use App\Http\Controllers\Api\AccountAccessEnquiryController;
 use App\Http\Controllers\Api\GenerateTradePackageFoldersController;
 use App\Http\Controllers\Api\TradePackageCatalogueController;
 use App\Http\Controllers\Api\TradePackageAiController;
@@ -154,6 +155,7 @@ Route::post('/billing/webhooks/stripe', [StripeWebhookController::class, 'handle
 // removed — see internal-docs/super-admin/appointments.md.
 Route::post('/demo-requests', [DemoRequestController::class, 'store'])->middleware('throttle:demo-request');
 Route::post('/marketing-contact', [MarketingContactController::class, 'store'])->middleware('throttle:marketing-contact');
+Route::post('/account-access-enquiry', [AccountAccessEnquiryController::class, 'store'])->middleware('throttle:account-access-enquiry');
 
 // Organisation URL Branding (Phase 1, upgraded Phase 2) — public raw-
 // hostname-to-branding resolution the marketing site calls before any

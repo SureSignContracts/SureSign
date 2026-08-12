@@ -154,6 +154,210 @@ select:focus-visible, [tabindex]:focus-visible {
 
 ::selection { background: var(--gold-30); color: var(--text-primary); }
 
+/* Keep browser autofill consistent with the neutral login fields instead of
+   allowing Chrome's default blue fill to dominate the form. */
+.ss-auth-input:-webkit-autofill,
+.ss-auth-input:-webkit-autofill:hover,
+.ss-auth-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #0f0f0f;
+  box-shadow: 0 0 0 1000px #f5f5f3 inset;
+  caret-color: #0f0f0f;
+  transition: background-color 9999s ease-out;
+}
+
+.ss-auth-input:focus {
+  box-shadow: 0 0 0 3px rgba(15, 15, 15, 0.07);
+}
+
+.ss-contact-input {
+  width: 100%;
+  min-width: 0;
+  height: 2.75rem;
+  border: 1px solid #dedcd6;
+  border-radius: 0.65rem;
+  background: #f7f6f3;
+  padding: 0 0.8rem;
+  color: #11110f;
+  font-size: 0.75rem;
+  transition:
+    background-color 180ms cubic-bezier(0.32, 0.72, 0, 1),
+    border-color 180ms cubic-bezier(0.32, 0.72, 0, 1),
+    box-shadow 180ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.ss-contact-input:hover {
+  border-color: #bbb8b0;
+}
+
+.ss-contact-input:focus {
+  outline: none;
+  border-color: #77746d;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(15, 15, 15, 0.07);
+}
+
+.ss-contact-input::placeholder {
+  color: #aaa79f;
+}
+
+.ss-contact-textarea {
+  height: auto;
+  padding: 1rem 0.9rem;
+  line-height: 1.5;
+}
+
+/* Login opening sequence: the split panels establish the composition first,
+   then the product story and authentication controls enter in a true stagger. */
+@keyframes ss-login-left-in {
+  from { opacity: 0; transform: translateX(-28px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes ss-login-right-in {
+  from { opacity: 0; transform: translateX(28px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes ss-login-reveal-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes ss-login-rule-in {
+  from { opacity: 0; transform: scaleX(0); }
+  to   { opacity: 1; transform: scaleX(1); }
+}
+
+.ss-login-panel-left,
+.ss-login-panel-right,
+.ss-login-reveal,
+.ss-login-rule,
+.ss-login-status {
+  opacity: 0;
+}
+
+.ss-login-panel-left {
+  animation: ss-login-left-in 0.72s 60ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.ss-login-panel-right {
+  animation: ss-login-right-in 0.72s 100ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.ss-login-reveal {
+  animation: ss-login-reveal-in 0.56s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.ss-login-rule {
+  transform-origin: left;
+  animation: ss-login-rule-in 0.52s 560ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.ss-login-status {
+  animation: ss-login-reveal-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Successful-login handoff: after the branded loading beat, the authenticated
+   workspace settles into place using the same lift and scale language as the
+   public access page. The one-time class is supplied by useAuthSplash, so this
+   does not replay during normal authenticated navigation. */
+@keyframes ss-authenticated-entrance-in {
+  from { opacity: 0; transform: translateY(28px) scale(0.975); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes ss-authenticated-sidebar-in {
+  from { opacity: 0; transform: translateX(-42px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes ss-authenticated-content-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.ss-authenticated-entrance {
+  opacity: 0;
+  transform-origin: center;
+  animation: ss-authenticated-entrance-in 0.82s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Desktop sidebars are real layout columns. Animate those columns directly so
+   the navigation arrives from the left before the workspace settles. Mobile
+   drawers are intentionally excluded because their translate transform is
+   functional state and must remain controlled by the menu button. The second
+   selector covers project pages, whose own full-screen layout sits one level
+   inside the authenticated entrance wrapper. */
+@media (min-width: 1024px) {
+  .ss-authenticated-entrance > aside,
+  .ss-authenticated-entrance > .flex > aside {
+    opacity: 0;
+    animation: ss-authenticated-sidebar-in 0.78s 90ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  .ss-authenticated-entrance > aside + div,
+  .ss-authenticated-entrance > aside + main,
+  .ss-authenticated-entrance > .flex > aside + div {
+    opacity: 0;
+    animation: ss-authenticated-content-in 0.72s 180ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+}
+
+/* Access-help page motion: a short panel settle followed by small, scoped
+   content staggers. No animation blocks interaction or changes layout. */
+@keyframes ss-access-shell-in {
+  from { opacity: 0; transform: translateY(18px) scale(0.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes ss-access-left-in {
+  from { opacity: 0; transform: translateX(-22px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes ss-access-right-in {
+  from { opacity: 0; transform: translateX(22px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes ss-access-reveal-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.ss-access-shell {
+  opacity: 0;
+  animation: ss-access-shell-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.ss-access-panel-left,
+.ss-access-panel-right,
+.ss-access-reveal,
+.ss-access-form,
+.ss-access-status {
+  opacity: 0;
+}
+
+.ss-access-panel-left {
+  animation: ss-access-left-in 0.65s 180ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.ss-access-panel-right {
+  animation: ss-access-right-in 0.65s 220ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.ss-access-reveal {
+  animation: ss-access-reveal-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.ss-access-form {
+  animation: ss-access-reveal-in 0.6s 570ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.ss-access-status {
+  animation: ss-access-reveal-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
 /* ── Entrance animations ─────────────────────────────────────────────────── */
 /* `to` ends on `transform: none` (NOT `translateY(0)`) deliberately — the
    two render identically, but `animation-fill-mode: forwards` keeps
@@ -176,6 +380,46 @@ select:focus-visible, [tabindex]:focus-visible {
   animation: ss-fade-in-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
+/* Login product showcase: all scenes stay mounted so manual and automatic
+   navigation can cross-fade without an intermediate empty frame. Fragment
+   animation runs once each time a scene becomes active. */
+.ss-showcase-slide {
+  z-index: 0;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-7px) scale(0.992);
+  transition:
+    opacity 0.3s cubic-bezier(0.32, 0.72, 0, 1),
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ss-showcase-slide[data-active="true"] {
+  z-index: 1;
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+}
+
+@keyframes ss-showcase-fragment-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.ss-showcase-slide[data-active="true"] .ss-showcase-fragment {
+  opacity: 0;
+  animation: ss-showcase-fragment-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes ss-showcase-progress-in {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+.ss-showcase-slide[data-active="true"] .ss-showcase-progress {
+  transform-origin: left;
+  animation: ss-showcase-progress-in 0.5s 0.18s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 /* Fast fade + scale for anchored popups (dropdown/flyout menus) — distinct
    from .ss-animate-in above, which is a slower vertical-lift tuned for
    page-content cards, not a menu popping out of a trigger. */
@@ -191,9 +435,23 @@ select:focus-visible, [tabindex]:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ss-animate-in, .ss-menu-pop-in {
+  .ss-animate-in, .ss-menu-pop-in, .ss-showcase-fragment, .ss-showcase-progress,
+  .ss-access-shell, .ss-access-panel-left, .ss-access-panel-right,
+  .ss-access-reveal, .ss-access-form, .ss-access-status,
+  .ss-login-panel-left, .ss-login-panel-right, .ss-login-reveal,
+  .ss-login-rule, .ss-login-status, .ss-authenticated-entrance,
+  .ss-authenticated-entrance > aside,
+  .ss-authenticated-entrance > aside + div,
+  .ss-authenticated-entrance > aside + main,
+  .ss-authenticated-entrance > .flex > aside,
+  .ss-authenticated-entrance > .flex > aside + div {
     opacity: 1;
     animation: none;
+  }
+
+  .ss-showcase-slide {
+    transform: none;
+    transition: none;
   }
 }
 

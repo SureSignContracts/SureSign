@@ -10,7 +10,7 @@ import SureSignLoader from '@/components/ui/SureSignLoader';
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, token, _hasHydrated } = useAuthStore();
-  const showSplash = useAuthSplash(_hasHydrated && !!token && !!user);
+  const { showSplash, playEntrance } = useAuthSplash(_hasHydrated && !!token && !!user);
 
   useEffect(() => {
     if (_hasHydrated && !token) {
@@ -23,7 +23,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--bg-base)' }}>
+    <div
+      className={`flex h-screen overflow-hidden${playEntrance ? ' ss-authenticated-entrance' : ''}`}
+      style={{ backgroundColor: 'var(--bg-base)' }}
+    >
       <Sidebar />
       {/* min-h-0: without it, a flex item defaults to never shrinking
           below its own content's height even with flex-1 set — a

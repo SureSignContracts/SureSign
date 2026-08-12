@@ -135,7 +135,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // query never runs at all (disabled above) — brandingFetched would never
   // become true, so it's excluded from the readiness condition in that
   // case; the WorkspaceAccessGate is shown instead, not the normal shell.
-  const showSplash = useAuthSplash(
+  const { showSplash, playEntrance } = useAuthSplash(
     _hasHydrated && !!token && !!user && !!workspaceCtx && (workspaceBlocking || brandingFetched)
   );
   // `user`/`workspaceCtx` are guaranteed non-null here since showSplash is
@@ -146,24 +146,40 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   if (workspaceBlocking) {
-    return <WorkspaceAccessGate context={workspaceCtx} />;
+    return (
+      <div className={playEntrance ? 'ss-authenticated-entrance' : undefined}>
+        <WorkspaceAccessGate context={workspaceCtx} />
+      </div>
+    );
   }
 
   // A Super Admin forced a password reset (or set a temp password requiring
   // one) — block everything else until it's changed.
   if (user.must_change_password) {
-    return <ForcePasswordChangeGate />;
+    return (
+      <div className={playEntrance ? 'ss-authenticated-entrance' : undefined}>
+        <ForcePasswordChangeGate />
+      </div>
+    );
   }
 
   // On the onboarding page, don't show the sidebar
   if (pathname === '/app/onboarding') {
-    return <>{children}</>;
+    return (
+      <div className={playEntrance ? 'ss-authenticated-entrance' : undefined}>
+        {children}
+      </div>
+    );
   }
 
   // On project detail pages, the ProjectSidebar handles its own layout
   const isProjectDetail = !!pathname?.match(/^\/app\/projects\/[^/]+\//);
   if (isProjectDetail) {
-    return <>{children}</>;
+    return (
+      <div className={playEntrance ? 'ss-authenticated-entrance' : undefined}>
+        {children}
+      </div>
+    );
   }
 
   const orgName = branding?.company_name || user?.organization?.name || 'Company Portal';
@@ -189,7 +205,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     : null;
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--bg-base)' }}>
+    <div
+      className={`flex h-screen overflow-hidden${playEntrance ? ' ss-authenticated-entrance' : ''}`}
+      style={{ backgroundColor: 'var(--bg-base)' }}
+    >
       <AppSidebar mobileOpen={navOpen} onMobileClose={() => setNavOpen(false)} />
       <div className="flex flex-col flex-1 min-w-0 min-h-0 overflow-hidden">
         {brandedWorkspaceUrl && <BrandedWorkspaceBanner authoritativeUrl={brandedWorkspaceUrl} />}
@@ -220,4 +239,3 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
-

@@ -16,7 +16,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [navOpen, setNavOpen] = useState(false);
 
   const isSystemUser = user?.roles?.includes('Super Admin') || user?.roles?.includes('Admin');
-  const showSplash = useAuthSplash(_hasHydrated && !!token && !!user);
+  const { showSplash, playEntrance } = useAuthSplash(_hasHydrated && !!token && !!user);
 
   useEffect(() => {
     if (_hasHydrated) {
@@ -40,11 +40,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   if (user.must_change_password) {
-    return <ForcePasswordChangeGate />;
+    return (
+      <div className={playEntrance ? 'ss-authenticated-entrance' : undefined}>
+        <ForcePasswordChangeGate />
+      </div>
+    );
   }
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--bg-base)' }}>
+    <div
+      className={`flex h-screen overflow-hidden${playEntrance ? ' ss-authenticated-entrance' : ''}`}
+      style={{ backgroundColor: 'var(--bg-base)' }}
+    >
       <AdminSidebar mobileOpen={navOpen} onMobileClose={() => setNavOpen(false)} />
       <div className="flex flex-col flex-1 min-w-0 min-h-0 overflow-hidden">
         <header className="h-12 flex items-center justify-end px-4 flex-shrink-0" style={{ backgroundColor: 'var(--bg-base)' }}>

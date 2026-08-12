@@ -30,10 +30,15 @@ Super Admin.
    **Accept Invitation & Set Up Account** link — no password is generated for
    you to hand over.
 4. The person opens the link, chooses their own password, and their account
-   is activated.
-5. The user signs in and, if they are the first user of a new organisation,
-   is guided through the onboarding wizard (profile, company details,
-   branding) — documented in the public User Guide's Getting Started section.
+   is activated. They land on Login next, with a short-lived "Your SureSign
+   account is ready" message and their email already filled in.
+5. The user signs in and is taken automatically to the right place: if they
+   are the first user of a new organisation (or their organisation hasn't
+   finished onboarding), they land on the onboarding wizard (profile, company
+   details, branding) — documented in the public User Guide's Getting Started
+   section. Not every role goes through this — Admin/Super Admin follow
+   their normal admin destination instead, and a Client whose organisation
+   has already completed onboarding lands on their normal workspace.
 
 ## Expected result
 

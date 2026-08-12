@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { clearStoredAuthBlob, clearStoredToken, getStoredToken } from '@/lib/authStorage';
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api',
@@ -6,12 +7,12 @@ const api = axios.create({
   withCredentials: false,
 });
 
-// Attach token from localStorage on every request
+// Attach token from wherever it actually lives (localStorage if "Remember
+// me" was checked, sessionStorage if not — see lib/authStorage.ts) on
+// every request.
 api.interceptors.request.use((config) => {
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('suresign_token');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-  }
+  const token = getStoredToken();
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
@@ -57,8 +58,8 @@ api.interceptors.response.use(
       // value), which sends the login page straight back into the app, back
       // into another 401, forever — a redirect loop that a server-side unban
       // can't stop, since it's caused entirely by stale client storage.
-      localStorage.removeItem('suresign_token');
-      localStorage.removeItem('suresign-auth');
+      clearStoredToken();
+      clearStoredAuthBlob();
       const notice: AuthNotice = isAccountUnavailable ? 'account_unavailable' : 'session_expired';
       window.location.href = `/login?authNotice=${notice}`;
     }

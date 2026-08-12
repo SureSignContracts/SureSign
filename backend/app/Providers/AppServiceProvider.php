@@ -129,6 +129,12 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinutes(15, 5)->by($request->ip());
         });
 
+        // "Contact your administrator" page (public, no auth) — same
+        // per-IP-only rationale as marketing-contact above.
+        RateLimiter::for('account-access-enquiry', function (Request $request) {
+            return Limit::perMinutes(15, 5)->by($request->ip());
+        });
+
         // Public Appointments booking (Phase 3, no auth) — same per-IP-only
         // rationale as demo-request above. Reads (type info, slot lookups as
         // a visitor browses dates) get a looser limit than the write.
