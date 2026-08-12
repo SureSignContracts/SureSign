@@ -115,6 +115,30 @@ If the SureSign team has an active announcement — for example, planned
 maintenance or a known issue — it's shown prominently at the top of the Help
 Center until it ends or is turned off.
 
+## What's New in SureSign
+
+Separate from Service Announcements above (those are about platform status;
+this is about new features, improvements, and tips). After signing in, if
+the SureSign team has published a new update you haven't seen, a short
+"What's New in SureSign" window opens automatically, once your workspace has
+loaded — it never interrupts signing in, a required password change, or
+first-time account setup.
+
+- **Close** dismisses it for now — it won't pop up again on the pages you
+  visit next, but it may appear again on a future visit if you haven't
+  chosen "Don't show this update again".
+- **Don't show this update again** dismisses that specific update for good,
+  on every device you sign in from. It only applies to that one update — the
+  next time the SureSign team publishes something new, you'll see it.
+- If there's more than one new update, use the arrows to page through them —
+  they all appear in the same window, one at a time.
+- **View all updates** takes you to a page listing everything SureSign has
+  published, whether or not you've already seen or dismissed it.
+
+This is not the same as Release Notes (in your profile menu's Help flyout) —
+Release Notes track official SureSign version history; What's New is
+day-to-day product communication and can appear between releases.
+
 ## Related
 
 - [Notifications and Activity](../notifications/overview.md)

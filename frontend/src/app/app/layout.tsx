@@ -12,6 +12,7 @@ import SureSignLoader from '@/components/ui/SureSignLoader';
 import AiAnalysisWidget from '@/components/ai/AiAnalysisWidget';
 import GlobalTourLauncher from '@/components/tours/GlobalTourLauncher';
 import PendingTourLauncher from '@/components/tours/PendingTourLauncher';
+import WhatsNewLauncher from '@/components/product-updates/WhatsNewLauncher';
 import ForcePasswordChangeGate from '@/components/auth/ForcePasswordChangeGate';
 import WorkspaceAccessGate from '@/components/auth/WorkspaceAccessGate';
 import BrandedWorkspaceBanner from '@/components/auth/BrandedWorkspaceBanner';
@@ -236,6 +237,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <AiAnalysisWidget />
       <GlobalTourLauncher />
       <PendingTourLauncher />
+      <WhatsNewLauncher historyHref="/app/whats-new" />
     </div>
   );
 }

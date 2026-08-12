@@ -13,7 +13,7 @@ Nothing in this tree should be published to the public documentation site.
 ## Contents
 
 - `roles/` — Super Admin and Admin role capabilities
-- `super-admin/` — Companies, Users, Platform Branding, Security Actions, [Support Ticket Administration and Platform Announcements](super-admin/support-and-announcements.md), [Appointments & Scheduling](super-admin/appointments.md), [Pricing Management](super-admin/pricing-management.md), [Subscription & Billing](super-admin/subscription-billing.md) (foundation only — see status note)
+- `super-admin/` — Companies, Users, Platform Branding, Security Actions, [Support Ticket Administration and Platform Announcements](super-admin/support-and-announcements.md), [Product Updates ("What's New in SureSign")](super-admin/product-updates.md), [Appointments & Scheduling](super-admin/appointments.md), [Pricing Management](super-admin/pricing-management.md), [Subscription & Billing](super-admin/subscription-billing.md) (foundation only — see status note)
 - [`marketing/`](marketing/navigation.md) — public marketing navigation, sitemap, and contact-form delivery flow
 - [`commercial/`](commercial/suresign-commercial-strategy-v1.md) — the approved business/commercial foundation for Subscription & Billing: [Commercial Strategy v1](commercial/suresign-commercial-strategy-v1.md) (positioning, plans, pricing philosophy, lifecycle) and [Entitlement Specification v1](commercial/suresign-entitlement-specification-v1.md) (the technical entitlement model that strategy implies) — read both before continuing any Billing implementation beyond the Phase 1–4 foundation
 - `settings/` — Platform Settings, Feature Flags

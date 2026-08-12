@@ -66,6 +66,7 @@ use App\Http\Controllers\Api\SupportTicketMessageController;
 use App\Http\Controllers\Api\KnowledgeBaseController;
 use App\Http\Controllers\Api\SystemStatusController;
 use App\Http\Controllers\Api\PlatformAnnouncementController;
+use App\Http\Controllers\Api\ProductUpdateController;
 use App\Http\Controllers\Api\TourMilestoneController;
 use App\Http\Controllers\Api\ApplicationMonitoringController;
 use App\Http\Controllers\Api\AiCreditsGrantController;
@@ -310,6 +311,13 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
     Route::get('/knowledge-base', [KnowledgeBaseController::class, 'index']);
     Route::get('/system-status', [SystemStatusController::class, 'index']);
     Route::get('/platform-announcements/active', [PlatformAnnouncementController::class, 'active']);
+
+    // "What's New in SureSign" — any authenticated user (Super Admin/Admin
+    // included; audience filtering happens inside the controller/model, not
+    // via a route restriction). See App\Models\ProductUpdate's docblock.
+    Route::get('/product-updates/pending', [ProductUpdateController::class, 'pending']);
+    Route::get('/product-updates/history', [ProductUpdateController::class, 'history']);
+    Route::post('/product-updates/{productUpdate}/dismiss', [ProductUpdateController::class, 'dismiss']);
 
     // Guided Tours — personal milestone notifications only (see TourMilestoneController).
     Route::post('/tour-milestones', [TourMilestoneController::class, 'store']);
@@ -1047,6 +1055,8 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
 
             // Platform-wide emergency / known-issue banner management
             Route::apiResource('platform-announcements', PlatformAnnouncementController::class)->except(['show']);
+            // "What's New in SureSign" management — see App\Models\ProductUpdate's docblock.
+            Route::apiResource('product-updates', ProductUpdateController::class)->except(['show']);
             Route::get('/system-logs', [AdminController::class, 'systemLogs']);
             Route::get('/audit-log', [AdminController::class, 'auditLog']);
             Route::get('/settings', [AdminController::class, 'settings']);

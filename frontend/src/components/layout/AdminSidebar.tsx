@@ -16,7 +16,7 @@ import {
   Brain, HardDrive, CreditCard, Users, LifeBuoy, ScrollText, ClipboardList,
   Settings, LogOut, Sun, Moon, Gem, BookOpen, Search, Megaphone, Activity,
   PanelLeftClose, PanelLeftOpen, ChevronRight, CalendarClock, Wallet, HeartHandshake,
-  Link2,
+  Link2, Sparkles,
 } from 'lucide-react';
 import { APP_VERSION_LABEL } from '@/config/app-version';
 import { SidebarCountBadge } from '@/components/ui/Badge';
@@ -49,6 +49,7 @@ const NAV_GROUPS = [
       { href: '/admin/prompts',   label: 'Prompt Library', icon: BookOpen,       pageKey: 'prompts'   },
       { href: '/admin/find',      label: 'Find Company',   icon: Search,         pageKey: 'find'      },
       { href: '/admin/pricing',   label: 'Pricing',        icon: CreditCard,     pageKey: 'pricing',   superAdminOnly: true },
+      { href: '/admin/product-updates', label: 'Product Updates', icon: Sparkles, pageKey: 'product-updates' },
       { href: '/admin/suresign',  label: 'SureSign',       icon: Gem,            pageKey: 'suresign'  },
     ],
   },

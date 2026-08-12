@@ -98,7 +98,12 @@ time or deactivate it yourself.
 There is no app-wide banner (outside the Help Center) today — see
 `project-context.md` for why that was deliberately out of scope.
 
+This is a system-status banner, not product communication — see
+[Product Updates ("What's New in SureSign")](product-updates.md) for the
+separate feature/announcement modal shown after sign-in.
+
 ## Related
 
+- [Product Updates ("What's New in SureSign")](product-updates.md)
 - [Admin](../roles/admin.md)
 - [Super Admin](../roles/super-admin.md)

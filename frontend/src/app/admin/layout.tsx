@@ -9,6 +9,7 @@ import AdminSidebar from '@/components/layout/AdminSidebar';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import SureSignLoader from '@/components/ui/SureSignLoader';
 import ForcePasswordChangeGate from '@/components/auth/ForcePasswordChangeGate';
+import WhatsNewLauncher from '@/components/product-updates/WhatsNewLauncher';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -79,6 +80,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {children}
         </main>
       </div>
+      <WhatsNewLauncher />
     </div>
   );
 }
