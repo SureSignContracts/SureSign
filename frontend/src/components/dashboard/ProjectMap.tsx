@@ -51,7 +51,18 @@ export default function ProjectMap({ data }: { data: ProjectMapData }) {
 
       <div
         className="rounded-2xl overflow-hidden"
-        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', height: 360 }}
+        // `isolation: 'isolate'` is load-bearing, not decorative: Leaflet's
+        // own panes/controls carry internal z-index values up to 1000
+        // (.leaflet-top/.leaflet-bottom), which is higher than any modal or
+        // dropdown in this app (e.g. Modal.tsx's z-50). Without a stacking
+        // context of its own here, this card's `overflow-hidden` still
+        // clips the map's pixels to its bounds, but Leaflet's z-index values
+        // are compared directly against unrelated body-level siblings (a
+        // portaled modal, a dropdown) with no containing ancestor between
+        // them — so the map paints ON TOP of them regardless of DOM order.
+        // `isolation: isolate` creates a real stacking context here, so
+        // every z-index inside this card is contained within it instead.
+        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', height: 360, isolation: 'isolate' }}
       >
         {mapped_projects === 0 ? (
           <div className="w-full h-full flex items-center justify-center">

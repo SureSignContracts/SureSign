@@ -916,7 +916,11 @@ export default function ProjectOverviewPage() {
 
         {project?.latitude != null && project?.longitude != null ? (
           <div className="grid md:grid-cols-2 gap-5">
-            <div className="rounded-xl overflow-hidden" style={{ height: 260, border: '1px solid var(--border)' }}>
+            {/* isolation: 'isolate' — same stacking-context fix as
+                ProjectMap.tsx (dashboard); see that file's comment. Leaflet's
+                own panes/controls carry z-index up to 1000, which otherwise
+                escapes above this app's modals/dropdowns. */}
+            <div className="rounded-xl overflow-hidden" style={{ height: 260, border: '1px solid var(--border)', isolation: 'isolate' }}>
               <SiteLocationMap latitude={Number(project.latitude)} longitude={Number(project.longitude)} />
             </div>
             <div className="flex flex-col justify-between gap-4 min-w-0">
