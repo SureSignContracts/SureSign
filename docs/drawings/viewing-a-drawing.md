@@ -51,10 +51,46 @@ Select **Download** in the viewer header to download the linked document
 ## Drawing locations
 
 A drawing revision may have specific locations marked on it, shown as small
-markers on the relevant page. Select a marker to see its label. Locations
-belong to the exact revision they were added to — switching to a different
-revision, or viewing an older one, shows only that revision's own
-locations. There is no way to add or edit locations yet.
+markers on the relevant page. Select a marker to see its label and any
+linked project records. Locations belong to the exact revision they were
+added to — switching to a different revision, or viewing an older one,
+shows only that revision's own locations.
+
+### Adding a location
+
+On the drawing's current revision, select **Add Location** in the viewer
+header, then click the drawing where you want to place it. A small form
+asks for an optional label, then **Save** adds the location — **Cancel**
+discards it without saving anything. Locations can only be added on the
+current revision; open an older revision from
+[Revisions](revisions.md) and its locations are shown but read-only.
+
+### Editing, moving, and removing a location
+
+Select a marker to open it, then:
+
+- **Edit label** to change its label.
+- **Move location** to reposition it — click the new position on the same
+  page.
+- **Remove location** to delete it (with confirmation). If the location has
+  linked records, removing it also removes those links — the linked
+  records themselves are never deleted.
+
+These actions are only available on the drawing's current revision.
+
+### Linking project records
+
+From a location's marker, select **Link record**, choose a record type
+(Snag, RFI, QA Report, or Variation), and search for the record to link.
+A location can link to more than one record, and the same record can be
+linked from more than one location. Select a linked record's link icon to
+open it. Select the small **×** beside a linked record to remove that link
+— the record itself is never affected.
+
+A linked Snag, RFI, QA Report, or Variation shows its own **Drawing
+Locations** section listing every location it's linked from, with an
+**Open Drawing** action that jumps straight to the correct drawing,
+revision, and page.
 
 ## Supported file types
 

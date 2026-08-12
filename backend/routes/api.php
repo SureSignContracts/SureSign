@@ -28,6 +28,8 @@ use App\Http\Controllers\Api\RiskController;
 use App\Http\Controllers\Api\DeliveryDocumentController;
 use App\Http\Controllers\Api\DrawingController;
 use App\Http\Controllers\Api\DrawingHotspotController;
+use App\Http\Controllers\Api\DrawingHotspotLinkController;
+use App\Http\Controllers\Api\DrawingRecordLinksController;
 use App\Http\Controllers\Api\DrawingRevisionController;
 use App\Http\Controllers\Api\LossAndExpenseClaimController;
 use App\Http\Controllers\Api\PayLessNoticeController;
@@ -555,12 +557,24 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
         Route::get('/drawings/{drawing}/revisions/{revision}', [DrawingRevisionController::class, 'show']);
         Route::put('/drawings/{drawing}/revisions/{revision}', [DrawingRevisionController::class, 'update']);
 
-        // Drawing Hotspot foundation (Phase 5) — read-only from the normal
-        // customer UI; store() exists for tests/live verification/future
-        // Phase 6 authoring reuse only, never a customer-facing "place
-        // marker" control.
+        // Drawing Hotspot authoring (Phase 6A) — current-revision-only, see
+        // DrawingHotspotController's own docblock. index() remains available
+        // for historical revisions (read-only).
         Route::get('/drawings/{drawing}/revisions/{revision}/hotspots', [DrawingHotspotController::class, 'index']);
         Route::post('/drawings/{drawing}/revisions/{revision}/hotspots', [DrawingHotspotController::class, 'store']);
+        Route::put('/drawings/{drawing}/revisions/{revision}/hotspots/{hotspot}', [DrawingHotspotController::class, 'update']);
+        Route::delete('/drawings/{drawing}/revisions/{revision}/hotspots/{hotspot}', [DrawingHotspotController::class, 'destroy']);
+
+        // Drawing Hotspot <-> construction record linking (Phase 6B).
+        Route::get('/drawings/{drawing}/revisions/{revision}/hotspots/{hotspot}/links', [DrawingHotspotLinkController::class, 'index']);
+        Route::post('/drawings/{drawing}/revisions/{revision}/hotspots/{hotspot}/links', [DrawingHotspotLinkController::class, 'store']);
+        Route::delete('/drawings/{drawing}/revisions/{revision}/hotspots/{hotspot}/links/{link}', [DrawingHotspotLinkController::class, 'destroy']);
+
+        // Record-centric drawing-link endpoints (Phase 6B Part U/Y) —
+        // registered before the eligible-documents-style literal routes
+        // above aren't relevant here (no {drawing} wildcard collision).
+        Route::get('/drawing-linkable-records', [DrawingRecordLinksController::class, 'linkableRecords']);
+        Route::get('/drawing-locations', [DrawingRecordLinksController::class, 'forRecord']);
 
         Route::apiResource('pay-less-notices', PayLessNoticeController::class)->shallow();
 

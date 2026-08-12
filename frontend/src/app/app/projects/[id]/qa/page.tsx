@@ -12,6 +12,7 @@ import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import EvidenceSection from '@/components/documents/EvidenceSection';
+import DrawingLocationsSection from '@/components/drawings/DrawingLocationsSection';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -148,12 +149,13 @@ function QaModal({ projectId, report, onClose }: { projectId: string; report?: a
           </div>
         </form>
         {isEdit && (
-          <div className="px-6 pb-6">
+          <div className="px-6 pb-6 space-y-4">
             <EvidenceSection
               attachmentsUrl={`/projects/${projectId}/qa-reports/${report.id}/attachments`}
               queryKey={['qa-report-attachments', report.id]}
               label="Evidence"
             />
+            <DrawingLocationsSection projectId={projectId} type="qa_report" recordId={report.id} />
           </div>
         )}
       </div>

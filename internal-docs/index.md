@@ -20,6 +20,7 @@ Nothing in this tree should be published to the public documentation site.
 - `workflows/` — platform onboarding and account-security workflows
 - [`demo-environment/`](demo-environment/index.md) — the isolated demo company (Halden Grove Construction Ltd.) used for marketing, docs, and sales demonstrations: seeder architecture, `demo:seed`/`demo:reset`, and phase status. See also [`demo-environment/deployment.md`](demo-environment/deployment.md) for the permanent `demo.suresigncontracts.app` deployment (Dokploy, storage/DB/Redis isolation, rollback)
 - [Error Messaging & Recovery UX — Phase A Audit](error-messaging-recovery-ux-audit.md) — platform-wide, read-only audit of current frontend/backend error-handling architecture, plus the shared normalization foundation and phased migration plan for consistent, tenant-safe, recoverable error messaging; Batches 1-6 are now implemented
+- [Production Deployment Notes](production-deployment-notes.md) — focused, per-feature operational prerequisites for deploying a specific feature to an environment with existing data (starts with Drawing Hotspot Authoring's legacy revision backfill, Drawing Phase 6)
 
 This tree is plain Markdown only; it does not yet have its own MkDocs build
 configuration.

@@ -12,6 +12,7 @@ import Button from '@/components/ui/Button';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import Select from '@/components/ui/Select';
 import EvidenceSection from '@/components/documents/EvidenceSection';
+import DrawingLocationsSection from '@/components/drawings/DrawingLocationsSection';
 
 const PRIORITY_COLORS: Record<string, { bg: string; text: string }> = {
   low:      { bg: 'rgba(90,86,82,0.2)',    text: '#9a9490' },
@@ -160,12 +161,13 @@ function SnagModal({ projectId, snag, onClose }: { projectId: string; snag?: any
           </div>
         </form>
         {isEdit && (
-          <div className="px-6 pb-6">
+          <div className="px-6 pb-6 space-y-4">
             <EvidenceSection
               attachmentsUrl={`/projects/${projectId}/snagging/${snag.id}/attachments`}
               queryKey={['snag-attachments', snag.id]}
               label="Evidence"
             />
+            <DrawingLocationsSection projectId={projectId} type="snag" recordId={snag.id} />
           </div>
         )}
       </div>

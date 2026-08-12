@@ -37,8 +37,17 @@ type LoadState = 'loading' | 'ready' | 'error';
 
 export type PageGeometry = { width: number; height: number; pageNumber: number };
 
-export default function DrawingPdfCanvas({ previewEndpoint, onPageGeometryChange, children }: {
+export default function DrawingPdfCanvas({ previewEndpoint, initialPage, onPageGeometryChange, children }: {
   previewEndpoint: string;
+  /**
+   * Drawing Phase 6B Part Z — the page to open on, e.g. from a linked
+   * record's "Open Drawing" action (`?page=`). Read only once, at document
+   * load time (like `onPageGeometryChange` below, deliberately excluded
+   * from the load effect's deps — a parent re-render must never reload the
+   * PDF binary or jump the page back). Clamped to the real page count once
+   * known; a missing/invalid value defaults to page 1 exactly as before.
+   */
+  initialPage?: number;
   /**
    * Reports the CSS-rendered page's display dimensions (Drawing Phase 5
    * Part B) — always `viewport.width`/`viewport.height` from pdf.js, i.e.
@@ -121,7 +130,7 @@ export default function DrawingPdfCanvas({ previewEndpoint, onPageGeometryChange
           }
           pdfDocRef.current = pdfDoc;
           setNumPages(pdfDoc.numPages);
-          setPageNum(1);
+          setPageNum(initialPage && initialPage >= 1 && initialPage <= pdfDoc.numPages ? initialPage : 1);
           setState('ready');
         } catch {
           if (generationRef.current === generation) {

@@ -15,34 +15,38 @@ namespace App\Services\TradePackages;
 class WorkspaceNavigationResolver
 {
     private const TAB_MAP = [
-        'payment_application'    => ['tab' => 'commercial'],
-        'retention_release'      => ['tab' => 'commercial'],
-        'final_account'          => ['tab' => 'commercial'],
-        'payment_notice'         => ['tab' => 'commercial'],
-        'pay_less_notice'        => ['tab' => 'commercial'],
-        'variation'              => ['tab' => 'commercial'],
-        'programme_milestone'    => ['tab' => 'programme'],
-        'delay_event'            => ['tab' => 'delay-eot', 'subtab' => 'delay'],
-        'eot_request'            => ['tab' => 'delay-eot', 'subtab' => 'eot'],
+        'payment_application' => ['tab' => 'commercial'],
+        'retention_release' => ['tab' => 'commercial'],
+        'final_account' => ['tab' => 'commercial'],
+        'payment_notice' => ['tab' => 'commercial'],
+        'pay_less_notice' => ['tab' => 'commercial'],
+        'variation' => ['tab' => 'commercial'],
+        'programme_milestone' => ['tab' => 'programme'],
+        'delay_event' => ['tab' => 'delay-eot', 'subtab' => 'delay'],
+        'eot_request' => ['tab' => 'delay-eot', 'subtab' => 'eot'],
         'loss_and_expense_claim' => ['tab' => 'delay-eot', 'subtab' => 'loss-expense'],
-        'contract_risk'          => ['tab' => 'compliance', 'subtab' => 'risks'],
-        'delivery_document'      => ['tab' => 'compliance', 'subtab' => 'delivery-documents'],
-        'trade_package'          => ['tab' => 'overview'],
-        // RFIs, meetings, site diaries, site instructions and QA reports have
-        // no trade_package_id column — these entries are only exercised if that ever changes;
-        // today target() just needs a non-null match so actionUrl() falls
-        // through to PROJECT_FALLBACK below.
-        'rfi'                     => ['tab' => 'communication', 'subtab' => 'rfis'],
-        'meeting'                 => ['tab' => 'communication', 'subtab' => 'meetings'],
-        'site_diary'              => ['tab' => 'compliance', 'subtab' => 'site-reports'],
-        'site_instruction'        => ['tab' => 'communication', 'subtab' => 'site-instructions'],
-        'qa_report'               => ['tab' => 'compliance', 'subtab' => 'qa'],
+        'contract_risk' => ['tab' => 'compliance', 'subtab' => 'risks'],
+        'delivery_document' => ['tab' => 'compliance', 'subtab' => 'delivery-documents'],
+        'trade_package' => ['tab' => 'overview'],
+        // RFIs, meetings, site diaries, site instructions, QA reports and
+        // snags have no trade_package_id column — these entries are only
+        // exercised if that ever changes; today target() just needs a
+        // non-null match so actionUrl() falls through to PROJECT_FALLBACK
+        // below. 'snag' added for Drawing Hotspot Linking (Phase 6B) — it
+        // was never in this map before this phase since nothing needed to
+        // navigate to a Snag from outside Snagging itself.
+        'rfi' => ['tab' => 'communication', 'subtab' => 'rfis'],
+        'snag' => ['tab' => 'delivery', 'subtab' => 'snagging'],
+        'meeting' => ['tab' => 'communication', 'subtab' => 'meetings'],
+        'site_diary' => ['tab' => 'compliance', 'subtab' => 'site-reports'],
+        'site_instruction' => ['tab' => 'communication', 'subtab' => 'site-instructions'],
+        'qa_report' => ['tab' => 'compliance', 'subtab' => 'qa'],
         // Contract AI analyses belong to a main Contract, never a trade
         // package (subcontract AI uses the separate 'trade_package_ai_analysis'
         // source_type) — this entry exists only so target() returns non-null;
         // the trade-package branch of actionUrl() is never actually reached.
-        'contract_ai_analysis'    => ['tab' => 'contracts'],
-        'file_upload'             => ['tab' => 'documents'],
+        'contract_ai_analysis' => ['tab' => 'contracts'],
+        'file_upload' => ['tab' => 'documents'],
     ];
 
     /**
@@ -50,29 +54,30 @@ class WorkspaceNavigationResolver
      * to when the record belongs to a main contract rather than a package.
      */
     private const PROJECT_FALLBACK = [
-        'payment_application'    => '/commercial?tab=applications',
-        'retention_release'      => '/commercial?tab=applications',
-        'payment_notice'         => '/commercial?tab=notices',
-        'pay_less_notice'        => '/commercial?tab=notices',
-        'programme_milestone'    => '/programme',
-        'delay_event'            => '/delay-eot?tab=delay-events',
-        'eot_request'            => '/delay-eot?tab=eot',
+        'payment_application' => '/commercial?tab=applications',
+        'retention_release' => '/commercial?tab=applications',
+        'payment_notice' => '/commercial?tab=notices',
+        'pay_less_notice' => '/commercial?tab=notices',
+        'programme_milestone' => '/programme',
+        'delay_event' => '/delay-eot?tab=delay-events',
+        'eot_request' => '/delay-eot?tab=eot',
         'loss_and_expense_claim' => '/delay-eot?tab=loss-and-expense',
         // A dedicated /risks page now exists (no id deep-link support yet,
         // same as rfi/variation below).
-        'contract_risk'          => '/risks',
-        'delivery_document'      => '/delivery-documents',
-        'rfi'                    => '/rfis',
-        'variation'              => '/variations',
-        'meeting'                => '/meetings',
-        'site_diary'             => '/site-reports',
+        'contract_risk' => '/risks',
+        'delivery_document' => '/delivery-documents',
+        'rfi' => '/rfis',
+        'snag' => '/snagging',
+        'variation' => '/variations',
+        'meeting' => '/meetings',
+        'site_diary' => '/site-reports',
         // Site Instructions is a tab within the Notices page rather than its
         // own route (see notices/page.tsx) — that page doesn't read a `tab`
         // query param, so landing on the page itself (defaulting to its EOT
         // tab) is the same best-effort precedent as contract_ai_analysis and
         // file_upload below, not a broken link.
-        'site_instruction'       => '/notices',
-        'qa_report'              => '/qa',
+        'site_instruction' => '/notices',
+        'qa_report' => '/qa',
         // No dedicated AI review/history or Contract Intelligence route
         // exists yet — the AI analysis review UI is embedded directly in the
         // Contracts list page (confirmed: no per-contract detail route and
@@ -80,12 +85,12 @@ class WorkspaceNavigationResolver
         // existing convention for contract_deadline/contract_notice in
         // NotificationEngineService's own URL_MAP, which already deep-links
         // to the same page for the same reason.
-        'contract_ai_analysis'   => '/contracts',
+        'contract_ai_analysis' => '/contracts',
         // Project-level Documents Explorer exists (/documents) but has no
         // folder/id deep-link support today — landing on the page itself is
         // still a genuine, correct destination (same precedent as risks,
         // rfis, meetings, site diaries, qa reports above).
-        'file_upload'            => '/documents',
+        'file_upload' => '/documents',
     ];
 
     /**
@@ -94,16 +99,16 @@ class WorkspaceNavigationResolver
     public static function target(string $sourceType, int $sourceId, ?int $tradePackageId = null): ?array
     {
         $entry = self::TAB_MAP[$sourceType] ?? null;
-        if (!$entry) {
+        if (! $entry) {
             return null;
         }
 
         return [
-            'type'             => $sourceType,
-            'id'               => $sourceId,
+            'type' => $sourceType,
+            'id' => $sourceId,
             'trade_package_id' => $tradePackageId,
-            'tab'              => $entry['tab'],
-            'subtab'           => $entry['subtab'] ?? null,
+            'tab' => $entry['tab'],
+            'subtab' => $entry['subtab'] ?? null,
         ];
     }
 
@@ -114,12 +119,13 @@ class WorkspaceNavigationResolver
     public static function actionUrl(int $projectId, string $sourceType, int $sourceId, ?int $tradePackageId = null): ?string
     {
         $target = self::target($sourceType, $sourceId, $tradePackageId);
-        if (!$target) {
+        if (! $target) {
             return null;
         }
 
         if ($tradePackageId) {
             $suffix = $target['subtab'] ? "&subtab={$target['subtab']}" : '';
+
             return "/app/projects/{$projectId}/subcontracts/{$tradePackageId}?tab={$target['tab']}{$suffix}";
         }
 

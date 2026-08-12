@@ -14,15 +14,17 @@ use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
- * Drawing Phase 5 — Hotspot Foundation.
+ * Drawing Phase 5 (foundation) + Phase 6A (authoring CRUD).
  *
  * Covers normalized-coordinate validation, exact revision ownership
- * (never merely "same project"), tenant isolation, and the two critical
- * revision-isolation properties: a new revision never inherits an older
+ * (never merely "same project"), tenant isolation, the two critical
+ * revision-isolation properties (a new revision never inherits an older
  * revision's hotspots, and an older revision's hotspots are never touched
- * when a newer revision becomes current. No frontend authoring UI exists —
- * see the live browser walkthrough in the final report for the overlay
- * rendering/geometry verification.
+ * when a newer revision becomes current), and — added in Phase 6A —
+ * label/reposition update, delete, and the current-revision-only authoring
+ * restriction (store/update/destroy all reject a historical revision; index
+ * never does). See the live browser walkthrough in the final report for the
+ * overlay rendering/geometry/authoring verification.
  */
 class DrawingHotspotFoundationTest extends TestCase
 {
@@ -63,12 +65,22 @@ class DrawingHotspotFoundationTest extends TestCase
         ]);
     }
 
+    /**
+     * Mirrors the real DrawingRevisionController::store() invariant — every
+     * revision that's created immediately becomes the drawing's current
+     * revision — so tests built directly against Eloquent (rather than the
+     * revision API) still reflect a realistic current_revision_id state for
+     * the Phase 6A current-revision-only authoring restriction.
+     */
     private function makeRevision(Drawing $drawing, User $user, Document $document, string $code = 'P01'): DrawingRevision
     {
-        return DrawingRevision::create([
+        $revision = DrawingRevision::create([
             'drawing_id' => $drawing->id, 'document_id' => $document->id,
             'revision_code' => $code, 'created_by' => $user->id,
         ]);
+        $drawing->update(['current_revision_id' => $revision->id]);
+
+        return $revision;
     }
 
     // ── Listing / authorization ──────────────────────────────────────────
@@ -367,5 +379,209 @@ class DrawingHotspotFoundationTest extends TestCase
         $keys = array_keys($response->json('data.0'));
         sort($keys);
         $this->assertSame(['created_at', 'drawing_revision_id', 'id', 'label', 'page_number', 'x', 'y'], $keys);
+    }
+
+    // ── Phase 6A: label edit / reposition / delete ────────────────────────
+
+    public function test_label_can_be_updated(): void
+    {
+        [$org, $user] = $this->makeOrgAndUser('labeledit');
+        $project = $this->makeProject($org, $user);
+        $document = $this->makeDocument($project, $user);
+        $drawing = $this->makeDrawing($project, $user, $document);
+        $revision = $this->makeRevision($drawing, $user, $document);
+        $hotspot = DrawingHotspot::create(['drawing_revision_id' => $revision->id, 'page_number' => 1, 'x' => 0.25, 'y' => 0.3, 'label' => 'Old label', 'created_by' => $user->id]);
+
+        Sanctum::actingAs($user);
+        $response = $this->putJson("/api/projects/{$project->id}/drawings/{$drawing->id}/revisions/{$revision->id}/hotspots/{$hotspot->id}", [
+            'label' => 'North stair core',
+        ]);
+
+        $response->assertOk();
+        $this->assertSame('North stair core', $response->json('label'));
+        $this->assertDatabaseHas('drawing_hotspots', ['id' => $hotspot->id, 'label' => 'North stair core']);
+    }
+
+    public function test_reposition_updates_x_and_y_together(): void
+    {
+        [$org, $user] = $this->makeOrgAndUser('reposition');
+        $project = $this->makeProject($org, $user);
+        $document = $this->makeDocument($project, $user);
+        $drawing = $this->makeDrawing($project, $user, $document);
+        $revision = $this->makeRevision($drawing, $user, $document);
+        $hotspot = DrawingHotspot::create(['drawing_revision_id' => $revision->id, 'page_number' => 1, 'x' => 0.25, 'y' => 0.3, 'created_by' => $user->id]);
+
+        Sanctum::actingAs($user);
+        $response = $this->putJson("/api/projects/{$project->id}/drawings/{$drawing->id}/revisions/{$revision->id}/hotspots/{$hotspot->id}", [
+            'x' => 0.6, 'y' => 0.7,
+        ]);
+
+        $response->assertOk();
+        $this->assertEqualsWithDelta(0.6, $response->json('x'), 0.0001);
+        $this->assertEqualsWithDelta(0.7, $response->json('y'), 0.0001);
+        // page_number is never accepted by update() — reposition stays on
+        // the same page a hotspot was created on (Part H).
+        $this->assertSame(1, $response->json('page_number'));
+    }
+
+    public function test_reposition_rejects_x_without_y(): void
+    {
+        [$org, $user] = $this->makeOrgAndUser('halfmove');
+        $project = $this->makeProject($org, $user);
+        $document = $this->makeDocument($project, $user);
+        $drawing = $this->makeDrawing($project, $user, $document);
+        $revision = $this->makeRevision($drawing, $user, $document);
+        $hotspot = DrawingHotspot::create(['drawing_revision_id' => $revision->id, 'page_number' => 1, 'x' => 0.25, 'y' => 0.3, 'created_by' => $user->id]);
+
+        Sanctum::actingAs($user);
+        $response = $this->putJson("/api/projects/{$project->id}/drawings/{$drawing->id}/revisions/{$revision->id}/hotspots/{$hotspot->id}", [
+            'x' => 0.6,
+        ]);
+
+        $response->assertStatus(422);
+    }
+
+    public function test_update_rejects_page_number_change(): void
+    {
+        [$org, $user] = $this->makeOrgAndUser('pagechange');
+        $project = $this->makeProject($org, $user);
+        $document = $this->makeDocument($project, $user);
+        $drawing = $this->makeDrawing($project, $user, $document);
+        $revision = $this->makeRevision($drawing, $user, $document);
+        $hotspot = DrawingHotspot::create(['drawing_revision_id' => $revision->id, 'page_number' => 1, 'x' => 0.25, 'y' => 0.3, 'created_by' => $user->id]);
+
+        Sanctum::actingAs($user);
+        $this->putJson("/api/projects/{$project->id}/drawings/{$drawing->id}/revisions/{$revision->id}/hotspots/{$hotspot->id}", [
+            'page_number' => 2,
+        ])->assertOk();
+
+        // page_number is not a validated field on update() — a client
+        // attempting to send it is silently ignored, never applied.
+        $this->assertDatabaseHas('drawing_hotspots', ['id' => $hotspot->id, 'page_number' => 1]);
+    }
+
+    public function test_delete_removes_hotspot(): void
+    {
+        [$org, $user] = $this->makeOrgAndUser('delete');
+        $project = $this->makeProject($org, $user);
+        $document = $this->makeDocument($project, $user);
+        $drawing = $this->makeDrawing($project, $user, $document);
+        $revision = $this->makeRevision($drawing, $user, $document);
+        $hotspot = DrawingHotspot::create(['drawing_revision_id' => $revision->id, 'page_number' => 1, 'x' => 0.25, 'y' => 0.3, 'created_by' => $user->id]);
+
+        Sanctum::actingAs($user);
+        $response = $this->deleteJson("/api/projects/{$project->id}/drawings/{$drawing->id}/revisions/{$revision->id}/hotspots/{$hotspot->id}");
+
+        $response->assertStatus(204);
+        $this->assertDatabaseMissing('drawing_hotspots', ['id' => $hotspot->id]);
+    }
+
+    public function test_hotspot_from_different_revision_rejected_for_update(): void
+    {
+        [$org, $user] = $this->makeOrgAndUser('xrevupdate');
+        $project = $this->makeProject($org, $user);
+        $document = $this->makeDocument($project, $user);
+        $drawing = $this->makeDrawing($project, $user, $document);
+        $revisionA = $this->makeRevision($drawing, $user, $document, 'P01');
+        $docB = $this->makeDocument($project, $user, 'b.pdf');
+        Sanctum::actingAs($user);
+        $revisionB = $this->postJson("/api/projects/{$project->id}/drawings/{$drawing->id}/revisions", [
+            'document_id' => $docB->id, 'revision_code' => 'C01',
+        ])->json();
+        $hotspotOnA = DrawingHotspot::create(['drawing_revision_id' => $revisionA->id, 'page_number' => 1, 'x' => 0.25, 'y' => 0.3, 'created_by' => $user->id]);
+
+        // Hotspot belongs to revision A but is requested through revision B's URL.
+        $response = $this->putJson("/api/projects/{$project->id}/drawings/{$drawing->id}/revisions/{$revisionB['id']}/hotspots/{$hotspotOnA->id}", [
+            'label' => 'Should not apply',
+        ]);
+
+        $response->assertStatus(404);
+    }
+
+    // ── Phase 6A: current-revision-only authoring restriction ─────────────
+
+    public function test_store_rejected_on_historical_revision(): void
+    {
+        [$org, $user] = $this->makeOrgAndUser('histstore');
+        $project = $this->makeProject($org, $user);
+        $document = $this->makeDocument($project, $user);
+        $drawing = $this->makeDrawing($project, $user, $document);
+        $revisionP01 = $this->makeRevision($drawing, $user, $document, 'P01');
+        $docC01 = $this->makeDocument($project, $user, 'c01.pdf');
+        Sanctum::actingAs($user);
+        $this->postJson("/api/projects/{$project->id}/drawings/{$drawing->id}/revisions", [
+            'document_id' => $docC01->id, 'revision_code' => 'C01',
+        ])->assertStatus(201);
+
+        // P01 is now historical — authoring against it must be refused.
+        $response = $this->postJson("/api/projects/{$project->id}/drawings/{$drawing->id}/revisions/{$revisionP01->id}/hotspots", [
+            'page_number' => 1, 'x' => 0.5, 'y' => 0.5,
+        ]);
+
+        $response->assertStatus(422);
+    }
+
+    public function test_update_rejected_on_historical_revision(): void
+    {
+        [$org, $user] = $this->makeOrgAndUser('histupdate');
+        $project = $this->makeProject($org, $user);
+        $document = $this->makeDocument($project, $user);
+        $drawing = $this->makeDrawing($project, $user, $document);
+        $revisionP01 = $this->makeRevision($drawing, $user, $document, 'P01');
+        $hotspot = DrawingHotspot::create(['drawing_revision_id' => $revisionP01->id, 'page_number' => 1, 'x' => 0.25, 'y' => 0.3, 'created_by' => $user->id]);
+        $docC01 = $this->makeDocument($project, $user, 'c01.pdf');
+        Sanctum::actingAs($user);
+        $this->postJson("/api/projects/{$project->id}/drawings/{$drawing->id}/revisions", [
+            'document_id' => $docC01->id, 'revision_code' => 'C01',
+        ])->assertStatus(201);
+
+        $response = $this->putJson("/api/projects/{$project->id}/drawings/{$drawing->id}/revisions/{$revisionP01->id}/hotspots/{$hotspot->id}", [
+            'label' => 'Should not apply',
+        ]);
+
+        $response->assertStatus(422);
+        $this->assertDatabaseHas('drawing_hotspots', ['id' => $hotspot->id, 'label' => null]);
+    }
+
+    public function test_destroy_rejected_on_historical_revision(): void
+    {
+        [$org, $user] = $this->makeOrgAndUser('histdestroy');
+        $project = $this->makeProject($org, $user);
+        $document = $this->makeDocument($project, $user);
+        $drawing = $this->makeDrawing($project, $user, $document);
+        $revisionP01 = $this->makeRevision($drawing, $user, $document, 'P01');
+        $hotspot = DrawingHotspot::create(['drawing_revision_id' => $revisionP01->id, 'page_number' => 1, 'x' => 0.25, 'y' => 0.3, 'created_by' => $user->id]);
+        $docC01 = $this->makeDocument($project, $user, 'c01.pdf');
+        Sanctum::actingAs($user);
+        $this->postJson("/api/projects/{$project->id}/drawings/{$drawing->id}/revisions", [
+            'document_id' => $docC01->id, 'revision_code' => 'C01',
+        ])->assertStatus(201);
+
+        $response = $this->deleteJson("/api/projects/{$project->id}/drawings/{$drawing->id}/revisions/{$revisionP01->id}/hotspots/{$hotspot->id}");
+
+        $response->assertStatus(422);
+        $this->assertDatabaseHas('drawing_hotspots', ['id' => $hotspot->id]);
+    }
+
+    public function test_historical_revision_index_still_readable(): void
+    {
+        [$org, $user] = $this->makeOrgAndUser('histread');
+        $project = $this->makeProject($org, $user);
+        $document = $this->makeDocument($project, $user);
+        $drawing = $this->makeDrawing($project, $user, $document);
+        $revisionP01 = $this->makeRevision($drawing, $user, $document, 'P01');
+        DrawingHotspot::create(['drawing_revision_id' => $revisionP01->id, 'page_number' => 1, 'x' => 0.25, 'y' => 0.3, 'created_by' => $user->id]);
+        $docC01 = $this->makeDocument($project, $user, 'c01.pdf');
+        Sanctum::actingAs($user);
+        $this->postJson("/api/projects/{$project->id}/drawings/{$drawing->id}/revisions", [
+            'document_id' => $docC01->id, 'revision_code' => 'C01',
+        ])->assertStatus(201);
+
+        // Reading a historical revision's hotspots is never restricted —
+        // only store/update/destroy are.
+        $response = $this->getJson("/api/projects/{$project->id}/drawings/{$drawing->id}/revisions/{$revisionP01->id}/hotspots");
+
+        $response->assertOk();
+        $this->assertCount(1, $response->json('data'));
     }
 }

@@ -15,6 +15,7 @@ import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import EvidenceSection from '@/components/documents/EvidenceSection';
+import DrawingLocationsSection from '@/components/drawings/DrawingLocationsSection';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   open:             { bg: 'rgba(234,179,8,0.12)',  text: '#facc15' },
@@ -199,6 +200,7 @@ function RfiResponseModal({ rfi, projectId, onClose }: { rfi: any; projectId: st
             queryKey={['rfi-attachments', rfi.id]}
             label="Supporting documents"
           />
+          <DrawingLocationsSection projectId={projectId} type="rfi" recordId={rfi.id} />
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm"
               style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>

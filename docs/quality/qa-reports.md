@@ -37,6 +37,14 @@ photographs and supporting certificates or documents (JPEG, PNG, PDF, and
 common office document formats). Attach as many files as needed, and
 preview, download, or remove any attachment individually.
 
+## Drawing Locations
+
+If a QA report has been linked to a location on a [Drawing](../drawings/viewing-a-drawing.md#linking-project-records),
+a **Drawing Locations** section on the report shows every drawing location
+it's linked from, with an **Open Drawing** action that jumps straight to
+the correct drawing, revision, and page. Linking is done from the Drawing
+Viewer, not from here.
+
 ## Related
 
 - [Inspections](inspections.md)

@@ -55,8 +55,9 @@ had a revision explicitly added yet, has no current revision recorded.
 Its Drawing Register and Viewer still show its originally-registered
 document normally — nothing is lost, it simply has no revision history to
 display yet until a revision is added. [Drawing locations](viewing-a-drawing.md#drawing-locations)
-aren't available on a drawing until it has at least one revision, since a
-location always belongs to a specific revision.
+can't be added, edited, or linked to project records until the drawing has
+at least one revision, since a location always belongs to a specific
+revision — add a revision first.
 
 ## Related
 

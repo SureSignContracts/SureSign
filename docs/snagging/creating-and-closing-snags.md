@@ -40,6 +40,14 @@ one attachment never affects the others or the snag itself.
 Use the search box and status/priority filters on the Snagging list to find
 specific snags.
 
+## Drawing Locations
+
+If a snag has been linked to a location on a [Drawing](../drawings/viewing-a-drawing.md#linking-project-records),
+a **Drawing Locations** section on the snag shows every drawing location
+it's linked from, with an **Open Drawing** action that jumps straight to
+the correct drawing, revision, and page. Linking is done from the Drawing
+Viewer, not from here.
+
 ## Related
 
 - [QA Reports](../quality/qa-reports.md)

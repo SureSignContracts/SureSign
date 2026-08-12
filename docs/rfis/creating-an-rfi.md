@@ -23,6 +23,14 @@ response-due date appears on the project [Calendar](../calendar/overview.md).
     in the interface — treat the response-due date and priority as the main way
     to track ownership until this is available.
 
+## Drawing Locations
+
+If an RFI has been linked to a location on a [Drawing](../drawings/viewing-a-drawing.md#linking-project-records),
+a **Drawing Locations** section on the RFI shows every drawing location
+it's linked from, with an **Open Drawing** action that jumps straight to
+the correct drawing, revision, and page. Linking is done from the Drawing
+Viewer, not from here.
+
 ## Related
 
 - [Responding and Closing](responding-and-closing.md)

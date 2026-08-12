@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Drawing Phase 5 — a persisted, normalized-coordinate location marker on
@@ -53,5 +54,11 @@ class DrawingHotspot extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /** Drawing Phase 6B — the construction records linked to this location. */
+    public function links(): HasMany
+    {
+        return $this->hasMany(DrawingHotspotLink::class);
     }
 }

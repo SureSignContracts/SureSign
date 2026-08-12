@@ -20,6 +20,7 @@ import PageTourButton from '@/components/tours/PageTourButton';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
 import { getErrorMessage } from '@/lib/getErrorMessage';
+import DrawingLocationsSection from '@/components/drawings/DrawingLocationsSection';
 
 // ─── Status Config ────────────────────────────────────────────────────────────
 
@@ -407,6 +408,8 @@ function EditVariationModal({ variation, projectId, onClose }: { variation: any;
               <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Agreed in writing</span>
             </label>
           </div>
+
+          <DrawingLocationsSection projectId={projectId} type="variation" recordId={variation.id} />
 
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm"

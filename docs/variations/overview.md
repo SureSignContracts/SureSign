@@ -92,3 +92,11 @@ variation).
 Generate the **Variation Order** PDF from the variation once instructed or
 approved, and check it is included where relevant in a payment application or
 the Final Account.
+
+## Drawing Locations
+
+If a variation has been linked to a location on a [Drawing](../drawings/viewing-a-drawing.md#linking-project-records),
+a **Drawing Locations** section on the variation shows every drawing
+location it's linked from, with an **Open Drawing** action that jumps
+straight to the correct drawing, revision, and page. Linking is done from
+the Drawing Viewer, not from here.

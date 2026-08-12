@@ -6,14 +6,17 @@ import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Download, FileWarning, History } from 'lucide-react';
+import { ArrowLeft, Download, FileWarning, History, MapPin, X } from 'lucide-react';
 import api from '@/lib/api';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import { drawingStatusColor } from '@/components/drawings/drawingConstants';
 import type { DrawingRecord, DrawingDocumentSummary } from '@/components/drawings/DrawingModal';
 import DrawingRevisionPanel from '@/components/drawings/DrawingRevisionPanel';
-import DrawingHotspotOverlay, { type Hotspot } from '@/components/drawings/DrawingHotspotOverlay';
+import DrawingHotspotOverlay, { type Hotspot, type HotspotLink } from '@/components/drawings/DrawingHotspotOverlay';
+import HotspotFormModal from '@/components/drawings/HotspotFormModal';
+import HotspotDeleteConfirmDialog from '@/components/drawings/HotspotDeleteConfirmDialog';
+import HotspotLinkRecordModal from '@/components/drawings/HotspotLinkRecordModal';
 import type { PageGeometry } from '@/components/drawings/DrawingPdfCanvas';
 
 // PDF.js touches `window`/`Worker`/canvas at module scope — client-only,
@@ -109,6 +112,13 @@ export default function DrawingViewerPage() {
   const qc = useQueryClient();
   const { canOperate } = useProjectPermissions();
   const revisionParam = searchParams.get('revision');
+  // Deep-link params (Part Z/AA) — from a linked construction record's
+  // "Open Drawing" action. `page` opens on that page (validated/clamped by
+  // DrawingPdfCanvas itself against the real page count); `hotspot`
+  // optionally emphasises that one marker once it's on screen — neither
+  // changes hotspot data or which revision is current.
+  const initialPageParam = searchParams.get('page');
+  const highlightHotspotId = searchParams.get('hotspot') ? Number(searchParams.get('hotspot')) : null;
 
   // Tracks the *document id* that failed, not a bare boolean — so
   // navigating straight to a different (valid) image Document is never
@@ -116,6 +126,25 @@ export default function DrawingViewerPage() {
   const [unsupportedDocId, setUnsupportedDocId] = useState<number | null>(null);
   const [showRevisions, setShowRevisions] = useState(false);
   const [pageGeometry, setPageGeometry] = useState<PageGeometry | null>(null);
+
+  // Drawing Phase 6A — authoring state (Part J: the Viewer page owns all of
+  // this; DrawingHotspotOverlay only turns it into geometry/callbacks).
+  const [authoringMode, setAuthoringMode] = useState<'idle' | 'placing' | 'moving'>('idle');
+  const [moveHotspotId, setMoveHotspotId] = useState<number | null>(null);
+  const [pendingPlacement, setPendingPlacement] = useState<{ x: number; y: number } | null>(null);
+  const [editingHotspot, setEditingHotspot] = useState<Hotspot | null>(null);
+  const [deletingHotspot, setDeletingHotspot] = useState<Hotspot | null>(null);
+  const [savingHotspot, setSavingHotspot] = useState(false);
+  const [deletingBusy, setDeletingBusy] = useState(false);
+
+  // Drawing Phase 6B — linking state. `openHotspotId` tracks whichever
+  // marker's popover is currently expanded (initialised from the
+  // `?hotspot=` deep-link param, Part AA) so this page knows which
+  // hotspot's links to fetch; DrawingHotspotOverlay owns the popover's own
+  // open/closed UI state independently but calls back here via
+  // onDetailsOpen whenever it opens one.
+  const [openHotspotId, setOpenHotspotId] = useState<number | null>(highlightHotspotId);
+  const [linkingHotspot, setLinkingHotspot] = useState<Hotspot | null>(null);
 
   const drawingQueryKey = ['project-drawing', projectId, drawingId];
   const { data: drawing, isLoading, isError, error } = useQuery<DrawingRecord>({
@@ -148,6 +177,125 @@ export default function DrawingViewerPage() {
     enabled: !!activeRevisionId,
   });
   const hotspots = hotspotsData?.data ?? [];
+  const hotspotsQueryKey = ['drawing-hotspots', projectId, drawingId, activeRevisionId];
+  const hotspotsBaseUrl = `/projects/${projectId}/drawings/${drawingId}/revisions/${activeRevisionId}/hotspots`;
+
+  // Drawing Phase 6B — fetched only for whichever hotspot's popover is
+  // currently open (Part J: never all hotspots' links up front). Keyed by
+  // hotspot id so switching between two open markers never shows stale data.
+  const linksQueryKey = ['drawing-hotspot-links', projectId, drawingId, activeRevisionId, openHotspotId];
+  const { data: linksData, isLoading: linksLoading } = useQuery<{ data: HotspotLink[] }>({
+    queryKey: linksQueryKey,
+    queryFn: () => api.get(`${hotspotsBaseUrl}/${openHotspotId}/links`).then(r => r.data),
+    enabled: !!activeRevisionId && !!openHotspotId,
+  });
+  const openHotspotLinks = linksData?.data ?? [];
+
+  function cancelAuthoring() {
+    setAuthoringMode('idle');
+    setMoveHotspotId(null);
+    setPendingPlacement(null);
+  }
+
+  function toggleAddLocation() {
+    if (authoringMode === 'placing') {
+      cancelAuthoring();
+    } else {
+      setAuthoringMode('placing');
+      setPendingPlacement(null);
+    }
+  }
+
+  function handlePlaceClick(x: number, y: number) {
+    setPendingPlacement({ x, y });
+  }
+
+  async function confirmPlacement(label: string) {
+    if (!pendingPlacement || !activeRevisionId || !pageGeometry) return;
+    setSavingHotspot(true);
+    try {
+      await api.post(hotspotsBaseUrl, {
+        page_number: pageGeometry.pageNumber,
+        x: pendingPlacement.x,
+        y: pendingPlacement.y,
+        label: label || null,
+      });
+      await qc.invalidateQueries({ queryKey: hotspotsQueryKey });
+      toast.success('Drawing location added.');
+      cancelAuthoring();
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Could not save this location.'));
+    } finally {
+      setSavingHotspot(false);
+    }
+  }
+
+  function handleStartMove(hotspot: Hotspot) {
+    setAuthoringMode('moving');
+    setMoveHotspotId(hotspot.id);
+  }
+
+  async function handleMoveClick(hotspotId: number, x: number, y: number) {
+    if (!activeRevisionId) return;
+    try {
+      await api.put(`${hotspotsBaseUrl}/${hotspotId}`, { x, y });
+      await qc.invalidateQueries({ queryKey: hotspotsQueryKey });
+      toast.success('Drawing location moved.');
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Could not move this location.'));
+    } finally {
+      cancelAuthoring();
+    }
+  }
+
+  async function confirmLabelEdit(label: string) {
+    if (!editingHotspot || !activeRevisionId) return;
+    setSavingHotspot(true);
+    try {
+      await api.put(`${hotspotsBaseUrl}/${editingHotspot.id}`, { label: label || null });
+      await qc.invalidateQueries({ queryKey: hotspotsQueryKey });
+      toast.success('Label updated.');
+      setEditingHotspot(null);
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Could not update the label.'));
+    } finally {
+      setSavingHotspot(false);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!deletingHotspot || !activeRevisionId) return;
+    setDeletingBusy(true);
+    try {
+      await api.delete(`${hotspotsBaseUrl}/${deletingHotspot.id}`);
+      await qc.invalidateQueries({ queryKey: hotspotsQueryKey });
+      toast.success('Drawing location removed.');
+      setDeletingHotspot(null);
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Could not remove this location.'));
+    } finally {
+      setDeletingBusy(false);
+    }
+  }
+
+  async function handleLinkRecord(type: string, recordId: number) {
+    if (!linkingHotspot || !activeRevisionId) return;
+    await api.post(`${hotspotsBaseUrl}/${linkingHotspot.id}/links`, { type, record_id: recordId });
+    await qc.invalidateQueries({ queryKey: ['drawing-hotspot-links', projectId, drawingId, activeRevisionId, linkingHotspot.id] });
+    toast.success('Record linked.');
+    setLinkingHotspot(null);
+  }
+
+  async function handleUnlink(link: HotspotLink) {
+    if (!openHotspotId || !activeRevisionId) return;
+    try {
+      await api.delete(`${hotspotsBaseUrl}/${openHotspotId}/links/${link.id}`);
+      await qc.invalidateQueries({ queryKey: ['drawing-hotspot-links', projectId, drawingId, activeRevisionId, openHotspotId] });
+      toast.success('Link removed.');
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Could not remove this link.'));
+    }
+  }
 
   function handleDownload(document: DrawingDocumentSummary) {
     api.get(`/documents/${document.id}/download`, { responseType: 'blob' })
@@ -205,6 +353,14 @@ export default function DrawingViewerPage() {
     ? (viewingRevision.revision_code ?? 'Revision not recorded')
     : null;
 
+  // Drawing Phase 6A, Part D/E — authoring (place/edit/move/delete) is only
+  // ever available on the Drawing's current revision, to an operator. A
+  // historical revision (isHistorical) and a Drawing with no revision at all
+  // (activeRevisionId null) are both always read-only, never a fallback to
+  // Drawing.document_id/effectiveDocument().
+  const editable = canOperate && !!activeRevisionId && !isHistorical;
+  const noCurrentRevision = !revisionParam && !drawing.current_revision;
+
   return (
     <div className="flex flex-col h-[calc(100vh-64px)]">
       {/* Header — construction metadata context, not a Document-preview
@@ -261,6 +417,18 @@ export default function DrawingViewerPage() {
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
+          {fileType === 'pdf' && editable && (
+            <button
+              onClick={toggleAddLocation}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+              style={authoringMode === 'placing'
+                ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
+                : { border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+            >
+              {authoringMode === 'placing' ? <X size={13} /> : <MapPin size={13} />}
+              {authoringMode === 'placing' ? 'Cancel' : 'Add Location'}
+            </button>
+          )}
           <button
             onClick={() => setShowRevisions(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors hover:bg-[var(--bg-hover)]"
@@ -277,6 +445,37 @@ export default function DrawingViewerPage() {
           </button>
         </div>
       </div>
+
+      {/* Authoring instruction banner (Part C/H) — only while actively
+          placing or moving a location. */}
+      {authoringMode !== 'idle' && (
+        <div
+          className="flex items-center justify-between gap-3 px-4 py-2 flex-wrap flex-shrink-0"
+          style={{ backgroundColor: 'rgba(212,175,55,0.1)', borderBottom: '1px solid rgba(212,175,55,0.3)' }}
+        >
+          <p className="text-xs font-medium" style={{ color: 'var(--gold)' }}>
+            {authoringMode === 'placing'
+              ? 'Click the drawing to place a location.'
+              : 'Click a new position on this page.'}
+          </p>
+          <button onClick={cancelAuthoring} className="text-xs font-medium flex-shrink-0" style={{ color: 'var(--gold)', textDecoration: 'underline' }}>
+            Cancel
+          </button>
+        </div>
+      )}
+
+      {/* No current revision yet (Part E) — authoring stays honestly
+          unavailable; never a fallback to the legacy document. */}
+      {canOperate && noCurrentRevision && fileType === 'pdf' && (
+        <div
+          className="flex items-center px-4 py-2 flex-shrink-0"
+          style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}
+        >
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            Add a drawing revision before recording drawing locations.
+          </p>
+        </div>
+      )}
 
       {/* Historical banner — never let historical content look current
           (Part N, mandatory). */}
@@ -311,9 +510,29 @@ export default function DrawingViewerPage() {
           <DrawingPdfCanvas
             key={activeDocument.id}
             previewEndpoint={`/documents/${activeDocument.id}/preview`}
+            initialPage={initialPageParam ? Number(initialPageParam) : undefined}
             onPageGeometryChange={setPageGeometry}
           >
-            <DrawingHotspotOverlay hotspots={hotspots} pageGeometry={pageGeometry} />
+            <DrawingHotspotOverlay
+              hotspots={hotspots}
+              pageGeometry={pageGeometry}
+              editable={editable}
+              placementMode={authoringMode === 'placing'}
+              moveHotspotId={authoringMode === 'moving' ? moveHotspotId : null}
+              pendingPlacement={pendingPlacement}
+              initialOpenHotspotId={highlightHotspotId}
+              links={openHotspotLinks}
+              linksLoading={linksLoading}
+              onPlace={handlePlaceClick}
+              onMove={handleMoveClick}
+              onEditLabel={setEditingHotspot}
+              onStartMove={handleStartMove}
+              onDelete={setDeletingHotspot}
+              onDetailsOpen={setOpenHotspotId}
+              onLinkRecord={setLinkingHotspot}
+              onUnlink={handleUnlink}
+              onOpenLink={(url) => router.push(url)}
+            />
           </DrawingPdfCanvas>
         )}
 
@@ -346,6 +565,45 @@ export default function DrawingViewerPage() {
           canOperate={canOperate}
           onClose={() => setShowRevisions(false)}
           onRevisionsChanged={() => qc.invalidateQueries({ queryKey: drawingQueryKey })}
+        />
+      )}
+
+      {/* Confirm a freshly placed location (Part C) — Cancel discards the
+          pending marker without ever calling the API. */}
+      {pendingPlacement && (
+        <HotspotFormModal
+          title="Add drawing location"
+          initialLabel=""
+          saving={savingHotspot}
+          onSave={confirmPlacement}
+          onCancel={cancelAuthoring}
+        />
+      )}
+
+      {editingHotspot && (
+        <HotspotFormModal
+          title="Edit location label"
+          initialLabel={editingHotspot.label ?? ''}
+          saving={savingHotspot}
+          onSave={confirmLabelEdit}
+          onCancel={() => setEditingHotspot(null)}
+        />
+      )}
+
+      {deletingHotspot && (
+        <HotspotDeleteConfirmDialog
+          linkCount={deletingHotspot.id === openHotspotId ? openHotspotLinks.length : 0}
+          deleting={deletingBusy}
+          onConfirm={confirmDelete}
+          onCancel={() => setDeletingHotspot(null)}
+        />
+      )}
+
+      {linkingHotspot && (
+        <HotspotLinkRecordModal
+          projectId={projectId}
+          onLink={handleLinkRecord}
+          onCancel={() => setLinkingHotspot(null)}
         />
       )}
     </div>
