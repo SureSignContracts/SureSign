@@ -2,15 +2,21 @@
 
 ## What this is
 
-When a Super Admin invites you, sets a temporary password for you, or forces a
-password reset on your account, SureSign requires you to set a new password
-before you can use anything else in the platform.
+When a Super Admin sets a temporary password for you or forces a password
+reset on your account, SureSign requires you to set a new password before you
+can use anything else in the platform.
 
 ## Who this applies to
 
 Any user whose account has been marked by a Super Admin as needing a password
 change. This is not something you switch on yourself; it is set on your account
-by an administrator, or automatically when your account is first created.
+by an administrator.
+
+!!! note "This is different from accepting an invitation"
+    If you were invited to SureSign, you chose your own password when you
+    accepted the invitation email, so you will not see this screen the first
+    time you sign in. This screen only appears if an administrator later sets
+    a temporary password for you or forces a password reset.
 
 ## What you will see
 

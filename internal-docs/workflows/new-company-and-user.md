@@ -22,13 +22,15 @@ Super Admin.
 
 ## Steps
 
-1. Once the organisation exists, go to Admin panel → **Users** → **Invite**.
+1. Once the organisation exists, go to Admin panel → **Users** → **Invite
+   User**.
 2. Enter the first user's email and choose their role (typically Admin, or
    Client for a standard day-to-day user).
-3. Send the invite. SureSign creates the account with a temporary password and
-   sends an email verification link.
-4. Give the user their temporary password if it was not sent automatically, or
-   have them use **Forgot password** to set their own.
+3. Send the invite. SureSign emails the person a SureSign invitation with an
+   **Accept Invitation & Set Up Account** link — no password is generated for
+   you to hand over.
+4. The person opens the link, chooses their own password, and their account
+   is activated.
 5. The user signs in and, if they are the first user of a new organisation,
    is guided through the onboarding wizard (profile, company details,
    branding) — documented in the public User Guide's Getting Started section.
@@ -46,7 +48,9 @@ branding is set up.
 
 ## Notifications
 
-The invited user receives an email verification link.
+The invited user receives a SureSign invitation email with an invitation
+link, not a standard email-verification link — accepting it sets up their
+account and verifies their email in one step.
 
 ## Common mistakes
 

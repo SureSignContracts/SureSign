@@ -91,6 +91,7 @@ use App\Http\Controllers\Api\ConsultationReservationController;
 use App\Http\Controllers\Api\GoogleCalendarSyncController;
 use App\Http\Controllers\Api\GoogleIntegrationController;
 use App\Http\Controllers\Api\PublicAppointmentActionController;
+use App\Http\Controllers\Api\InvitationController;
 use App\Http\Controllers\Api\PublicAppointmentController;
 use App\Http\Controllers\Api\PublicOrganisationBrandingController;
 use App\Http\Controllers\Api\PublicConsultancyReservationController;
@@ -215,6 +216,18 @@ Route::middleware(['signed', 'throttle:public-booking-read'])->group(function ()
 Route::middleware(['signed', 'throttle:public-booking'])->group(function () {
     Route::post('/public/appointments/{token}/cancel', [PublicAppointmentActionController::class, 'cancel']);
     Route::post('/public/appointments/{token}/reschedule', [PublicAppointmentActionController::class, 'reschedule']);
+});
+
+// Invitation & First-Time Account Setup phase — the public, signed-URL
+// "Accept Invitation & Set Up Account" link (UserController::invite() /
+// InvitationLinkService). Same GET/POST-share-one-signed-URL pattern as
+// the appointment routes above; the show() route never mutates anything,
+// so it's safe to load repeatedly before accept() is actually submitted.
+Route::middleware(['signed', 'throttle:invitation-view'])->group(function () {
+    Route::get('/public/invitations/{user}', [InvitationController::class, 'show'])->name('invitations.show');
+});
+Route::middleware(['signed', 'throttle:invitation-accept'])->group(function () {
+    Route::post('/public/invitations/{user}', [InvitationController::class, 'accept']);
 });
 // Signed via `signed:date,timezone` — Laravel validates the full signature
 // except the `date`/`timezone` keys, which are excluded from the hash on

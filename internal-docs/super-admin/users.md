@@ -10,13 +10,24 @@ Admin panel → **Users**.
 
 ## Inviting a user
 
-1. Select **Invite**.
+1. Select **Invite User**.
 2. Enter the person's **Email** and choose a **Role** (Admin or Client — Super
    Admin invites are not offered from this quick-invite flow).
 3. Send the invite.
 
-The new account is created with a temporary password and an email
-verification link is sent.
+The recipient gets a SureSign invitation email ("You've been invited to
+SureSign") with an **Accept Invitation & Set Up Account** link. No password is
+ever generated for you to share — the recipient chooses their own password
+when they accept. The link is specific to that person, expires after 7 days,
+and cannot be reused once they've completed setup. If they haven't provided a
+first name, the email uses a generic greeting rather than guessing one from
+their email address.
+
+Until the invitation is accepted, the account shows as **Unverified** on the
+Users list — the same badge a self-registered user who hasn't verified their
+email yet would show. There is currently no separate "Pending Invitation"
+label and no resend action; if an invitation link expires before the
+recipient uses it, remove the account and send a new invite.
 
 ## Managing an existing user
 

@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\Organization;
 use App\Models\User;
-use App\Services\EmailVerificationService;
 use App\Services\Entitlements\SubscriptionAccessPolicy;
+use App\Services\InvitationService;
 use App\Services\Intelligence\SubscriptionIntelligenceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -27,6 +27,7 @@ class UserController extends Controller
     public function __construct(
         private readonly SubscriptionAccessPolicy $accessPolicy,
         private readonly SubscriptionIntelligenceService $intelligence,
+        private readonly InvitationService $invitations,
     ) {
     }
 
@@ -132,6 +133,12 @@ class UserController extends Controller
             'role'  => 'required|string|in:' . implode(',', self::ALLOWED_ROLES),
         ]);
 
+        // An internal compatibility secret only — users.password is
+        // non-nullable, but this value is never surfaced anywhere (API
+        // response, frontend, email, log, or activity metadata) and is
+        // never intended for the recipient to log in with. It's replaced
+        // by the recipient's own chosen password during invitation
+        // acceptance (InvitationService::accept()).
         $tempPassword = $this->generateTempPassword();
 
         // Reuse the soft-deleted record for this email instead of colliding
@@ -141,35 +148,57 @@ class UserController extends Controller
         if ($user) {
             $user->restore();
             $user->update([
-                'name'                 => explode('@', $validated['email'])[0],
+                // No first/last name is collected at invite time — 'name'
+                // holds the email address itself as a schema-compatible
+                // internal placeholder (users.name is non-nullable), never
+                // a guessed human name. The invitation email greeting reads
+                // first_name only (see InvitationService::send()), which
+                // stays null here, so it correctly falls back to "Hi,".
+                'name'                 => $validated['email'],
+                'first_name'           => null,
+                'last_name'            => null,
                 'password'             => Hash::make($tempPassword),
                 'is_active'            => true,
-                'must_change_password' => false,
+                'must_change_password' => true,
+                // A previous account for this email may have already been
+                // verified before it was removed — reset explicitly, or a
+                // re-invited user with a brand-new, unknown password would
+                // wrongly show as "invitation already accepted" instead of
+                // being able to set one up.
+                'email_verified_at'    => null,
                 'banned_at'            => null,
                 'banned_reason'        => null,
             ]);
             $user->syncRoles([]);
         } else {
             $user = User::create([
-                'name'      => explode('@', $validated['email'])[0],
+                'name'      => $validated['email'],
                 'email'     => $validated['email'],
                 'password'  => Hash::make($tempPassword),
                 'is_active' => true,
+                'must_change_password' => true,
             ]);
         }
 
         $role = Role::firstOrCreate(['name' => $validated['role'], 'guard_name' => 'web']);
         $user->assignRole($role);
 
-        EmailVerificationService::sendVerificationLink($user);
+        $this->invitations->send($user);
+
+        ActivityLog::record(
+            'user.invited',
+            "Invited {$user->email} to SureSign as {$validated['role']}",
+            Auth::user(),
+            $user,
+            ['role' => $validated['role']],
+        );
 
         return response()->json([
-            'message' => 'User created successfully.',
+            'message' => "Invitation sent to {$user->email}.",
             'data'    => [
-                'id'            => $user->id,
-                'email'         => $user->email,
-                'role'          => $validated['role'],
-                'temp_password' => $tempPassword,
+                'id'    => $user->id,
+                'email' => $user->email,
+                'role'  => $validated['role'],
             ],
         ], 201);
     }

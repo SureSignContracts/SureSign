@@ -139,6 +139,17 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinutes(15, 5)->by($request->ip());
         });
 
+        // Invitation acceptance (public, signed-URL, no auth) — mirrors
+        // public-booking-read/public-booking's per-IP-only rationale. The
+        // signature itself already gates access; this is defence-in-depth
+        // against brute-force guessing of a valid user id + signature pair.
+        RateLimiter::for('invitation-view', function (Request $request) {
+            return Limit::perMinutes(15, 30)->by($request->ip());
+        });
+        RateLimiter::for('invitation-accept', function (Request $request) {
+            return Limit::perMinutes(15, 5)->by($request->ip());
+        });
+
         // Forced password change — authenticated-only endpoint, so the risk is
         // limited to a compromised session hammering the endpoint rather than
         // credential guessing. A loose per-user limit avoids nuisance-blocking

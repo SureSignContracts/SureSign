@@ -8,7 +8,9 @@ already signed in.
 ## What you need
 
 - Your email address.
-- Your password (or the temporary password an administrator gave you).
+- Your password (the one you chose when you accepted your invitation or
+  registered, or a temporary password if an administrator gave you one
+  directly).
 
 ## How to sign in
 
@@ -47,10 +49,11 @@ Follow the link in the email to set a new password.
 
 ## Verifying your email
 
-New accounts receive a verification email. Following the link confirms your
-email address. You do not need to verify your email to be invited or to have an
-account created for you, but some administrator actions (such as verifying your
-account) are visible to your Super Admin as part of account management.
+If you registered yourself, SureSign sends a verification email, and
+following the link confirms your email address. If you were invited by a
+Super Admin or Admin, accepting your invitation confirms your email
+automatically, since opening a secure, personal invitation link already
+proves you control that mailbox — no separate verification email is sent.
 
 ## Signing out
 

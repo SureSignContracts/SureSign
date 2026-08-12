@@ -69,4 +69,21 @@ return [
 
     'frontend_url' => env('FRONTEND_URL', 'http://localhost:3000'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Invitation & First-Time Account Setup
+    |--------------------------------------------------------------------------
+    |
+    | Configured separately from the standard email-verification link
+    | (EmailVerificationService::EXPIRES_MINUTES / AccountEmailService's
+    | 60-minute constant) — a business invitation may reasonably sit
+    | unopened for days, unlike a same-session verification or password
+    | reset request. See InvitationLinkService.
+    |
+    */
+
+    'invitation' => [
+        'link_expiry_days' => env('SURESIGN_INVITATION_LINK_EXPIRY_DAYS', 7),
+    ],
+
 ];

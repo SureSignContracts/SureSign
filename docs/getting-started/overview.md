@@ -7,8 +7,9 @@ day: signing in, understanding the dashboard, and finding your way around.
 
 - An email invitation from your organisation's Super Admin or Admin, or a login
   provided to you directly.
-- A temporary password (if your account was created by an administrator) or your
-  own chosen password.
+- Your own chosen password, set when you accepted your invitation or
+  registered, or a temporary password if an administrator set one for you
+  directly.
 - To know your role: **Super Admin**, **Admin**, or **Client**. See
   [Roles](../roles/overview.md) for what each can do.
 

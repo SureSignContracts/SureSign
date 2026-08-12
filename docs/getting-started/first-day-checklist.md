@@ -2,8 +2,9 @@
 
 Use this checklist the first time you sign in to SureSign.
 
-1. **Sign in** with the email and password (or temporary password) you were
-   given. See [Signing in](signing-in.md).
+1. **Sign in** with your email and the password you chose when you accepted
+   your invitation (or the password an administrator gave you directly). See
+   [Signing in](signing-in.md).
 2. **Change your temporary password**, if prompted. See
    [Changing a temporary password](temporary-password.md).
 3. **Complete onboarding**, if your organisation is new to SureSign. If you are

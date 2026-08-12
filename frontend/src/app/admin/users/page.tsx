@@ -678,8 +678,6 @@ export default function AdminUsersPage() {
   const [inviteOpen, setInviteOpen]     = useState(false);
   const [inviteEmail, setInviteEmail]   = useState('');
   const [inviteRole, setInviteRole]     = useState<InviteRole>('Client');
-  const [credentials, setCredentials]   = useState<{ email: string; password: string } | null>(null);
-  const [copied, setCopied]             = useState(false);
   const [manageUser, setManageUser]     = useState<AdminUser | null>(null);
   const [passwordUser, setPasswordUser]   = useState<AdminUser | null>(null);
   const [passwordResult, setPasswordResult] = useState<string | null>(null);
@@ -719,10 +717,13 @@ export default function AdminUsersPage() {
       setInviteOpen(false);
       setInviteEmail('');
       setInviteRole('Client');
-      setCredentials({ email: res.data.email, password: res.data.temp_password });
+      // The recipient sets their own password via the invitation email —
+      // no credential is ever generated for display here (see
+      // UserController::invite()).
+      toast.success(res?.message ?? `Invitation sent to ${res?.data?.email ?? inviteEmail}.`);
     },
     onError: (e: any) => {
-      toast.error(e?.response?.data?.message ?? e?.response?.data?.errors?.email?.[0] ?? 'Failed to create user.');
+      toast.error(e?.response?.data?.message ?? e?.response?.data?.errors?.email?.[0] ?? 'Failed to send invitation.');
     },
   });
 
@@ -974,51 +975,6 @@ export default function AdminUsersPage() {
           onClose={() => { setPasswordUser(null); setPasswordResult(null); }}
           onSave={(password, requireChange) => setPasswordMutation.mutate({ id: passwordUser.id, password, requireChange })}
         />
-      )}
-
-      {/* Credentials modal (invite) */}
-      {credentials && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
-          <div className="w-full max-w-md rounded-2xl p-6 ss-animate-in" style={{ backgroundColor: 'var(--bg-panel)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(34,197,94,0.15)' }}>
-                <Check size={20} style={{ color: '#4ade80' }} />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>User Created</h2>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Share these credentials with the new user</p>
-              </div>
-            </div>
-            <div className="space-y-3 mb-5">
-              <div className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
-                <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Email</p>
-                <p className="text-sm font-mono" style={{ color: 'var(--text-primary)' }}>{credentials.email}</p>
-              </div>
-              <div className="rounded-lg p-3" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Temporary Password</p>
-                  <button
-                    onClick={() => { navigator.clipboard.writeText(credentials.password); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
-                    className="flex items-center gap-1 text-xs px-2 py-0.5 rounded"
-                    style={{ color: copied ? '#4ade80' : 'var(--gold)', backgroundColor: copied ? 'rgba(34,197,94,0.1)' : 'var(--gold-15)' }}
-                  >
-                    {copied ? <Check size={11} /> : <Copy size={11} />}
-                    {copied ? 'Copied!' : 'Copy'}
-                  </button>
-                </div>
-                <p className="text-base font-mono font-semibold tracking-widest" style={{ color: 'var(--text-primary)' }}>{credentials.password}</p>
-              </div>
-            </div>
-            <p className="text-xs mb-5 p-3 rounded-lg" style={{ color: 'var(--text-muted)', backgroundColor: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)' }}>
-              The user should log in with these credentials and change their password immediately.
-            </p>
-            <button onClick={() => { setCredentials(null); setCopied(false); }}
-                    className="w-full py-2.5 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.98]"
-                    style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
-              Done
-            </button>
-          </div>
-        </div>
       )}
 
       {/* Invite modal */}
