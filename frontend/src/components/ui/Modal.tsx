@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { LucideIcon } from 'lucide-react';
+import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type ModalTone = 'neutral' | 'warning' | 'danger' | 'info';
@@ -58,6 +59,7 @@ export default function Modal({
   icon: Icon,
   tone = 'neutral',
   size = 'md',
+  showCloseButton = false,
   onClose,
   busy = false,
   children,
@@ -66,6 +68,7 @@ export default function Modal({
   icon?: LucideIcon;
   tone?: ModalTone;
   size?: ModalSize;
+  showCloseButton?: boolean;
   onClose: () => void;
   busy?: boolean;
   children: (close: () => void) => React.ReactNode;
@@ -147,7 +150,19 @@ export default function Modal({
           SIZE_CLASS[size],
           closing ? 'ss-modal-panel-out' : 'ss-modal-panel-in',
         )}
-        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}
+        style={{
+          backgroundColor: 'var(--bg-surface)',
+          border: '1px solid var(--border)',
+          // The global [tabindex]:focus-visible rule uses a tighter radius.
+          // This dialog is focused on mount for keyboard trapping, so lock
+          // its intended shell radius before and after focus moves inside.
+          borderRadius: '1rem',
+          boxShadow: 'var(--shadow-pop)',
+          // The panel receives programmatic focus for keyboard trapping, but
+          // it is not an interactive control. Keep the visible focus ring on
+          // the buttons and fields inside instead of tinting the modal edge.
+          outline: 'none',
+        }}
         role="dialog"
         aria-modal="true"
         aria-labelledby="ss-modal-title"
@@ -165,6 +180,17 @@ export default function Modal({
           <h2 id="ss-modal-title" className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
             {title}
           </h2>
+          {showCloseButton && (
+            <button
+              type="button"
+              onClick={close}
+              aria-label="Close dialog"
+              className="ml-auto flex h-9 w-9 items-center justify-center rounded-xl transition-colors hover:bg-[var(--bg-hover)] active:translate-y-px"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              <X size={16} strokeWidth={1.75} />
+            </button>
+          )}
         </div>
 
         {/* Body region — `min-h-0` lets this shrink below its content's natural size so an inner

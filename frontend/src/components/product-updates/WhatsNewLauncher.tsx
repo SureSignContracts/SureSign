@@ -2,8 +2,10 @@
 
 import { useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { useAuthStore } from '@/store/authStore';
 import { usePendingProductUpdates } from '@/hooks/useProductUpdates';
 import { getSessionClosedIds, markSessionClosed } from '@/lib/whatsNewSession';
+import { isWelcomeSeen } from '@/lib/welcomeStorage';
 import WhatsNewModal from './WhatsNewModal';
 
 /**
@@ -16,9 +18,11 @@ import WhatsNewModal from './WhatsNewModal';
  */
 export default function WhatsNewLauncher({ enabled = true, historyHref }: { enabled?: boolean; historyHref?: string }) {
   const pathname = usePathname();
+  const user = useAuthStore(s => s.user);
   const onOnboardingPage = pathname === '/app/onboarding';
+  const welcomeSeen = !user || isWelcomeSeen(user.id, user.tours_reset_at);
 
-  const { data: pending } = usePendingProductUpdates(enabled && !onOnboardingPage);
+  const { data: pending } = usePendingProductUpdates(enabled && !onOnboardingPage && welcomeSeen);
 
   // Read once at mount (lazy initializer, not an effect) — anything
   // closed in an earlier route within this same tab session.
