@@ -8,6 +8,8 @@ import { getErrorMessage } from '@/lib/getErrorMessage';
 import Select from '@/components/ui/Select';
 import EvidenceSection from '@/components/documents/EvidenceSection';
 import DrawingLocationsSection from '@/components/drawings/DrawingLocationsSection';
+import DrawingCreationContextBadge from '@/components/drawings/DrawingCreationContextBadge';
+import type { DrawingCreationContext } from '@/components/drawings/DrawingCreationContext';
 
 const STATUSES = ['open', 'in_progress', 'ready_for_review', 'closed'];
 const PRIORITIES = ['low', 'medium', 'high', 'critical'];
@@ -28,9 +30,10 @@ const PRIORITY_LABELS: Record<string, string> = {
 
 /**
  * Drawing Phase 7B2 — extracted unchanged from snagging/page.tsx's
- * page-local SnagModal, so this exact form can later be opened from the
- * Drawing Viewer (Phase 7B3) without a second implementation. No visual or
- * behavioural change from the pre-extraction version.
+ * page-local SnagModal. Drawing Phase 7B3 added the optional `drawingContext`
+ * prop (Part 4) — absent for every existing module page, so their behaviour
+ * is byte-for-byte unchanged; present only when opened from the Drawing
+ * Viewer's "Create Record" action.
  */
 export interface SnagRecord {
   id: number;
@@ -45,12 +48,14 @@ export interface SnagRecord {
   notes?: string | null;
 }
 
-export default function SnagModal({ projectId, snag, onClose, onCreated }: {
+export default function SnagModal({ projectId, snag, onClose, onCreated, drawingContext }: {
   projectId: string;
   snag?: SnagRecord;
   onClose: () => void;
   /** Fires only after a successful CREATE (never on edit) — optional, additive to existing query invalidation/close behaviour. */
   onCreated?: (snag: SnagRecord) => void;
+  /** Drawing Phase 7B3, Part 4/7 — only ever set when opened from the Drawing Viewer. Never present for the ordinary Snagging page. */
+  drawingContext?: DrawingCreationContext;
 }) {
   const qc = useQueryClient();
   const isEdit = !!snag;
@@ -58,7 +63,12 @@ export default function SnagModal({ projectId, snag, onClose, onCreated }: {
   const [form, setForm] = useState({
     title:       snag?.title       ?? '',
     description: snag?.description ?? '',
-    location:    snag?.location    ?? '',
+    // Part 7 — convenience prefill only, from the hotspot's own label; never
+    // fabricated, never a "Drawing S-204..." string. Editable/clearable
+    // like any other field. `drawingContext` is only ever supplied on
+    // create (the caller never passes both `snag` and `drawingContext`),
+    // so this never overrides a real edit value.
+    location:    snag?.location    ?? drawingContext?.hotspotLabel ?? '',
     category:    snag?.category    ?? '',
     priority:    snag?.priority    ?? 'medium',
     status:      snag?.status      ?? 'open',
@@ -70,7 +80,10 @@ export default function SnagModal({ projectId, snag, onClose, onCreated }: {
     mutationFn: (data: typeof form) =>
       isEdit
         ? api.put(`/projects/${projectId}/snagging/${snag.id}`, data).then(r => r.data)
-        : api.post(`/projects/${projectId}/snagging`, data).then(r => r.data),
+        // Part 5 — drawing_hotspot_id sent ONLY on create, never on an
+        // ordinary edit save (an already-linked Snag never needs to
+        // re-resolve/re-link on every edit).
+        : api.post(`/projects/${projectId}/snagging`, drawingContext ? { ...data, drawing_hotspot_id: drawingContext.hotspotId } : data).then(r => r.data),
     onSuccess: (created: SnagRecord) => {
       qc.invalidateQueries({ queryKey: ['project-snagging', projectId] });
       qc.invalidateQueries({ queryKey: ['project-activities', projectId] });
@@ -106,6 +119,8 @@ export default function SnagModal({ projectId, snag, onClose, onCreated }: {
           </button>
         </div>
         <form onSubmit={e => { e.preventDefault(); mutation.mutate(form); }} className="p-6 space-y-4">
+          {/* Part 6/10 (DoD) — only ever shown for a Drawing-origin create; drawingContext is never passed alongside an edit. */}
+          {!isEdit && drawingContext && <DrawingCreationContextBadge context={drawingContext} />}
           <div>
             <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Title *</label>
             <input value={form.title} onChange={set('title')} required placeholder="Brief description of defect"

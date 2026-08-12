@@ -13,11 +13,15 @@ import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import { drawingStatusColor } from '@/components/drawings/drawingConstants';
 import type { DrawingRecord, DrawingDocumentSummary } from '@/components/drawings/DrawingModal';
 import DrawingRevisionPanel from '@/components/drawings/DrawingRevisionPanel';
-import DrawingHotspotOverlay, { type Hotspot, type HotspotLink } from '@/components/drawings/DrawingHotspotOverlay';
+import DrawingHotspotOverlay, { type Hotspot, type HotspotLink, type CreatableRecordType } from '@/components/drawings/DrawingHotspotOverlay';
 import HotspotFormModal from '@/components/drawings/HotspotFormModal';
 import HotspotDeleteConfirmDialog from '@/components/drawings/HotspotDeleteConfirmDialog';
 import HotspotLinkRecordModal from '@/components/drawings/HotspotLinkRecordModal';
+import type { DrawingCreationContext } from '@/components/drawings/DrawingCreationContext';
 import type { PageGeometry } from '@/components/drawings/DrawingPdfCanvas';
+import SnagModal from '@/components/snags/SnagModal';
+import NewRfiModal from '@/components/rfis/NewRfiModal';
+import QaModal from '@/components/qa/QaModal';
 
 // PDF.js touches `window`/`Worker`/canvas at module scope — client-only,
 // loaded only once the viewer actually needs to render (same dynamic-
@@ -145,6 +149,12 @@ export default function DrawingViewerPage() {
   // onDetailsOpen whenever it opens one.
   const [openHotspotId, setOpenHotspotId] = useState<number | null>(highlightHotspotId);
   const [linkingHotspot, setLinkingHotspot] = useState<Hotspot | null>(null);
+  // Drawing Phase 7B3, Part 10/30 — which shared create modal is open and
+  // for which hotspot. Keyed by the hotspot object itself (not just its id)
+  // so drawingCreationContext below never needs a second lookup, and a new
+  // create request for a different hotspot always replaces this outright
+  // rather than merging into stale state.
+  const [createRecordState, setCreateRecordState] = useState<{ type: CreatableRecordType; hotspot: Hotspot } | null>(null);
 
   const drawingQueryKey = ['project-drawing', projectId, drawingId];
   const { data: drawing, isLoading, isError, error } = useQuery<DrawingRecord>({
@@ -297,6 +307,29 @@ export default function DrawingViewerPage() {
     }
   }
 
+  // Drawing Phase 7B3, Part 2/11 — the popover only reports the user's
+  // choice; this page decides which shared modal to open. Deliberately
+  // does NOT touch openHotspotId/setOpenHotspotId — the underlying hotspot
+  // popover stays exactly as it was (Part 11/14).
+  function handleCreateRecord(hotspot: Hotspot, type: CreatableRecordType) {
+    setCreateRecordState({ type, hotspot });
+  }
+
+  // Drawing Phase 7B3, Part 12 — the ONE targeted invalidation this phase
+  // adds. `hotspot` is captured from createRecordState at call time, not
+  // read from openHotspotId, so this is correct even if openHotspotId were
+  // ever to change while the modal is open.
+  function handleRecordCreated(hotspot: Hotspot, showToast: boolean) {
+    if (activeRevisionId) {
+      qc.invalidateQueries({ queryKey: ['drawing-hotspot-links', projectId, drawingId, activeRevisionId, hotspot.id] });
+    }
+    // Snag/QA modals have no success toast of their own (unlike NewRfiModal,
+    // which already shows "RFI raised") — Part 12's "optionally show
+    // existing success toast if the modal does not already show one".
+    if (showToast) toast.success('Record created and linked to this Drawing location.');
+    setCreateRecordState(null);
+  }
+
   function handleDownload(document: DrawingDocumentSummary) {
     api.get(`/documents/${document.id}/download`, { responseType: 'blob' })
       .then((res) => {
@@ -359,7 +392,25 @@ export default function DrawingViewerPage() {
   // (activeRevisionId null) are both always read-only, never a fallback to
   // Drawing.document_id/effectiveDocument().
   const editable = canOperate && !!activeRevisionId && !isHistorical;
+  // Drawing Phase 7B3, Part 3 — construction-record relationship actions
+  // (Create Record, Link Existing, Unlink) are intentionally NOT gated on
+  // !isHistorical, unlike `editable` above — Phase 7B1 deliberately relaxed
+  // this on the backend for exactly this reason. A Drawing with no revision
+  // at all still has nothing to manage links against, so that check stays.
+  const canManageLinks = canOperate && !!activeRevisionId;
   const noCurrentRevision = !revisionParam && !drawing.current_revision;
+
+  // Drawing Phase 7B3, Part 4/20 — built from the ACTIVE (possibly
+  // historical) revision being viewed, never drawing.current_revision;
+  // Part 20 is explicit that a historical hotspot's context header must
+  // show its own historical revision label, not the current one.
+  const drawingCreationContext: DrawingCreationContext | null = createRecordState ? {
+    hotspotId: createRecordState.hotspot.id,
+    drawingNumber: drawing.drawing_number,
+    revisionLabel: viewingRevisionLabel,
+    pageNumber: createRecordState.hotspot.page_number,
+    hotspotLabel: createRecordState.hotspot.label,
+  } : null;
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)]">
@@ -517,6 +568,7 @@ export default function DrawingViewerPage() {
               hotspots={hotspots}
               pageGeometry={pageGeometry}
               editable={editable}
+              canManageLinks={canManageLinks}
               placementMode={authoringMode === 'placing'}
               moveHotspotId={authoringMode === 'moving' ? moveHotspotId : null}
               pendingPlacement={pendingPlacement}
@@ -530,6 +582,7 @@ export default function DrawingViewerPage() {
               onDelete={setDeletingHotspot}
               onDetailsOpen={setOpenHotspotId}
               onLinkRecord={setLinkingHotspot}
+              onCreateRecord={handleCreateRecord}
               onUnlink={handleUnlink}
               onOpenLink={(url) => router.push(url)}
             />
@@ -604,6 +657,37 @@ export default function DrawingViewerPage() {
           projectId={projectId}
           onLink={handleLinkRecord}
           onCancel={() => setLinkingHotspot(null)}
+        />
+      )}
+
+      {/* Drawing Phase 7B3, Part 11/14 — the SAME shared, authoritative
+          creation components every module page already uses (7B2), never a
+          Drawing-specific form. onClose alone (Cancel/backdrop/Escape) never
+          calls any API — Part 14's "no API call, no record, no link" is
+          simply the shared modal's own existing Cancel behaviour, unchanged. */}
+      {createRecordState?.type === 'snag' && (
+        <SnagModal
+          projectId={projectId}
+          drawingContext={drawingCreationContext ?? undefined}
+          onClose={() => setCreateRecordState(null)}
+          onCreated={() => handleRecordCreated(createRecordState.hotspot, true)}
+        />
+      )}
+      {createRecordState?.type === 'rfi' && (
+        <NewRfiModal
+          projectId={projectId}
+          drawingContext={drawingCreationContext ?? undefined}
+          onClose={() => setCreateRecordState(null)}
+          // NewRfiModal already shows its own "RFI raised" toast.
+          onCreated={() => handleRecordCreated(createRecordState.hotspot, false)}
+        />
+      )}
+      {createRecordState?.type === 'qa_report' && (
+        <QaModal
+          projectId={projectId}
+          drawingContext={drawingCreationContext ?? undefined}
+          onClose={() => setCreateRecordState(null)}
+          onCreated={() => handleRecordCreated(createRecordState.hotspot, true)}
         />
       )}
     </div>

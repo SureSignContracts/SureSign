@@ -8,6 +8,8 @@ import { getErrorMessage } from '@/lib/getErrorMessage';
 import Select from '@/components/ui/Select';
 import EvidenceSection from '@/components/documents/EvidenceSection';
 import DrawingLocationsSection from '@/components/drawings/DrawingLocationsSection';
+import DrawingCreationContextBadge from '@/components/drawings/DrawingCreationContextBadge';
+import type { DrawingCreationContext } from '@/components/drawings/DrawingCreationContext';
 
 const STATUSES = ['draft', 'open', 'failed', 'passed', 'closed'];
 
@@ -27,14 +29,19 @@ export interface QaReportRecord {
 
 /**
  * Drawing Phase 7B2 — extracted unchanged from qa/page.tsx's page-local
- * QaModal. No visual or behavioural change from the pre-extraction version.
+ * QaModal. Drawing Phase 7B3 added the optional `drawingContext` prop
+ * (Part 4) — absent for every existing module page, so their behaviour is
+ * byte-for-byte unchanged; present only when opened from the Drawing
+ * Viewer's "Create Record" action.
  */
-export default function QaModal({ projectId, report, onClose, onCreated }: {
+export default function QaModal({ projectId, report, onClose, onCreated, drawingContext }: {
   projectId: string;
   report?: QaReportRecord;
   onClose: () => void;
   /** Fires only after a successful CREATE (never on edit) — optional, additive to existing query invalidation/close behaviour. */
   onCreated?: (report: QaReportRecord) => void;
+  /** Drawing Phase 7B3, Part 4/8 — only ever set when opened from the Drawing Viewer. Never present for the ordinary QA Reports page. */
+  drawingContext?: DrawingCreationContext;
 }) {
   const qc = useQueryClient();
   const isEdit = !!report;
@@ -42,7 +49,9 @@ export default function QaModal({ projectId, report, onClose, onCreated }: {
   const [form, setForm] = useState({
     title:             report?.title             ?? '',
     inspection_type:   report?.inspection_type   ?? '',
-    area:              report?.area              ?? '',
+    // Part 8 — convenience prefill only, from the hotspot's own label; see
+    // SnagModal's identical `location` prefill for the full rationale.
+    area:              report?.area              ?? drawingContext?.hotspotLabel ?? '',
     inspection_date:   report?.inspection_date   ? String(report.inspection_date).slice(0, 10) : '',
     status:            report?.status            ?? 'draft',
     result:            report?.result            ?? '',
@@ -55,7 +64,8 @@ export default function QaModal({ projectId, report, onClose, onCreated }: {
     mutationFn: (data: Omit<typeof form, 'follow_up_required'> & { follow_up_required: boolean }) =>
       isEdit
         ? api.put(`/projects/${projectId}/qa-reports/${report.id}`, data).then(r => r.data)
-        : api.post(`/projects/${projectId}/qa-reports`, data).then(r => r.data),
+        // Part 5 — drawing_hotspot_id sent ONLY on create.
+        : api.post(`/projects/${projectId}/qa-reports`, drawingContext ? { ...data, drawing_hotspot_id: drawingContext.hotspotId } : data).then(r => r.data),
     onSuccess: (created: QaReportRecord) => {
       qc.invalidateQueries({ queryKey: ['project-qa', projectId] });
       qc.invalidateQueries({ queryKey: ['project-activities', projectId] });
@@ -91,6 +101,7 @@ export default function QaModal({ projectId, report, onClose, onCreated }: {
           </button>
         </div>
         <form onSubmit={e => { e.preventDefault(); mutation.mutate({ ...form, follow_up_required: form.follow_up_required === '1' }); }} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+          {!isEdit && drawingContext && <DrawingCreationContextBadge context={drawingContext} />}
           <div>
             <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Title *</label>
             <input value={form.title} onChange={set('title')} required placeholder="QA Report title"

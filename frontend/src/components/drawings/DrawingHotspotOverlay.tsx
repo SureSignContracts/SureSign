@@ -1,8 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { MapPin, Pencil, Move, Trash2, Link2, ExternalLink, X } from 'lucide-react';
+import { MapPin, Pencil, Move, Trash2, Link2, ExternalLink, X, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 import type { PageGeometry } from '@/components/drawings/DrawingPdfCanvas';
+
+/** Drawing Phase 7B3 — the three record types the Drawing Viewer can create directly. Variation is deliberately excluded — it stays Link Existing only (Part 29). */
+export type CreatableRecordType = 'snag' | 'rfi' | 'qa_report';
+
+const CREATE_RECORD_OPTIONS: { type: CreatableRecordType; label: string }[] = [
+  { type: 'snag', label: 'Create Snag' },
+  { type: 'rfi', label: 'Create RFI' },
+  { type: 'qa_report', label: 'Create QA Report' },
+];
 
 export type Hotspot = {
   id: number;
@@ -61,6 +70,7 @@ export default function DrawingHotspotOverlay({
   hotspots,
   pageGeometry,
   editable,
+  canManageLinks,
   placementMode,
   moveHotspotId,
   pendingPlacement,
@@ -74,12 +84,22 @@ export default function DrawingHotspotOverlay({
   onDelete,
   onDetailsOpen,
   onLinkRecord,
+  onCreateRecord,
   onUnlink,
   onOpenLink,
 }: {
   hotspots: Hotspot[];
   pageGeometry: PageGeometry | null;
+  /** Drawing Phase 6A — hotspot AUTHORING only (add/edit label/move/delete a location itself). Current-revision-only, unchanged by Phase 7B1/7B3. */
   editable: boolean;
+  /**
+   * Drawing Phase 7B3, Part 3 — construction-record RELATIONSHIP actions
+   * (Create Record, Link Existing, Unlink). Deliberately a SEPARATE flag
+   * from `editable`: Phase 7B1 intentionally allows these on a historical
+   * revision's hotspot while hotspot authoring (`editable`) stays blocked
+   * there. Never derive one from the other.
+   */
+  canManageLinks: boolean;
   placementMode: boolean;
   moveHotspotId: number | null;
   pendingPlacement: { x: number; y: number } | null;
@@ -95,10 +115,17 @@ export default function DrawingHotspotOverlay({
   onDelete: (hotspot: Hotspot) => void;
   onDetailsOpen: (hotspotId: number) => void;
   onLinkRecord: (hotspot: Hotspot) => void;
+  /** Drawing Phase 7B3, Part 2/11 — the Viewer page owns which shared create modal opens; this component only reports the user's choice. */
+  onCreateRecord: (hotspot: Hotspot, type: CreatableRecordType) => void;
   onUnlink: (link: HotspotLink) => void;
   onOpenLink: (url: string) => void;
 }) {
   const [openId, setOpenId] = useState<number | null>(initialOpenHotspotId ?? null);
+  // Drawing Phase 7B3, Part 30 — scoped to whichever hotspot's popover is
+  // open, reset by toggleOpen() below whenever that changes, so switching
+  // from one hotspot to another (or reopening the same one) never leaves
+  // this expanded from a previous popover.
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
 
   if (!pageGeometry) return null;
 
@@ -119,6 +146,7 @@ export default function DrawingHotspotOverlay({
   function toggleOpen(h: Hotspot) {
     const next = openId === h.id ? null : h.id;
     setOpenId(next);
+    setCreateMenuOpen(false);
     // Called directly in the event handler, never inside the setOpenId
     // updater above — calling a different component's setState (this
     // notifies the Viewer page to fetch links) from inside a state updater
@@ -219,7 +247,7 @@ export default function DrawingHotspotOverlay({
                           ) : (
                             <span className="truncate" style={{ color: 'var(--text-secondary)' }}>{link.label || link.type_label}</span>
                           )}
-                          {editable && (
+                          {canManageLinks && (
                             <button
                               type="button"
                               aria-label={`Remove link to ${link.label || link.type_label}`}
@@ -235,16 +263,52 @@ export default function DrawingHotspotOverlay({
                   )}
                 </div>
 
-                {editable && (
+                {/* Drawing Phase 7B3, Part 2/3 — record-relationship actions
+                    (Create Record, Link Existing) — available on the current
+                    OR a historical revision (canManageLinks), deliberately
+                    separate from hotspot-authoring actions below (editable,
+                    current-revision-only). */}
+                {canManageLinks && (
                   <div style={{ borderTop: '1px solid var(--border)' }}>
+                    <button
+                      type="button"
+                      onClick={() => setCreateMenuOpen(v => !v)}
+                      aria-expanded={createMenuOpen}
+                      className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left transition-colors hover:bg-[var(--bg-hover)]"
+                      style={{ color: 'var(--text-secondary)' }}
+                    >
+                      <span className="flex items-center gap-2"><Plus size={12} /> Create Record</span>
+                      {createMenuOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                    </button>
+                    {createMenuOpen && (
+                      <div style={{ backgroundColor: 'var(--bg-elevated)' }}>
+                        {CREATE_RECORD_OPTIONS.map(({ type, label }) => (
+                          <button
+                            key={type}
+                            type="button"
+                            onClick={() => { setOpenId(null); setCreateMenuOpen(false); onCreateRecord(h, type); }}
+                            className="w-full flex items-center gap-2 pl-8 pr-3 py-1.5 text-left transition-colors hover:bg-[var(--bg-hover)]"
+                            style={{ color: 'var(--text-secondary)' }}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     <button
                       type="button"
                       onClick={() => { setOpenId(null); onLinkRecord(h); }}
                       className="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-[var(--bg-hover)]"
                       style={{ color: 'var(--text-secondary)' }}
                     >
-                      <Link2 size={12} /> Link record
+                      <Link2 size={12} /> Link Existing
                     </button>
+                  </div>
+                )}
+
+                {/* Hotspot AUTHORING actions — current-revision-only, unchanged from Phase 6A/6B. */}
+                {editable && (
+                  <div style={{ borderTop: '1px solid var(--border)' }}>
                     <button
                       type="button"
                       onClick={() => { setOpenId(null); onEditLabel(h); }}

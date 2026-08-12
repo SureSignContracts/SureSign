@@ -8,6 +8,8 @@ import api from '@/lib/api';
 import { effectiveTodayYmd } from '@/lib/dateTime';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import Select from '@/components/ui/Select';
+import DrawingCreationContextBadge from '@/components/drawings/DrawingCreationContextBadge';
+import type { DrawingCreationContext } from '@/components/drawings/DrawingCreationContext';
 
 const PRIORITY_LABELS: Record<string, string> = {
   urgent: 'Urgent',
@@ -37,14 +39,18 @@ export interface RfiRecord {
 /**
  * Drawing Phase 7B2 — extracted unchanged from rfis/page.tsx's page-local
  * NewRfiModal (create-only — RfiResponseModal is a separate, unaffected
- * component). No visual or behavioural change from the pre-extraction
- * version.
+ * component). Drawing Phase 7B3 added the optional `drawingContext` prop
+ * (Part 4/9) — RFI has no legitimate location field (confirmed in 7A), so
+ * this only ever shows the transient context header, never a prefilled
+ * field or any text injected into subject/description/notes.
  */
-export default function NewRfiModal({ projectId, onClose, onCreated }: {
+export default function NewRfiModal({ projectId, onClose, onCreated, drawingContext }: {
   projectId: string;
   onClose: () => void;
   /** Fires only after a successful create — optional, additive to existing query invalidation/close behaviour. */
   onCreated?: (rfi: RfiRecord) => void;
+  /** Drawing Phase 7B3, Part 4/9 — only ever set when opened from the Drawing Viewer. Never present for the ordinary RFIs page. */
+  drawingContext?: DrawingCreationContext;
 }) {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<RfiForm>({
@@ -55,7 +61,8 @@ export default function NewRfiModal({ projectId, onClose, onCreated }: {
   });
 
   const { mutate, isPending } = useMutation({
-    mutationFn: (data: RfiForm) => api.post(`/projects/${projectId}/rfis`, data).then(r => r.data),
+    // Part 5 — drawing_hotspot_id sent only for this Drawing-origin create; this modal is create-only, so there's no edit case to guard against.
+    mutationFn: (data: RfiForm) => api.post(`/projects/${projectId}/rfis`, drawingContext ? { ...data, drawing_hotspot_id: drawingContext.hotspotId } : data).then(r => r.data),
     onSuccess: (created: RfiRecord) => {
       queryClient.invalidateQueries({ queryKey: ['project-rfis', projectId] });
       queryClient.invalidateQueries({ queryKey: ['project-activities', projectId] });
@@ -81,6 +88,7 @@ export default function NewRfiModal({ projectId, onClose, onCreated }: {
           <button onClick={onClose}><X size={18} style={{ color: 'var(--text-muted)' }} /></button>
         </div>
         <form onSubmit={e => { e.preventDefault(); mutate(form); }} className="p-5 space-y-4">
+          {drawingContext && <DrawingCreationContextBadge context={drawingContext} />}
           <div>
             <label className="block text-xs mb-1" style={labelStyle}>Subject *</label>
             <input value={form.subject} onChange={e => set('subject', e.target.value)} required
