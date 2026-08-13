@@ -7,7 +7,8 @@ analysis is just a suggestion sitting alongside your contract.
 
 ## Who can use it
 
-Super Admin and Admin users.
+Anyone with access to the project (including the ordinary Client account
+role, not just Admin/Super Admin).
 
 ## Where to find it
 

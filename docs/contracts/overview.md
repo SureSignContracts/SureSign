@@ -9,9 +9,9 @@ payment terms) that drive the rest of SureSign's commercial features.
 
 ## Who can use it
 
-Super Admin and Admin can create, edit, and upload contracts, and run AI
-analysis. Client users can view contracts for their own organisation's
-projects.
+Anyone with access to the project (including the ordinary Client account
+role, not just Admin/Super Admin) can create, edit, and upload contracts,
+and run AI analysis, for their own organisation's projects.
 
 ## Where to find it
 

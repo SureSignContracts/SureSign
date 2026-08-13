@@ -78,11 +78,18 @@ type PortfolioData = {
  * address/location) is created with a safe null/default and completed
  * afterwards via Edit Project — see EditProjectModal, which gained those
  * fields in this same phase specifically so nothing here is lost, only
- * deferred. A future Contract-Assisted Setup phase may add a guided path
- * into those same fields; this phase does not.
+ * deferred. Phase D: on success, the customer self-create path now routes
+ * straight into the dedicated Contract-Assisted Setup route
+ * (/app/projects/{id}/setup) rather than only closing this modal — the
+ * created Project's own id comes directly from this endpoint's response
+ * body (ProjectController::store() returns the Project itself, not a
+ * {data: ...} envelope). Navigation only ever happens from a genuine
+ * `onSuccess` — a failed create leaves the user in this modal exactly as
+ * before, never routing to Setup with an undefined Project id.
  */
 function CreateProjectModal({ onClose }: { onClose: () => void }) {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const [form, setForm] = useState({
     name: '', code: '', type: '', organization_role: '',
   });
@@ -94,9 +101,10 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
       ...data,
       organization_role: data.organization_role || null,
     }).then(r => r.data),
-    onSuccess: () => {
+    onSuccess: (project: { id: number }) => {
       queryClient.invalidateQueries({ queryKey: ['projects-portfolio'] });
       onClose();
+      router.push(`/app/projects/${project.id}/setup`);
     },
     onError: (e: unknown) => {
       const normalized = normalizeApiError(e, 'Failed to create project. Please check all required fields.');

@@ -11,7 +11,7 @@ import { effectiveTodayYmd, parseDateOnly } from '@/lib/dateTime';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import CountUp from '@/components/ui/CountUp';
-import { DollarSign, FileText, MessageSquare, GitBranch, AlertCircle, Activity, BarChart2, ChevronRight, ShieldAlert, TrendingUp, Zap, FileCheck, HeartHandshake, Pencil, MapPin, ExternalLink, Copy } from 'lucide-react';
+import { DollarSign, FileText, MessageSquare, GitBranch, AlertCircle, Activity, BarChart2, ChevronRight, ShieldAlert, TrendingUp, Zap, FileCheck, HeartHandshake, Pencil, MapPin, ExternalLink, Copy, Sparkles } from 'lucide-react';
 import PageTourButton from '@/components/tours/PageTourButton';
 import Link from 'next/link';
 import { formatDateTime } from '@/lib/dateTime';
@@ -713,6 +713,36 @@ export default function ProjectOverviewPage() {
   const approvedNotIncluded = intelligence?.commercial?.approved_not_included_count ?? 0;
   const approvedNotIncludedValue = intelligence?.commercial?.approved_not_included_value ?? 0;
 
+  // Phase D fix — `intelligence.ai_analysis` (dashboard-intelligence) is only
+  // the most RECENTLY-CREATED completed-or-confirmed analysis across the
+  // project; a newer `completed`-but-unconfirmed analysis on any Contract
+  // (including a different one) would shadow an older genuinely `confirmed`
+  // one, so it is not a reliable "has this project ever had a confirmed
+  // analysis" signal — see project-context.md's Phase D fix note for the
+  // full before/after. This dedicated query (same key/endpoint convention
+  // already used on the Contracts page: ['project-ai-analyses', id] →
+  // GET /projects/{id}/ai-analyses) checks ALL analyses for the project,
+  // not just the newest one, so a confirmed analysis on Contract A is never
+  // forgotten because of unrelated later activity on Contract B.
+  // Deliberately NOT `.catch(() => null)` like this page's other dashboard
+  // widgets (intelligence/programme above) — those degrade a display panel
+  // gracefully on failure, but swallowing a failure into the same shape as
+  // "confirmed empty array" here would let a real request error look
+  // identical to "no confirmed analysis," which is exactly the false
+  // positive this fix closes. `isSuccess` is a genuine "this specific
+  // request actually completed" signal — loading/error/an unexpected
+  // response shape all fall through to `analysesKnown = false` uniformly.
+  const { data: analysesData, isSuccess: analysesSuccess } = useQuery({
+    queryKey: ['project-ai-analyses', id],
+    queryFn: () => api.get(`/projects/${id}/ai-analyses`).then(r => r.data),
+    enabled: !!id,
+    staleTime: 2 * 60 * 1000,
+  });
+  const analysesKnown = analysesSuccess && Array.isArray(analysesData?.data);
+  const hasConfirmedAnalysis = analysesKnown
+    ? analysesData.data.some((a: { status?: string }) => a.status === 'confirmed')
+    : false;
+
   const activities: any[] = activitiesData?.data ?? [];
 
   if (isLoading) {
@@ -774,6 +804,26 @@ export default function ProjectOverviewPage() {
           >
             {project?.status?.replace(/_/g, ' ')}
           </span>
+          {/* Phase D — optional Contract-Assisted Setup re-entry. Purely a
+              convenience link, never persisted "incomplete Project" state —
+              a still-usable Contracts workspace remains available
+              regardless of this link's visibility. Hidden once ANY Contract
+              in the project has a confirmed analysis (hasConfirmedAnalysis,
+              derived from every analysis, not just the newest one — see that
+              query's own comment for why intelligence.ai_analysis alone
+              isn't reliable for this). Requires analysesKnown — loading, a
+              request error, and an unexpected response shape all render
+              nothing here rather than risk showing this optional shortcut
+              on a project that actually does have a confirmed analysis. */}
+          {canOperate && analysesKnown && !hasConfirmedAnalysis && (
+            <button
+              onClick={() => router.push(`/app/projects/${id}/setup`)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors hover:bg-[var(--bg-hover)]"
+              style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+            >
+              <Sparkles size={12} /> Set up from Contract
+            </button>
+          )}
           {canOperate && (
             <button
               onClick={() => setEditOpen(true)}

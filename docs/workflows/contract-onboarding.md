@@ -16,7 +16,8 @@ upload.
 
 ## Role required
 
-Super Admin or Admin.
+Anyone with access to the project (including the ordinary Client account
+role, not just Admin/Super Admin).
 
 ## Steps
 

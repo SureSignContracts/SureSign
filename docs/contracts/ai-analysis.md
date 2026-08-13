@@ -15,8 +15,9 @@ and other information, for you to review and confirm.
 
 ## Who can use it
 
-Super Admin and Admin, and only if your organisation has AI features enabled
-(a Super Admin controls this in platform settings).
+Anyone with access to the project (including the ordinary Client account
+role, not just Admin/Super Admin), and only if your organisation has AI
+features enabled (a Super Admin controls this in platform settings).
 
 ## Where to find it
 

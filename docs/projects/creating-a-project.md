@@ -40,6 +40,49 @@ new project's **Overview** page whenever you're ready to fill them in (see
 project, and nothing is guessed or defaulted on your behalf beyond the
 project's status, which starts as **Active**.
 
+## Project Setup: setting up from a Contract
+
+Immediately after creating a project, SureSign opens **Project Setup**. From
+here you can:
+
+- **Upload an agreement** — if you already have the executed contract
+  document, upload it and SureSign will analyse it using the same
+  [AI Contract Analysis](../contracts/ai-analysis.md) available elsewhere in
+  the platform, so you can review and confirm its extracted details on the
+  Contract record.
+- **Analyse an existing Contract** — if the project already has one or more
+  Contracts, choose one to analyse instead of uploading another.
+- **Add another Contract** — upload a further agreement alongside any
+  existing ones.
+- **Skip for now** — continue straight to the project workspace. Skipping is
+  a fully supported choice, not an incomplete state; you can add a Contract
+  at any time afterwards from the project's **Contracts** page, or return to
+  Project Setup later using **Set up from Contract** on the project's
+  **Overview** page.
+
+Uploading requires choosing a **Contract Type** (Main Contract, Subcontract,
+Consultant Appointment, or Supplier Agreement) — this is never guessed from
+the document. If you set **Your organisation's role on this project**, Setup
+uses it to pre-select a likely Contract Type (Main Contractor suggests Main
+Contract; Subcontractor suggests Subcontract; Consultant suggests Consultant
+Appointment) — always just a starting suggestion you can change, never
+enforced. A Main Contractor project can still have a Subcontract uploaded
+against it, and vice versa; your organisation's role and a Contract's type
+are two separate things, and setting one never changes the other.
+
+AI analysis is optional throughout: if your organisation doesn't have AI
+features enabled, or an analysis fails, your project and Contract are both
+already saved regardless — you can continue to the workspace and complete
+everything manually. Reviewing and confirming an analysis in Setup uses
+exactly the same [Reviewing AI Results](../contracts/reviewing-ai-results.md)
+and [Confirming Analysis](../contracts/confirming-analysis.md) steps as
+analysing a Contract from the Contracts page directly — nothing about the
+Contract's own data is treated differently because it went through Setup.
+
+Setup does not yet use a confirmed Contract's details to fill in anything on
+the project itself (contract value, dates, currency, and so on still need
+entering via **Edit Project**, above) — that is planned for a future release.
+
 ## Your organisation's role on this project
 
 Tell SureSign how your organisation is acting on this project. This can
@@ -131,5 +174,6 @@ a new project.
 
 ## What to do next
 
-- [Upload the contract](../contracts/uploading-a-contract.md).
+- If you skipped Project Setup, [upload the contract](../contracts/uploading-a-contract.md)
+  whenever you're ready.
 - Review [Project Navigation](project-navigation.md) to see the full workspace.
