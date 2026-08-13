@@ -2,36 +2,37 @@
 
 ## What this is
 
-Editing a project lets you change the details set when it was created: name,
-code, contract type, type of work, contract value, status, dates, and
-description.
+Editing a project lets you change a subset of the details set when it was
+created: name, project number/code, your organisation's role on this project,
+address/site location, and geographic coordinates.
 
 ## Who can use it
 
-Super Admin and Admin users.
+Anyone with access to the project.
 
 ## Where to find it
 
-From the project list or the project's Overview page, use the edit action on
-the project.
+From the project's Overview page, use the **Edit Project** action next to the
+status badge.
 
 ## What you can change
 
-The same fields collected at creation:
-
 - Project Name, Project Number / Code
-- Contract Type, Type of Work
-- Contract Value
-- Status (Active, On Hold, Completed, Cancelled)
-- Start Date, Completion Date
-- Description
+- Your organisation's role on this project (see
+  [Creating a Project](creating-a-project.md#your-organisations-role-on-this-project))
+- Project Location — Address, City, State/Region, Postcode/ZIP, Country
+- Geographic coordinates (Latitude/Longitude)
+
+Contract Type, Type of Work, Contract Value, Status, Start/Completion Date,
+and Description are set at creation and are not yet editable in-app.
 
 ## What happens after you save
 
-Updated details are reflected immediately across the project workspace,
-dashboards, and any place the project name/code/status is shown. Changing the
-status (for example to Completed or Cancelled) does not delete any records —
-all contracts, commercial records, and documents remain in place.
+Updated details are reflected immediately across the project workspace and
+dashboards — for example, an updated address or coordinates update the
+Dashboard's [Project Map](../dashboard/overview.md) without needing to
+refresh the page. No other records (contracts, commercial records, or
+documents) are affected by anything you change here.
 
 ## Related
 

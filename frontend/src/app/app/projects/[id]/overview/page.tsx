@@ -16,6 +16,7 @@ import PageTourButton from '@/components/tours/PageTourButton';
 import Link from 'next/link';
 import { formatDateTime } from '@/lib/dateTime';
 import EditProjectModal from '@/components/projects/EditProjectModal';
+import { projectOrganizationRoleLabel } from '@/lib/projectOrganizationRole';
 
 // Leaflet reads `window`/`document` at import time — client-only, and only
 // loaded once the Site Location section actually renders.
@@ -874,6 +875,7 @@ export default function ProjectOverviewPage() {
           <InfoRow label="Project Number"  value={project?.code} />
           <InfoRow label="Type of Work"    value={project?.type} />
           <InfoRow label="Contract Type"   value={project?.contract_type} />
+          <InfoRow label="Your Role on this Project" value={projectOrganizationRoleLabel(project?.organization_role)} />
           <InfoRow label="Contract Value"  value={project?.contract_value ? formatCurrency(project.contract_value) : null} />
           <InfoRow label="Start Date"      value={project?.start_date ? formatDate(project.start_date) : null} />
           <InfoRow label="Completion"      value={project?.end_date ? formatDate(project.end_date) : null} />

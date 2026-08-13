@@ -14,6 +14,7 @@ use App\Services\ProjectStatsService;
 use App\Services\ProjectStorageService;
 use App\Services\TimezoneResolver;
 use App\Services\UpcomingActionsService;
+use App\Support\Projects\ProjectOrganizationRole;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -68,6 +69,11 @@ class ProjectController extends Controller
             'description'               => 'nullable|string',
             'type'                      => 'nullable|string',
             'contract_type'             => 'nullable|string|max:100',
+            // Phase A — Project Organization Role foundation. How this
+            // Organization is acting on THIS Project — independent of
+            // Organization identity, Contract parties, and SureSign user
+            // roles/permissions. See App\Support\Projects\ProjectOrganizationRole.
+            'organization_role'         => 'nullable|' . ProjectOrganizationRole::validationRule(),
             'status'                    => 'nullable|in:active,on_hold,completed,cancelled',
             'client_id'                 => 'nullable|integer|exists:clients,id',
             'contract_value'            => 'nullable|numeric|min:0',
@@ -151,6 +157,7 @@ class ProjectController extends Controller
             'code'             => 'nullable|string|max:50',
             'description'      => 'nullable|string',
             'status'           => 'nullable|in:active,on_hold,completed,cancelled',
+            'organization_role' => 'nullable|' . ProjectOrganizationRole::validationRule(),
             'contract_value'   => 'nullable|numeric|min:0',
             'start_date'       => 'nullable|date',
             'end_date'         => 'nullable|date|after_or_equal:start_date',
@@ -210,6 +217,11 @@ class ProjectController extends Controller
             'status'                   => 'sometimes|in:active,on_hold,completed,cancelled',
             'type'                     => 'nullable|string',
             'contract_type'            => 'nullable|string|max:100',
+            // 'sometimes' — mirrors `currency` below exactly: omitting this key
+            // entirely (e.g. editing only the name) must leave the Project's
+            // existing organization_role untouched, never reset it. Explicitly
+            // sending `organization_role: null` clears it back to "not set".
+            'organization_role'        => 'sometimes|nullable|' . ProjectOrganizationRole::validationRule(),
             'contract_value'           => 'nullable|numeric|min:0',
             'retention_percentage'     => 'nullable|numeric|min:0|max:100',
             'payment_terms_days'       => 'nullable|integer|min:0',

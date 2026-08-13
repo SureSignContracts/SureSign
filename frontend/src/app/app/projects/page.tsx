@@ -12,6 +12,7 @@ import { SUPPORTED_CURRENCIES } from '@/lib/currency';
 import { useAuthStore } from '@/store/authStore';
 import { EASE, staggerDelay } from '@/lib/motion';
 import Select from '@/components/ui/Select';
+import { PROJECT_ORGANIZATION_ROLE_OPTIONS } from '@/lib/projectOrganizationRole';
 import {
   Plus, Search, FolderKanban, ChevronRight, X, AlertTriangle, CheckCircle2,
   ChevronLeft, ArrowRight, LayoutGrid, LayoutList, Activity, Archive,
@@ -81,7 +82,7 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
   // resolves to today, but the stored value stays null until someone
   // deliberately picks an explicit currency.
   const [form, setForm] = useState({
-    name: '', code: '', contract_type: '', type: '', status: 'active',
+    name: '', code: '', contract_type: '', type: '', organization_role: '', status: 'active',
     contract_value: '', start_date: '', end_date: '', description: '', currency: '',
     address: '', city: '', state: '', postcode: '', country: '', latitude: '', longitude: '',
   });
@@ -92,6 +93,7 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
     mutationFn: (data: typeof form) => api.post('/projects', {
       ...data,
       currency: data.currency || null,
+      organization_role: data.organization_role || null,
       // Empty string must become `null`, never 0 — 0,0 is a real coordinate,
       // never a stand-in for "not entered" (see backend validation).
       latitude: data.latitude === '' ? null : data.latitude,
@@ -182,6 +184,19 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
                 {WORK_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </Select>
             </div>
+          </div>
+
+          <div>
+            <label style={labelStyle}>Your organization&rsquo;s role on this project</label>
+            <Select className="w-full" value={form.organization_role} onChange={e => set('organization_role', e.target.value)}>
+              <option value="">Role not set</option>
+              {PROJECT_ORGANIZATION_ROLE_OPTIONS.map(({ value, label }) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </Select>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+              Tell SureSign how your organization is acting on this project. This can differ between projects.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

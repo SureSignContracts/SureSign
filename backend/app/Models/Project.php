@@ -5,7 +5,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 class Project extends Model {
     use HasFactory, SoftDeletes;
-    protected $fillable = ['organization_id','client_id','created_by','name','code','description','status','type','contract_type','contract_value','currency','retention_percentage','retention_cap_percentage','payment_terms_days','start_date','end_date','practical_completion_date','address','city','state','postcode','country','latitude','longitude','metadata'];
+    protected $fillable = ['organization_id','client_id','created_by','name','code','description','status','type','contract_type','organization_role','contract_value','currency','retention_percentage','retention_cap_percentage','payment_terms_days','start_date','end_date','practical_completion_date','address','city','state','postcode','country','latitude','longitude','metadata'];
     protected $casts = ['contract_value'=>'decimal:2','retention_percentage'=>'decimal:2','start_date'=>'date','end_date'=>'date','practical_completion_date'=>'date','latitude'=>'decimal:7','longitude'=>'decimal:7','metadata'=>'array'];
     public function organization()    { return $this->belongsTo(Organization::class); }
     public function client()          { return $this->belongsTo(Client::class); }

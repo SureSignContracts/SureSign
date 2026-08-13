@@ -6,6 +6,8 @@ import api from '@/lib/api';
 import { X } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { normalizeApiError } from '@/lib/normalizeApiError';
+import Select from '@/components/ui/Select';
+import { PROJECT_ORGANIZATION_ROLE_OPTIONS } from '@/lib/projectOrganizationRole';
 
 /**
  * Project Editing Foundation — the counterpart to CreateProjectModal
@@ -20,6 +22,7 @@ export type EditableProject = {
   id: number;
   name: string;
   code: string | null;
+  organization_role: string | null;
   address: string | null;
   city: string | null;
   state: string | null;
@@ -30,7 +33,7 @@ export type EditableProject = {
 };
 
 type FormState = {
-  name: string; code: string;
+  name: string; code: string; organization_role: string;
   address: string; city: string; state: string; postcode: string; country: string;
   latitude: string; longitude: string;
 };
@@ -39,6 +42,7 @@ function toFormState(project: EditableProject): FormState {
   return {
     name: project.name ?? '',
     code: project.code ?? '',
+    organization_role: project.organization_role ?? '',
     address: project.address ?? '',
     city: project.city ?? '',
     state: project.state ?? '',
@@ -75,6 +79,10 @@ export default function EditProjectModal({ project, projectId, onClose }: {
     mutationFn: () => api.put(`/projects/${project.id}`, {
       name: form.name,
       code: form.code || null,
+      // '' means "clear back to not set" — sent explicitly as null so the
+      // backend's omit-vs-null-clear distinction (organization_role uses
+      // `sometimes|nullable`) resolves to a real clear, not a no-op.
+      organization_role: form.organization_role || null,
       address: form.address || null,
       city: form.city || null,
       state: form.state || null,
@@ -142,6 +150,18 @@ export default function EditProjectModal({ project, projectId, onClose }: {
                 <label style={labelStyle}>Project Number / Code</label>
                 <input className={INPUT_CLS} style={inputStyle} value={form.code} onChange={e => set('code', e.target.value)} />
               </div>
+            </div>
+            <div className="mt-4">
+              <label style={labelStyle}>Your organization&rsquo;s role on this project</label>
+              <Select className="w-full" value={form.organization_role} onChange={e => set('organization_role', e.target.value)}>
+                <option value="">Role not set</option>
+                {PROJECT_ORGANIZATION_ROLE_OPTIONS.map(({ value, label }) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </Select>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                Tell SureSign how your organization is acting on this project. This can differ between projects.
+              </p>
             </div>
           </div>
 
