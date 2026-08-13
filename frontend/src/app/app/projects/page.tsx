@@ -8,8 +8,6 @@ import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { effectiveTodayYmd, parseDateOnly } from '@/lib/dateTime';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
-import { SUPPORTED_CURRENCIES } from '@/lib/currency';
-import { useAuthStore } from '@/store/authStore';
 import { EASE, staggerDelay } from '@/lib/motion';
 import Select from '@/components/ui/Select';
 import { PROJECT_ORGANIZATION_ROLE_OPTIONS } from '@/lib/projectOrganizationRole';
@@ -30,7 +28,6 @@ const STATUS_TONE: Record<string, 'success' | 'warning' | 'info' | 'danger'> = {
   cancelled: 'danger',
 };
 
-const CONTRACT_TYPES = ['JCT', 'NEC3', 'NEC4', 'FIDIC', 'Bespoke', 'Other'];
 const WORK_TYPES = ['New Build', 'Refurbishment', 'Fitout', 'Infrastructure', 'Maintenance', 'Other'];
 
 const INPUT_CLS = 'w-full rounded-lg px-3 py-2 text-sm outline-none border border-[var(--border)] focus:border-[var(--gold)] transition-colors duration-200';
@@ -74,17 +71,20 @@ type PortfolioData = {
   meta: { effective_timezone: string; generated_at: string };
 };
 
+/**
+ * Project Basics — Phase B. Deliberately short: only what's genuinely
+ * needed before a Project can exist. Everything else the platform already
+ * supports (description, status, contract type/value, currency, dates,
+ * address/location) is created with a safe null/default and completed
+ * afterwards via Edit Project — see EditProjectModal, which gained those
+ * fields in this same phase specifically so nothing here is lost, only
+ * deferred. A future Contract-Assisted Setup phase may add a guided path
+ * into those same fields; this phase does not.
+ */
 function CreateProjectModal({ onClose }: { onClose: () => void }) {
   const queryClient = useQueryClient();
-  const { user } = useAuthStore();
-  // '' means "inherit the organisation default" — never pre-filled from
-  // country/location; the placeholder option below shows what that
-  // resolves to today, but the stored value stays null until someone
-  // deliberately picks an explicit currency.
   const [form, setForm] = useState({
-    name: '', code: '', contract_type: '', type: '', organization_role: '', status: 'active',
-    contract_value: '', start_date: '', end_date: '', description: '', currency: '',
-    address: '', city: '', state: '', postcode: '', country: '', latitude: '', longitude: '',
+    name: '', code: '', type: '', organization_role: '',
   });
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
@@ -92,12 +92,7 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
   const mutation = useMutation({
     mutationFn: (data: typeof form) => api.post('/projects', {
       ...data,
-      currency: data.currency || null,
       organization_role: data.organization_role || null,
-      // Empty string must become `null`, never 0 — 0,0 is a real coordinate,
-      // never a stand-in for "not entered" (see backend validation).
-      latitude: data.latitude === '' ? null : data.latitude,
-      longitude: data.longitude === '' ? null : data.longitude,
     }).then(r => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects-portfolio'] });
@@ -139,7 +134,9 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        {/* Form */}
+        {/* Form — Project Basics only. Everything else (description, status,
+            contract type/value, currency, dates, address/location) can be
+            completed afterwards via Edit Project. */}
         <div className="overflow-y-auto flex-1 px-6 py-5 space-y-4">
           {error && (
             <div className="px-4 py-3 rounded-lg text-sm" style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>
@@ -169,21 +166,12 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label style={labelStyle}>Contract Type</label>
-              <Select className="w-full" value={form.contract_type} onChange={e => set('contract_type', e.target.value)}>
-                <option value="">Select contract type…</option>
-                {CONTRACT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-              </Select>
-            </div>
-            <div>
-              <label style={labelStyle}>Type of Work</label>
-              <Select className="w-full" value={form.type} onChange={e => set('type', e.target.value)}>
-                <option value="">Select type of work…</option>
-                {WORK_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-              </Select>
-            </div>
+          <div>
+            <label style={labelStyle}>Project Type</label>
+            <Select className="w-full" value={form.type} onChange={e => set('type', e.target.value)}>
+              <option value="">Select type of work…</option>
+              {WORK_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </Select>
           </div>
 
           <div>
@@ -199,145 +187,9 @@ function CreateProjectModal({ onClose }: { onClose: () => void }) {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label style={labelStyle}>Contract Value</label>
-              <input
-                className={INPUT_CLS}
-                style={inputStyle}
-                type="number"
-                min="0"
-                step="0.01"
-                value={form.contract_value}
-                onChange={e => set('contract_value', e.target.value)}
-                placeholder="0.00"
-                aria-invalid={fieldErrors.contract_value ? true : undefined}
-                aria-describedby={fieldErrors.contract_value ? 'project-contract-value-error' : undefined}
-              />
-              {fieldErrors.contract_value && (
-                <p id="project-contract-value-error" className="text-xs mt-1" style={{ color: '#f87171' }}>{fieldErrors.contract_value[0]}</p>
-              )}
-            </div>
-            <div>
-              <label style={labelStyle}>Status</label>
-              <Select className="w-full" value={form.status} onChange={e => set('status', e.target.value)}>
-                <option value="active">Active</option>
-                <option value="on_hold">On Hold</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-              </Select>
-            </div>
-          </div>
-
-          <div>
-            <label style={labelStyle}>Currency</label>
-            <Select className="w-full" value={form.currency} onChange={e => set('currency', e.target.value)}>
-              <option value="">Use organisation default — {user?.organization?.effective_currency ?? 'GBP'}</option>
-              {SUPPORTED_CURRENCIES.map(code => (
-                <option key={code} value={code}>{code}</option>
-              ))}
-            </Select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label style={labelStyle}>Start Date</label>
-              <input className={INPUT_CLS} style={inputStyle} type="date" value={form.start_date} onChange={e => set('start_date', e.target.value)} />
-            </div>
-            <div>
-              <label style={labelStyle}>Completion Date</label>
-              <input
-                className={INPUT_CLS}
-                style={inputStyle}
-                type="date"
-                value={form.end_date}
-                onChange={e => set('end_date', e.target.value)}
-                aria-invalid={fieldErrors.end_date ? true : undefined}
-                aria-describedby={fieldErrors.end_date ? 'project-end-date-error' : undefined}
-              />
-              {fieldErrors.end_date && (
-                <p id="project-end-date-error" className="text-xs mt-1" style={{ color: '#f87171' }}>
-                  The completion date cannot be earlier than the start date.
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Project Location — address fields already existed on the model
-              but had no form anywhere in the app; coordinates are new
-              (Dashboard Project Map). Both are grouped together since they
-              describe the same thing: where this project physically is. */}
-          <div className="pt-2" style={{ borderTop: '1px solid var(--border)' }}>
-            <p className="text-sm font-medium mb-3" style={{ color: 'var(--text-primary)' }}>Project Location</p>
-
-            <div className="space-y-3">
-              <div>
-                <label style={labelStyle}>Address</label>
-                <input className={INPUT_CLS} style={inputStyle} value={form.address} onChange={e => set('address', e.target.value)} placeholder="Street address" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label style={labelStyle}>City</label>
-                  <input className={INPUT_CLS} style={inputStyle} value={form.city} onChange={e => set('city', e.target.value)} />
-                </div>
-                <div>
-                  <label style={labelStyle}>State / Region</label>
-                  <input className={INPUT_CLS} style={inputStyle} value={form.state} onChange={e => set('state', e.target.value)} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label style={labelStyle}>Postcode / ZIP</label>
-                  <input className={INPUT_CLS} style={inputStyle} value={form.postcode} onChange={e => set('postcode', e.target.value)} />
-                </div>
-                <div>
-                  <label style={labelStyle}>Country</label>
-                  <input className={INPUT_CLS} style={inputStyle} value={form.country} onChange={e => set('country', e.target.value)} placeholder="e.g. United Kingdom" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label style={labelStyle}>Latitude</label>
-                  <input
-                    className={INPUT_CLS} style={inputStyle} type="number" step="any"
-                    value={form.latitude} onChange={e => set('latitude', e.target.value)} placeholder="e.g. 51.5074"
-                    aria-invalid={fieldErrors.latitude ? true : undefined}
-                    aria-describedby={fieldErrors.latitude ? 'project-latitude-error' : undefined}
-                  />
-                  {fieldErrors.latitude && (
-                    <p id="project-latitude-error" className="text-xs mt-1" style={{ color: '#f87171' }}>{fieldErrors.latitude[0]}</p>
-                  )}
-                </div>
-                <div>
-                  <label style={labelStyle}>Longitude</label>
-                  <input
-                    className={INPUT_CLS} style={inputStyle} type="number" step="any"
-                    value={form.longitude} onChange={e => set('longitude', e.target.value)} placeholder="e.g. -0.1278"
-                    aria-invalid={fieldErrors.longitude ? true : undefined}
-                    aria-describedby={fieldErrors.longitude ? 'project-longitude-error' : undefined}
-                  />
-                  {fieldErrors.longitude && (
-                    <p id="project-longitude-error" className="text-xs mt-1" style={{ color: '#f87171' }}>{fieldErrors.longitude[0]}</p>
-                  )}
-                </div>
-              </div>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                Optional. Used to position this project on the organisation Project Map.
-              </p>
-            </div>
-          </div>
-
-          <div>
-            <label style={labelStyle}>Description</label>
-            <textarea
-              rows={3}
-              className={INPUT_CLS}
-              style={{ ...inputStyle, resize: 'vertical' }}
-              value={form.description}
-              onChange={e => set('description', e.target.value)}
-              placeholder="Brief project overview…"
-            />
-          </div>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            You can add the contract type, value, dates, location, and more once the project is created — from Edit Project on the Overview page.
+          </p>
         </div>
 
         {/* Footer */}

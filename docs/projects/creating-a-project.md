@@ -10,46 +10,35 @@ Tenant workspace: **Projects** → **New Project**.
 
 ## Before you begin
 
-Have ready:
+Creating a project only needs a name — everything else can be added
+afterwards from **Edit Project**. Have ready, if you know them already:
 
-- Project name and, optionally, a project number/code.
-- The likely contract type (JCT, NEC3, NEC4, FIDIC, Bespoke, or Other) and type
-  of work (New Build, Refurbishment, Fitout, Infrastructure, Maintenance, or
-  Other).
+- A project number/code.
+- The type of work (New Build, Refurbishment, Fitout, Infrastructure,
+  Maintenance, or Other).
 - How your organisation is acting on this project — see **Your organisation's
   role on this project**, below.
-- An estimated contract value, if known.
-- Expected start and completion dates.
 
 ## How to create a project
 
 1. Select **New Project**.
 2. Enter the **Project Name** (required).
 3. Optionally enter a **Project Number / Code**.
-4. Choose a **Contract Type** and **Type of Work** from the dropdowns, if known.
+4. Optionally choose a **Project Type** — the type of work (New Build,
+   Refurbishment, Fitout, Infrastructure, Maintenance, or Other).
 5. Optionally choose **Your organisation's role on this project** — Main /
    General Contractor, Subcontractor / Specialist Contractor, Employer /
-   Owner, Consultant, or Other. This describes how your organisation is
-   acting on *this* project specifically, and can differ between projects —
-   see **Your organisation's role on this project**, below.
-6. Enter a **Contract Value**, if known.
-7. Choose a **Status** — Active, On Hold, Completed, or Cancelled (defaults to
-   Active).
-8. Enter **Start Date** and **Completion Date**, if known.
-9. Optionally fill in **Project Location** — Address, City, State/Region,
-   Postcode/ZIP, Country, and geographic coordinates (Latitude/Longitude).
-   Coordinates are only used to position this project on the organisation
-   [Dashboard's Project Map](../dashboard/overview.md) — SureSign never looks
-   up or guesses coordinates from an address, so enter both, or leave both
-   blank.
-10. Add a short **Description**.
-11. Select **Create Project**.
+   Owner, Consultant, or Other — see **Your organisation's role on this
+   project**, below.
+6. Select **Create Project**.
 
-Only the project name is required — everything else can be added later. Name,
-project number/code, your organisation's role on this project, and Project
-Location (address and coordinates) can be changed afterwards via **Edit
-Project** (see below); other fields set at creation cannot yet be changed
-in-app.
+That's it — the project is created immediately with these four fields. The
+contract type/form, contract value, currency, status, dates, location, and
+description are all deliberately left for later: open **Edit Project** on the
+new project's **Overview** page whenever you're ready to fill them in (see
+**Editing a project**, below). None of them are required to start using the
+project, and nothing is guessed or defaulted on your behalf beyond the
+project's status, which starts as **Active**.
 
 ## Your organisation's role on this project
 
@@ -87,14 +76,23 @@ confirmation — it will never be set automatically.
 ## Editing a project
 
 Select **Edit Project** on the project's **Overview** page (next to the
-status badge) to update the project name, project number/code, your
-organisation's role on this project, or Project Location — address, city,
-state/region, postcode/ZIP, country, and coordinates. Coordinates can be
-added, changed, or cleared entirely (clear both fields to remove the project
-from the Dashboard's [Project Map](../dashboard/overview.md)). Your
-organisation's role on this project can likewise be changed at any time, or
-cleared back to "Role not set" — changing it only updates this project's own
-record; it never rewrites Contract parties or any other project's role.
+status badge) to complete or change everything not collected at creation:
+
+- Project Name and Project Number / Code.
+- Your organisation's role on this project — changeable at any time, or
+  clearable back to "Role not set"; changing it only updates this project's
+  own record, and never rewrites Contract parties or any other project's role.
+- A short **Description**.
+- **Contract Type** (JCT, NEC3, NEC4, FIDIC, Bespoke, or Other), **Contract
+  Value**, and **Currency** (defaults to your organisation's currency unless
+  you choose an explicit override).
+- **Status** — Active, On Hold, Completed, or Cancelled.
+- **Start Date** and **Completion Date**.
+- **Project Location** — Address, City, State/Region, Postcode/ZIP, Country,
+  and geographic coordinates (Latitude/Longitude). Coordinates can be added,
+  changed, or cleared entirely (clear both fields to remove the project from
+  the Dashboard's [Project Map](../dashboard/overview.md)).
+
 Changes are visible on the Dashboard immediately, without needing to refresh
 the page.
 
@@ -128,8 +126,8 @@ a new project.
 
 - Skipping the project code if your organisation relies on codes to tell similar
   project names apart in lists and documents.
-- Setting a completion date earlier than the start date — check both dates
-  before saving.
+- Entering a completion date earlier than the start date in Edit Project —
+  double-check both dates before saving.
 
 ## What to do next
 

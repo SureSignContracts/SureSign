@@ -8,14 +8,24 @@ import Button from '@/components/ui/Button';
 import { normalizeApiError } from '@/lib/normalizeApiError';
 import Select from '@/components/ui/Select';
 import { PROJECT_ORGANIZATION_ROLE_OPTIONS } from '@/lib/projectOrganizationRole';
+import { SUPPORTED_CURRENCIES } from '@/lib/currency';
+import { useAuthStore } from '@/store/authStore';
+
+// Mirrors the identical list in frontend/src/app/app/projects/page.tsx's
+// CreateProjectModal — kept as two small literal arrays (not centralised)
+// since it's a fixed 6-item list with no separate label mapping, unlike
+// the Project Organization Role options above.
+const CONTRACT_TYPES = ['JCT', 'NEC3', 'NEC4', 'FIDIC', 'Bespoke', 'Other'];
 
 /**
- * Project Editing Foundation — the counterpart to CreateProjectModal
+ * Project Editing — the counterpart to CreateProjectModal
  * (frontend/src/app/app/projects/page.tsx) for a project that already
- * exists. Deliberately narrower than that create form: only the fields a
- * user could already set at creation but had no way to change afterwards
- * (name, code, address/location, coordinates) — not a Project Settings
- * redesign, and never commercial/contract-derived/AI fields.
+ * exists. Phase B moved description/status/contract type/contract value/
+ * currency/dates here from the Create Project form (now trimmed to
+ * "Project Basics") specifically so nothing already supported by the
+ * platform became inaccessible after creation — this is not a Project
+ * Settings redesign, and still never touches commercial/contract-derived/
+ * AI fields (those remain Contract-level, not Project-level, concepts).
  */
 
 export type EditableProject = {
@@ -23,6 +33,13 @@ export type EditableProject = {
   name: string;
   code: string | null;
   organization_role: string | null;
+  description: string | null;
+  status: string;
+  contract_type: string | null;
+  contract_value: number | string | null;
+  currency: string | null;
+  start_date: string | null;
+  end_date: string | null;
   address: string | null;
   city: string | null;
   state: string | null;
@@ -34,6 +51,8 @@ export type EditableProject = {
 
 type FormState = {
   name: string; code: string; organization_role: string;
+  description: string; status: string; contract_type: string; contract_value: string; currency: string;
+  start_date: string; end_date: string;
   address: string; city: string; state: string; postcode: string; country: string;
   latitude: string; longitude: string;
 };
@@ -43,6 +62,13 @@ function toFormState(project: EditableProject): FormState {
     name: project.name ?? '',
     code: project.code ?? '',
     organization_role: project.organization_role ?? '',
+    description: project.description ?? '',
+    status: project.status ?? 'active',
+    contract_type: project.contract_type ?? '',
+    contract_value: project.contract_value !== null && project.contract_value !== undefined ? String(project.contract_value) : '',
+    currency: project.currency ?? '',
+    start_date: project.start_date ?? '',
+    end_date: project.end_date ?? '',
     address: project.address ?? '',
     city: project.city ?? '',
     state: project.state ?? '',
@@ -69,6 +95,7 @@ export default function EditProjectModal({ project, projectId, onClose }: {
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
   const [form, setForm] = useState<FormState>(() => toFormState(project));
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
@@ -80,9 +107,16 @@ export default function EditProjectModal({ project, projectId, onClose }: {
       name: form.name,
       code: form.code || null,
       // '' means "clear back to not set" — sent explicitly as null so the
-      // backend's omit-vs-null-clear distinction (organization_role uses
-      // `sometimes|nullable`) resolves to a real clear, not a no-op.
+      // backend's omit-vs-null-clear distinction (organization_role/currency
+      // both use `sometimes|nullable`) resolves to a real clear, not a no-op.
       organization_role: form.organization_role || null,
+      description: form.description || null,
+      status: form.status,
+      contract_type: form.contract_type || null,
+      contract_value: form.contract_value === '' ? null : form.contract_value,
+      currency: form.currency || null,
+      start_date: form.start_date || null,
+      end_date: form.end_date || null,
       address: form.address || null,
       city: form.city || null,
       state: form.state || null,
@@ -162,6 +196,80 @@ export default function EditProjectModal({ project, projectId, onClose }: {
               <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
                 Tell SureSign how your organization is acting on this project. This can differ between projects.
               </p>
+            </div>
+            <div className="mt-4">
+              <label style={labelStyle}>Description</label>
+              <textarea
+                rows={3}
+                className={INPUT_CLS}
+                style={{ ...inputStyle, resize: 'vertical' }}
+                value={form.description}
+                onChange={e => set('description', e.target.value)}
+                placeholder="Brief project overview…"
+              />
+            </div>
+          </div>
+
+          <div className="pt-2" style={{ borderTop: '1px solid var(--border)' }}>
+            <p className="text-sm font-medium mb-3" style={{ color: 'var(--text-primary)' }}>Contract &amp; Status</p>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label style={labelStyle}>Contract Type</label>
+                  <Select className="w-full" value={form.contract_type} onChange={e => set('contract_type', e.target.value)}>
+                    <option value="">Select contract type…</option>
+                    {CONTRACT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  </Select>
+                </div>
+                <div>
+                  <label style={labelStyle}>Contract Value</label>
+                  <input
+                    className={INPUT_CLS}
+                    style={inputStyle}
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={form.contract_value}
+                    onChange={e => set('contract_value', e.target.value)}
+                    placeholder="0.00"
+                    aria-invalid={fieldErrors.contract_value ? true : undefined}
+                    aria-describedby={fieldErrors.contract_value ? 'edit-project-contract-value-error' : undefined}
+                  />
+                  {fieldErrors.contract_value && (
+                    <p id="edit-project-contract-value-error" className="text-xs mt-1" style={{ color: '#f87171' }}>{fieldErrors.contract_value[0]}</p>
+                  )}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label style={labelStyle}>Currency</label>
+                  <Select className="w-full" value={form.currency} onChange={e => set('currency', e.target.value)}>
+                    <option value="">Use organisation default — {user?.organization?.effective_currency ?? 'GBP'}</option>
+                    {SUPPORTED_CURRENCIES.map(code => (
+                      <option key={code} value={code}>{code}</option>
+                    ))}
+                  </Select>
+                </div>
+                <div>
+                  <label style={labelStyle}>Status</label>
+                  <Select className="w-full" value={form.status} onChange={e => set('status', e.target.value)}>
+                    <option value="active">Active</option>
+                    <option value="on_hold">On Hold</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label style={labelStyle}>Start Date</label>
+                  <input className={INPUT_CLS} style={inputStyle} type="date" value={form.start_date} onChange={e => set('start_date', e.target.value)} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Completion Date</label>
+                  <input className={INPUT_CLS} style={inputStyle} type="date" value={form.end_date} onChange={e => set('end_date', e.target.value)} />
+                </div>
+              </div>
             </div>
           </div>
 

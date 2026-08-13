@@ -2,9 +2,11 @@
 
 ## What this is
 
-Editing a project lets you change a subset of the details set when it was
-created: name, project number/code, your organisation's role on this project,
-address/site location, and geographic coordinates.
+Project creation is deliberately short — just a name, and optionally a
+project number/code, project type, and your organisation's role on this
+project (see [Creating a Project](creating-a-project.md)). Editing a project
+is where everything else the platform supports gets completed or changed,
+whenever you're ready.
 
 ## Who can use it
 
@@ -20,11 +22,17 @@ status badge.
 - Project Name, Project Number / Code
 - Your organisation's role on this project (see
   [Creating a Project](creating-a-project.md#your-organisations-role-on-this-project))
+- Description
+- Contract Type (JCT, NEC3, NEC4, FIDIC, Bespoke, or Other), Contract Value,
+  and Currency (defaults to your organisation's currency unless you choose an
+  explicit override)
+- Status — Active, On Hold, Completed, or Cancelled
+- Start Date and Completion Date
 - Project Location — Address, City, State/Region, Postcode/ZIP, Country
 - Geographic coordinates (Latitude/Longitude)
 
-Contract Type, Type of Work, Contract Value, Status, Start/Completion Date,
-and Description are set at creation and are not yet editable in-app.
+**Project Type** (the type of work — New Build, Refurbishment, etc.) is set
+at creation and is not yet editable in-app.
 
 ## What happens after you save
 
