@@ -31,10 +31,19 @@
  * records. Leaving this page never cancels a running analysis — only the
  * explicit "Cancel Analysis" action calls the cancel endpoint.
  *
- * Deliberately NOT done here (Phase E): no confirmed Contract value is ever
- * written onto any Project field, no Client/Employer record is created or
- * linked, and Project.organization_role is only ever READ (to suggest a
- * Contract Type default) — never written by anything in this file.
+ * Phase E added the "Review Project Suggestions" step, mounted only after
+ * `status === 'confirmed'` and only on explicit click (never automatically):
+ * `ProjectSuggestionsPanel` (same directory) reads/applies a small
+ * whitelisted set of Project-summary fields from the confirmed Contract via
+ * two new endpoints (`GET`/`POST .../project-suggestions`,
+ * `.../apply-project-suggestions` — see
+ * `App\Services\ProjectContractSetupSyncService`). This page never computes
+ * or trusts a suggested value itself — it only opens/closes that panel and
+ * invalidates the `['project', id]` query afterward so the rest of this
+ * page (and the whole app) sees the applied values. No Client/Employer
+ * record is created or linked, and Project.organization_role is only ever
+ * READ (to suggest a Contract Type default, or to be suggested itself by
+ * the Phase E panel) — never written by anything in this file.
  */
 
 import { useState } from 'react';
@@ -51,6 +60,7 @@ import Select from '@/components/ui/Select';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import { useAiAnalysisPolling } from '@/hooks/useAiAnalysisPolling';
 import ContractAnalysisReview, { type ReviewableContract } from '@/components/ai/ContractAnalysisReview';
+import ProjectSuggestionsPanel from './ProjectSuggestionsPanel';
 import type { AiAnalysisRecord } from '@/store/aiAnalysisStore';
 
 // Canonical backend Contract types — identical list already used by
@@ -135,6 +145,7 @@ export default function ProjectSetupPage() {
   const [mode, setMode] = useState<EntryMode | null>(null);
   const [focalContract, setFocalContract] = useState<ReviewableContract & ContractSummary | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
 
   const loading = projectLoading || contractsLoading;
   const effectiveMode: EntryMode = mode ?? (contracts.length > 0 ? 'choice' : 'upload');
@@ -300,6 +311,7 @@ export default function ProjectSetupPage() {
           onReview={() => setReviewOpen(true)}
           onContinue={goToWorkspace}
           onViewContract={goToContracts}
+          onReviewSuggestions={() => setSuggestionsOpen(true)}
         />
       )}
 
@@ -309,6 +321,16 @@ export default function ProjectSetupPage() {
           projectId={id}
           initialAnalysis={analysis}
           onClose={() => { setReviewOpen(false); refetchAnalysis(); }}
+        />
+      )}
+
+      {suggestionsOpen && focalContract && analysis && (
+        <ProjectSuggestionsPanel
+          projectId={id}
+          contractId={focalContract.id}
+          analysisId={analysis.id}
+          onClose={() => setSuggestionsOpen(false)}
+          onApplied={() => qc.invalidateQueries({ queryKey: ['project', id] })}
         />
       )}
     </div>
@@ -505,7 +527,7 @@ function EntryPanel({
 
 function ContractStatusPanel({
   contract, analysis, aiEnabled, onStartAnalysis, onRetryAnalysis, startPending,
-  onCancelAnalysis, cancelPending, onReview, onContinue, onViewContract,
+  onCancelAnalysis, cancelPending, onReview, onContinue, onViewContract, onReviewSuggestions,
 }: {
   contract: ContractSummary;
   analysis: AiAnalysisRecord | null;
@@ -518,6 +540,7 @@ function ContractStatusPanel({
   onReview: () => void;
   onContinue: () => void;
   onViewContract: () => void;
+  onReviewSuggestions: () => void;
 }) {
   const status = analysis?.status ?? null;
 
@@ -586,7 +609,11 @@ function ContractStatusPanel({
           body="This Contract&rsquo;s analysis has been confirmed and saved."
           actions={
             <>
-              <Button onClick={onContinue}>Continue to Project</Button>
+              {/* Phase E — never opened automatically; the panel itself
+                  derives whether there's anything to show (including "no
+                  suggestions available" and "already matches"). */}
+              <Button onClick={onReviewSuggestions}>Review Project Suggestions</Button>
+              <Button variant="ghost" onClick={onContinue}>Continue to Project</Button>
               <Button variant="ghost" onClick={onViewContract}>View Contract</Button>
               <Button variant="ghost" onClick={onRetryAnalysis} disabled={startPending}>Reanalyze</Button>
             </>

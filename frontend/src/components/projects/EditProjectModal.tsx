@@ -38,6 +38,12 @@ export type EditableProject = {
   contract_type: string | null;
   contract_value: number | string | null;
   currency: string | null;
+  // Phase E — added here specifically so a Project Suggestions apply of
+  // retention_percentage is never a hidden, one-way, un-editable field;
+  // the backend has always validated it (ProjectController::store()/
+  // update() already accepted it before this phase), only this modal was
+  // missing it.
+  retention_percentage: number | string | null;
   start_date: string | null;
   end_date: string | null;
   address: string | null;
@@ -52,6 +58,7 @@ export type EditableProject = {
 type FormState = {
   name: string; code: string; organization_role: string;
   description: string; status: string; contract_type: string; contract_value: string; currency: string;
+  retention_percentage: string;
   start_date: string; end_date: string;
   address: string; city: string; state: string; postcode: string; country: string;
   latitude: string; longitude: string;
@@ -67,6 +74,7 @@ function toFormState(project: EditableProject): FormState {
     contract_type: project.contract_type ?? '',
     contract_value: project.contract_value !== null && project.contract_value !== undefined ? String(project.contract_value) : '',
     currency: project.currency ?? '',
+    retention_percentage: project.retention_percentage !== null && project.retention_percentage !== undefined ? String(project.retention_percentage) : '',
     start_date: project.start_date ?? '',
     end_date: project.end_date ?? '',
     address: project.address ?? '',
@@ -115,6 +123,7 @@ export default function EditProjectModal({ project, projectId, onClose }: {
       contract_type: form.contract_type || null,
       contract_value: form.contract_value === '' ? null : form.contract_value,
       currency: form.currency || null,
+      retention_percentage: form.retention_percentage === '' ? null : form.retention_percentage,
       start_date: form.start_date || null,
       end_date: form.end_date || null,
       address: form.address || null,
@@ -268,6 +277,16 @@ export default function EditProjectModal({ project, projectId, onClose }: {
                 <div>
                   <label style={labelStyle}>Completion Date</label>
                   <input className={INPUT_CLS} style={inputStyle} type="date" value={form.end_date} onChange={e => set('end_date', e.target.value)} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label style={labelStyle}>Retention %</label>
+                  <input
+                    className={INPUT_CLS} style={inputStyle} type="number" min="0" max="100" step="0.01"
+                    value={form.retention_percentage} onChange={e => set('retention_percentage', e.target.value)}
+                    placeholder="0.00"
+                  />
                 </div>
               </div>
             </div>

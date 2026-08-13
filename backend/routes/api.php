@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectPortfolioController;
 use App\Http\Controllers\Api\ContractController;
+use App\Http\Controllers\Api\ProjectContractSetupController;
 use App\Http\Controllers\Api\RfiController;
 use App\Http\Controllers\Api\VariationController;
 use App\Http\Controllers\Api\PaymentApplicationController;
@@ -714,6 +715,14 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
     Route::post('/contracts/{contract}/attach-file',   [ContractController::class, 'attachFile']);
     Route::post('/contracts/{contract}/archive',       [ContractController::class, 'archive']);
     Route::post('/contracts/{contract}/restore',       [ContractController::class, 'restore']);
+
+    // Phase E — Contract-Assisted Project Setup: Project-summary suggestions
+    // derived from an already-confirmed Contract analysis. See
+    // ProjectContractSetupController/ProjectContractSetupSyncService.
+    Route::get('/projects/{project}/contracts/{contract}/analyses/{analysis}/project-suggestions',
+        [ProjectContractSetupController::class, 'suggestions']);
+    Route::post('/projects/{project}/contracts/{contract}/analyses/{analysis}/apply-project-suggestions',
+        [ProjectContractSetupController::class, 'apply']);
 
     // Organization & Branding
     Route::post('/organization/onboard',             [OrganizationController::class, 'onboard']);

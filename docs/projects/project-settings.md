@@ -28,6 +28,7 @@ status badge.
   explicit override)
 - Status — Active, On Hold, Completed, or Cancelled
 - Start Date and Completion Date
+- Retention %
 - Project Location — Address, City, State/Region, Postcode/ZIP, Country
 - Geographic coordinates (Latitude/Longitude)
 

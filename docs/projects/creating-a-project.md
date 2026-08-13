@@ -79,9 +79,52 @@ and [Confirming Analysis](../contracts/confirming-analysis.md) steps as
 analysing a Contract from the Contracts page directly — nothing about the
 Contract's own data is treated differently because it went through Setup.
 
-Setup does not yet use a confirmed Contract's details to fill in anything on
-the project itself (contract value, dates, currency, and so on still need
-entering via **Edit Project**, above) — that is planned for a future release.
+## Applying confirmed Contract details to your Project
+
+Once a Contract's analysis has been confirmed, Setup offers **Review Project
+Suggestions** — a short list of Project-summary details SureSign can copy
+from that confirmed Contract, shown next to your Project's current value for
+each one:
+
+- **Contract Value & Currency** (shown and applied together, never
+  separately — see below).
+- **Commencement Date** → your Project's Start Date.
+- **Completion Date** → your Project's Completion Date.
+- **Contract Form** (e.g. "JCT Design and Build 2016") → your Project's
+  Contract Type.
+- **Retention %**.
+- **Your Role on this Project** — only offered when it isn't already set,
+  and only when SureSign can match your organisation's name to a party
+  named in the confirmed Contract (see below).
+
+Nothing here is applied automatically. Each row shows **Current Project**
+alongside **From confirmed Contract**; you tick only the ones you want, then
+select **Apply Selected**. A blank Project field is ticked by default; a
+field that already has a different value is left unticked so nothing you've
+already entered is silently replaced. A row that already matches your
+Project is shown as already matching, with nothing to select. If a Contract
+has nothing suitable to offer, Setup says so plainly rather than showing an
+empty list as if something had gone wrong.
+
+**Contract Value and Currency are never applied separately** — SureSign
+never assumes a Contract amount is in your Project's existing currency, and
+never converts between currencies. If the confirmed Contract's currency
+couldn't be determined, no Contract Value suggestion is offered at all
+rather than guessing.
+
+**Your organisation's role suggestion** is based only on your
+organisation's name matching a specific named party in the confirmed
+Contract (for example, the Main Contractor or the Employer) — never on the
+Contract's type alone. A specialist contractor's organisation can be the
+Main Contractor on one project and a Subcontractor on another; uploading a
+Subcontract never changes an already-set Project Role, and a role
+suggestion is never shown once you've already set one manually.
+
+This step only ever changes your Project's own summary fields. It never
+changes the Contract itself, never re-confirms or re-analyses it, and never
+creates or links an Employer/Client record. You can select **Continue
+Without Applying** at any point and complete these fields manually via
+**Edit Project** instead.
 
 ## Your organisation's role on this project
 
