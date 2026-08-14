@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
+import PlatformPageHero from '@/components/admin/PlatformPageHero';
 import { Wallet, Coins, Lock, PiggyBank, Building2, Brain, ShieldCheck, ShieldAlert, HelpCircle, ShieldOff, ShieldQuestion, X } from 'lucide-react';
 import CountUp from '@/components/ui/CountUp';
 import EmptyState from '@/components/ui/EmptyState';
@@ -284,16 +285,19 @@ export default function AiCreditsDashboardPage() {
   const noActivity = !isLoading && summary && summary.total_analyses === 0;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-          <Wallet size={22} style={{ color: 'var(--gold)' }} />
-          AI Credits
-        </h1>
-        <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-          Internal operations dashboard for the AI Credits ledger.
-        </p>
-      </div>
+    <div className="mx-auto max-w-7xl space-y-7 p-4 pb-12 sm:p-6 lg:p-8">
+      <PlatformPageHero
+        eyebrow="Credit operations"
+        title="AI Credits"
+        description="Monitor the internal credit ledger, available capacity and analysis activity across SureSign."
+        loading={isLoading}
+        metrics={[
+          { label: 'Issued', value: summary?.issued ?? 0, detail: 'credits allocated', icon: Coins },
+          { label: 'Consumed', value: summary?.consumed ?? 0, detail: 'credits used', icon: PiggyBank },
+          { label: 'Reserved', value: summary?.reserved ?? 0, detail: 'currently held', icon: Lock },
+          { label: 'Available', value: summary?.available ?? 0, detail: 'ready to use', icon: Wallet },
+        ]}
+      />
 
       <OperatingModeCard />
 
@@ -306,13 +310,6 @@ export default function AiCreditsDashboardPage() {
         />
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <MetricCard label="Credits Issued" value={summary?.issued} loading={isLoading} icon={Coins} />
-            <MetricCard label="Credits Consumed" value={summary?.consumed} loading={isLoading} icon={PiggyBank} />
-            <MetricCard label="Currently Reserved" value={summary?.reserved} loading={isLoading} icon={Lock} />
-            <MetricCard label="Available Credits" value={summary?.available} loading={isLoading} icon={Wallet} />
-          </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <MetricCard label="Active Organisations" value={summary?.active_organizations} loading={isLoading} icon={Building2} />
             <MetricCard label="Total AI Analyses" value={summary?.total_analyses} loading={isLoading} icon={Brain} />

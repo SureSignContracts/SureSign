@@ -215,7 +215,7 @@ export function DelayEventsTab({ projectId, contracts, tradePackages, canWrite, 
       : api.get(`/projects/${projectId}/delay-events`).then(r => r.data),
   });
 
-  const events = data?.data ?? [];
+  const events = useMemo(() => data?.data ?? [], [data?.data]);
   const filtered = useMemo(
     () => statusFilter === 'all' ? events : events.filter(e => e.status === statusFilter),
     [events, statusFilter]
@@ -249,26 +249,26 @@ export function DelayEventsTab({ projectId, contracts, tradePackages, canWrite, 
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between" data-tour="delay-events-filters">
-        <div className="flex gap-1.5 flex-wrap">
+      <div className="ss-animate-in flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-3 shadow-[var(--shadow-card)] sm:flex-row sm:items-center sm:justify-between" data-tour="delay-events-filters">
+        <div className="flex flex-wrap gap-1 rounded-xl bg-[var(--bg-elevated)] p-1">
           {['all', 'open', 'under_assessment', 'closed', 'rejected'].map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
-              className="px-3 py-1.5 rounded-full text-xs font-medium capitalize"
+              className="rounded-lg px-3 py-1.5 text-xs font-medium capitalize transition-all active:scale-[0.97]"
               style={statusFilter === s
                 ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
-                : { backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
+                : { color: 'var(--text-secondary)' }}>
               {s === 'all' ? 'All' : (STATUS_CONFIG[s]?.label ?? s)}
             </button>
           ))}
         </div>
         {canWrite && (
-          <button data-tour="delay-events-new" onClick={() => setModalTarget('new')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
-            <Plus size={15} /> Raise Delay Event
+          <button data-tour="delay-events-new" onClick={() => setModalTarget('new')} className="flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold transition-all hover:-translate-y-0.5 active:translate-y-0" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+            <Plus size={15} /> Raise delay event
           </button>
         )}
       </div>
 
-      <div className="rounded-xl overflow-hidden" data-tour="delay-events-table" style={{ border: '1px solid var(--border)' }}>
+      <div className="ss-animate-in overflow-hidden rounded-2xl bg-[var(--bg-surface)]" data-tour="delay-events-table" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '70ms' }}>
         <table className="w-full text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>

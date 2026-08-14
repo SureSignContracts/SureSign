@@ -266,9 +266,9 @@ export function LossAndExpenseTab({ projectId, contracts, tradePackages, canWrit
       : api.get(`/projects/${projectId}/eot-requests`).then(r => r.data),
   });
 
-  const claims = data?.data ?? [];
-  const delayEvents = delayData?.data ?? [];
-  const eots = eotData?.data ?? [];
+  const claims = useMemo(() => data?.data ?? [], [data?.data]);
+  const delayEvents = useMemo(() => delayData?.data ?? [], [delayData?.data]);
+  const eots = useMemo(() => eotData?.data ?? [], [eotData?.data]);
   const filtered = useMemo(
     () => statusFilter === 'all' ? claims : claims.filter(c => c.status === statusFilter),
     [claims, statusFilter]
@@ -286,26 +286,26 @@ export function LossAndExpenseTab({ projectId, contracts, tradePackages, canWrit
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex gap-1.5 flex-wrap">
+      <div className="ss-animate-in flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-3 shadow-[var(--shadow-card)] sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap gap-1 rounded-xl bg-[var(--bg-elevated)] p-1">
           {['all', 'draft', 'submitted', 'under_assessment', 'agreed', 'rejected'].map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
-              className="px-3 py-1.5 rounded-full text-xs font-medium capitalize"
+              className="rounded-lg px-3 py-1.5 text-xs font-medium capitalize transition-all active:scale-[0.97]"
               style={statusFilter === s
                 ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
-                : { backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
+                : { color: 'var(--text-secondary)' }}>
               {s === 'all' ? 'All' : (STATUS_CONFIG[s]?.label ?? s)}
             </button>
           ))}
         </div>
         {canWrite && (
-          <button onClick={() => setModalTarget('new')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
-            <Plus size={15} /> Raise Claim
+          <button onClick={() => setModalTarget('new')} className="flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold transition-all hover:-translate-y-0.5 active:translate-y-0" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+            <Plus size={15} /> Raise claim
           </button>
         )}
       </div>
 
-      <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+      <div className="ss-animate-in overflow-hidden rounded-2xl bg-[var(--bg-surface)]" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '70ms' }}>
         <table className="w-full text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>

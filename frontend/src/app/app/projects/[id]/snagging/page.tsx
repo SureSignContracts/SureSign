@@ -11,6 +11,7 @@ import PageTourButton from '@/components/tours/PageTourButton';
 import Button from '@/components/ui/Button';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import SnagModal from '@/components/snags/SnagModal';
+import { ProjectModuleHeader, ProjectModuleMetric } from '@/components/projects/ProjectModuleHeader';
 
 const PRIORITY_COLORS: Record<string, { bg: string; text: string }> = {
   low:      { bg: 'rgba(90,86,82,0.2)',    text: '#9a9490' },
@@ -85,7 +86,7 @@ export default function ProjectSnaggingPage() {
   const closedCount    = allItems.filter((s: any) => s.status === 'closed').length;
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="ss-projects-page mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
       {modal.open && (
         <SnagModal projectId={id} snag={modal.snag} onClose={() => setModal({ open: false })} />
       )}
@@ -102,56 +103,48 @@ export default function ProjectSnaggingPage() {
         </div>
       )}
 
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-1.5">
-            <h1 className="text-[1.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>Snagging</h1>
-            <PageTourButton tourKey="page-snagging" label="Take a tour of this page" />
-          </div>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Defect tracking and snag list management</p>
-        </div>
-        <button
-          data-tour="snagging-new"
-          onClick={() => setModal({ open: true })}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 active:scale-[0.98]"
-          style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
-        >
-          <Plus size={15} />
-          Add Snag
-        </button>
-      </div>
-
-      {/* Summary */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4" data-tour="snagging-summary">
+      <ProjectModuleHeader
+        category="Delivery control"
+        title="Snagging"
+        description="Capture defects, assign responsibility and follow every item through to closure."
+        icon={Package}
+        tour={<PageTourButton tourKey="page-snagging" label="Take a tour of this page" />}
+        action={(
+          <button
+            data-tour="snagging-new"
+            onClick={() => setModal({ open: true })}
+            className="flex h-11 items-center gap-2 whitespace-nowrap rounded-xl bg-[#9ee5b5] px-5 text-sm font-semibold text-[#18211d] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#b4edc6] active:translate-y-0"
+          >
+            <Plus size={16} /> Add snag
+          </button>
+        )}
+      >
         {[
           { label: 'Total',       value: allItems.length, color: 'var(--gold)' },
           { label: 'Open',        value: openCount,       color: '#f87171' },
           { label: 'In Progress', value: inProgressCount, color: '#60a5fa' },
           { label: 'Closed',      value: closedCount,     color: '#4ade80' },
         ].map(({ label, value, color }, i) => (
-          <div key={label} className="ss-animate-in rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: `${i * 50}ms` }}>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}</p>
-            <p className="text-xl font-bold mt-1 tabular-nums" style={{ color }}>{value}</p>
-          </div>
+          <ProjectModuleMetric key={label} label={label} value={value} tone={color} index={i} />
         ))}
-      </div>
+      </ProjectModuleHeader>
 
       {/* Filters */}
-      <div className="flex gap-3 flex-wrap" data-tour="snagging-filters">
-        <div className="relative">
+      <div className="ss-animate-in flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-2 shadow-[var(--shadow-card)]" data-tour="snagging-filters" style={{ animationDelay: '100ms' }}>
+        <div className="relative min-w-[220px] flex-1">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search snag items…"
-            className="pl-9 pr-4 py-2 rounded-lg text-sm outline-none"
-            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)', minWidth: '220px', boxShadow: 'var(--shadow-card)' }}
+            className="h-10 w-full rounded-xl bg-[var(--bg-elevated)] pl-9 pr-4 text-sm outline-none transition-colors focus:ring-2 focus:ring-[var(--gold)]/30"
+            style={{ color: 'var(--text-primary)' }}
           />
         </div>
-        <div className="flex gap-1 p-1 rounded-full" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+        <div className="flex gap-1 overflow-x-auto rounded-xl bg-[var(--bg-elevated)] p-1">
           {(['all', ...STATUSES] as const).map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
-              className="px-3 py-1.5 rounded-full text-xs font-medium transition-all active:scale-[0.97]"
+              className="whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-all active:scale-[0.97]"
               style={statusFilter === s
                 ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
                 : { color: 'var(--text-secondary)' }

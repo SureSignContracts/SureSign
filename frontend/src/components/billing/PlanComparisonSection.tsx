@@ -4,7 +4,6 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useQueryClient } from '@tanstack/react-query';
 import { Check, Sparkles, Loader2, Clock } from 'lucide-react';
-import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { formatMoney } from '@/lib/currency';
 import { minorToMajor, useCreateCheckout, useRequestPlanChange, useCancelPendingCheckout } from '@/hooks/useBilling';
@@ -155,17 +154,21 @@ export default function PlanComparisonSection({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Plans</h2>
+      <div className="flex items-end justify-between flex-wrap gap-4">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#3f8f60]">Plan comparison</p>
+          <h2 className="mt-1 text-2xl font-semibold tracking-[-0.03em]" style={{ color: 'var(--text-primary)' }}>Find your operating level</h2>
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Clear capabilities and predictable billing for every stage of growth.</p>
+        </div>
         {anyMonthly && anyAnnual && (
-          <div className="flex gap-1 p-1 rounded-full w-fit" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+          <div className="flex w-fit gap-1 rounded-xl bg-[var(--bg-surface)] p-1 shadow-[0_5px_18px_rgba(24,33,29,0.06)]">
             {(['monthly', 'annual'] as const).map(i => (
               <button
                 key={i}
                 onClick={() => setInterval(i)}
                 className="px-3.5 py-1.5 rounded-full text-xs font-medium transition-all active:scale-[0.97]"
                 style={interval === i
-                  ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
+                ? { backgroundColor: '#18211d', color: '#ffffff' }
                   : { color: 'var(--text-secondary)' }}
               >
                 {i === 'monthly' ? 'Monthly' : 'Annual'}
@@ -175,7 +178,7 @@ export default function PlanComparisonSection({
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {plans.map((plan, i) => {
           const price = interval === 'monthly' ? plan.monthly : plan.annual;
           const isPendingCheckoutPlan = pendingCheckout?.plan_code === plan.code;
@@ -200,55 +203,52 @@ export default function PlanComparisonSection({
           };
 
           return (
-            <Card
+            <div
               key={plan.code}
-              className="ss-animate-in flex flex-col gap-4 p-5 relative transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[var(--shadow-pop)]"
+              className="ss-animate-in group relative flex min-h-[360px] flex-col gap-4 overflow-hidden rounded-2xl p-6 transition-all duration-300 ease-out hover:-translate-y-1"
               style={{
                 animationDelay: `${Math.min(i * 45, 360)}ms`,
-                border: plan.is_current
-                  ? '1px solid var(--gold)'
-                  : isPendingCheckoutPlan
-                    ? '1px solid #facc15'
-                    : plan.is_popular ? '1px solid var(--gold-50)' : '1px solid var(--border)',
+                backgroundColor: plan.is_popular ? '#18211d' : 'var(--bg-surface)',
+                boxShadow: plan.is_popular ? '0 24px 60px rgba(24,33,29,0.18)' : '0 12px 34px rgba(24,33,29,0.07)',
               }}
             >
+              <span className={`pointer-events-none absolute right-4 top-0 text-[92px] font-semibold leading-none ${plan.is_popular ? 'text-white/[0.035]' : 'text-[#18211d]/[0.035]'}`}>0{i + 1}</span>
               {plan.is_popular && !plan.is_current && !isPendingCheckoutPlan && (
                 <div
-                  className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 shadow-sm"
-                  style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
+                  className="relative z-10 flex w-fit items-center gap-1 rounded-lg bg-[#9ee5b5] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-[#18211d]"
                 >
-                  <Sparkles size={11} className="animate-pulse" /> Most Popular
+                  <Sparkles size={11} /> Recommended
                 </div>
               )}
 
-              <div>
+              <div className="relative z-10">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>{plan.name}</h3>
+                  <h3 className={`text-xl font-semibold tracking-[-0.025em] ${plan.is_popular ? 'text-white' : ''}`} style={plan.is_popular ? undefined : { color: 'var(--text-primary)' }}>{plan.name}</h3>
                   {plan.is_current && <Badge tone="accent">Current</Badge>}
                   {isPendingCheckoutPlan && <Badge tone="warning">Awaiting Payment</Badge>}
                 </div>
                 {plan.summary && (
-                  <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{plan.summary}</p>
+                  <p className={`mt-2 text-xs leading-5 ${plan.is_popular ? 'text-white/45' : ''}`} style={plan.is_popular ? undefined : { color: 'var(--text-muted)' }}>{plan.summary}</p>
                 )}
               </div>
 
-              <p key={`${plan.code}-${interval}`} className="text-2xl font-bold tabular-nums ss-menu-pop-in" style={{ color: 'var(--gold)' }}>
+              <p key={`${plan.code}-${interval}`} className={`relative z-10 mt-2 text-3xl font-semibold tabular-nums tracking-[-0.04em] ss-menu-pop-in ${plan.is_popular ? 'text-[#9ee5b5]' : 'text-[#18211d]'}`}>
                 {price ? (
                   <>
                     {formatMoney(minorToMajor(price.unit_amount), price.currency)}
-                    <span className="text-sm font-normal" style={{ color: 'var(--text-muted)' }}>
+                    <span className={`text-sm font-normal ${plan.is_popular ? 'text-white/35' : ''}`} style={plan.is_popular ? undefined : { color: 'var(--text-muted)' }}>
                       {interval === 'monthly' ? '/month' : '/year'} + VAT
                     </span>
                   </>
                 ) : !plan.is_self_serve ? (
-                  <span className="text-sm font-normal" style={{ color: 'var(--text-muted)' }}>Custom pricing</span>
+                  <span className={`text-sm font-normal ${plan.is_popular ? 'text-white/45' : ''}`} style={plan.is_popular ? undefined : { color: 'var(--text-muted)' }}>Custom pricing</span>
                 ) : (
-                  <span className="text-sm font-normal" style={{ color: 'var(--text-muted)' }}>Pricing not yet available</span>
+                  <span className={`text-sm font-normal ${plan.is_popular ? 'text-white/45' : ''}`} style={plan.is_popular ? undefined : { color: 'var(--text-muted)' }}>Pricing not yet available</span>
                 )}
               </p>
 
               {plan.description && (
-                <p className="text-xs flex-1" style={{ color: 'var(--text-secondary)' }}>{plan.description}</p>
+                <p className={`relative z-10 flex-1 text-xs leading-5 ${plan.is_popular ? 'text-white/55' : ''}`} style={plan.is_popular ? undefined : { color: 'var(--text-secondary)' }}>{plan.description}</p>
               )}
 
               {isPendingCheckoutPlan && (
@@ -261,8 +261,8 @@ export default function PlanComparisonSection({
               {!plan.is_self_serve && plan.cta_url && !isPendingCheckoutPlan ? (
                 <Link
                   href={plan.cta_url}
-                  className="w-full py-2 rounded-lg text-sm font-medium text-center transition-all duration-200 hover:opacity-80 active:scale-[0.98]"
-                  style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-primary)' }}
+                  className="relative z-10 mt-auto w-full rounded-xl py-3 text-center text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98]"
+                  style={{ backgroundColor: plan.is_popular ? '#9ee5b5' : 'var(--bg-elevated)', color: plan.is_popular ? '#18211d' : 'var(--text-primary)' }}
                 >
                   {actionLabel}
                 </Link>
@@ -272,9 +272,9 @@ export default function PlanComparisonSection({
                   onClick={onClick}
                   aria-busy={isCheckoutPending}
                   title={canSubscribe || canRequestChange ? undefined : 'Not yet available in this release'}
-                  className="w-full py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-1.5 transition-all duration-200 hover:enabled:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed"
+                  className="relative z-10 mt-auto flex w-full items-center justify-center gap-1.5 rounded-xl py-3 text-sm font-medium transition-all duration-200 hover:enabled:-translate-y-0.5 active:scale-[0.98] disabled:cursor-not-allowed"
                   style={(canSubscribe || canRequestChange)
-                    ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
+                    ? { backgroundColor: plan.is_popular ? '#9ee5b5' : '#18211d', color: plan.is_popular ? '#18211d' : '#ffffff' }
                     : plan.is_current
                       ? { backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)' }
                       : { backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)', opacity: 0.7 }}
@@ -287,7 +287,7 @@ export default function PlanComparisonSection({
                   {isCheckoutPending ? 'Starting checkout…' : actionLabel}
                 </button>
               )}
-            </Card>
+            </div>
           );
         })}
       </div>

@@ -60,6 +60,7 @@ export default function Modal({
   tone = 'neutral',
   size = 'md',
   showCloseButton = false,
+  borderless = false,
   onClose,
   busy = false,
   children,
@@ -69,6 +70,7 @@ export default function Modal({
   tone?: ModalTone;
   size?: ModalSize;
   showCloseButton?: boolean;
+  borderless?: boolean;
   onClose: () => void;
   busy?: boolean;
   children: (close: () => void) => React.ReactNode;
@@ -152,7 +154,7 @@ export default function Modal({
         )}
         style={{
           backgroundColor: 'var(--bg-surface)',
-          border: '1px solid var(--border)',
+          border: borderless ? 'none' : '1px solid var(--border)',
           // The global [tabindex]:focus-visible rule uses a tighter radius.
           // This dialog is focused on mount for keyboard trapping, so lock
           // its intended shell radius before and after focus moves inside.

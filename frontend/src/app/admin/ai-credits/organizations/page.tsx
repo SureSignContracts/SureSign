@@ -4,9 +4,10 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import api from '@/lib/api';
-import { Building2, Search, ChevronRight } from 'lucide-react';
+import { Building2, Search, ChevronRight, Wallet, Brain } from 'lucide-react';
 import EmptyState from '@/components/ui/EmptyState';
 import PaginationBar from '@/components/ui/PaginationBar';
+import PlatformPageHero from '@/components/admin/PlatformPageHero';
 
 interface OrganizationRow {
   organization_id: number;
@@ -42,18 +43,17 @@ export default function AiCreditsOrganizationsPage() {
   });
 
   const rows = data?.data ?? [];
+  const availableCredits = rows.reduce((total, row) => total + row.available, 0);
+  const totalAnalyses = rows.reduce((total, row) => total + row.total_analyses, 0);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-5">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-          <Building2 size={22} style={{ color: 'var(--gold)' }} />
-          Organisations
-        </h1>
-        <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-          Every organisation&apos;s AI Credit balance, derived live from the ledger. Read-only.
-        </p>
-      </div>
+    <div className="mx-auto max-w-7xl space-y-7 p-4 pb-12 sm:p-6 lg:p-8">
+      <PlatformPageHero eyebrow="Credit accounts" title="Organisations" description="Compare organisation-level AI Credit capacity and usage, derived live from the immutable ledger." loading={isLoading}
+        metrics={[
+          { label: 'Organisations', value: data?.total ?? rows.length, detail: 'credit accounts', icon: Building2 },
+          { label: 'Available', value: availableCredits, detail: 'in the current view', icon: Wallet },
+          { label: 'Analyses', value: totalAnalyses, detail: 'in the current view', icon: Brain },
+        ]} />
 
       <div className="relative max-w-sm">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />

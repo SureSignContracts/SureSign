@@ -2,15 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useQuery as useTypesQuery } from '@tanstack/react-query';
-import { CalendarClock, Search, Plus, X, Settings2, AlertTriangle } from 'lucide-react';
+import { CalendarClock, Search, Plus, X, Settings2, AlertTriangle, UserRound, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
-import { formatDateTime } from '@/lib/dateTime';
 import { useAuthStore } from '@/store/authStore';
-import { Badge } from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
@@ -18,6 +15,7 @@ import EmptyState from '@/components/ui/EmptyState';
 import PaginationBar from '@/components/ui/PaginationBar';
 import TimezoneSelect from '@/components/shared/TimezoneSelect';
 import { getErrorMessage } from '@/lib/getErrorMessage';
+import PlatformPageHero from '@/components/admin/PlatformPageHero';
 
 const STATUS_FILTERS = [
   { key: 'all', label: 'All' },
@@ -30,10 +28,18 @@ const STATUS_FILTERS = [
   { key: 'no_show', label: 'No-show' },
 ] as const;
 
-const STATUS_TONE: Record<string, 'neutral' | 'success' | 'warning' | 'info' | 'danger' | 'accent'> = {
-  requested: 'info', pending_confirmation: 'warning', confirmed: 'success',
-  declined: 'danger', cancelled: 'neutral', completed: 'success', no_show: 'danger',
+const STATUS_COLOR: Record<string, string> = {
+  requested: '#4779c7', pending_confirmation: '#b7791f', confirmed: '#299a54',
+  declined: '#d25454', cancelled: '#817b76', completed: '#299a54', no_show: '#d25454',
 };
+
+function appointmentDate(value: string, timeZone: string) {
+  return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone }).format(new Date(value));
+}
+
+function appointmentTime(value: string, timeZone: string) {
+  return new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone }).format(new Date(value));
+}
 
 interface AppointmentType {
   id: number; name: string; slug: string; duration_minutes: number;
@@ -58,7 +64,6 @@ const EMPTY_FORM = {
 
 export default function AdminAppointmentsPage() {
   const qc = useQueryClient();
-  const router = useRouter();
   const currentUser = useAuthStore(s => s.user);
   const isSuperAdmin = currentUser?.roles?.includes('Super Admin') ?? false;
 
@@ -115,6 +120,8 @@ export default function AdminAppointmentsPage() {
 
   const appointments: AppointmentRow[] = data?.data ?? [];
   const meta = data ?? {};
+  const confirmedCount = appointments.filter(appointment => appointment.status === 'confirmed').length;
+  const pendingCount = appointments.filter(appointment => ['requested', 'pending_confirmation'].includes(appointment.status)).length;
 
   function closeCreateModal() {
     setCreateOpen(false);
@@ -155,28 +162,31 @@ export default function AdminAppointmentsPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-5">
-      <div className="flex items-center justify-between flex-wrap gap-3 ss-animate-in">
-        <div>
-          <h1 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-            <CalendarClock size={20} /> Appointments
-          </h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-            Demos, onboarding, training, and support appointments.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link href="/admin/appointments/availability">
-            <Button variant="secondary" size="md" className="rounded-full"><CalendarClock size={14} /> Availability</Button>
+    <div className="mx-auto max-w-7xl space-y-7 p-4 pb-12 sm:p-6 lg:p-8">
+      <PlatformPageHero
+        eyebrow="Schedule control"
+        title="Appointments"
+        description="Coordinate demos, onboarding, training and support conversations from one operational schedule."
+        loading={isLoading}
+        metrics={[
+          { label: 'Appointments', value: meta.total ?? appointments.length, detail: 'in the schedule', icon: CalendarClock },
+          { label: 'Confirmed', value: confirmedCount, detail: 'in the current view', icon: Settings2 },
+          { label: 'Awaiting action', value: pendingCount, detail: 'requested or pending', icon: AlertTriangle },
+        ]}
+        action={
+          <div className="flex flex-wrap items-center justify-end gap-2">
+          <Link href="/admin/appointments/availability" className="flex items-center gap-2 rounded-xl border border-white/10 px-3.5 py-2.5 text-xs font-semibold text-white/70 transition-colors hover:bg-white/[0.06] hover:text-white">
+            <CalendarClock size={14} /> Availability
           </Link>
           {isSuperAdmin && (
-            <Link href="/admin/appointments/types">
-              <Button variant="secondary" size="md" className="rounded-full"><Settings2 size={14} /> Appointment Types</Button>
+            <Link href="/admin/appointments/types" className="flex items-center gap-2 rounded-xl border border-white/10 px-3.5 py-2.5 text-xs font-semibold text-white/70 transition-colors hover:bg-white/[0.06] hover:text-white">
+              <Settings2 size={14} /> Types
             </Link>
           )}
-          <Button className="rounded-full" onClick={() => { setForm(EMPTY_FORM); setCreateOpen(true); }}><Plus size={14} /> New Appointment</Button>
-        </div>
-      </div>
+          <button className="flex items-center gap-2 rounded-xl bg-[#9ee5b5] px-4 py-2.5 text-xs font-semibold text-[#18211d] transition-colors hover:bg-[#b3efc6] active:scale-[0.98]" onClick={() => { setForm(EMPTY_FORM); setCreateOpen(true); }}><Plus size={14} /> New appointment</button>
+          </div>
+        }
+      />
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3 ss-animate-in" style={{ animationDelay: '50ms' }}>
@@ -214,76 +224,47 @@ export default function AdminAppointmentsPage() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="rounded-2xl overflow-x-auto ss-animate-in" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '100ms' }}>
-        <table className="w-full min-w-[900px]">
-          <thead>
-            <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
-              {['Reference', 'Attendee', 'Type', 'When', 'Assigned', 'Status'].map((h, i) => (
-                <th key={i} className="text-left px-4 py-3 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              [...Array(4)].map((_, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)' }}>
-                  {[...Array(6)].map((_, j) => (
-                    <td key={j} className="px-4 py-3">
-                      <div className="h-4 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)', width: j === 0 ? '60%' : '40%' }} />
-                    </td>
-                  ))}
-                </tr>
-              ))
-            ) : appointments.length === 0 ? (
-              <tr>
-                <td colSpan={6}>
-                  <EmptyState
-                    icon={CalendarClock}
-                    title="No appointments found"
-                    description={debouncedSearch || statusFilter !== 'all' || typeFilter !== 'all' ? 'Try adjusting your filters.' : 'Create your first appointment to get started.'}
-                  />
-                </td>
-              </tr>
-            ) : appointments.map((a, idx) => (
-              <tr
-                key={a.id}
-                onClick={() => router.push(`/admin/appointments/${a.id}`)}
-                className="ss-animate-in cursor-pointer transition-colors hover:bg-[var(--bg-hover)]"
-                style={{
-                  borderBottom: idx < appointments.length - 1 ? '1px solid var(--border)' : undefined,
-                  backgroundColor: 'var(--bg-surface)',
-                  animationDelay: `${Math.min(idx * 40, 320)}ms`,
-                }}
-              >
-                <td className="px-4 py-3">
-                  <Link
-                    href={`/admin/appointments/${a.id}`}
-                    onClick={e => e.stopPropagation()}
-                    className="text-sm font-medium transition-colors hover:text-[var(--gold)] hover:underline"
-                    style={{ color: 'var(--text-primary)' }}
-                  >
-                    {a.reference}
-                  </Link>
-                </td>
-                <td className="px-4 py-3">
-                  <p className="text-sm" style={{ color: 'var(--text-primary)' }}>{a.attendee_name}</p>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{a.attendee_company || a.company_name || a.attendee_email}</p>
-                </td>
-                <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-secondary)' }}>{a.appointment_type?.name}</td>
-                <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  {formatDateTime(a.starts_at, { timeZone: a.booking_timezone })}
-                  <span className="block text-xs" style={{ color: 'var(--text-muted)' }}>{a.booking_timezone}</span>
-                </td>
-                <td className="px-4 py-3 text-sm" style={{ color: a.assigned_user ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
-                  {a.assigned_user?.name ?? 'Unassigned'}
-                </td>
-                <td className="px-4 py-3"><Badge status={a.status} tone={STATUS_TONE[a.status]} /></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {isLoading ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[...Array(6)].map((_, index) => <div key={index} className="h-64 animate-pulse rounded-2xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }} />)}
+        </div>
+      ) : appointments.length === 0 ? (
+        <div className="rounded-2xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          <EmptyState icon={CalendarClock} title="No appointments found" description={debouncedSearch || statusFilter !== 'all' || typeFilter !== 'all' ? 'Try adjusting your filters.' : 'Create your first appointment to get started.'} />
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {appointments.map((appointment, index) => {
+            const statusColor = STATUS_COLOR[appointment.status] ?? 'var(--text-muted)';
+            return (
+              <Link key={appointment.id} href={`/admin/appointments/${appointment.id}`}
+                className="group flex min-h-[256px] flex-col overflow-hidden rounded-2xl p-5 transition-all duration-300 hover:-translate-y-1 hover:border-[#9ee5b5]/70 hover:shadow-[0_18px_36px_rgba(24,33,29,0.10)] ss-animate-in"
+                style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: '0 3px 12px rgba(24,33,29,0.05)', animationDelay: `${Math.min(index * 45, 405)}ms` }}>
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[10px] tracking-[0.06em]" style={{ color: 'var(--text-muted)' }}>{appointment.reference}</span>
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-medium capitalize" style={{ color: statusColor }}><span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: statusColor }} />{appointment.status.replace(/_/g, ' ')}</span>
+                </div>
+                <div className="mt-5 flex items-end justify-between border-b pb-5" style={{ borderColor: 'var(--border)' }}>
+                  <div>
+                    <p className="text-2xl font-semibold tabular-nums tracking-[-0.04em]" style={{ color: 'var(--text-primary)' }}>{appointmentTime(appointment.starts_at, appointment.booking_timezone)}</p>
+                    <p className="mt-1 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>{appointmentDate(appointment.starts_at, appointment.booking_timezone)}</p>
+                  </div>
+                  <p className="max-w-[48%] text-right text-[10px] leading-snug" style={{ color: 'var(--text-muted)' }}>{appointment.booking_timezone}</p>
+                </div>
+                <div className="mt-4 min-w-0">
+                  <p className="truncate text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{appointment.attendee_name}</p>
+                  <p className="mt-1 truncate text-xs" style={{ color: 'var(--text-muted)' }}>{appointment.attendee_company || appointment.company_name || appointment.attendee_email}</p>
+                  <p className="mt-3 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>{appointment.appointment_type?.name}</p>
+                </div>
+                <div className="mt-auto flex items-center justify-between border-t pt-4" style={{ borderColor: 'var(--border)' }}>
+                  <span className="flex items-center gap-1.5 text-xs" style={{ color: appointment.assigned_user ? 'var(--text-secondary)' : 'var(--text-muted)' }}><UserRound size={12} className="opacity-45" />{appointment.assigned_user?.name ?? 'Unassigned'}</span>
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full transition-colors group-hover:bg-[#9ee5b5]"><ChevronRight size={14} className="transition-transform group-hover:translate-x-0.5" /></span>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
 
       {!isLoading && meta.total > 0 && (
         <PaginationBar page={meta.current_page ?? page} lastPage={meta.last_page ?? 1} total={meta.total ?? 0} perPage={perPage} onPage={setPage} onPerPage={n => { setPerPage(n); setPage(1); }} />

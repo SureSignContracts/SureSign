@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Megaphone, Plus, Pencil, Trash2, X } from 'lucide-react';
+import { Megaphone, Plus, Pencil, Trash2, X, Radio, AlertTriangle } from 'lucide-react';
 import api from '@/lib/api';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import { SEVERITY_STYLES, SEVERITY_LABELS } from '@/lib/announcements';
 import { fromUtcIso, toUtcIso } from '@/lib/dateTime';
 import Select from '@/components/ui/Select';
+import PlatformPageHero from '@/components/admin/PlatformPageHero';
 
 interface Announcement {
   id: number;
@@ -105,26 +106,27 @@ export default function AdminAnnouncementsPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-            <Megaphone size={20} />
-            Announcements
-          </h1>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-            The banner shown in the Help Center for known issues, maintenance, or platform information.
-          </p>
-        </div>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium"
-          style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
-        >
-          <Plus size={14} />
-          New Announcement
-        </button>
-      </div>
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+      <PlatformPageHero
+        eyebrow="Platform communications"
+        title="Announcements"
+        description="Publish clear service notices and planned maintenance updates without burying the message."
+        metrics={[
+          { label: 'Announcements', value: data?.length ?? 0, detail: 'in the register', icon: Megaphone },
+          { label: 'Live now', value: data?.filter(a => a.is_active).length ?? 0, detail: 'visible to customers', icon: Radio },
+          { label: 'Service alerts', value: data?.filter(a => ['degraded_service', 'outage'].includes(a.severity)).length ?? 0, detail: 'degraded or outage', icon: AlertTriangle },
+        ]}
+        loading={isLoading}
+        action={(
+          <button
+            onClick={openCreate}
+            className="inline-flex items-center gap-2 rounded-xl bg-[#9ee5b5] px-4 py-3 text-sm font-semibold text-[#18211d] transition duration-200 hover:-translate-y-0.5 hover:bg-[#b5edc7] active:translate-y-0"
+          >
+            <Plus size={16} />
+            New announcement
+          </button>
+        )}
+      />
 
       {showForm && (
         <div className="rounded-2xl p-5 space-y-3" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>

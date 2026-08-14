@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import {
   DollarSign, GitBranch, AlertTriangle, Clock, CheckCircle2, ChevronDown,
+  Landmark, FolderKanban, RefreshCw, ChevronRight,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
@@ -103,15 +104,46 @@ export default function CommercialPage() {
   });
 
   const goto = (url: string) => router.push(url);
+  const deadlineCount = data
+    ? data.deadlines.overdue.length + data.deadlines.due_today.length + data.deadlines.due_soon.length
+    : 0;
+  const actionCount = data
+    ? Object.values(data.awaiting_action.payment_applications).reduce((total, items) => total + items.length, 0)
+      + Object.values(data.awaiting_action.variations).reduce((total, items) => total + items.length, 0)
+    : 0;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-8">
-      <div className="ss-animate-in">
-        <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Commercial</h1>
-        <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>
-          Organisation-wide commercial position and work requiring attention. Every item links to its project record.
-        </p>
-      </div>
+    <div className="ss-projects-page ss-workspace-page-in mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:py-9">
+      <section className="ss-workspace-hero-in grid overflow-hidden rounded-2xl bg-[#18211d] text-[#f4f7f5] lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="ss-workspace-left-in relative overflow-hidden p-7 sm:p-9 lg:p-11">
+          <div className="absolute -left-28 -top-32 h-80 w-80 rounded-full border border-[#a5d6b5]/10 transition-transform duration-700 ease-out hover:scale-105" />
+          <div className="relative">
+            <div className="mb-8 flex h-11 w-11 items-center justify-center rounded-xl border border-[#a5d6b5]/20 bg-[#a5d6b5]/10 text-[#9ee5b5]">
+              <Landmark size={20} />
+            </div>
+            <h1 className="text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">Commercial control across every project.</h1>
+            <p className="mt-4 max-w-xl text-sm leading-6 text-[#b9c5bf] sm:text-base">
+              See cash position, approaching deadlines and decisions that need action across the organisation.
+            </p>
+          </div>
+        </div>
+
+        <div className="ss-workspace-right-in grid grid-cols-3 border-t border-[#a5d6b5]/10 bg-[#202c26] lg:border-l lg:border-t-0">
+          {[
+            { label: 'Projects', value: data?.projects.length ?? 0, icon: FolderKanban, color: '#f4f7f5' },
+            { label: 'At-risk dates', value: deadlineCount, icon: Clock, color: deadlineCount > 0 ? '#fda4a4' : '#9ee5b5' },
+            { label: 'Actions', value: actionCount, icon: GitBranch, color: actionCount > 0 ? '#fdba74' : '#9ee5b5' },
+          ].map((stat, index) => (
+            <div key={stat.label} className="ss-animate-in group/stat flex min-h-44 flex-col justify-between border-r border-[#a5d6b5]/10 p-5 transition-colors duration-300 last:border-r-0 hover:bg-[#26342d] sm:p-6" style={{ animationDelay: `${140 + (index * 70)}ms` }}>
+              <stat.icon size={15} className="transition-transform duration-300 group-hover/stat:scale-110" style={{ color: '#91a099' }} />
+              <div>
+                <p className="text-3xl font-semibold tracking-[-0.04em] tabular-nums" style={{ color: stat.color }}>{isLoading ? '...' : stat.value}</p>
+                <p className="mt-1 text-xs text-[#91a099]">{stat.label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {isError && (
         <ErrorState onRetry={() => refetch()} message={getErrorMessage(error)} />
@@ -119,32 +151,42 @@ export default function CommercialPage() {
 
       {!isError && (
         <>
-          <CashPositionSection data={data?.summary} isLoading={isLoading} formatCurrency={formatCurrency} />
-          <DeadlinesSection
+          <div className="ss-animate-in" style={{ animationDelay: '210ms' }}>
+            <CashPositionSection data={data?.summary} isLoading={isLoading} formatCurrency={formatCurrency} />
+          </div>
+          <div className="grid items-start gap-5 lg:grid-cols-2">
+            <div className="ss-animate-in rounded-2xl border p-5 sm:p-6" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '270ms' }}>
+              <DeadlinesSection
             deadlines={data?.deadlines}
             isLoading={isLoading}
             formatCurrency={formatCurrency}
             onOpen={goto}
             showUpcoming={showUpcoming}
             setShowUpcoming={setShowUpcoming}
-          />
-          <AwaitingActionSection
+              />
+            </div>
+            <div className="ss-animate-in rounded-2xl border p-5 sm:p-6" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '330ms' }}>
+              <AwaitingActionSection
             awaitingAction={data?.awaiting_action}
             isLoading={isLoading}
             formatCurrency={formatCurrency}
             onOpen={goto}
-          />
-          <ProjectPositionSection
+              />
+            </div>
+          </div>
+          <div className="ss-animate-in" style={{ animationDelay: '390ms' }}>
+            <ProjectPositionSection
             projects={data?.projects}
             isLoading={isLoading}
             formatCurrency={formatCurrency}
             onOpen={goto}
-          />
+            />
+          </div>
         </>
       )}
 
       {isFetching && !isLoading && (
-        <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>Refreshing…</p>
+        <p className="flex items-center justify-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}><RefreshCw size={12} className="animate-spin" /> Refreshing data</p>
       )}
     </div>
   );
@@ -182,7 +224,10 @@ function CashPositionSection({
 }) {
   return (
     <section>
-      <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>Company Cash Position</h2>
+      <div className="mb-4">
+        <h2 className="text-xl font-semibold tracking-[-0.025em]" style={{ color: 'var(--text-primary)' }}>Company cash position</h2>
+        <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Authoritative totals from payment applications across the portfolio.</p>
+      </div>
 
       {isLoading ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -199,7 +244,7 @@ function CashPositionSection({
               {data.length > 1 && (
                 <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-muted)' }}>{block.currency}</p>
               )}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                 <StatTile index={0} label="Certified to Date" value={formatCurrency(block.certified_total, block.currency)} color="#3b82f6" />
                 <StatTile index={1} label="Paid to Date" value={formatCurrency(block.paid_total, block.currency)} color="#10b981" />
                 <StatTile
@@ -221,14 +266,15 @@ function CashPositionSection({
 function StatTile({ label, value, color, index = 0 }: { label: string; value: string; color: string; index?: number }) {
   return (
     <div
-      className="ss-animate-in rounded-xl p-4 transition-shadow duration-200 hover:shadow-[var(--shadow-pop)]"
+      className="ss-animate-in group rounded-2xl p-5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)]"
       style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: staggerDelay(index) }}
     >
-      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}</p>
+      <div className="mb-4 flex h-8 w-8 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-105" style={{ backgroundColor: `${color}18`, color }}><DollarSign size={14} /></div>
+      <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{label}</p>
       {/* Value renders at its exact authoritative figure immediately — only the
           card's own entrance (opacity/translate) animates, never the number
           itself, so a monetary total is never seen mid-count. */}
-      <p className="text-xl font-bold mt-1 tabular-nums" style={{ color }}>{value}</p>
+      <p className="mt-1 text-xl font-semibold tracking-[-0.025em] tabular-nums" style={{ color }}>{value}</p>
     </div>
   );
 }
@@ -249,7 +295,13 @@ function DeadlinesSection({
 
   return (
     <section>
-      <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>Deadlines at Risk</h2>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Deadlines at risk</h2>
+          <p className="mt-0.5 text-xs" style={{ color: 'var(--text-muted)' }}>Payment and notice dates needing attention.</p>
+        </div>
+        <Clock size={17} style={{ color: '#f87171' }} />
+      </div>
 
       {isLoading ? (
         <div className="space-y-2">
@@ -319,7 +371,7 @@ function DeadlineRow({
       role="button"
       tabIndex={0}
       onKeyDown={e => e.key === 'Enter' && onOpen(item.action_url)}
-      className={`ss-animate-in flex items-center gap-4 p-3.5 rounded-xl border cursor-pointer transition-all duration-200 ${EASE} hover:border-[var(--gold)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]`}
+      className={`group ss-animate-in flex cursor-pointer items-center gap-4 rounded-xl border p-3.5 transition-all duration-300 ${EASE} hover:-translate-y-0.5 hover:border-[var(--gold)] hover:shadow-[var(--shadow-card)]`}
       style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', animationDelay: staggerDelay(index) }}
     >
       <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: s.bg }}>
@@ -337,6 +389,7 @@ function DeadlineRow({
           )}
         </div>
       </div>
+      <ChevronRight size={14} className="flex-shrink-0 transition-transform duration-300 group-hover:translate-x-1" style={{ color: 'var(--gold)' }} />
     </div>
   );
 }
@@ -366,7 +419,13 @@ function AwaitingActionSection({
 
   return (
     <section>
-      <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>Awaiting Action</h2>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Awaiting action</h2>
+          <p className="mt-0.5 text-xs" style={{ color: 'var(--text-muted)' }}>Commercial submissions and decisions in progress.</p>
+        </div>
+        <GitBranch size={17} style={{ color: 'var(--gold)' }} />
+      </div>
 
       {isLoading ? (
         <div className="space-y-2">
@@ -438,7 +497,7 @@ function ActionRow({
       role="button"
       tabIndex={0}
       onKeyDown={e => e.key === 'Enter' && onOpen(item.action_url)}
-      className={`ss-animate-in flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-200 ${EASE} hover:border-[var(--gold)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]`}
+      className={`group ss-animate-in flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-all duration-300 ${EASE} hover:-translate-y-0.5 hover:border-[var(--gold)] hover:shadow-[var(--shadow-card)]`}
       style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', animationDelay: staggerDelay(index) }}
     >
       <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--gold-15)' }}>
@@ -449,6 +508,7 @@ function ActionRow({
         <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{item.project_name}</p>
       </div>
       <p className="text-xs tabular-nums flex-shrink-0" style={{ color: 'var(--text-secondary)' }}>{formatCurrency(item.amount, item.currency)}</p>
+      <ChevronRight size={13} className="flex-shrink-0 transition-transform duration-300 group-hover:translate-x-1" style={{ color: 'var(--gold)' }} />
     </div>
   );
 }
@@ -467,9 +527,12 @@ function ProjectPositionSection({
 
   return (
     <section>
-      <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>Per-Project Commercial Position</h2>
+      <div className="mb-4">
+        <h2 className="text-xl font-semibold tracking-[-0.025em]" style={{ color: 'var(--text-primary)' }}>Commercial position by project</h2>
+        <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Compare value, payment, retention and variation exposure across every project.</p>
+      </div>
 
-      <div className="rounded-xl overflow-x-auto" style={{ border: '1px solid var(--border)' }}>
+      <div className="overflow-x-auto rounded-2xl" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
         <table className="w-full text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
@@ -510,11 +573,11 @@ function ProjectPositionSection({
                   {row.attention_count > 0 ? (
                     <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'rgba(249,115,22,0.15)', color: '#fb923c' }}>{row.attention_count}</span>
                   ) : (
-                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>
+                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>None</span>
                   )}
                 </td>
                 <td className="px-3 py-2.5 text-right whitespace-nowrap">
-                  <span className="text-xs font-medium" style={{ color: 'var(--gold)' }}>Open →</span>
+                  <span className="inline-flex items-center gap-1 text-xs font-medium" style={{ color: 'var(--gold)' }}>Open <ChevronRight size={11} /></span>
                 </td>
               </tr>
             ))}

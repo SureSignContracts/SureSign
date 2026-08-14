@@ -78,14 +78,43 @@ Select a marker to open it, then:
 
 These actions are only available on the drawing's current revision.
 
-### Linking project records
+### Creating records from a Drawing Location
 
-From a location's marker, select **Link record**, choose a record type
+From a location's marker, select **Create Record**, then choose **Snag**,
+**RFI**, or **QA Report**. This opens the exact same form used on that
+module's own page — a small "Creating from Drawing Location" note shows
+the drawing number, revision, page, and the location's label (if it has
+one). If the location has a label, Snag's Location field and QA Report's
+Area field are pre-filled from it — you can still edit or clear this, it's
+only a starting suggestion. RFI has no such field; its Drawing connection
+is recorded automatically, not written into any of its text fields.
+
+Once you save, the new record is automatically linked to that location —
+you stay on the same drawing, revision, and page, and the new record
+appears immediately under the location's linked records.
+
+This also works on a location that belongs to an older, historical
+revision — a hotspot marked on a superseded issue is still a real,
+specific place on the drawing, so you can create and link a record
+against it just as you would on the current revision. What you *cannot*
+do on a historical revision is add, move, or remove a location itself
+(see [Adding a location](#adding-a-location) above) — that stays limited
+to the current revision only.
+
+### Linking existing records
+
+From a location's marker, select **Link Existing**, choose a record type
 (Snag, RFI, QA Report, or Variation), and search for the record to link.
 A location can link to more than one record, and the same record can be
 linked from more than one location. Select a linked record's link icon to
 open it. Select the small **×** beside a linked record to remove that link
-— the record itself is never affected.
+— the record itself is never affected. Like Create Record, this is
+available on a historical revision's location as well as the current
+revision's.
+
+**Create Record** supports Snag, RFI, and QA Report only. **Variation**
+can only be connected to a drawing location via **Link Existing** — there
+is no way to create a new Variation from the Drawing Viewer.
 
 A linked Snag, RFI, QA Report, or Variation shows its own **Drawing
 Locations** section listing every location it's linked from, with an

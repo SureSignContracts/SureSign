@@ -121,15 +121,14 @@ export function ContactSupportForm({
   });
 
   return (
-    <div id="contact-support" className="rounded-2xl overflow-hidden scroll-mt-6" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
-      <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
-        <h2 className="text-sm font-semibold flex items-center gap-1.5" style={{ color: 'var(--text-primary)' }}>
-          <LifeBuoy size={14} />
-          Contact Support
-        </h2>
-        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Can&apos;t find an answer in the Help Center? Send your question to the SureSign team.</p>
+    <div id="contact-support" className="scroll-mt-6 overflow-hidden rounded-2xl bg-[var(--bg-surface)] shadow-[0_12px_32px_rgba(24,33,29,0.07)]">
+      <div className="flex items-start gap-3 border-b px-5 py-5 sm:px-6" style={{ borderColor: 'var(--border)' }}>
+        <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#e7f5eb] text-[#347b50]"><LifeBuoy size={16} /></span>
+        <div><p className="text-[9px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'var(--text-secondary)' }}>New request</p>
+        <h2 className="mt-0.5 text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Contact Support</h2>
+        <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>Give the team enough detail to begin investigating immediately.</p></div>
       </div>
-      <div className="p-5 space-y-3">
+      <div className="space-y-3 p-5 sm:p-6">
         {reference ? (
           <div className="text-sm space-y-1" style={{ color: '#4ade80' }} role="status" aria-live="polite">
             <div className="flex items-center gap-2">

@@ -18,6 +18,7 @@ import { FinalAccountTab } from './FinalAccountTab';
 import toast from 'react-hot-toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PageTourButton from '@/components/tours/PageTourButton';
+import { ProjectModuleHeader, ProjectModuleMetric } from '@/components/projects/ProjectModuleHeader';
 import Select from '@/components/ui/Select';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 
@@ -294,16 +295,6 @@ function TextareaField({ label, name, required = false, value, onChange, rows = 
         className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none"
         style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
       />
-    </div>
-  );
-}
-
-function SumCard({ label, value, color, sub, index = 0 }: { label: string; value: string; color: string; sub?: string; index?: number }) {
-  return (
-    <div className="ss-animate-in rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: `${index * 60}ms` }}>
-      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}</p>
-      <p className="text-lg font-bold mt-1 leading-tight tabular-nums" style={{ color }}>{value}</p>
-      {sub && <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{sub}</p>}
     </div>
   );
 }
@@ -2235,12 +2226,12 @@ export default function ProjectCommercialPage() {
   const openNewApp = (opts?: { contractId?: number; tradePackageId?: number }) => setNewAppOpts({ open: true, ...opts });
 
   const TABS = [
-    { id: 'overview' as CommercialTab,       label: 'Overview',       icon: LayoutDashboard },
-    { id: 'applications' as CommercialTab,   label: 'Applications',   icon: DollarSign },
-    { id: 'trade-packages' as CommercialTab, label: 'Trade Packages', icon: Package },
-    { id: 'notices' as CommercialTab,        label: 'Notices',        icon: Bell },
-    { id: 'retention' as CommercialTab,      label: 'Retention',      icon: Percent },
-    { id: 'final-account' as CommercialTab, label: 'Final Account',  icon: FileCheck },
+    { id: 'overview' as CommercialTab,       label: 'Overview',       icon: LayoutDashboard, hint: 'Portfolio position' },
+    { id: 'applications' as CommercialTab,   label: 'Applications',   icon: DollarSign, hint: 'Applications and certification' },
+    { id: 'trade-packages' as CommercialTab, label: 'Trade Packages', icon: Package, hint: 'Package-level accounts' },
+    { id: 'notices' as CommercialTab,        label: 'Notices',        icon: Bell, hint: 'Payment notices' },
+    { id: 'retention' as CommercialTab,      label: 'Retention',      icon: Percent, hint: 'Held and released sums' },
+    { id: 'final-account' as CommercialTab, label: 'Final Account',  icon: FileCheck, hint: 'Close-out position' },
   ];
 
   const CARDS = [
@@ -2248,32 +2239,36 @@ export default function ProjectCommercialPage() {
     { label: 'Paid To Date',             value: formatCurrency(totals.paidAmt),             color: '#60a5fa' },
     { label: 'Submitted',                value: String(totals.submitted),                   color: '#facc15', sub: 'awaiting certification' },
     { label: 'Retention Held',           value: formatCurrency(totals.retentionHeld),       color: '#facc15', sub: 'from certified apps' },
-    { label: 'Outstanding Balance',      value: formatCurrency(totals.outstanding),         color: '#a78bfa', sub: 'certified but unpaid' },
+    { label: 'Outstanding Balance',      value: formatCurrency(totals.outstanding),         color: '#ffffff', sub: 'certified but unpaid' },
     { label: 'Pending Certification',    value: formatCurrency(totals.pendingCert),         color: '#fb923c' },
   ];
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <div>
-        <div className="flex items-center gap-1.5">
-          <h1 className="text-[1.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>Commercial</h1>
-          <PageTourButton tourKey="page-commercial" label="Take a tour of this page" />
-        </div>
-        <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Payment applications, trade packages, notices and retention</p>
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3" data-tour="commercial-summary">
-        {CARDS.map((c, i) => <SumCard key={c.label} label={c.label} value={c.value} color={c.color} sub={c.sub} index={i} />)}
-      </div>
-
-      <div className="flex gap-1 p-1 rounded-full w-fit overflow-x-auto" data-tour="commercial-tabs" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
-        {TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all active:scale-[0.97] whitespace-nowrap"
-            style={tab === t.id ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' } : { color: 'var(--text-secondary)' }}>
-            <t.icon size={14} />{t.label}
-          </button>
+    <div className="ss-projects-page mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <ProjectModuleHeader
+        category="Contract administration"
+        title="Commercial"
+        description="Track applications, certification, trade packages, retention and final account position."
+        icon={DollarSign}
+        tour={<PageTourButton tourKey="page-commercial" label="Take a tour of this page" />}
+        metricColumns={6}
+      >
+        {CARDS.map((card, index) => (
+          <ProjectModuleMetric key={card.label} label={card.label} value={card.value} tone={card.color} index={index} />
         ))}
+      </ProjectModuleHeader>
+
+      <div className="ss-animate-in flex flex-col gap-3 rounded-2xl p-2 sm:flex-row sm:items-center sm:justify-between" data-tour="commercial-tabs" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '110ms' }}>
+        <div className="flex gap-1 overflow-x-auto rounded-xl p-1" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+          {TABS.map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-200 hover:-translate-y-px active:translate-y-0"
+              style={tab === t.id ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', boxShadow: '0 5px 14px rgba(0,0,0,0.08)' } : { color: 'var(--text-secondary)' }}>
+              <t.icon size={14} />{t.label}
+            </button>
+          ))}
+        </div>
+        <p className="hidden pr-3 text-xs sm:block" style={{ color: 'var(--text-muted)' }}>{TABS.find(item => item.id === tab)?.hint}</p>
       </div>
 
       {tab === 'overview' && <OverviewTab paymentApps={paymentApps} contracts={contracts} tradePackages={tradePackages} formatCurrency={formatCurrency} canWrite={canWrite} onNewApp={openNewApp} />}

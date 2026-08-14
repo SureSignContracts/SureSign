@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Bell, FileText, Upload, Trash2, LayoutTemplate,
   Package, FolderKanban, RefreshCw, AlertTriangle, UserPlus, Info, X,
   MoreHorizontal, CheckCheck, ExternalLink, AlertCircle, Clock, Zap,
-  type LucideIcon,
+  ChevronRight, Inbox, type LucideIcon,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
@@ -98,9 +98,9 @@ function NotifIcon({ n }: { n: SuresignNotification }) {
   const bg    = pCfg?.bg    ?? 'var(--bg-elevated)';
 
   return (
-    <span className="flex items-center justify-center w-7 h-7 rounded-lg flex-shrink-0"
-      style={{ backgroundColor: bg, border: '1px solid var(--border)' }}>
-      <Icon size={13} style={{ color }} strokeWidth={1.8} />
+    <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl"
+      style={{ backgroundColor: bg, border: '1px solid', borderColor: pCfg ? `${color}33` : 'var(--border)' }}>
+      <Icon size={15} style={{ color }} strokeWidth={1.8} />
     </span>
   );
 }
@@ -128,25 +128,25 @@ function ActionsMenu({
   return (
     <div className="relative" ref={ref}>
       <button onClick={() => setOpen(o => !o)}
-        className="p-1.5 rounded-lg transition-colors hover:bg-[var(--bg-hover)]"
+        className="rounded-lg p-2 transition-all duration-200 hover:bg-[var(--bg-hover)] active:scale-95"
         style={{ color: 'var(--text-muted)' }} title="More options">
         <MoreHorizontal size={15} />
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-52 rounded-xl overflow-hidden z-[60]"
+        <div className="ss-menu-pop-in absolute right-0 top-full z-[60] mt-1 w-56 overflow-hidden rounded-xl"
           style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: '0 8px 24px rgba(0,0,0,0.14)' }}>
           <button onClick={() => { onMarkAll(); setOpen(false); }} disabled={!hasUnread}
-            className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-sm transition-colors hover:bg-[var(--bg-hover)] disabled:cursor-not-allowed disabled:opacity-40"
             style={{ color: 'var(--text-secondary)' }}>
             <CheckCheck size={14} /> Mark all as read
           </button>
           <button onClick={() => { onClearRead(); setOpen(false); }} disabled={!hasRead}
-            className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-sm transition-colors hover:bg-[var(--bg-hover)] disabled:cursor-not-allowed disabled:opacity-40"
             style={{ color: 'var(--text-secondary)' }}>
             <X size={14} /> Clear read notifications
           </button>
           <button onClick={() => { onOpen(); setOpen(false); }}
-            className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm transition-colors hover:bg-[var(--bg-hover)]"
+            className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-sm transition-colors hover:bg-[var(--bg-hover)]"
             style={{ color: 'var(--text-secondary)', borderTop: '1px solid var(--border)' }}>
             <ExternalLink size={14} /> Open notifications
           </button>
@@ -168,58 +168,53 @@ function NotifRow({
   onDismiss: (n: SuresignNotification, e: React.MouseEvent) => void;
 }) {
   const isUnread   = n.status === 'unread';
-  const dotColor   = n.priority === 'critical' ? '#f87171' : n.priority === 'warning' ? '#fb923c' : '#3b82f6';
   const categoryLabel = n.category ? CATEGORY_LABELS[n.category] : null;
 
   return (
     <div
-      className="group relative flex items-start gap-3 px-4 py-3 transition-colors hover:bg-[var(--bg-hover)] focus-visible:bg-[var(--bg-hover)] cursor-pointer outline-none"
-      style={{ borderBottom: '1px solid var(--border)' }}
+      className="group relative flex cursor-pointer items-start gap-3 px-4 py-4 outline-none transition-colors hover:bg-[var(--bg-hover)] focus-visible:bg-[var(--bg-hover)]"
+      style={{ borderBottom: '1px solid var(--border)', backgroundColor: isUnread ? 'var(--bg-surface)' : 'var(--bg-base)' }}
       role="button"
       tabIndex={0}
       aria-label={n.title}
       onClick={() => onRead(n)}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onRead(n); } }}
     >
-      {/* Unread dot */}
-      <div className="flex-shrink-0 pt-1 w-2">
-        {isUnread && <span className="block w-1.5 h-1.5 rounded-full" style={{ backgroundColor: dotColor }} />}
-      </div>
-
       <NotifIcon n={n} />
 
-      <div className="flex-1 min-w-0 pr-5">
-        <p className="text-xs leading-snug"
+      <div className="min-w-0 flex-1 pr-6">
+        <p className="text-[13px] leading-[1.35]"
           style={{ color: 'var(--text-primary)', fontWeight: isUnread ? 600 : 400 }}>
           {n.title}
         </p>
-        <p className="text-xs mt-0.5 line-clamp-2" style={{ color: 'var(--text-muted)' }}>
+        <p className="mt-1 line-clamp-2 text-xs leading-[1.45]" style={{ color: 'var(--text-muted)' }}>
           {n.message}
         </p>
         {recipientLocalMeetingTime(n) && (
-          <p className="text-[10px] mt-0.5 italic" style={{ color: 'var(--text-muted)' }}>
+          <p className="mt-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>
             {recipientLocalMeetingTime(n)}
           </p>
         )}
-        <div className="flex items-center gap-2 mt-1 flex-wrap">
-          <span className="text-[10px] tabular-nums" style={{ color: 'var(--text-muted)' }}>
+        <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+          <span className="text-[10px] font-medium tabular-nums" style={{ color: 'var(--text-muted)' }}>
             {formatTimeAgo(n.created_at)}
           </span>
           {categoryLabel && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded"
-              style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
+            <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
               {categoryLabel}
             </span>
           )}
           {n.action_url && (
-            <span className="text-[10px]" style={{ color: 'var(--gold)' }}>→ Open</span>
+            <span className="flex items-center gap-0.5 text-[10px] font-semibold" style={{ color: 'var(--gold)' }}>
+              Open <ChevronRight size={10} />
+            </span>
           )}
         </div>
       </div>
 
       {/* Dismiss */}
       <button onClick={(e) => onDismiss(n, e)}
-        className="absolute right-3 top-3 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[var(--bg-hover)]"
+        className="absolute right-3 top-3 rounded-lg p-1.5 opacity-0 transition-all duration-200 hover:bg-[var(--bg-hover)] group-hover:opacity-100 focus-visible:opacity-100"
         title="Dismiss" style={{ color: 'var(--text-muted)' }}>
         <X size={11} />
       </button>
@@ -231,13 +226,14 @@ function NotifRow({
 
 function SectionLabel({ label, count, accent }: { label: string; count?: number; accent?: string }) {
   return (
-    <div className="flex items-center justify-between px-4 py-1.5"
+    <div className="flex items-center justify-between px-4 py-2.5"
       style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
-      <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: accent ?? 'var(--text-muted)' }}>
+      <span className="text-[11px] font-semibold" style={{ color: accent ?? 'var(--text-secondary)' }}>
         {label}
       </span>
       {count !== undefined && count > 0 && (
-        <span className="text-[10px] font-bold tabular-nums" style={{ color: accent ?? 'var(--text-muted)' }}>{count}</span>
+        <span className="flex h-5 min-w-5 items-center justify-center rounded-md px-1.5 text-[10px] font-semibold tabular-nums"
+          style={{ color: accent ?? 'var(--text-muted)', backgroundColor: 'var(--bg-surface)' }}>{count}</span>
       )}
     </div>
   );
@@ -248,11 +244,11 @@ function SectionLabel({ label, count, accent }: { label: string; count?: number;
 function CriticalBanner({ notifications }: { notifications: SuresignNotification[] }) {
   if (notifications.length === 0) return null;
   return (
-    <div className="px-4 py-2.5 flex items-center gap-2"
+    <div className="flex items-center gap-2.5 px-4 py-3"
       style={{ backgroundColor: 'rgba(239,68,68,0.08)', borderBottom: '1px solid rgba(239,68,68,0.2)' }}>
-      <Zap size={13} style={{ color: '#f87171', flexShrink: 0 }} />
-      <p className="text-xs font-semibold" style={{ color: '#f87171' }}>
-        {notifications.length} critical action{notifications.length > 1 ? 's' : ''} require immediate attention
+      <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-500/10"><Zap size={13} style={{ color: '#f87171' }} /></span>
+      <p className="text-xs font-medium" style={{ color: '#f87171' }}>
+        {notifications.length} critical action{notifications.length > 1 ? 's' : ''} need attention
       </p>
     </div>
   );
@@ -262,8 +258,9 @@ function CriticalBanner({ notifications }: { notifications: SuresignNotification
 
 export default function NotificationBell({ basePath = '/admin/notifications' }: { basePath?: string }) {
   const [open, setOpen] = useState(false);
-  const [visible, setVisible] = useState(false);
+  const [closing, setClosing] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const closeTimerRef = useRef<number | null>(null);
   const queryClient = useQueryClient();
   const router = useRouter();
 
@@ -287,18 +284,46 @@ export default function NotificationBell({ basePath = '/admin/notifications' }: 
   const hasRead      = read.length > 0;
   const isEmpty      = all.length === 0;
 
-  useEffect(() => {
-    if (open) requestAnimationFrame(() => setVisible(true));
-    else setVisible(false);
-  }, [open]);
+  const closePanel = useCallback((afterClose?: () => void) => {
+    if (!open || closing) return;
+    setClosing(true);
+    closeTimerRef.current = window.setTimeout(() => {
+      setOpen(false);
+      setClosing(false);
+      closeTimerRef.current = null;
+      afterClose?.();
+    }, 180);
+  }, [open, closing]);
+
+  function togglePanel() {
+    if (open) {
+      closePanel();
+    } else {
+      setClosing(false);
+      setOpen(true);
+    }
+  }
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) setOpen(false);
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) closePanel();
     }
-    if (open) document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [open]);
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') closePanel();
+    }
+    if (open && !closing) {
+      document.addEventListener('mousedown', handleClick);
+      window.addEventListener('keydown', handleKey);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      window.removeEventListener('keydown', handleKey);
+    };
+  }, [open, closing, closePanel]);
+
+  useEffect(() => () => {
+    if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current);
+  }, []);
 
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: ['notifications'] });
@@ -315,7 +340,7 @@ export default function NotificationBell({ basePath = '/admin/notifications' }: 
         // next poll/refetch will reconcile the status once the API recovers.
       }
     }
-    if (n.action_url) { setOpen(false); router.push(n.action_url); }
+    if (n.action_url) closePanel(() => router.push(n.action_url!));
   }
 
   async function handleDismiss(n: SuresignNotification, e: React.MouseEvent) {
@@ -348,18 +373,19 @@ export default function NotificationBell({ basePath = '/admin/notifications' }: 
   }
 
   function handleOpen() {
-    setOpen(false);
-    router.push(basePath);
+    closePanel(() => router.push(basePath));
   }
 
   return (
     <div className="relative" ref={panelRef}>
       {/* Bell button */}
       <button
-        onClick={() => setOpen(o => !o)}
-        className="relative p-2 rounded-lg transition-colors hover:bg-[var(--bg-hover)]"
+        onClick={togglePanel}
+        className="relative rounded-lg p-2 transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--bg-hover)] active:scale-95"
         style={{ color: 'var(--text-secondary)' }}
         aria-label="Notifications"
+        aria-expanded={open && !closing}
+        aria-haspopup="dialog"
       >
         <Bell size={20} />
         <SidebarCountBadge count={count} className="absolute -right-2 -top-1" />
@@ -368,23 +394,26 @@ export default function NotificationBell({ basePath = '/admin/notifications' }: 
       {/* Dropdown */}
       {open && (
         <div
-          className="absolute right-0 mt-2 w-[380px] max-w-[calc(100vw-2rem)] rounded-xl overflow-hidden z-50"
+          className={`${closing ? 'ss-notification-panel-out' : 'ss-notification-panel-in'} absolute right-0 z-50 mt-2 w-[420px] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-2xl`}
           style={{
             backgroundColor: 'var(--bg-surface)',
             border: '1px solid var(--border)',
-            boxShadow: '0 8px 30px rgba(0,0,0,0.15)',
+            boxShadow: '0 18px 55px rgba(18,33,25,0.18)',
             transformOrigin: 'top right',
-            transform: visible ? 'scale(1) translateY(0)' : 'scale(0.96) translateY(-6px)',
-            opacity: visible ? 1 : 0,
-            transition: 'transform 180ms cubic-bezier(0.16,1,0.3,1), opacity 150ms ease',
           }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3"
+          <div className="flex items-center justify-between px-4 py-4"
             style={{ borderBottom: '1px solid var(--border)' }}>
-            <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Notifications
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl" style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}><Inbox size={16} /></span>
+              <div>
+                <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Notifications</p>
+                <p className="mt-0.5 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                  {count > 0 ? `${count} unread item${count === 1 ? '' : 's'}` : 'You are all caught up'}
+                </p>
+              </div>
+            </div>
             <ActionsMenu
               hasUnread={count > 0}
               hasRead={hasRead}
@@ -398,20 +427,23 @@ export default function NotificationBell({ basePath = '/admin/notifications' }: 
           <CriticalBanner notifications={critical} />
 
           {/* Body */}
-          <div className="max-h-[480px] overflow-y-auto">
+          <div className="max-h-[520px] overflow-y-auto overscroll-contain">
             {error ? (
-              <div className="py-12 text-center">
-                <AlertTriangle size={28} className="mx-auto mb-2" style={{ color: '#f87171' }} />
-                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Couldn&apos;t load notifications. Try again shortly.</p>
+              <div className="px-8 py-14 text-center">
+                <span className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-red-500/10"><AlertTriangle size={20} style={{ color: '#f87171' }} /></span>
+                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Notifications unavailable</p>
+                <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>Try again shortly.</p>
               </div>
             ) : isLoading ? (
-              <div className="py-12 text-center">
-                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Loading…</p>
+              <div className="space-y-3 p-4" aria-busy="true" aria-live="polite">
+                <span className="sr-only">Loading notifications…</span>
+                {[...Array(4)].map((_, index) => <div key={index} className="h-20 animate-pulse rounded-xl" style={{ backgroundColor: 'var(--bg-elevated)' }} />)}
               </div>
             ) : isEmpty ? (
-              <div className="py-12 text-center">
-                <Bell size={28} className="mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
-                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No notifications.</p>
+              <div className="px-8 py-14 text-center">
+                <span className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl" style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}><CheckCheck size={20} /></span>
+                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>You&rsquo;re all caught up</p>
+                <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>New activity will appear here.</p>
               </div>
             ) : (
               <>

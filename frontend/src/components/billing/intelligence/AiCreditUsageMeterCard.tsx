@@ -1,7 +1,6 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Sparkles } from 'lucide-react';
 import api from '@/lib/api';
 import CountUp from '@/components/ui/CountUp';
@@ -44,11 +43,9 @@ export default function AiCreditUsageMeterCard() {
 
   if (isLoading) {
     return (
-      <Card>
-        <CardBody>
+      <div className="rounded-2xl bg-[var(--bg-surface)] p-6 shadow-[0_12px_32px_rgba(24,33,29,0.07)]">
           <div className="h-24 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
-        </CardBody>
-      </Card>
+      </div>
     );
   }
 
@@ -59,33 +56,29 @@ export default function AiCreditUsageMeterCard() {
   const { usage_percent, resets_at, status } = data;
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <Sparkles size={16} aria-hidden style={{ color: 'var(--text-secondary)' }} />
-          <CardTitle>Monthly AI Usage</CardTitle>
+    <section className="overflow-hidden rounded-2xl bg-[var(--bg-surface)] shadow-[0_12px_32px_rgba(24,33,29,0.07)]">
+      <div className="flex items-center justify-between border-b px-6 py-5" style={{ borderColor: 'var(--border)' }}>
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e6f6eb] text-[#287244]"><Sparkles size={17} aria-hidden /></span>
+          <div><p className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'var(--text-secondary)' }}>Meter</p><h2 className="mt-0.5 text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Monthly AI usage</h2></div>
         </div>
         <HealthBadge status={status} />
-      </CardHeader>
-      <CardBody>
+      </div>
+      <div className="p-6 sm:p-8">
+        <div className="mb-7 flex items-end gap-2"><CountUp value={usage_percent} className="text-5xl font-semibold tracking-[-0.05em]" style={{ color: 'var(--text-primary)' }} /><span className="pb-1 text-lg font-semibold" style={{ color: 'var(--text-muted)' }}>% used</span></div>
         <div
           role="progressbar"
           aria-label="Monthly AI usage"
           aria-valuenow={usage_percent}
           aria-valuemin={0}
           aria-valuemax={100}
-          className="h-2.5 rounded-full overflow-hidden"
+          className="h-3 rounded-full overflow-hidden"
           style={{ backgroundColor: 'var(--bg-elevated)' }}
         >
           <div
             className="h-full rounded-full transition-[width] duration-700 motion-reduce:transition-none"
             style={{ width: `${usage_percent}%`, backgroundColor: BAR_COLOR[status] }}
           />
-        </div>
-
-        <div className="flex items-baseline gap-1.5 mt-3">
-          <CountUp value={usage_percent} className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }} />
-          <span className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>%</span>
         </div>
 
         {usage_percent >= 100 ? (
@@ -99,7 +92,7 @@ export default function AiCreditUsageMeterCard() {
             {resets_at && <> — renews {formatDateOnly(resets_at.slice(0, 10))}</>}.
           </p>
         )}
-      </CardBody>
-    </Card>
+      </div>
+    </section>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { ArrowRight, Eye, EyeOff, MailCheck, XCircle, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, MailCheck, XCircle, CheckCircle2, ShieldCheck, FileText, Building2 } from 'lucide-react';
 import api from '@/lib/api';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import PasswordStrengthChecker, { checkPassword, isPasswordValid } from '@/components/ui/PasswordStrengthChecker';
@@ -104,8 +104,29 @@ function AcceptInvitationContent() {
   const loginHref = `/login?${loginParams.toString()}`;
 
   return (
-    <div className="min-h-dvh flex items-center justify-center px-6" style={{ backgroundColor: '#ffffff' }}>
-      <div className="w-full max-w-[380px] space-y-6">
+    <div className="flex min-h-dvh items-center justify-center bg-[#eef1ef] p-4 sm:p-8">
+      <div className="grid min-h-[680px] w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-[0_30px_90px_rgba(24,33,29,0.16)] md:grid-cols-[0.9fr_1.1fr]">
+        <aside className="relative hidden overflow-hidden bg-[#18211d] p-10 text-white md:flex md:flex-col">
+          <div className="pointer-events-none absolute -left-24 -top-20 h-72 w-72 rounded-full bg-[#9ee5b5]/10 blur-3xl" />
+          <div className="relative">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#9ee5b5] font-bold text-[#18211d]">S</div>
+            <p className="mt-10 text-xs font-semibold uppercase tracking-[0.16em] text-[#9ee5b5]">Your invitation</p>
+            <h1 className="mt-4 max-w-sm text-4xl font-semibold leading-[1.05] tracking-[-0.045em]">A clearer way to manage the contract.</h1>
+            <p className="mt-5 max-w-sm text-sm leading-6 text-white/50">Join a controlled workspace built around project records, contractual actions and accountable delivery.</p>
+          </div>
+          <div className="relative mt-auto space-y-4 border-t border-white/10 pt-6">
+            {[
+              { icon: ShieldCheck, text: 'Secure, role-based access' },
+              { icon: FileText, text: 'One auditable project record' },
+              { icon: Building2, text: 'Built for construction teams' },
+            ].map(item => (
+              <div key={item.text} className="flex items-center gap-3 text-xs text-white/55"><item.icon size={15} className="text-[#9ee5b5]" />{item.text}</div>
+            ))}
+          </div>
+        </aside>
+
+        <main className="flex items-center justify-center p-7 sm:p-12">
+        <div className="w-full max-w-[410px] space-y-6 ss-animate-in">
         {status === 'loading' && (
           <div className="text-center space-y-4">
             <div className="w-11 h-11 mx-auto rounded-xl flex items-center justify-center" style={{ backgroundColor: '#0f0f0f' }}>
@@ -257,6 +278,8 @@ function AcceptInvitationContent() {
             </form>
           </>
         )}
+        </div>
+        </main>
       </div>
     </div>
   );

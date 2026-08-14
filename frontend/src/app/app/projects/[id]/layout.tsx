@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams, notFound } from 'next/navigation';
+import { useParams, usePathname, notFound } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import ProjectSidebar from '@/components/layout/ProjectSidebar';
@@ -10,7 +10,9 @@ import PendingTourLauncher from '@/components/tours/PendingTourLauncher';
 
 export default function ProjectLayout({ children }: { children: React.ReactNode }) {
   const params = useParams();
+  const pathname = usePathname();
   const projectId = params.id as string;
+  const isSetupPage = pathname?.endsWith('/setup');
   const [navOpen, setNavOpen] = useState(false);
 
   const { data: project, isLoading, isError, error } = useQuery({
@@ -43,8 +45,9 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
         isLoading={isLoading && !project}
         mobileOpen={navOpen}
         onMobileClose={() => setNavOpen(false)}
+        className={isSetupPage ? 'ss-setup-sidebar-in' : undefined}
       />
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+      <div className={`flex flex-col flex-1 min-w-0 overflow-hidden${isSetupPage ? ' ss-setup-workspace-in' : ''}`}>
         <MobileTopBar
           onMenu={() => setNavOpen(true)}
           title={project?.name || 'Project'}

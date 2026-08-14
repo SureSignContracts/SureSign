@@ -59,14 +59,14 @@ type DocumentPortfolioData = {
 type View = 'table' | 'explorer';
 
 function formatBytes(bytes: number | null): string {
-  if (!bytes) return '—';
+  if (!bytes) return 'Not available';
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function formatDateShort(iso: string | null): string {
-  if (!iso) return '—';
+  if (!iso) return 'Not available';
   return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
@@ -380,13 +380,38 @@ export default function DocumentsPage() {
   const openSource = (row: DocumentRow) => { if (row.action_url) router.push(row.action_url); };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      <div className="ss-animate-in">
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Documents</h1>
-        <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-          Search and discover documents across every project in your organisation
-        </p>
-      </div>
+    <div className="ss-projects-page ss-workspace-page-in mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:py-9">
+      <section className="ss-workspace-hero-in grid overflow-hidden rounded-2xl bg-[#18211d] text-[#f4f7f5] lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="ss-workspace-left-in relative overflow-hidden p-7 sm:p-9 lg:p-11">
+          <div className="absolute -left-28 -top-32 h-80 w-80 rounded-full border border-[#a5d6b5]/10 transition-transform duration-700 ease-out hover:scale-105" />
+          <div className="relative">
+            <div className="mb-8 flex h-11 w-11 items-center justify-center rounded-xl border border-[#a5d6b5]/20 bg-[#a5d6b5]/10 text-[#9ee5b5]">
+              <FolderTree size={20} />
+            </div>
+            <h1 className="text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">Every project document, one clear record.</h1>
+            <p className="mt-4 max-w-xl text-sm leading-6 text-[#b9c5bf] sm:text-base">
+              Search uploaded and generated files across projects, modules and construction workflows.
+            </p>
+          </div>
+        </div>
+
+        <div className="ss-workspace-right-in grid grid-cols-2 border-t border-[#a5d6b5]/10 bg-[#202c26] lg:border-l lg:border-t-0">
+          {[
+            { label: 'Total documents', value: data?.summary.total_documents, icon: FileText, color: '#f4f7f5' },
+            { label: 'Uploaded', value: data?.summary.uploaded, icon: Upload, color: '#9ee5b5' },
+            { label: 'Generated', value: data?.summary.generated, icon: FileText, color: '#a5b4fc' },
+            { label: 'AI generated', value: data?.summary.ai_generated, icon: Sparkles, color: '#d8b4fe' },
+          ].map((stat, index) => (
+            <div key={stat.label} className="ss-animate-in group/stat flex min-h-28 flex-col justify-between border-[#a5d6b5]/10 p-5 transition-colors duration-300 hover:bg-[#26342d] sm:p-6 [&:nth-child(odd)]:border-r [&:nth-child(-n+2)]:border-b" style={{ animationDelay: `${130 + (index * 60)}ms` }}>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs text-[#91a099]">{stat.label}</p>
+                <stat.icon size={14} className="transition-transform duration-300 group-hover/stat:scale-110" style={{ color: '#91a099' }} />
+              </div>
+              <p className="mt-4 text-3xl font-semibold tracking-[-0.04em] tabular-nums" style={{ color: stat.color }}>{isLoading ? '...' : stat.value}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {isError ? (
         <div className="ss-animate-in flex flex-col items-center justify-center py-16 gap-3 rounded-xl" style={{ border: '1px solid var(--border)' }}>
@@ -398,36 +423,17 @@ export default function DocumentsPage() {
         </div>
       ) : (
         <>
-          {/* Summary */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[
-              { label: 'Total Documents', value: data?.summary.total_documents, color: 'var(--text-primary)' },
-              { label: 'Uploaded', value: data?.summary.uploaded, color: 'var(--text-muted)' },
-              { label: 'Generated', value: data?.summary.generated, color: '#818cf8' },
-              { label: 'AI Generated', value: data?.summary.ai_generated, color: '#c084fc' },
-            ].map((stat, i) => (
-              <div
-                key={stat.label}
-                className="ss-animate-in rounded-xl p-3.5 transition-shadow duration-200 hover:shadow-[var(--shadow-card)]"
-                style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', animationDelay: staggerDelay(i) }}
-              >
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{stat.label}</p>
-                <p className="text-xl font-bold mt-1 tabular-nums" style={{ color: stat.color }}>{isLoading ? '–' : stat.value}</p>
-              </div>
-            ))}
-          </div>
-
           {/* Search and filters */}
-          <div className="flex gap-3 flex-wrap items-center">
-            <div className="relative">
+          <div className="ss-animate-in flex flex-wrap items-center gap-3 rounded-2xl border p-3" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '220ms' }}>
+            <div className="relative min-w-0 flex-1 sm:min-w-72">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
               <input
                 value={search}
                 onChange={e => { setSearch(e.target.value); setPage(1); }}
                 placeholder="Search filename, title, reference, project..."
                 aria-label="Search documents"
-                className="pl-9 pr-4 py-2 rounded-xl text-sm outline-none border border-[var(--border)] focus:border-[var(--gold)] transition-colors duration-200"
-                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-primary)', minWidth: '260px' }}
+                className="w-full rounded-xl border border-[var(--border)] py-2 pl-9 pr-4 text-sm outline-none transition-all duration-200 focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
+                style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-primary)' }}
               />
             </div>
 
@@ -457,7 +463,7 @@ export default function DocumentsPage() {
               {(data?.filters.file_types ?? []).map(t => <option key={t} value={t}>{t}</option>)}
             </Select>
 
-            <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm" style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+            <label className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm transition-colors hover:bg-[var(--bg-hover)]" style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
               <input type="checkbox" checked={aiOnly} onChange={e => { setAiOnly(e.target.checked); setPage(1); }} />
               AI Generated only
             </label>
@@ -502,6 +508,13 @@ export default function DocumentsPage() {
           </div>
 
           {/* Results */}
+          <div className="ss-animate-in flex flex-wrap items-end justify-between gap-3" style={{ animationDelay: '280ms' }}>
+            <div>
+              <h2 className="text-xl font-semibold tracking-[-0.025em]" style={{ color: 'var(--text-primary)' }}>Document register</h2>
+              <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>{isLoading ? 'Loading documents...' : `${pagination?.total ?? rows.length} document${(pagination?.total ?? rows.length) === 1 ? '' : 's'} in the current view.`}</p>
+            </div>
+            {isFetching && !isLoading && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Updating results...</span>}
+          </div>
           {isLoading ? (
             view === 'explorer' ? (
               <div className="space-y-3">
@@ -535,7 +548,7 @@ export default function DocumentsPage() {
               {pagination && pagination.last_page > 1 && (
                 <div className="flex items-center justify-between pt-2">
                   <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                    Page {pagination.current_page} of {pagination.last_page} ({pagination.total} documents) — Explorer shows this page&apos;s documents, grouped by project and module.
+                    Page {pagination.current_page} of {pagination.last_page} ({pagination.total} documents). Explorer groups this page by project and module.
                   </p>
                   <div className="flex gap-2 flex-shrink-0">
                     <button disabled={pagination.current_page <= 1} onClick={() => setPage(pagination.current_page - 1)}
@@ -553,7 +566,7 @@ export default function DocumentsPage() {
           ) : (
             <>
               {/* Desktop table */}
-              <div className="hidden md:block rounded-xl overflow-x-auto" style={{ border: '1px solid var(--border)', opacity: isFetching ? 0.6 : 1 }}>
+              <div className="hidden overflow-x-auto rounded-2xl transition-opacity duration-200 md:block" style={{ border: '1px solid var(--border)', opacity: isFetching ? 0.55 : 1, boxShadow: 'var(--shadow-card)' }}>
                 <table className="w-full text-sm">
                   <thead>
                     <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
@@ -572,10 +585,10 @@ export default function DocumentsPage() {
                           </button>
                         </td>
                         <td className="px-3 py-3 whitespace-nowrap truncate max-w-[160px]" title={row.project_name} style={{ color: 'var(--text-secondary)' }}>{row.project_name}</td>
-                        <td className="px-3 py-3 whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>{row.module ?? '—'}</td>
-                        <td className="px-3 py-3 whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>{row.document_type ?? '—'}</td>
+                        <td className="px-3 py-3 whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>{row.module ?? 'Not set'}</td>
+                        <td className="px-3 py-3 whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>{row.document_type ?? 'Not set'}</td>
                         <td className="px-3 py-3 whitespace-nowrap"><OriginBadge row={row} /></td>
-                        <td className="px-3 py-3 whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>{row.file_type ?? '—'}</td>
+                        <td className="px-3 py-3 whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>{row.file_type ?? 'Not set'}</td>
                         <td className="px-3 py-3 whitespace-nowrap tabular-nums" style={{ color: 'var(--text-secondary)' }}>{formatDateShort(row.created_at)}</td>
                         <td className="px-3 py-3 whitespace-nowrap tabular-nums" style={{ color: 'var(--text-muted)' }}>{formatBytes(row.file_size)}</td>
                         <td className="px-3 py-3 whitespace-nowrap">

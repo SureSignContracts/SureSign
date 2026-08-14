@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
 import PaginationBar from '@/components/ui/PaginationBar';
 import Select from '@/components/ui/Select';
+import PlatformPageHero from '@/components/admin/PlatformPageHero';
 
 // ── types ──────────────────────────────────────────────────────────────────
 
@@ -176,33 +177,16 @@ export default function AdminAiUsagePage() {
   const rows = detail?.data ?? [];
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-5">
-      <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-            <Brain size={22} style={{ color: 'var(--gold)' }} />
-            AI Usage & Cost
-          </h1>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-            Internal execution telemetry and non-enforcing AI Credit simulation. Not customer-visible; no AI Credit
-            balances, deductions, or billing exist yet — see the AI Credit Policy document.
-          </p>
-        </div>
-        <button onClick={exportCsv}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90 active:scale-[0.98]"
-          style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
-          <Download size={13} />
-          Export CSV
-        </button>
-      </div>
-
-      {/* ── Summary cards ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <SummaryCard label="Total Analyses" value={summaryLoading ? '—' : String(summary?.total_analyses ?? 0)} icon={Brain} />
-        <SummaryCard label="Total Estimated Cost" value={summaryLoading ? '—' : formatCost(summary?.total_estimated_cost ?? 0)} icon={DollarSign} />
-        <SummaryCard label="Missing Cost" value={summaryLoading ? '—' : String(summary?.analyses_missing_cost ?? 0)} icon={AlertTriangle} />
-        <SummaryCard label="Failed" value={summaryLoading ? '—' : String(summary?.by_status?.failed ?? 0)} icon={AlertTriangle} />
-      </div>
+    <div className="mx-auto max-w-7xl space-y-7 p-4 pb-12 sm:p-6 lg:p-8">
+      <PlatformPageHero eyebrow="Execution telemetry" title="AI Usage & Cost" description="Inspect provider activity, estimated cost and operational health across SureSign AI workflows." loading={summaryLoading}
+        metrics={[
+          { label: 'Analyses', value: summary?.total_analyses ?? 0, detail: 'executions recorded', icon: Brain },
+          { label: 'Estimated cost', value: formatCost(summary?.total_estimated_cost ?? 0), detail: 'provider spend', icon: DollarSign },
+          { label: 'Missing cost', value: summary?.analyses_missing_cost ?? 0, detail: 'requires calibration', icon: AlertTriangle },
+          { label: 'Failed', value: summary?.by_status?.failed ?? 0, detail: 'executions requiring review', icon: Activity },
+        ]}
+        action={<button onClick={exportCsv} className="flex items-center gap-2 rounded-xl bg-[#9ee5b5] px-4 py-2.5 text-xs font-semibold text-[#18211d] transition-colors hover:bg-[#b3efc6] active:scale-[0.98]"><Download size={13} />Export CSV</button>}
+      />
 
       {/* ── Commercial calibration cards (Phase G4C.2D) ── */}
       <div>

@@ -8,6 +8,7 @@ import Toggle from '@/components/ui/Toggle';
 import Button from '@/components/ui/Button';
 import { Card, CardBody } from '@/components/ui/Card';
 import Select from '@/components/ui/Select';
+import PlatformPageHero from '@/components/admin/PlatformPageHero';
 
 const KNOWN_AI_MODELS = [
   { value: 'claude-sonnet-5', label: 'claude-sonnet-5 (recommended)' },
@@ -66,13 +67,13 @@ export default function AdminAiConfigPage() {
   const isKnownModel = KNOWN_AI_MODELS.some(m => m.value === currentAiModel);
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>AI Configurations</h1>
-        <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-          Configure the AI model and features available across the platform
-        </p>
-      </div>
+    <div className="mx-auto max-w-7xl space-y-7 p-4 pb-12 sm:p-6 lg:p-8">
+      <PlatformPageHero eyebrow="AI control plane" title="AI Configurations" description="Control the provider, model and AI-assisted features available across the SureSign platform."
+        metrics={[
+          { label: 'AI analysis', value: currentAiEnabled ? 'Enabled' : 'Disabled', detail: 'contract workflows', icon: Sparkles },
+          { label: 'Prompt library', value: currentPromptsEnabled ? 'Enabled' : 'Disabled', detail: 'copy-and-paste workflows', icon: Eye },
+          { label: 'API key', value: hasAnthropicKey ? 'Configured' : 'Missing', detail: currentAiModel, icon: Save },
+        ]} />
 
       <section className="space-y-4">
         <div>

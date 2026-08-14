@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import DocumentPreviewModal, { type PreviewTarget } from '@/components/documents/DocumentPreviewModal';
 import { getErrorMessage } from '@/lib/getErrorMessage';
+import PlatformPageHero from '@/components/admin/PlatformPageHero';
 
 const CATEGORY_LABELS: Record<string, string> = {
   subcontract:         'Subcontract',
@@ -574,7 +575,7 @@ export default function AdminTemplatesPage() {
     placeholderData: (prev: any) => prev,
   });
 
-  const templates: Template[] = data?.data ?? [];
+  const templates: Template[] = useMemo(() => data?.data ?? [], [data]);
   const total: number         = data?.total    ?? 0;
   const lastPage: number      = data?.last_page ?? 1;
 
@@ -610,25 +611,25 @@ export default function AdminTemplatesPage() {
   const hasFilters = !!debouncedSearch || categoryFilter !== 'All';
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-5 pb-10">
+    <div className="mx-auto max-w-7xl space-y-7 p-4 pb-12 sm:p-6 lg:p-8">
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Document Templates</h1>
-          <p className="mt-0.5 text-sm" style={{ color: 'var(--text-muted)' }}>
-            Master templates available to all tenant companies
-            {!isLoading && total > 0 && <span className="ml-1">· {total} total</span>}
-          </p>
-        </div>
-        <button
+      <PlatformPageHero
+        eyebrow="Document systems"
+        title="Templates"
+        description="Govern the master documents used across contracts, notices, payments and project delivery."
+        loading={isLoading}
+        metrics={[
+          { label: 'Templates', value: total, detail: 'available documents', icon: FileText },
+          { label: 'Global', value: templates.filter(template => template.is_global).length, detail: 'platform-wide templates', icon: Globe },
+          { label: 'Active', value: templates.filter(template => template.is_active).length, detail: 'in the current view', icon: Check },
+        ]}
+        action={<button
           onClick={() => setNewModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.98]"
-          style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
+          className="flex items-center gap-2 rounded-xl bg-[#9ee5b5] px-4 py-2.5 text-sm font-semibold text-[#18211d] transition-colors hover:bg-[#b3efc6] active:scale-[0.98]"
         >
-          <Plus size={15} /> New Template
-        </button>
-      </div>
+          <Plus size={15} /> New template
+        </button>}
+      />
 
       {/* Toolbar */}
       <div className="flex gap-3 flex-wrap items-center">

@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, ZoomControl, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { ArrowRight, ExternalLink } from 'lucide-react';
+import { ArrowRight, ExternalLink, AlertTriangle, Clock, MapPin } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 /**
@@ -17,16 +17,6 @@ import { useRouter } from 'next/navigation';
  * fragile CDN hotlink, the three PNGs are copied into `public/leaflet/`
  * (see `frontend/public/leaflet/`) and referenced by a stable static path.
  */
-
-const DEFAULT_ICON = L.icon({
-  iconUrl: '/leaflet/marker-icon.png',
-  iconRetinaUrl: '/leaflet/marker-icon-2x.png',
-  shadowUrl: '/leaflet/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
 
 export type ProjectMapMarker = {
   id: number;
@@ -85,6 +75,17 @@ export default function ProjectMapClient({ projects }: { projects: ProjectMapMar
     return L.latLngBounds(projects.map(p => [p.latitude, p.longitude] as [number, number]));
   }, [projects]);
 
+  const markerIcons = useMemo(() => new Map(projects.map((project, index) => {
+    const health = project.overdue_count > 0 ? 'urgent' : project.due_soon_count > 0 ? 'warning' : 'healthy';
+    return [project.id, L.divIcon({
+      className: 'ss-project-marker-shell',
+      html: `<span class="ss-project-marker ss-project-marker--${health}" style="animation-delay:${Math.min(index * 70, 420)}ms"><span class="ss-project-marker-core"></span></span>`,
+      iconSize: [34, 42],
+      iconAnchor: [17, 38],
+      popupAnchor: [0, -34],
+    })];
+  })), [projects]);
+
   return (
     <MapContainer
       center={bounds ? undefined : WORLD_CENTER}
@@ -93,8 +94,11 @@ export default function ProjectMapClient({ projects }: { projects: ProjectMapMar
       boundsOptions={{ padding: [32, 32], maxZoom: 15 }}
       style={{ height: '100%', width: '100%', borderRadius: 'inherit' }}
       scrollWheelZoom={false}
+      zoomControl={false}
+      className="ss-project-map-canvas"
     >
       <SyncMapView bounds={bounds} projects={projects} />
+      <ZoomControl position="bottomright" />
       {/* OpenStreetMap tiles — no API key, standard required attribution
           preserved below. Only normal tile-coordinate requests (z/x/y) leave
           the browser; no project name/id/tenant data is ever sent to the
@@ -104,27 +108,37 @@ export default function ProjectMapClient({ projects }: { projects: ProjectMapMar
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       {projects.map(project => (
-        <Marker key={project.id} position={[project.latitude, project.longitude]} icon={DEFAULT_ICON}>
-          <Popup>
-            <div style={{ minWidth: 180 }}>
-              <p style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: 2 }}>{project.name}</p>
-              <p style={{ fontSize: '0.75rem', color: '#666', textTransform: 'capitalize', marginBottom: 4 }}>
-                {project.status.replace(/_/g, ' ')}
-                {(project.city || project.country) && ` · ${[project.city, project.country].filter(Boolean).join(', ')}`}
-              </p>
+        <Marker key={project.id} position={[project.latitude, project.longitude]} icon={markerIcons.get(project.id)!}>
+          <Popup className="ss-project-map-popup" minWidth={250} maxWidth={290}>
+            <div className="ss-project-map-popup-content">
+              <div className="ss-project-map-popup-heading">
+                <span className="ss-project-map-popup-icon"><MapPin size={15} /></span>
+                <div>
+                  <p className="ss-project-map-popup-title">{project.name}</p>
+                  <p className="ss-project-map-popup-location">
+                    {[project.city, project.country].filter(Boolean).join(', ') || 'Location coordinates added'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="ss-project-map-popup-meta">
+                <span className="ss-project-map-status">{project.status.replace(/_/g, ' ')}</span>
               {(project.overdue_count > 0 || project.due_soon_count > 0) && (
-                <p style={{ fontSize: '0.75rem', color: '#b45309', marginBottom: 4 }}>
-                  {project.overdue_count > 0 && `${project.overdue_count} overdue`}
-                  {project.overdue_count > 0 && project.due_soon_count > 0 && ' · '}
-                  {project.due_soon_count > 0 && `${project.due_soon_count} due soon`}
-                </p>
+                  <span className={project.overdue_count > 0 ? 'ss-project-map-risk ss-project-map-risk--urgent' : 'ss-project-map-risk'}>
+                    {project.overdue_count > 0 ? <AlertTriangle size={11} /> : <Clock size={11} />}
+                    {project.overdue_count > 0
+                      ? `${project.overdue_count} overdue`
+                      : `${project.due_soon_count} due soon`}
+                  </span>
               )}
-              <div style={{ display: 'flex', gap: 12, marginTop: 2 }}>
+              </div>
+
+              <div className="ss-project-map-popup-actions">
                 <button
                   onClick={() => router.push(project.action_url)}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.75rem', fontWeight: 500, color: '#0a0a0a', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                  className="ss-project-map-primary-action"
                 >
-                  Open Project <ArrowRight size={11} />
+                  Open project <ArrowRight size={12} />
                 </button>
                 {/* Google's own officially documented, no-API-key URL —
                     see SiteLocationMap.tsx's identical mechanism/comment.
@@ -134,7 +148,7 @@ export default function ProjectMapClient({ projects }: { projects: ProjectMapMar
                   href={`https://www.google.com/maps/search/?api=1&query=${project.latitude},${project.longitude}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.75rem', fontWeight: 500, color: '#666', textDecoration: 'none' }}
+                  className="ss-project-map-secondary-action"
                 >
                   Google Maps <ExternalLink size={11} />
                 </a>

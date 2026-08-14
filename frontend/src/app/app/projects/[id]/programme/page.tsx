@@ -16,6 +16,7 @@ import {
 import toast from 'react-hot-toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PageTourButton from '@/components/tours/PageTourButton';
+import { ProjectModuleHeader } from '@/components/projects/ProjectModuleHeader';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -156,9 +157,10 @@ function NextMilestoneCard({ milestones }: { milestones: Milestone[] }) {
   if (!next) {
     if (milestones.length > 0) {
       return (
-        <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
-          <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Next critical milestone</p>
-          <p className="text-sm" style={{ color: '#4ade80' }}>All milestones complete.</p>
+        <div className="ss-animate-in h-full rounded-2xl p-6" style={{ backgroundColor: 'rgba(74,222,128,0.07)', border: '1px solid rgba(74,222,128,0.22)', animationDelay: '150ms' }}>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: '#4ade80' }}>Next critical milestone</p>
+          <p className="mt-3 text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Programme complete</p>
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Every recorded milestone has been closed out.</p>
         </div>
       );
     }
@@ -170,14 +172,15 @@ function NextMilestoneCard({ milestones }: { milestones: Milestone[] }) {
   const isOverdue = daysRemaining !== null && daysRemaining < 0;
 
   return (
-    <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
-      <div className="flex items-center gap-2 mb-3">
-        <Clock size={14} style={{ color: 'var(--text-muted)' }} />
-        <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Next critical milestone</p>
+    <div className="ss-animate-in relative h-full overflow-hidden rounded-2xl p-6" style={{ backgroundColor: isOverdue ? 'rgba(239,68,68,0.07)' : 'rgba(249,115,22,0.07)', border: `1px solid ${isOverdue ? 'rgba(239,68,68,0.22)' : 'rgba(249,115,22,0.2)'}`, animationDelay: '150ms' }}>
+      <div className="pointer-events-none absolute -right-10 -top-12 h-32 w-32 rounded-full bg-orange-400/10 blur-2xl" />
+      <div className="relative flex items-center gap-2 mb-5">
+        <Clock size={14} style={{ color: isOverdue ? '#f87171' : '#fb923c' }} />
+        <p className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: isOverdue ? '#f87171' : '#fb923c' }}>Next critical milestone</p>
       </div>
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="font-semibold text-sm truncate" style={{ color: 'var(--text-primary)' }}>{next.name}</p>
+          <p className="text-lg font-semibold leading-snug" style={{ color: 'var(--text-primary)' }}>{next.name}</p>
           <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
             {MILESTONE_TYPES[next.milestone_type] ?? next.milestone_type}
             {next.contract && <> · {next.contract.title}</>}
@@ -193,22 +196,8 @@ function NextMilestoneCard({ milestones }: { milestones: Milestone[] }) {
         </div>
         <div className="flex-shrink-0 text-right">
           {daysRemaining !== null && (
-            <div
-              className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold"
-              style={
-                isOverdue
-                  ? { backgroundColor: 'rgba(239,68,68,0.12)', color: '#f87171' }
-                  : daysRemaining <= 14
-                  ? { backgroundColor: 'rgba(234,179,8,0.12)', color: '#facc15' }
-                  : { backgroundColor: 'rgba(34,197,94,0.12)', color: '#4ade80' }
-              }
-            >
-              {isOverdue
-                ? `Overdue by ${Math.abs(daysRemaining)}d`
-                : daysRemaining === 0
-                ? 'Due today'
-                : `${daysRemaining}d remaining`}
-            </div>
+            <><p className="text-3xl font-semibold tabular-nums tracking-[-0.05em]" style={{ color: isOverdue ? '#f87171' : '#fb923c' }}>{Math.abs(daysRemaining)}d</p>
+            <p className="mt-1 text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>{isOverdue ? 'overdue' : daysRemaining === 0 ? 'due today' : 'remaining'}</p></>
           )}
           <div className="mt-1">
             <span
@@ -245,8 +234,8 @@ function HealthSummary({ milestones }: { milestones: Milestone[] }) {
   const aiCount    = milestones.filter(m => m.is_ai_generated).length;
 
   return (
-    <div className="ss-animate-in rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
-      <div className="flex items-center justify-between mb-4">
+    <div className="ss-animate-in h-full overflow-hidden rounded-2xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '90ms' }}>
+      <div className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: 'var(--border)' }}>
         <div className="flex items-center gap-2">
           <BarChart2 size={14} style={{ color: 'var(--text-muted)' }} />
           <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Programme health</h2>
@@ -259,7 +248,7 @@ function HealthSummary({ milestones }: { milestones: Milestone[] }) {
           {cfg.label}
         </span>
       </div>
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3">
         {[
           { label: 'Total',     value: milestones.length, color: 'var(--gold)' },
           { label: 'Complete',  value: completed,         color: '#4ade80' },
@@ -268,11 +257,11 @@ function HealthSummary({ milestones }: { milestones: Milestone[] }) {
           { label: 'At risk',   value: atRisk,            color: '#fb923c' },
           { label: 'AI generated', value: aiCount,        color: 'var(--text-secondary)' },
         ].map((s, i) => (
-          <div key={s.label} className="ss-animate-in text-center rounded-xl p-3" style={{ backgroundColor: 'var(--bg-elevated)', animationDelay: `${i * 60}ms` }}>
-            <p className="text-lg font-bold leading-none tabular-nums" style={{ color: s.color }}>
+          <div key={s.label} className="ss-animate-in border-b border-r px-5 py-4 text-left transition-colors duration-200 hover:bg-[var(--bg-hover)]" style={{ borderColor: 'var(--border)', animationDelay: `${i * 55}ms` }}>
+            <p className="text-2xl font-semibold leading-none tabular-nums tracking-[-0.04em]" style={{ color: s.color }}>
               <CountUp value={s.value} delay={i * 60} />
             </p>
-            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{s.label}</p>
+            <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>{s.label}</p>
           </div>
         ))}
       </div>
@@ -1037,17 +1026,15 @@ export default function ProjectProgrammePage() {
     : milestones.filter(m => m.status === statusFilter);
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <div className="flex items-center gap-1.5">
-            <h1 className="text-[1.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>Programme</h1>
-            <PageTourButton tourKey="page-programme" label="Take a tour of this page" />
-          </div>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Contract milestones and key dates</p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
+    <div className="ss-projects-page mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <ProjectModuleHeader
+        category="Contract administration"
+        title="Programme"
+        description="Monitor contractual milestones, critical dates and emerging delay against the project programme."
+        icon={CalendarDays}
+        tour={<PageTourButton tourKey="page-programme" label="Take a tour of this page" />}
+        action={canWrite ? (
+          <div className="flex flex-wrap gap-2">
           {canWrite && contracts.length > 0 && (
             <div data-tour="programme-seed">
               <SeedButton projectId={id!} contracts={contracts} />
@@ -1055,39 +1042,39 @@ export default function ProjectProgrammePage() {
           )}
           {canWrite && (
             <button data-tour="programme-new" onClick={() => setShowModal(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 active:scale-[0.98]"
-              style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
-              <Plus size={15} />
-              Add Milestone
+              className="flex h-11 items-center gap-2 whitespace-nowrap rounded-xl bg-[#9ee5b5] px-5 text-sm font-semibold text-[#18211d] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#b4edc6] active:translate-y-0">
+              <Plus size={16} /> Add milestone
             </button>
           )}
+          </div>
+        ) : undefined}
+      />
+
+      {!isLoading && (
+        <div className={milestones.length > 0 ? 'grid gap-4 lg:grid-cols-[1.3fr_0.7fr]' : 'block'} data-tour="programme-health">
+          <HealthSummary milestones={milestones} />
+          <NextMilestoneCard milestones={milestones} />
         </div>
-      </div>
-
-      {/* Health Summary */}
-      {!isLoading && <div data-tour="programme-health"><HealthSummary milestones={milestones} /></div>}
-
-      {/* Next Critical Milestone */}
-      {!isLoading && milestones.length > 0 && <NextMilestoneCard milestones={milestones} />}
+      )}
 
       {/* Filter + View toggle row */}
-      <div className="flex items-center justify-between flex-wrap gap-3" data-tour="programme-filters">
-        <div className="flex gap-1 p-1 rounded-full w-fit" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+      <div className="ss-animate-in flex flex-wrap items-center justify-between gap-3 rounded-2xl p-2" data-tour="programme-filters" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '190ms' }}>
+        <div className="flex gap-1 overflow-x-auto rounded-xl p-1" style={{ backgroundColor: 'var(--bg-elevated)' }}>
           {(['all', 'not_started', 'in_progress', 'complete', 'delayed', 'at_risk'] as const).map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
-              className="px-3 py-1.5 rounded-full text-xs font-medium transition-all active:scale-[0.97]"
-              style={statusFilter === s ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' } : { color: 'var(--text-secondary)' }}>
+              className="whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-200 hover:-translate-y-px active:translate-y-0"
+              style={statusFilter === s ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', boxShadow: '0 5px 14px rgba(0,0,0,0.08)' } : { color: 'var(--text-secondary)' }}>
               {s === 'all' ? 'All' : STATUS_CONFIG[s]?.label ?? s}
             </button>
           ))}
         </div>
 
         {/* View toggle */}
-        <div className="flex gap-1 p-1 rounded-full" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+        <div className="flex gap-1 rounded-xl p-1" style={{ backgroundColor: 'var(--bg-elevated)' }}>
           {(['table', 'timeline'] as const).map(v => (
             <button key={v} onClick={() => setViewMode(v)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all active:scale-[0.97]"
-              style={viewMode === v ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' } : { color: 'var(--text-secondary)' }}>
+              className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-200 hover:-translate-y-px active:translate-y-0"
+              style={viewMode === v ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', boxShadow: '0 5px 14px rgba(0,0,0,0.08)' } : { color: 'var(--text-secondary)' }}>
               {v === 'table' ? <List size={12} /> : <BarChart2 size={12} />}
               {v === 'table' ? 'Table' : 'Timeline'}
             </button>
@@ -1113,7 +1100,7 @@ export default function ProjectProgrammePage() {
 
       {/* Table view */}
       {viewMode === 'table' && (
-        <div className="rounded-2xl overflow-x-auto" data-tour="programme-table" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+        <div className="ss-animate-in overflow-x-auto rounded-2xl" data-tour="programme-table" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '240ms' }}>
           <table className="w-full min-w-[780px] text-sm">
             <thead>
               <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>

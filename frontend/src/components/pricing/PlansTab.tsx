@@ -256,15 +256,19 @@ export default function PlansTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button onClick={() => setEditingId('new')}><Plus size={14} /> New Blank Plan</Button>
+      <div className="flex items-center justify-between border-b pb-4" style={{ borderColor: 'var(--border)' }}>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-muted)' }}>Plan catalogue</p>
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>{plans.length} plans in public display order</p>
+        </div>
+        <Button onClick={() => setEditingId('new')}><Plus size={14} /> New plan</Button>
       </div>
 
       {editingId === 'new' && (
         <PlanForm initial={emptyForm()} isNew onCancel={() => setEditingId(null)} onSaved={() => { setEditingId(null); invalidate(); }} />
       )}
 
-      <div className="grid grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {plans.map((plan, i) => (
           <div key={plan.id}>
             {editingId === plan.id ? (
@@ -277,10 +281,12 @@ export default function PlansTab() {
               />
             ) : (
               <Card>
-                <CardBody className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
+                <CardBody className="group relative flex min-h-[250px] flex-col gap-5 overflow-hidden p-6 transition-transform duration-300 hover:-translate-y-1">
+                  <div className="pointer-events-none absolute right-4 top-0 text-[88px] font-semibold leading-none opacity-[0.035]" style={{ color: 'var(--text-primary)' }}>{String(i + 1).padStart(2, '0')}</div>
+                  <div className="relative flex-1">
+                    <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.16em]" style={{ color: 'var(--text-muted)' }}>{plan.code}</p>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>{plan.name}</h3>
+                      <h3 className="text-xl font-semibold tracking-[-0.025em]" style={{ color: 'var(--text-primary)' }}>{plan.name}</h3>
                       <span className="text-xs px-2 py-0.5 rounded-full" style={{
                         backgroundColor: plan.status === 'active' ? 'rgba(74,222,128,0.15)' : plan.status === 'draft' ? 'rgba(250,204,21,0.15)' : 'rgba(148,148,148,0.15)',
                         color: plan.status === 'active' ? '#4ade80' : plan.status === 'draft' ? '#eab308' : 'var(--text-muted)',
@@ -290,15 +296,20 @@ export default function PlansTab() {
                       {plan.is_popular && <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>Popular</span>}
                       {!plan.is_visible && <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>Hidden</span>}
                     </div>
-                    <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>code: {plan.code} · {plan.currency} {plan.monthly_price ?? '—'}/mo</p>
-                    <p className="text-sm mt-2" style={{ color: 'var(--text-secondary)' }}>{plan.summary}</p>
+                    <div className="mt-6 flex items-end gap-2">
+                      <span className="text-3xl font-semibold tabular-nums tracking-[-0.04em]" style={{ color: 'var(--text-primary)' }}>
+                        {plan.monthly_price != null ? `${plan.currency} ${plan.monthly_price}` : 'Bespoke'}
+                      </span>
+                      {plan.monthly_price != null && <span className="pb-1 text-xs" style={{ color: 'var(--text-muted)' }}>/ month</span>}
+                    </div>
+                    <p className="mt-3 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>{plan.summary || 'No public summary has been added to this plan yet.'}</p>
                   </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <div className="flex gap-1">
+                  <div className="relative flex flex-col gap-3 border-t pt-4" style={{ borderColor: 'var(--border)' }}>
+                    <div className="flex gap-1 self-end opacity-60 transition-opacity group-hover:opacity-100">
                       <button onClick={() => move(i, -1)} disabled={i === 0} className="p-1.5 rounded-md disabled:opacity-30" style={{ backgroundColor: 'var(--bg-elevated)' }}><ArrowUp size={14} /></button>
                       <button onClick={() => move(i, 1)} disabled={i === plans.length - 1} className="p-1.5 rounded-md disabled:opacity-30" style={{ backgroundColor: 'var(--bg-elevated)' }}><ArrowDown size={14} /></button>
                     </div>
-                    <div className="flex gap-1.5">
+                    <div className="flex flex-wrap gap-1.5">
                       <Button size="sm" variant="secondary" onClick={() => setEditingId(plan.id)}><Pencil size={12} /> Edit</Button>
                       <Button size="sm" variant="secondary" onClick={() => setEntitlementsPlan(plan)}><Layers size={12} /> Entitlements</Button>
                       <Button size="sm" variant="secondary" onClick={() => setCopySource(plan)}><Copy size={12} /> Copy</Button>

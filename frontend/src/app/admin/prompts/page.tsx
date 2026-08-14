@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   BookOpen, Search, Copy, Heart, Star, Plus, X,
-  Edit, Trash2, Check, Tag, Layers, Filter, Grid3X3,
+  Edit, Trash2, Tag, Layers,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
@@ -13,6 +13,7 @@ import PromptContextModal from '@/components/prompts/PromptContextModal';
 import PaginationBar from '@/components/ui/PaginationBar';
 import Select from '@/components/ui/Select';
 import { getErrorMessage } from '@/lib/getErrorMessage';
+import PlatformPageHero from '@/components/admin/PlatformPageHero';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -460,7 +461,7 @@ export default function AdminPromptsPage() {
     queryFn: () => api.get('/admin/prompts/favorites').then(r => r.data),
   });
 
-  const templates: PromptTemplate[] = templateData?.data ?? [];
+  const templates: PromptTemplate[] = useMemo(() => templateData?.data ?? [], [templateData]);
   const promptTotal: number  = templateData?.total    ?? 0;
   const promptLastPage: number = templateData?.last_page ?? 1;
 
@@ -627,27 +628,26 @@ export default function AdminPromptsPage() {
 
       {/* Main content */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Page header */}
-        <div
-          className="flex items-center justify-between px-6 py-5 flex-shrink-0"
-          style={{ borderBottom: '1px solid var(--border)' }}
-        >
-          <div>
-            <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Prompt Library</h1>
-            <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>
-              Ready-made prompts for construction administration, contract review, adjudication, and document drafting.
-            </p>
-          </div>
-          {isSuperAdmin && (
+        <div className="flex-shrink-0 p-5 lg:p-6">
+          <PlatformPageHero
+            eyebrow="Knowledge systems"
+            title="Prompt Library"
+            description="Curated construction workflows for contract review, correspondence, adjudication and document drafting."
+            loading={isLoading}
+            metrics={[
+              { label: 'Prompts', value: promptTotal, detail: 'available workflows', icon: BookOpen },
+              { label: 'Categories', value: categories.length, detail: 'areas of practice', icon: Tag },
+              { label: 'Favourites', value: favorites.length, detail: 'saved by you', icon: Heart },
+            ]}
+            action={isSuperAdmin ? (
             <button
               onClick={() => setEditTemplate(null)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.98]"
-              style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
+              className="flex items-center gap-2 rounded-xl bg-[#9ee5b5] px-4 py-2.5 text-sm font-semibold text-[#18211d] transition-colors hover:bg-[#b3efc6] active:scale-[0.98]"
             >
-              <Plus size={15} />
-              New Prompt
+              <Plus size={15} /> New prompt
             </button>
-          )}
+            ) : undefined}
+          />
         </div>
 
         {/* Toolbar */}

@@ -10,6 +10,7 @@ import { Bell, Plus, Search, AlertTriangle, X, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PageTourButton from '@/components/tours/PageTourButton';
+import { ProjectModuleHeader } from '@/components/projects/ProjectModuleHeader';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
 import { getErrorMessage } from '@/lib/getErrorMessage';
@@ -270,45 +271,38 @@ export default function ProjectNoticesPage() {
   );
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-1.5">
-            <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Notices</h1>
-            <PageTourButton tourKey="page-notices" label="Take a tour of this page" />
-          </div>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>EOT requests, pay less notices and site instructions</p>
-        </div>
-        {canWriteForTab && (
-        <button
-          data-tour="notices-new"
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.98]"
-          style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
-        >
-          <Plus size={15} />
-          New Notice
-        </button>
-        )}
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-1 p-1 rounded-full w-fit" data-tour="notices-tabs" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
-        {NOTICE_TABS.map(t => (
-          <button key={t.id} onClick={() => { setTab(t.id); setShowModal(false); }}
-            className="px-4 py-2 rounded-full text-sm font-medium transition-all active:scale-[0.97]"
-            style={tab === t.id ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' } : { color: 'var(--text-secondary)' }}>
-            {t.label}
+    <div className="ss-projects-page mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <ProjectModuleHeader
+        category="Contract administration"
+        title="Notices"
+        description="Issue and track contractual notices, time requests and site instructions with a clear audit trail."
+        icon={Bell}
+        tour={<PageTourButton tourKey="page-notices" label="Take a tour of this page" />}
+        action={canWriteForTab ? (
+          <button data-tour="notices-new" onClick={() => setShowModal(true)} className="flex h-11 items-center gap-2 whitespace-nowrap rounded-xl bg-[#9ee5b5] px-5 text-sm font-semibold text-[#18211d] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#b4edc6] active:translate-y-0">
+            <Plus size={16} /> New notice
           </button>
-        ))}
-      </div>
+        ) : undefined}
+      />
 
-      {/* Search */}
-      <div className="relative max-w-sm" data-tour="notices-search">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search notices…"
-          className="w-full pl-9 pr-4 py-2 rounded-lg text-sm outline-none"
-          style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
+      <div className="ss-animate-in rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-2 shadow-[var(--shadow-card)]" style={{ animationDelay: '90ms' }}>
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex gap-1 overflow-x-auto rounded-xl bg-[var(--bg-elevated)] p-1" data-tour="notices-tabs">
+            {NOTICE_TABS.map(t => (
+              <button key={t.id} onClick={() => { setTab(t.id); setShowModal(false); }}
+                className="whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-all active:scale-[0.97]"
+                style={tab === t.id ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' } : { color: 'var(--text-secondary)' }}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <div className="relative min-w-[240px] lg:w-80" data-tour="notices-search">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search this register…"
+              className="h-10 w-full rounded-xl bg-[var(--bg-elevated)] pl-9 pr-4 text-sm outline-none transition-colors focus:ring-2 focus:ring-[var(--gold)]/30"
+              style={{ color: 'var(--text-primary)' }} />
+          </div>
+        </div>
       </div>
 
       {/* Items */}
@@ -318,14 +312,25 @@ export default function ProjectNoticesPage() {
             <div key={i} className="h-18 rounded-2xl animate-pulse" style={{ backgroundColor: 'var(--bg-surface)' }} />
           ))
         ) : items.length === 0 ? (
-          <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
-            <Bell size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No {NOTICE_TABS.find(t => t.id === tab)?.label.toLowerCase()} yet</p>
-            {canWriteForTab && (
-            <Button onClick={() => setShowModal(true)} variant="secondary" size="sm" className="mt-3">
-              Create New
-            </Button>
-            )}
+          <div className="ss-animate-in grid min-h-[260px] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-[var(--shadow-card)] md:grid-cols-[0.75fr_1.25fr]">
+            <div className="flex items-center justify-center bg-[var(--bg-elevated)] p-8">
+              <div className="flex h-24 w-24 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--gold)] shadow-[var(--shadow-card)]">
+                <Bell size={38} strokeWidth={1.5} />
+              </div>
+            </div>
+            <div className="flex flex-col items-start justify-center p-8 sm:p-10">
+              <h2 className="text-xl font-semibold tracking-[-0.02em]" style={{ color: 'var(--text-primary)' }}>
+                No {NOTICE_TABS.find(t => t.id === tab)?.label.toLowerCase()} yet
+              </h2>
+              <p className="mt-2 max-w-md text-sm leading-6" style={{ color: 'var(--text-muted)' }}>
+                Start the register when a formal project communication needs to be issued and tracked.
+              </p>
+              {canWriteForTab && (
+                <Button onClick={() => setShowModal(true)} size="sm" className="mt-5">
+                  <Plus size={14} /> Create notice
+                </Button>
+              )}
+            </div>
           </div>
         ) : items.map((item: any, i: number) => {
           const badge = STATUS_COLORS[item.status] ?? { bg: 'var(--bg-elevated)', text: 'var(--text-muted)' };
@@ -333,7 +338,7 @@ export default function ProjectNoticesPage() {
           return (
             <div key={item.id}
               onClick={() => isSiteInstruction && setInstructionModal(item)}
-              className="flex items-center justify-between p-4 rounded-xl transition-colors ss-animate-in"
+              className="group flex items-center justify-between rounded-2xl p-4 transition-all duration-300 ss-animate-in hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)]"
               style={{
                 backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)',
                 animationDelay: `${Math.min(i * 45, 360)}ms`,

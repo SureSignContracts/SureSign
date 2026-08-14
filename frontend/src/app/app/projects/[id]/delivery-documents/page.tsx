@@ -6,12 +6,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { effectiveTodayYmd } from '@/lib/dateTime';
-import { Plus, X, Trash2, FileStack } from 'lucide-react';
+import { Plus, X, Trash2, FileStack, CheckCircle2, ShieldAlert } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getErrorMessage, INPUT_STYLE, CATEGORY_LABELS, StatusBadge, Field } from '@/components/deliveryDocuments/deliveryDocumentShared';
 import PageTourButton from '@/components/tours/PageTourButton';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
+import { ProjectModuleHeader, ProjectModuleMetric } from '@/components/projects/ProjectModuleHeader';
 
 type DeliveryDoc = {
   id: number;
@@ -60,47 +61,56 @@ export default function DeliveryDocumentsPage() {
   // Must agree with the backend's own organisation-timezone-aware "today"
   // (TimezoneResolver), not the UTC calendar day.
   const today = effectiveTodayYmd();
+  const approvedCount = docs.filter(doc => doc.status === 'approved').length;
+  const reviewCount = docs.filter(doc => doc.status === 'submitted' || doc.status === 'under_review').length;
+  const overdueCount = docs.filter(doc => !!doc.due_date && doc.due_date < today && !['approved', 'superseded'].includes(doc.status)).length;
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6 pb-12">
-      <div className="ss-animate-in flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <div className="flex items-center gap-1.5">
-            <h1 className="text-[1.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>
-              Delivery documents
-            </h1>
-            <PageTourButton tourKey="page-delivery-documents" label="Take a tour of this page" />
-          </div>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-            RAMS, method statements, ITPs, permits and other construction control documents, across the main contract and every trade package.
-          </p>
-        </div>
-        <button
-          data-tour="delivery-documents-new"
-          onClick={() => setShowCreate(true)}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all active:scale-[0.98] hover:opacity-90"
-          style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
-        >
-          <Plus size={14} /> Add document
-        </button>
-      </div>
-
-      <div className="ss-animate-in flex gap-1 p-1 rounded-full w-fit flex-wrap" data-tour="delivery-documents-filters" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', animationDelay: '60ms' }}>
-        {(['all', 'required', 'pending', 'submitted', 'under_review', 'approved', 'rejected', 'expired', 'superseded'] as const).map(s => (
+    <div className="ss-projects-page mx-auto max-w-7xl space-y-6 p-4 pb-12 sm:p-6 lg:p-8">
+      <ProjectModuleHeader
+        category="Delivery control"
+        title="Delivery documents"
+        description="Control RAMS, method statements, ITPs, permits and package deliverables from one register."
+        icon={FileStack}
+        tour={<PageTourButton tourKey="page-delivery-documents" label="Take a tour of this page" />}
+        action={(
           <button
-            key={s}
-            onClick={() => setFilter(s)}
-            className="px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-all active:scale-[0.97]"
-            style={filter === s
-              ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
-              : { color: 'var(--text-secondary)' }}
+            data-tour="delivery-documents-new"
+            onClick={() => setShowCreate(true)}
+            className="flex h-11 items-center gap-2 whitespace-nowrap rounded-xl bg-[#9ee5b5] px-5 text-sm font-semibold text-[#18211d] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#b4edc6] active:translate-y-0"
           >
-            {s === 'all' ? `All (${docs.length})` : s.replace('_', ' ')}
+            <Plus size={16} /> Add document
           </button>
-        ))}
+        )}
+        metricColumns={4}
+      >
+        <ProjectModuleMetric label="Total documents" value={docs.length} index={0} />
+        <ProjectModuleMetric label="Approved" value={approvedCount} tone="#4ade80" index={1} />
+        <ProjectModuleMetric label="In review" value={reviewCount} tone="#facc15" index={2} />
+        <ProjectModuleMetric label="Overdue" value={overdueCount} tone={overdueCount > 0 ? '#f87171' : '#9ee5b5'} index={3} />
+      </ProjectModuleHeader>
+
+      <div className="ss-animate-in flex flex-col gap-3 rounded-2xl p-2 sm:flex-row sm:items-center sm:justify-between" data-tour="delivery-documents-filters" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '80ms' }}>
+        <div className="flex gap-1 overflow-x-auto rounded-xl p-1" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+          {(['all', 'required', 'pending', 'submitted', 'under_review', 'approved', 'rejected', 'expired', 'superseded'] as const).map(s => (
+            <button
+              key={s}
+              onClick={() => setFilter(s)}
+              className="whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold capitalize transition-all duration-200 hover:-translate-y-px active:translate-y-0"
+              style={filter === s
+                ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', boxShadow: '0 5px 14px rgba(0,0,0,0.08)' }
+                : { color: 'var(--text-secondary)' }}
+            >
+              {s === 'all' ? `All (${docs.length})` : s.replace('_', ' ')}
+            </button>
+          ))}
+        </div>
+        <p className="hidden items-center gap-2 pr-3 text-xs sm:flex" style={{ color: 'var(--text-muted)' }}>
+          {overdueCount > 0 ? <><ShieldAlert size={13} style={{ color: '#f87171' }} /> {overdueCount} item{overdueCount === 1 ? '' : 's'} need attention</> : <><CheckCircle2 size={13} style={{ color: '#4ade80' }} /> Register is up to date</>}
+        </p>
       </div>
 
-      <div className="ss-animate-in rounded-xl overflow-hidden" data-tour="delivery-documents-table" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '120ms' }}>
+      <div className="ss-animate-in overflow-hidden rounded-2xl" data-tour="delivery-documents-table" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '150ms' }}>
         <table className="w-full text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
@@ -115,14 +125,15 @@ export default function DeliveryDocumentsPage() {
             )}
             {!isLoading && filtered.length === 0 && (
               <tr className="ss-animate-in">
-                <td colSpan={8} className="px-3 py-12 text-center">
-                  <FileStack size={28} className="mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
-                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                <td colSpan={8} className="px-5 py-16 text-center">
+                  <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl" style={{ backgroundColor: 'rgba(158,229,181,0.16)', color: '#48b66a' }}><FileStack size={22} /></span>
+                  <p className="mt-4 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
                     No delivery documents{filter !== 'all' ? ` with status "${filter}"` : ' recorded for this project yet'}.
                   </p>
+                  <p className="mx-auto mt-1 max-w-md text-xs leading-5" style={{ color: 'var(--text-muted)' }}>Build the register around RAMS, permits, ITPs and package deliverables so responsibilities and due dates stay visible.</p>
                   {filter === 'all' && (
-                    <Button onClick={() => setShowCreate(true)} variant="secondary" size="sm" className="mt-3">
-                      Add first document
+                    <Button onClick={() => setShowCreate(true)} size="sm" className="mt-4">
+                      <Plus size={14} /> Add first document
                     </Button>
                   )}
                 </td>

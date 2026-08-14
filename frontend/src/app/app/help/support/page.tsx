@@ -112,7 +112,7 @@ function MyRequestsTab() {
       </div>
 
       {/* List */}
-      <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+      <div className="overflow-hidden rounded-2xl bg-[var(--bg-surface)] shadow-[0_12px_32px_rgba(24,33,29,0.07)]">
         {isError ? (
           <p className="px-5 py-6 text-sm" style={{ color: '#f87171' }}>Your requests could not be loaded. Please try again.</p>
         ) : isLoading ? (
@@ -211,7 +211,7 @@ export default function SupportPage() {
   }
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6 lg:py-9">
       <Link
         href="/app/help"
         className="inline-flex items-center gap-1 text-xs font-medium hover:opacity-80"
@@ -221,26 +221,25 @@ export default function SupportPage() {
         Help Center
       </Link>
 
-      {/* Header */}
-      <div className="flex items-start gap-3">
-        <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--gold-15)' }}>
-          <LifeBuoy size={20} style={{ color: 'var(--gold)' }} />
+      <section className="ss-animate-in overflow-hidden rounded-2xl bg-[#18211d] text-white shadow-[0_24px_70px_rgba(24,33,29,0.16)]">
+        <div className="relative p-7 sm:p-10">
+          <div className="absolute -right-16 -top-24 h-72 w-72 rounded-full border border-[#9ee5b5]/10" />
+          <p className="relative mb-7 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#9ee5b5]"><LifeBuoy size={14} /> Support desk</p>
+          <h1 className="relative max-w-3xl text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">Tell us what is blocking the work.</h1>
+          <p className="relative mt-4 max-w-2xl text-sm leading-6 text-[#b9c5bf] sm:text-base">Send the right context once, then follow every response from the same dependable thread.</p>
         </div>
-        <div>
-          <h1 className="text-[1.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>Support</h1>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-            Send a new request, or check on ones you&apos;ve already sent.
-          </p>
+        <div className="grid border-t border-white/10 sm:grid-cols-3">
+          {['Describe the issue', 'Add useful context', 'Track the response'].map((label, index) => <div key={label} className="px-7 py-5 sm:border-r sm:border-white/10 last:border-r-0"><p className="text-[10px] font-semibold tracking-[0.16em] text-[#9ee5b5]">0{index + 1}</p><p className="mt-2 text-sm font-semibold">{label}</p></div>)}
         </div>
-      </div>
+      </section>
 
       <EmergencyBanner />
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 rounded-full w-fit" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+      <div className="flex w-fit gap-1 rounded-xl bg-[var(--bg-surface)] p-1.5 shadow-[0_8px_24px_rgba(24,33,29,0.06)]">
         <button
           onClick={() => selectTab('new')}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all"
+          className="flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-medium transition-all active:scale-[0.98]"
           style={tab === 'new' ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' } : { color: 'var(--text-secondary)' }}
         >
           <LifeBuoy size={13} />
@@ -248,7 +247,7 @@ export default function SupportPage() {
         </button>
         <button
           onClick={() => selectTab('requests')}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all"
+          className="flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-medium transition-all active:scale-[0.98]"
           style={tab === 'requests' ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' } : { color: 'var(--text-secondary)' }}
         >
           <ClipboardList size={13} />

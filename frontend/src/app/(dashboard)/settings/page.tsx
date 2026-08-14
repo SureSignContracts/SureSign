@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, Save, Check, Upload, X, Palette, Building2, KeyRound, ScrollText, Lock, BookOpen, Globe, Eye } from 'lucide-react';
+import { Settings, Save, Check, Upload, Palette, Building2, KeyRound, ScrollText, Lock, BookOpen, Globe, Eye } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
@@ -307,34 +307,56 @@ export default function SettingsPage() {
   });
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
-      <div className="flex items-center gap-3 mb-6 ss-animate-in">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center transition-transform duration-300 hover:scale-105" style={{ backgroundColor: 'var(--bg-elevated)' }}>
-          <Settings size={18} style={{ color: 'var(--text-secondary)' }} />
+    <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:py-9">
+      <section className="ss-animate-in overflow-hidden rounded-2xl bg-[#18211d] text-white shadow-[0_24px_70px_rgba(24,33,29,0.16)]">
+        <div className="relative p-7 sm:p-10">
+          <div className="absolute -right-16 -top-24 h-72 w-72 rounded-full border border-[#9ee5b5]/10" />
+          <div className="relative max-w-3xl">
+            <p className="mb-7 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#9ee5b5]">
+              <Settings size={14} /> Workspace configuration
+            </p>
+            <h1 className="text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">Make SureSign work like your organisation.</h1>
+            <p className="mt-4 max-w-2xl text-sm leading-6 text-[#b9c5bf] sm:text-base">
+              Keep your identity, company record and personal access controls accurate from one considered workspace.
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Settings</h1>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Manage your organization preferences</p>
+        <div className="grid border-t border-white/10 sm:grid-cols-3">
+          {[
+            ['01', 'Identity', 'Brand and client-facing details'],
+            ['02', 'Organisation', 'Company and regional records'],
+            ['03', 'Personal', 'Timezone and account security'],
+          ].map(([number, label, description]) => (
+            <div key={number} className="px-7 py-5 sm:border-r sm:border-white/10 last:border-r-0">
+              <p className="text-[10px] font-semibold tracking-[0.16em] text-[#9ee5b5]">{number}</p>
+              <p className="mt-2 text-sm font-semibold">{label}</p>
+              <p className="mt-1 text-xs text-[#8f9c96]">{description}</p>
+            </div>
+          ))}
         </div>
-      </div>
+      </section>
 
-      {/* Tab bar */}
-      <div className="flex flex-nowrap gap-1 p-1 rounded-full mb-6 w-fit ss-animate-in" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', animationDelay: '60ms' }}>
+      <div className="grid items-start gap-5 lg:grid-cols-[250px_minmax(0,1fr)]">
+      {/* Section navigation */}
+      <nav className="ss-animate-in rounded-2xl bg-[var(--bg-surface)] p-2 shadow-[0_12px_32px_rgba(24,33,29,0.07)] lg:sticky lg:top-6" style={{ animationDelay: '60ms' }} aria-label="Settings sections">
+        <p className="px-3 pb-2 pt-3 text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--text-secondary)' }}>Settings directory</p>
         {tabs.map(t => (
           <button key={t.id} onClick={() => { setTab(t.id); setSaved(false); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 active:scale-[0.97] whitespace-nowrap"
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-all duration-200 active:scale-[0.98]"
             style={tab === t.id
-              ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
+              ? { backgroundColor: '#18211d', color: '#ffffff' }
               : { color: 'var(--text-secondary)' }
             }
           >
-            <t.icon size={12} />
+            <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${tab === t.id ? 'bg-[#9ee5b5] text-[#18211d]' : 'bg-[#f2f4f3] text-[#66716b]'}`}>
+              <t.icon size={14} />
+            </span>
             {t.label}
           </button>
         ))}
-      </div>
+      </nav>
 
-      <div key={tab} className="rounded-2xl p-6 ss-animate-in" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', animationDelay: '100ms' }}>
+      <div key={tab} className="rounded-2xl bg-[var(--bg-surface)] p-5 shadow-[0_12px_32px_rgba(24,33,29,0.07)] ss-animate-in sm:p-7" style={{ animationDelay: '100ms' }}>
         {isLoading ? (
           <div className="space-y-4">
             {[...Array(4)].map((_, i) => (
@@ -636,9 +658,10 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
+      </div>
 
       {/* Legal & Info */}
-      <div className="mt-8 pt-6" style={{ borderTop: '1px solid var(--border)' }}>
+      <div className="pt-2">
         <h2 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>
           Legal &amp; Info
         </h2>
@@ -651,8 +674,7 @@ export default function SettingsPage() {
             <Link
               key={href}
               href={href}
-              className="flex items-start gap-3 px-4 py-3 rounded-xl transition-colors hover:bg-[var(--bg-hover)]"
-              style={{ border: '1px solid var(--border)' }}
+              className="flex items-start gap-3 rounded-xl bg-[var(--bg-surface)] px-4 py-4 shadow-[0_8px_24px_rgba(24,33,29,0.06)] transition-all duration-200 hover:-translate-y-0.5"
             >
               <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
                 style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}>
@@ -669,4 +691,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-

@@ -76,7 +76,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             Shorter pages never hit this, since their content already fits
             without needing to shrink — which is why this only showed up
             on pages with enough stacked content to exceed one viewport. */}
-        <main className="flex-1 min-h-0 overflow-y-auto">
+        <main className="ss-admin-content flex-1 min-h-0 overflow-y-auto">
           {children}
         </main>
       </div>

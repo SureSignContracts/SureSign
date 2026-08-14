@@ -11,6 +11,7 @@ import PageTourButton from '@/components/tours/PageTourButton';
 import Button from '@/components/ui/Button';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import QaModal from '@/components/qa/QaModal';
+import { ProjectModuleHeader, ProjectModuleMetric } from '@/components/projects/ProjectModuleHeader';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -69,7 +70,7 @@ export default function ProjectQaPage() {
   });
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="ss-projects-page mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
       {modal.open && (
         <QaModal projectId={id} report={modal.report} onClose={() => setModal({ open: false })} />
       )}
@@ -86,62 +87,56 @@ export default function ProjectQaPage() {
         </div>
       )}
 
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-1.5">
-            <h1 className="text-[1.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>QA reports</h1>
-            <PageTourButton tourKey="page-qa" label="Take a tour of this page" />
-          </div>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Quality assurance inspections and records</p>
-        </div>
-        <button
-          data-tour="qa-new"
-          onClick={() => setModal({ open: true })}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 active:scale-[0.98]"
-          style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
-        >
-          <Plus size={15} />
-          New QA Report
-        </button>
-      </div>
-
-      {/* Summary */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3" data-tour="qa-summary">
+      <ProjectModuleHeader
+        category="Delivery control"
+        title="QA reports"
+        description="Record inspections, resolve quality issues and maintain an auditable assurance trail."
+        icon={CheckSquare}
+        metricColumns={5}
+        tour={<PageTourButton tourKey="page-qa" label="Take a tour of this page" />}
+        action={(
+          <button
+            data-tour="qa-new"
+            onClick={() => setModal({ open: true })}
+            className="flex h-11 items-center gap-2 whitespace-nowrap rounded-xl bg-[#9ee5b5] px-5 text-sm font-semibold text-[#18211d] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#b4edc6] active:translate-y-0"
+          >
+            <Plus size={16} /> New QA report
+          </button>
+        )}
+      >
         {STATUSES.map((s, i) => {
           const count = allReports.filter((r: any) => r.status === s).length;
           const badge = STATUS_COLORS[s];
           return (
-            <div key={s} className="ss-animate-in rounded-xl p-3 cursor-pointer transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] hover:-translate-y-0.5"
+            <ProjectModuleMetric
+              key={s}
+              label={s}
+              value={count}
+              tone={badge.text}
+              active={statusFilter === s}
               onClick={() => setStatusFilter(statusFilter === s ? 'all' : s)}
-              style={{
-                backgroundColor: statusFilter === s ? badge.bg : 'var(--bg-surface)',
-                border: `1px solid ${statusFilter === s ? badge.text + '40' : 'var(--border)'}`,
-                boxShadow: 'var(--shadow-card)',
-                animationDelay: `${i * 50}ms`,
-              }}>
-              <p className="text-xs capitalize" style={{ color: 'var(--text-muted)' }}>{s}</p>
-              <p className="text-lg font-bold mt-0.5 tabular-nums" style={{ color: badge.text }}>{count}</p>
-            </div>
+              index={i}
+            />
           );
         })}
-      </div>
+      </ProjectModuleHeader>
 
       {/* Search + Filter */}
-      <div className="flex gap-3 flex-wrap" data-tour="qa-filters">
-        <div className="relative">
+      <div className="ss-animate-in flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-2 shadow-[var(--shadow-card)]" data-tour="qa-filters" style={{ animationDelay: '100ms' }}>
+        <div className="relative min-w-[220px] flex-1">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search QA reports…"
-            className="pl-9 pr-4 py-2 rounded-lg text-sm outline-none"
-            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)', minWidth: '220px', boxShadow: 'var(--shadow-card)' }}
+            className="h-10 w-full rounded-xl bg-[var(--bg-elevated)] pl-9 pr-4 text-sm outline-none transition-colors focus:ring-2 focus:ring-[var(--gold)]/30"
+            style={{ color: 'var(--text-primary)' }}
           />
         </div>
-        <div className="flex gap-1 p-1 rounded-full" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+        <div className="flex gap-1 overflow-x-auto rounded-xl bg-[var(--bg-elevated)] p-1">
           {['all', ...STATUSES].map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
-              className="px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-all active:scale-[0.97]"
+              className="whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium capitalize transition-all active:scale-[0.97]"
               style={statusFilter === s
                 ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
                 : { color: 'var(--text-secondary)' }
@@ -168,12 +163,21 @@ export default function ProjectQaPage() {
           </Button>
         </div>
       ) : reports.length === 0 ? (
-        <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
-          <CheckSquare size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No QA reports yet</p>
-          <Button onClick={() => setModal({ open: true })} variant="secondary" size="sm" className="mt-4">
-            Create First Report
-          </Button>
+        <div className="ss-animate-in grid min-h-[270px] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-[var(--shadow-card)] md:grid-cols-[0.8fr_1.2fr]">
+          <div className="flex items-center justify-center bg-[var(--bg-elevated)] p-8">
+            <div className="flex h-24 w-24 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--gold)] shadow-[var(--shadow-card)]">
+              <CheckSquare size={38} strokeWidth={1.5} />
+            </div>
+          </div>
+          <div className="flex flex-col items-start justify-center p-8 sm:p-10">
+            <h2 className="text-xl font-semibold tracking-[-0.02em]" style={{ color: 'var(--text-primary)' }}>Build the quality record</h2>
+            <p className="mt-2 max-w-md text-sm leading-6" style={{ color: 'var(--text-muted)' }}>
+              Create the first inspection report to document checks, outcomes and follow-up actions in one place.
+            </p>
+            <Button onClick={() => setModal({ open: true })} size="sm" className="mt-5">
+              <Plus size={14} /> Create first report
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="rounded-2xl overflow-x-auto" data-tour="qa-table" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>

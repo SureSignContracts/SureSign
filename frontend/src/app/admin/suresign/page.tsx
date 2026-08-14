@@ -9,6 +9,7 @@ import {
   X, Upload, Palette, Globe, FileUp, Download, Send, Eye, EyeOff,
 } from 'lucide-react';
 import Select from '@/components/ui/Select';
+import PlatformPageHero from '@/components/admin/PlatformPageHero';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface PlatformSettings {
@@ -157,6 +158,7 @@ function UploadTile({ label, hint, accept, currentUrl, onUpload, onRemove, uploa
       >
         {preview ? (
           <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={preview} alt={label} className="w-full h-full object-contain" />
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}>
               <Upload size={15} className="text-white" /><span className="text-xs text-white font-medium">Replace</span>
@@ -383,20 +385,29 @@ export default function AdminSureSignPage() {
   );
 
   const activeTabMeta = TABS.find(t => t.id === activeTab)!;
+  const configuredAssets = [
+    data?.logo_url,
+    data?.favicon_url,
+    data?.letterhead_header_url,
+    data?.letterhead_footer_url,
+    data?.letterhead_pdf_url,
+    data?.email_header_url,
+    data?.email_footer_url,
+  ].filter(Boolean).length;
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6 pb-16">
+    <div className="mx-auto max-w-7xl space-y-7 p-4 pb-16 sm:p-6 lg:p-8">
 
-      {/* ── Page header ── */}
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--gold-15)' }}>
-          <Gem size={20} style={{ color: 'var(--gold)' }} />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>SureSign Contracts settings</h1>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Platform-wide branding, documents, email &amp; site configuration</p>
-        </div>
-      </div>
+      <PlatformPageHero
+        eyebrow="System identity"
+        title="SureSign Settings"
+        description="Control the platform identity, document presentation, email delivery and regional defaults."
+        metrics={[
+          { label: 'Settings areas', value: TABS.length, detail: 'platform controls', icon: Gem },
+          { label: 'Brand assets', value: configuredAssets, detail: 'files configured', icon: ImageIcon },
+          { label: 'Email delivery', value: data?.email_sender_email ? 'Ready' : 'Setup', detail: data?.email_sender_email || 'sender not configured', icon: Mail },
+        ]}
+      />
 
       {/* ── Tab bar ── */}
       <div className="flex gap-1 p-1 rounded-xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>

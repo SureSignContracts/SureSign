@@ -25,11 +25,18 @@ response-due date appears on the project [Calendar](../calendar/overview.md).
 
 ## Drawing Locations
 
-If an RFI has been linked to a location on a [Drawing](../drawings/viewing-a-drawing.md#linking-project-records),
-a **Drawing Locations** section on the RFI shows every drawing location
+An RFI may also be created directly from a location on a
+[Drawing](../drawings/viewing-a-drawing.md#creating-records-from-a-drawing-location)
+— select **Create Record → Create RFI** from that location's marker. The
+drawing link is recorded automatically; RFI has no location/area field of
+its own, so nothing is added to the Subject or description.
+
+If an RFI has been linked to a location on a
+[Drawing](../drawings/viewing-a-drawing.md#linking-existing-records)
+(whether created this way or linked to an existing RFI afterward), a
+**Drawing Locations** section on the RFI shows every drawing location
 it's linked from, with an **Open Drawing** action that jumps straight to
-the correct drawing, revision, and page. Linking is done from the Drawing
-Viewer, not from here.
+the correct drawing, revision, and page.
 
 ## Related
 

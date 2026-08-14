@@ -15,8 +15,8 @@ import {
 import GeneratePackageModal from '@/components/documents/GeneratePackageModal';
 import GenerateTradePackageFolderModal from '@/components/documents/GenerateTradePackageFolderModal';
 import DocumentPreviewModal, { type PreviewTarget } from '@/components/documents/DocumentPreviewModal';
-import Button from '@/components/ui/Button';
 import EmptyState from '@/components/ui/EmptyState';
+import PlatformPageHero from '@/components/admin/PlatformPageHero';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -502,23 +502,23 @@ export default function AdminDocumentsPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-5">
+    <div className="mx-auto max-w-7xl space-y-7 p-4 pb-12 sm:p-6 lg:p-8">
 
-      {/* ── Header + toolbar ── */}
-      <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Documents</h1>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-            {viewMode === 'folder' ? 'Browse documents by company → project → module' : 'All uploaded documents across the platform'}
-          </p>
-        </div>
-
-        {/* Toolbar — primary action visible, secondary in More menu */}
-        <div className="flex items-center gap-2 flex-wrap">
+      <PlatformPageHero
+        eyebrow="Information control"
+        title="Documents"
+        description={viewMode === 'folder' ? 'Browse the platform document estate by company, project and working module.' : 'Search every uploaded document held across the SureSign platform.'}
+        loading={viewMode === 'list' ? listLoading : companiesLoading}
+        metrics={[
+          { label: 'Documents', value: listData?.total ?? 0, detail: 'uploaded files', icon: FileText },
+          { label: 'Companies', value: companies.length, detail: 'with document records', icon: Building2 },
+          { label: 'Current view', value: totalLabel, detail: viewMode === 'folder' ? 'folder navigation' : 'platform register', icon: FolderOpen },
+        ]}
+        action={
+          <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white/5 p-1 text-white">
           {isAtSubcontractsLevel && (
             <button onClick={() => setShowGenerateFolderModal(true)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90 active:scale-[0.98]"
-              style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+              className="flex items-center gap-2 rounded-lg bg-[#9ee5b5] px-3 py-2 text-xs font-semibold text-[#18211d] transition-colors hover:bg-[#b3efc6] active:scale-[0.98]">
               <Box size={13} />
               <span className="hidden sm:inline">Generate Trade Package Folder</span>
               <span className="sm:hidden">Generate Folder</span>
@@ -530,8 +530,9 @@ export default function AdminDocumentsPage() {
             onViewMode={setViewMode}
             totalLabel={totalLabel}
           />
-        </div>
-      </div>
+          </div>
+        }
+      />
 
       {/* ── LIST VIEW ── */}
       {viewMode === 'list' && (
@@ -614,7 +615,10 @@ export default function AdminDocumentsPage() {
                   <FolderCard key={org.id} index={i}
                     icon={
                       org.logo_url
-                        ? <img src={org.logo_url} alt={org.name} className="w-full h-full object-contain p-1" />
+                        ? <>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={org.logo_url} alt={org.name} className="w-full h-full object-contain p-1" />
+                          </>
                         : <Building2 size={20} style={{ color: 'var(--gold)' }} />
                     }
                     title={org.name}

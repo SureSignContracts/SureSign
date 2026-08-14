@@ -208,75 +208,44 @@ function CategoryBadge({ category }: { category?: string | null }) {
 function EventPill({ event, onClick }: { event: CalendarEvent; onClick: (e: CalendarEvent) => void }) {
   return (
     <div
-      className="truncate rounded-md pl-1.5 pr-1 py-0.5 leading-tight cursor-pointer font-medium hover:opacity-80"
+      className="group flex cursor-pointer items-center gap-1.5 truncate rounded-md px-1.5 py-1 font-medium leading-tight transition-all duration-150 hover:-translate-y-px hover:shadow-sm"
       style={{
-        backgroundColor: tint(event.color, '24'),
-        borderLeft: `2px solid ${event.color}`,
+        backgroundColor: 'var(--bg-elevated)',
         color: 'var(--text-primary)',
         fontSize: '10px',
       }}
       title={`${event.title} · ${EVENT_TYPE_LABELS[event.type] ?? event.type}`}
       onClick={(e) => { e.stopPropagation(); onClick(event); }}
     >
-      {event.title}
-    </div>
-  );
-}
-
-function TypeBadge({ type, color }: { type: string; color: string }) {
-  return (
-    <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium"
-      style={{ backgroundColor: tint(color, '24'), color, fontSize: '10px' }}
-    >
-      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
-      {EVENT_TYPE_LABELS[type] ?? type}
-    </span>
-  );
-}
-
-function StatChip({ icon: Icon, label, value }: { icon: typeof Layers; label: string; value: number }) {
-  return (
-    <div
-      className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl"
-      style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}
-    >
-      <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: tint('#b99566', '26') }}>
-        <Icon size={14} style={{ color: 'var(--gold)' }} />
-      </div>
-      <div className="leading-tight">
-        <p className="text-sm font-semibold tabular-nums" style={{ color: 'var(--text-primary)' }}>{value}</p>
-        <p style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{label}</p>
-      </div>
+      <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ backgroundColor: event.color }} />
+      <span className="truncate">{event.title}</span>
     </div>
   );
 }
 
 function EventRow({ event, dateLabel, onClick }: { event: CalendarEvent; dateLabel?: string; onClick: (e: CalendarEvent) => void }) {
+  const typeLabel = EVENT_TYPE_LABELS[event.type] ?? event.type;
+  const status = event.status ? STATUS_CONFIG[event.status] : null;
+  const priority = event.priority ? PRIORITY_CONFIG[event.priority] : null;
+
   return (
-    <div
-      className="rounded-xl p-3 cursor-pointer transition-opacity hover:opacity-80"
-      style={{ backgroundColor: 'var(--bg-elevated)', borderLeft: `3px solid ${event.color}` }}
+    <button
+      type="button"
+      className="group grid w-full grid-cols-[minmax(0,1fr)_auto] gap-4 border-b px-1 py-3 text-left last:border-b-0 transition-colors duration-150 hover:bg-[var(--bg-hover)] sm:px-2"
+      style={{ borderColor: 'var(--border)' }}
       onClick={() => onClick(event)}
     >
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-xs font-semibold leading-snug" style={{ color: 'var(--text-primary)' }}>{event.title}</p>
-        {dateLabel && (
-          <span className="text-[10px] font-medium whitespace-nowrap mt-0.5" style={{ color: 'var(--gold)' }}>{dateLabel}</span>
-        )}
+      <div className="min-w-0 border-l-2 pl-3" style={{ borderColor: event.color }}>
+        <p className="text-sm font-semibold leading-snug transition-colors group-hover:text-[var(--gold)]" style={{ color: 'var(--text-primary)' }}>{event.title}</p>
+        {event.contract_title && <p className="mt-1 truncate text-xs" style={{ color: 'var(--text-muted)' }}>{event.contract_title}</p>}
+        <div className="mt-2 flex flex-wrap items-center gap-x-2 text-[10px] font-medium">
+          <span style={{ color: event.color }}>{typeLabel}</span>
+          {status && <><span style={{ color: 'var(--text-muted)' }}>•</span><span style={{ color: status.color }}>{status.label}</span></>}
+          {priority && <><span style={{ color: 'var(--text-muted)' }}>•</span><span style={{ color: priority.color }}>{priority.label} priority</span></>}
+        </div>
       </div>
-      {event.description && (
-        <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--text-muted)' }}>{event.description}</p>
-      )}
-      {event.contract_title && (
-        <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Contract: {event.contract_title}</p>
-      )}
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        <TypeBadge type={event.type} color={event.color} />
-        <StatusBadge status={event.status} />
-        <PriorityBadge priority={event.priority} />
-      </div>
-    </div>
+      {dateLabel && <span className="whitespace-nowrap pt-0.5 text-[10px] font-semibold" style={{ color: 'var(--text-muted)' }}>{dateLabel}</span>}
+    </button>
   );
 }
 
@@ -423,8 +392,8 @@ function SidebarSection({ title, count, accent, events, todayStr, onEventClick, 
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-xs font-semibold" style={{ color: accent ?? 'var(--text-secondary)' }}>{title}</p>
+      <div className="mb-1 flex items-center justify-between">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: accent ?? 'var(--text-muted)' }}>{title}</p>
         {count > 0 && (
           <span className="text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded-full"
             style={{ backgroundColor: accent ? tint(accent, '20') : 'var(--bg-elevated)', color: accent ?? 'var(--text-muted)' }}>
@@ -435,14 +404,14 @@ function SidebarSection({ title, count, accent, events, todayStr, onEventClick, 
       {events.length === 0 ? (
         <p className="text-xs pb-1" style={{ color: 'var(--text-muted)' }}>{emptyLabel}</p>
       ) : (
-        <div className="space-y-2">
+        <div>
           {visible.map(ev => (
             <EventRow key={ev.id} event={ev} dateLabel={relativeLabel(ev.date, todayStr)} onClick={onEventClick} />
           ))}
           {overflow > 0 && (
             <button
               onClick={() => setExpanded(true)}
-              className="text-[10px] font-medium w-full text-center py-1 rounded-lg hover:bg-[var(--bg-hover)]"
+              className="w-full py-2 text-left text-[10px] font-semibold transition-colors hover:text-[var(--text-primary)]"
               style={{ color: 'var(--gold)' }}
             >
               +{overflow} more
@@ -470,19 +439,20 @@ function OperationalSidebar({ events, todayStr, onEventClick }: {
   const month_   = events.filter(e => e.date > in7Str && e.date <= in30Str).sort((a, b) => a.date.localeCompare(b.date));
 
   return (
-    <div
-      className="rounded-2xl p-5 flex flex-col gap-5"
-      style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}
-    >
-      <div className="flex items-center gap-2">
-        <CalendarClock size={15} style={{ color: 'var(--gold)' }} />
-        <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Operational Summary</p>
+    <div className="ss-animate-in overflow-hidden rounded-2xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '210ms' }}>
+      <div className="border-b px-5 py-4" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-elevated)' }}>
+        <div className="flex items-center gap-2">
+          <CalendarClock size={15} style={{ color: 'var(--gold)' }} />
+          <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Operational summary</p>
+        </div>
+        <p className="mt-1 text-[11px]" style={{ color: 'var(--text-muted)' }}>What needs attention next</p>
       </div>
-
-      <SidebarSection title="Overdue" count={overdue.length} accent="#f87171" events={overdue} todayStr={todayStr} onEventClick={onEventClick} emptyLabel="Nothing overdue." />
-      <SidebarSection title="Today" count={today_.length} accent="#facc15" events={today_} todayStr={todayStr} onEventClick={onEventClick} emptyLabel="Nothing due today." />
-      <SidebarSection title="Next 7 Days" count={week.length} events={week} todayStr={todayStr} onEventClick={onEventClick} emptyLabel="Nothing in the next 7 days." />
-      <SidebarSection title="Next 30 Days" count={month_.length} events={month_} todayStr={todayStr} onEventClick={onEventClick} emptyLabel="Nothing in the next 30 days." />
+      <div className="flex flex-col gap-5 p-5">
+        <SidebarSection title="Overdue" count={overdue.length} accent="#f87171" events={overdue} todayStr={todayStr} onEventClick={onEventClick} emptyLabel="Nothing overdue." />
+        <SidebarSection title="Today" count={today_.length} accent="#facc15" events={today_} todayStr={todayStr} onEventClick={onEventClick} emptyLabel="Nothing due today." />
+        <SidebarSection title="Next 7 Days" count={week.length} events={week} todayStr={todayStr} onEventClick={onEventClick} emptyLabel="Nothing in the next 7 days." />
+        <SidebarSection title="Next 30 Days" count={month_.length} events={month_} todayStr={todayStr} onEventClick={onEventClick} emptyLabel="Nothing in the next 30 days." />
+      </div>
     </div>
   );
 }
@@ -516,20 +486,23 @@ function AgendaView({ events, todayStr, onEventClick }: { events: CalendarEvent[
   }
 
   return (
-    <div className="space-y-5">
+    <div className="ss-animate-in overflow-hidden rounded-2xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
       {groups.map(([date, evs]) => {
         const d = new Date(date + 'T00:00:00');
+        const weekday = d.toLocaleDateString('en-GB', { weekday: 'short' });
+        const day = d.toLocaleDateString('en-GB', { day: '2-digit' });
+        const month = d.toLocaleDateString('en-GB', { month: 'short' });
         return (
-          <div key={date}>
-            <div className="flex items-center justify-between mb-2 px-0.5">
-              <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                {d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
-              </p>
-              <span className="text-[10px] font-medium" style={{ color: 'var(--gold)' }}>
-                {relativeLabel(date, todayStr)}
-              </span>
+          <div key={date} className="grid border-b last:border-b-0 sm:grid-cols-[120px_minmax(0,1fr)]" style={{ borderColor: 'var(--border)' }}>
+            <div className="flex items-center justify-between border-b px-5 py-4 sm:block sm:border-b-0 sm:border-r" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-elevated)' }}>
+              <div className="flex items-baseline gap-2 sm:block">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-muted)' }}>{weekday}</p>
+                <p className="text-2xl font-semibold tabular-nums tracking-[-0.05em]" style={{ color: 'var(--text-primary)' }}>{day}</p>
+                <p className="text-xs sm:mt-0.5" style={{ color: 'var(--text-muted)' }}>{month}</p>
+              </div>
+              <p className="text-[10px] font-medium sm:mt-3" style={{ color: 'var(--gold)' }}>{relativeLabel(date, todayStr)}</p>
             </div>
-            <div className="space-y-2">
+            <div className="px-4 py-1 sm:px-5">
               {evs.map(ev => <EventRow key={ev.id} event={ev} onClick={onEventClick} />)}
             </div>
           </div>
@@ -659,7 +632,7 @@ export default function ProjectCalendarPage() {
     enabled: !!projectId,
   });
 
-  const allEvents = data ?? [];
+  const allEvents = useMemo(() => data ?? [], [data]);
   const todayStr = todayYMD();
 
   // Filter options derived from the actual dataset — future-proof against new
@@ -723,13 +696,14 @@ export default function ProjectCalendarPage() {
 
   const stats = useMemo(() => {
     const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
-    let thisMonth = 0, upcoming = 0;
+    let thisMonth = 0, upcoming = 0, overdue = 0;
     for (const e of events) {
       if (!e.date) continue;
       if (e.date.startsWith(monthPrefix)) thisMonth++;
       if (e.date >= todayStr) upcoming++;
+      if (e.date < todayStr && e.status !== 'completed') overdue++;
     }
-    return { total: events.length, thisMonth, upcoming };
+    return { total: events.length, thisMonth, upcoming, overdue };
   }, [events, year, month, todayStr]);
 
   const isViewingToday = year === today.getFullYear() && month === today.getMonth();
@@ -759,35 +733,47 @@ export default function ProjectCalendarPage() {
   const hasActiveFilters = categoryFilter !== 'all' || priorityFilter !== 'all' || statusFilter !== 'all' || quickFilter !== 'all';
 
   return (
-    <div className="p-4 sm:p-6 space-y-5 sm:space-y-6">
+    <div className="ss-projects-page space-y-5 p-4 pb-12 sm:space-y-6 sm:p-6">
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <CalendarDays size={18} style={{ color: 'var(--gold)' }} />
-            <h1 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Project Calendar</h1>
+      <section className="ss-animate-in relative overflow-hidden rounded-2xl bg-[#18211d] text-white shadow-[0_24px_60px_rgba(24,33,29,0.16)]">
+        <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-[#9ee5b5]/10 blur-3xl" />
+        <div className="relative px-6 pb-7 pt-6 sm:px-8 sm:pt-8">
+          <div className="mb-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#9ee5b5]">
+            <CalendarDays size={15} /> Project planning
+          </div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">Project calendar</h1>
             <PageTourButton tourKey="page-calendar" label="Take a tour of this page" />
           </div>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Key dates, deadlines and obligations</p>
+          <p className="mt-3 max-w-xl text-sm leading-6 text-white/60">See contractual dates, payment deadlines and delivery obligations in one calm planning view.</p>
         </div>
-        <div className="flex flex-wrap gap-2.5" data-tour="calendar-summary">
-          <StatChip icon={Layers}        label={hasActiveFilters ? 'Matching events' : 'Total events'} value={stats.total} />
-          <StatChip icon={CalendarRange} label="This month"    value={stats.thisMonth} />
-          <StatChip icon={CalendarClock} label="Upcoming"      value={stats.upcoming} />
+        <div className="relative grid grid-cols-2 border-t border-white/10 sm:grid-cols-4" data-tour="calendar-summary">
+          {[
+            { icon: Layers, label: hasActiveFilters ? 'Matching events' : 'Total events', value: stats.total, tone: '#9ee5b5' },
+            { icon: CalendarRange, label: 'This month', value: stats.thisMonth, tone: '#ffffff' },
+            { icon: CalendarClock, label: 'Upcoming', value: stats.upcoming, tone: '#facc15' },
+            { icon: AlertTriangle, label: 'Overdue', value: stats.overdue, tone: stats.overdue > 0 ? '#f87171' : '#9ee5b5' },
+          ].map((item, index) => (
+            <div key={item.label} className="ss-animate-in min-h-[96px] border-r border-white/10 px-5 py-4 last:border-r-0 transition-colors duration-200 hover:bg-white/[0.05]" style={{ animationDelay: `${index * 55}ms` }}>
+              <div className="flex items-center justify-between"><p className="text-2xl font-semibold tabular-nums tracking-[-0.04em]" style={{ color: item.tone }}>{item.value}</p><item.icon size={14} className="text-white/30" /></div>
+              <p className="mt-2 text-xs text-white/50">{item.label}</p>
+            </div>
+          ))}
         </div>
-      </div>
+      </section>
 
       {/* View switcher + Filters */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex rounded-xl overflow-hidden" data-tour="calendar-view-switcher" style={{ border: '1px solid var(--border)' }}>
+      <div className="ss-animate-in flex flex-wrap items-center justify-between gap-3 rounded-2xl p-2" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '100ms' }}>
+        <div className="flex rounded-xl p-1" data-tour="calendar-view-switcher" style={{ backgroundColor: 'var(--bg-elevated)' }}>
           {(['month', 'week', 'agenda'] as ViewMode[]).map(v => (
             <button
               key={v}
               onClick={() => setView(v)}
-              className="px-3.5 py-1.5 text-xs font-medium capitalize transition-colors"
+              className="rounded-lg px-3.5 py-2 text-xs font-semibold capitalize transition-all duration-200 hover:-translate-y-px active:translate-y-0"
               style={{
                 backgroundColor: view === v ? 'var(--gold)' : 'transparent',
                 color: view === v ? 'var(--accent-fg)' : 'var(--text-secondary)',
+                boxShadow: view === v ? '0 5px 14px rgba(0,0,0,0.08)' : 'none',
               }}
             >
               {v}
@@ -800,7 +786,7 @@ export default function ProjectCalendarPage() {
             <button
               key={qf.key}
               onClick={() => setQuickFilter(qf.key)}
-              className="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors"
+              className="rounded-lg px-2.5 py-2 text-xs font-medium transition-all duration-200 hover:-translate-y-px"
               style={{
                 backgroundColor: quickFilter === qf.key ? 'var(--gold-15)' : 'var(--bg-elevated)',
                 color: quickFilter === qf.key ? 'var(--gold)' : 'var(--text-muted)',
@@ -817,19 +803,20 @@ export default function ProjectCalendarPage() {
 
       {/* Legend */}
       <div
-        className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 rounded-xl"
-        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}
+        className="ss-animate-in flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl px-4 py-3"
+        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '150ms' }}
       >
+        <span className="mr-1 text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-muted)' }}>Event key</span>
         {LEGEND_TYPES.map(({ type, color }) => (
           <div key={type} className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+            <div className="h-2 w-2 flex-shrink-0 rounded-full" style={{ backgroundColor: color }} />
             <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{EVENT_TYPE_LABELS[type]}</span>
           </div>
         ))}
         <div className="w-px h-4" style={{ backgroundColor: 'var(--border)' }} />
         {Object.entries(PRIORITY_CONFIG).map(([key, cfg]) => (
           <div key={key} className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: cfg.color }} />
+            <div className="h-2 w-2 flex-shrink-0 rounded-full" style={{ backgroundColor: cfg.color }} />
             <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{cfg.label} priority</span>
           </div>
         ))}
@@ -852,20 +839,20 @@ export default function ProjectCalendarPage() {
         <div className="hidden md:flex md:flex-col lg:flex-row gap-5" data-tour="calendar-main">
           <div className="flex-1 min-w-0">
             <div
-              className="rounded-2xl overflow-hidden"
+              className="ss-animate-in overflow-hidden rounded-2xl"
               style={{ backgroundColor: 'var(--bg-surface)', border: view === 'month' ? '1px solid var(--border)' : 'none', boxShadow: view === 'month' ? 'var(--shadow-card)' : 'none' }}
             >
               {view === 'month' && (
                 <>
                   {/* Navigation */}
-                  <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
+                  <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-elevated)' }}>
                     <button onClick={prevMonth} aria-label="Previous month"
                       className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-[var(--bg-hover)]"
                       style={{ color: 'var(--text-secondary)' }}>
                       <ChevronLeft size={16} />
                     </button>
                     <div className="flex items-center gap-3">
-                      <h2 className="text-sm font-semibold tabular-nums" style={{ color: 'var(--text-primary)' }}>
+                      <h2 className="text-base font-semibold tabular-nums tracking-[-0.02em]" style={{ color: 'var(--text-primary)' }}>
                         {monthName(month)} {year}
                       </h2>
                       <button onClick={goToday} disabled={isViewingToday}
@@ -932,7 +919,7 @@ export default function ProjectCalendarPage() {
                             onClick={() => setSelectedDate(dateStr === selectedDate ? null : dateStr)}
                             className="relative p-2 cursor-pointer transition-colors hover:bg-[var(--bg-hover)] group"
                             style={{
-                              minHeight: '92px',
+                              minHeight: '106px',
                               borderRight: (idx + 1) % 7 === 0 ? 'none' : '1px solid var(--border)',
                               borderBottom: idx < 35 ? '1px solid var(--border)' : 'none',
                               backgroundColor: bg,

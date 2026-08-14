@@ -13,6 +13,7 @@ import PageTourButton from '@/components/tours/PageTourButton';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
 import { getErrorMessage } from '@/lib/getErrorMessage';
+import { ProjectModuleHeader } from '@/components/projects/ProjectModuleHeader';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   draft:     { bg: 'rgba(90,86,82,0.2)',    text: '#9a9490' },
@@ -159,40 +160,36 @@ export default function ProjectSiteReportsPage() {
   );
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-1.5">
-            <h1 className="text-[1.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>Site reports</h1>
-            <PageTourButton tourKey="page-site-reports" label="Take a tour of this page" />
-          </div>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Daily site diaries and progress reports</p>
-        </div>
-        {canWrite && (
-        <button
-          data-tour="site-reports-new"
-          onClick={() => setModalDiary('new')}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 active:scale-[0.98]"
-          style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
-        >
-          <Plus size={15} />
-          New Diary
-        </button>
-        )}
-      </div>
+    <div className="ss-projects-page mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <ProjectModuleHeader
+        category="Delivery control"
+        title="Site reports"
+        description="Keep a reliable daily record of progress, labour, weather and activity on site."
+        icon={ClipboardList}
+        tour={<PageTourButton tourKey="page-site-reports" label="Take a tour of this page" />}
+        action={canWrite ? (
+          <button
+            data-tour="site-reports-new"
+            onClick={() => setModalDiary('new')}
+            className="flex h-11 items-center gap-2 whitespace-nowrap rounded-xl bg-[#9ee5b5] px-5 text-sm font-semibold text-[#18211d] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#b4edc6] active:translate-y-0"
+          >
+            <Plus size={16} /> New diary
+          </button>
+        ) : undefined}
+      />
 
-      <div className="flex items-center gap-3 flex-wrap" data-tour="site-reports-filters">
-        <div className="relative max-w-sm">
+      <div className="ss-animate-in flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-2 shadow-[var(--shadow-card)]" data-tour="site-reports-filters" style={{ animationDelay: '100ms' }}>
+        <div className="relative min-w-[220px] flex-1">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search diaries…"
-            className="w-full pl-9 pr-4 py-2 rounded-lg text-sm outline-none"
-            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)', boxShadow: 'var(--shadow-card)' }}
+            className="h-10 w-full rounded-xl bg-[var(--bg-elevated)] pl-9 pr-4 text-sm outline-none transition-colors focus:ring-2 focus:ring-[var(--gold)]/30"
+            style={{ color: 'var(--text-primary)' }}
           />
         </div>
-        <div className="flex gap-1.5 p-1 rounded-xl" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+        <div className="flex gap-1 overflow-x-auto rounded-xl bg-[var(--bg-elevated)] p-1">
           {(['all', 'draft', 'submitted', 'approved'] as const).map(s => (
             <button
               key={s}

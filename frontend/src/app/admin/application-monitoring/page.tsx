@@ -14,6 +14,7 @@ import {
   useApplicationMonitoring,
   type ModuleUsageRow,
 } from '@/hooks/useApplicationMonitoring';
+import PlatformPageHero from '@/components/admin/PlatformPageHero';
 
 function formatTime(iso: string | null) {
   if (!iso) return '—';
@@ -126,34 +127,23 @@ export default function ApplicationMonitoringPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 pb-10">
+    <div className="mx-auto max-w-7xl space-y-7 p-4 pb-12 sm:p-6 lg:p-8">
 
-      {/* Header */}
-      <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-            <Activity size={22} style={{ color: 'var(--gold)' }} />
-            Application Monitoring
-          </h1>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-            Live platform usage and operational health, refreshed automatically every minute.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            {dataUpdatedAt ? `Updated ${timeAgo(new Date(dataUpdatedAt).toISOString())}` : 'Not yet loaded'}
-          </span>
-          <button
+      <PlatformPageHero eyebrow="Platform health" title="Application Monitoring" description="Live operational health, platform activity and queue performance, refreshed automatically every minute." loading={isLoading}
+        metrics={[
+          { label: 'Queue', value: queueStatus, detail: 'background processing', icon: Zap },
+          { label: 'Warnings', value: warnings.length, detail: 'requiring attention', icon: AlertTriangle },
+          { label: 'Last update', value: dataUpdatedAt ? timeAgo(new Date(dataUpdatedAt).toISOString()) : 'Waiting', detail: 'monitoring snapshot', icon: Activity },
+        ]}
+        action={<button
             onClick={() => refetch()}
             disabled={isFetching}
-            className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg hover:bg-[var(--bg-hover)] transition-colors disabled:opacity-50"
-            style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+            className="flex items-center gap-2 rounded-xl bg-[#9ee5b5] px-4 py-2.5 text-xs font-semibold text-[#18211d] transition-colors hover:bg-[#b3efc6] disabled:opacity-50"
           >
             <RefreshCw size={12} className={isFetching ? 'animate-spin' : ''} />
             Refresh
-          </button>
-        </div>
-      </div>
+          </button>}
+      />
 
       {/* Warnings */}
       {warnings.length > 0 && (

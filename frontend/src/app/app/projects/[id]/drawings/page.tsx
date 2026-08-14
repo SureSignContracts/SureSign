@@ -15,6 +15,7 @@ import PaginationBar from '@/components/ui/PaginationBar';
 import EmptyState from '@/components/ui/EmptyState';
 import DrawingModal, { type DrawingRecord } from '@/components/drawings/DrawingModal';
 import { DISCIPLINE_OPTIONS, STATUS_OPTIONS, drawingStatusColor } from '@/components/drawings/drawingConstants';
+import { ProjectModuleHeader, ProjectModuleMetric } from '@/components/projects/ProjectModuleHeader';
 
 type DrawingListResponse = {
   data: DrawingRecord[];
@@ -118,13 +119,16 @@ export default function ProjectDrawingsPage() {
   const total = data?.total ?? 0;
   const lastPage = data?.last_page ?? 1;
   const hasFilters = !!debouncedSearch || !!discipline || !!status;
+  const currentRevisionCount = rows.filter(drawing => !!drawing.current_revision).length;
+  const approvedCount = rows.filter(drawing => drawing.status?.toLowerCase().includes('approved')).length;
+  const disciplineCount = new Set(rows.map(drawing => drawing.discipline).filter(Boolean)).size;
 
   function clearFilters() {
     setSearch(''); setDebouncedSearch(''); setDiscipline(''); setStatus(''); setPage(1);
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6 pb-12">
+    <div className="ss-projects-page mx-auto max-w-7xl space-y-6 p-4 pb-12 sm:p-6 lg:p-8">
       {modal.open && (
         <DrawingModal
           projectId={projectId}
@@ -161,40 +165,46 @@ export default function ProjectDrawingsPage() {
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-[1.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>Drawing Register</h1>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-            Manage structured drawing information linked to project documents.
-          </p>
-        </div>
-        {canOperate && (
-          <Button onClick={() => setModal({ open: true })}>
-            <Plus size={15} /> Register Drawing
-          </Button>
-        )}
-      </div>
+      <ProjectModuleHeader
+        category="Delivery control"
+        title="Drawing register"
+        description="Keep drawing numbers, disciplines, revisions and linked documents organised and current."
+        icon={Ruler}
+        action={canOperate ? (
+          <button
+            onClick={() => setModal({ open: true })}
+            className="flex h-11 items-center gap-2 whitespace-nowrap rounded-xl bg-[#9ee5b5] px-5 text-sm font-semibold text-[#18211d] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#b4edc6] active:translate-y-0"
+          >
+            <Plus size={16} /> Register drawing
+          </button>
+        ) : undefined}
+        metricColumns={4}
+      >
+        <ProjectModuleMetric label="Registered drawings" value={total} index={0} />
+        <ProjectModuleMetric label="Current on this page" value={currentRevisionCount} tone="#4ade80" index={1} />
+        <ProjectModuleMetric label="Approved on this page" value={approvedCount} tone="#9ee5b5" index={2} />
+        <ProjectModuleMetric label="Disciplines shown" value={disciplineCount} tone="#facc15" index={3} />
+      </ProjectModuleHeader>
 
       {/* Filters */}
-      <div className="flex gap-3 flex-wrap items-center">
-        <div className="relative">
+      <div className="ss-animate-in flex flex-wrap items-center gap-2 rounded-2xl p-2" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '90ms' }}>
+        <div className="relative min-w-[260px] flex-1">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search drawing number, title, or document…"
-            className="pl-9 pr-4 py-2 rounded-lg text-sm outline-none"
-            style={{ ...inputStyle, minWidth: '260px' }}
+            className="w-full rounded-xl py-2.5 pl-9 pr-4 text-sm outline-none transition-shadow duration-200 focus:ring-2 focus:ring-[var(--gold)]/20"
+            style={{ ...inputStyle, backgroundColor: 'var(--bg-elevated)' }}
           />
         </div>
 
-        <Select value={discipline} onChange={e => { setDiscipline(e.target.value); setPage(1); }} className="min-w-[160px]">
+        <Select value={discipline} onChange={e => { setDiscipline(e.target.value); setPage(1); }} className="min-w-[160px] rounded-xl">
           <option value="">All disciplines</option>
           {DISCIPLINE_OPTIONS.map(d => <option key={d} value={d}>{d}</option>)}
         </Select>
 
-        <Select value={status} onChange={e => { setStatus(e.target.value); setPage(1); }} className="min-w-[170px]">
+        <Select value={status} onChange={e => { setStatus(e.target.value); setPage(1); }} className="min-w-[170px] rounded-xl">
           <option value="">All statuses</option>
           {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
         </Select>
@@ -202,7 +212,7 @@ export default function ProjectDrawingsPage() {
         {hasFilters && (
           <button
             onClick={clearFilters}
-            className="text-xs px-3 py-2 rounded-lg hover:bg-[var(--bg-hover)] transition-colors"
+            className="rounded-xl px-3 py-2.5 text-xs font-medium transition-colors hover:bg-[var(--bg-hover)]"
             style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
           >
             Clear filters
@@ -243,7 +253,7 @@ export default function ProjectDrawingsPage() {
       ) : (
         <>
           {/* Desktop / tablet register */}
-          <div className="hidden md:block rounded-2xl overflow-x-auto" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', opacity: isFetching ? 0.6 : 1 }}>
+          <div className="ss-animate-in hidden overflow-x-auto rounded-2xl md:block" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', opacity: isFetching ? 0.6 : 1, animationDelay: '160ms' }}>
             <table className="w-full min-w-[760px] text-sm">
               <thead>
                 <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>

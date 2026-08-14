@@ -377,10 +377,13 @@ class EmailNotificationService
 
         $headerSection = $settings->email_header_url
             ? '<img src="' . e($settings->email_header_url) . '" style="width:100%;max-width:600px;display:block;" alt="' . $senderName . '" />'
-            : '<table width="100%" cellpadding="0" cellspacing="0"><tr>'
-              . '<td style="padding:28px 40px 24px;background:#0a0a0a;">'
-              . '<span style="font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:700;color:#ffffff;letter-spacing:0.2px;">' . $senderName . '</span>'
-              . '<span style="display:block;font-family:Arial,sans-serif;font-size:10px;font-weight:500;color:#9a9a9a;letter-spacing:1.5px;text-transform:uppercase;margin-top:3px;">Construction Contract Administration</span>'
+            : '<table width="100%" cellpadding="0" cellspacing="0" role="presentation"><tr>'
+              . '<td style="padding:28px 40px;background:#18211d;">'
+              . '<table width="100%" cellpadding="0" cellspacing="0" role="presentation"><tr>'
+              . '<td valign="middle"><span style="display:inline-block;width:34px;height:34px;line-height:34px;border-radius:10px;background:#9ee5b5;font-family:Arial,sans-serif;font-size:15px;font-weight:800;color:#18211d;text-align:center;vertical-align:middle;">S</span>'
+              . '<span style="display:inline-block;margin-left:12px;font-family:Arial,Helvetica,sans-serif;font-size:19px;font-weight:700;color:#ffffff;letter-spacing:-0.2px;vertical-align:middle;">' . $senderName . '</span></td>'
+              . '<td align="right" valign="middle" style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;color:#9ee5b5;letter-spacing:1.3px;text-transform:uppercase;">Contract clarity</td>'
+              . '</tr></table>'
               . '</td></tr></table>';
 
         $footerSection = $settings->email_footer_url
@@ -397,35 +400,42 @@ class EmailNotificationService
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{$subject}</title>
 </head>
-<body style="margin:0;padding:0;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;-webkit-font-smoothing:antialiased;">
+<body style="margin:0;padding:0;background:#edf1ee;font-family:Arial,Helvetica,sans-serif;-webkit-font-smoothing:antialiased;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">{$subject}</div>
   <!--[if mso]><center><table width="600"><tr><td><![endif]-->
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f4f5;padding:32px 0 40px;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background:#edf1ee;padding:40px 0 48px;">
     <tr><td align="center" style="padding:0 16px;">
 
       <!-- Card -->
-      <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:4px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+      <table width="600" cellpadding="0" cellspacing="0" border="0" role="presentation" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 18px 45px rgba(24,33,29,0.10);border:1px solid #dfe6e1;">
 
         <!-- Header -->
         <tr><td style="padding:0;">{$headerSection}</td></tr>
 
-        <!-- Subject bar -->
+        <!-- Message identity -->
         <tr>
-          <td style="padding:32px 40px 0;">
-            <p style="margin:0;font-family:Arial,sans-serif;font-size:11px;font-weight:700;color:#6b6b6b;letter-spacing:1.5px;text-transform:uppercase;">{$categoryLabel}</p>
-            <h1 style="margin:8px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:600;color:#111111;line-height:1.3;">{$subject}</h1>
+          <td style="padding:38px 44px 0;">
+            <table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr>
+              <td style="padding:6px 10px;border-radius:8px;background:#eaf8ee;font-family:Arial,sans-serif;font-size:10px;font-weight:700;color:#28613b;letter-spacing:1.3px;text-transform:uppercase;">{$categoryLabel}</td>
+            </tr></table>
+            <h1 style="margin:18px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:27px;font-weight:700;color:#18211d;line-height:1.25;letter-spacing:-0.5px;">{$subject}</h1>
+            <p style="margin:12px 0 0;font-family:Arial,sans-serif;font-size:12px;color:#7b8880;line-height:1.5;">A secure update from your SureSign workspace</p>
           </td>
         </tr>
 
-        <!-- Divider -->
+        <!-- Accent rule -->
         <tr>
-          <td style="padding:20px 40px 0;">
-            <table width="100%" cellpadding="0" cellspacing="0"><tr><td style="border-top:1px solid #e5e5e5;font-size:0;">&nbsp;</td></tr></table>
+          <td style="padding:24px 44px 0;">
+            <table width="100%" cellpadding="0" cellspacing="0" role="presentation"><tr>
+              <td width="48" style="border-top:3px solid #9ee5b5;font-size:0;line-height:0;">&nbsp;</td>
+              <td style="border-top:1px solid #e3e9e5;font-size:0;line-height:0;">&nbsp;</td>
+            </tr></table>
           </td>
         </tr>
 
         <!-- Body -->
         <tr>
-          <td style="padding:24px 40px 32px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:#3a3a3a;">
+          <td style="padding:28px 44px 40px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.72;color:#46524c;">
             {$bodyHtml}
           </td>
         </tr>
@@ -435,14 +445,14 @@ class EmailNotificationService
 
         <!-- Footer bar -->
         <tr>
-          <td style="padding:20px 40px;background:#1a1a1a;">
+          <td style="padding:24px 40px;background:#18211d;">
             <table width="100%" cellpadding="0" cellspacing="0">
               <tr>
-                <td style="font-family:Arial,sans-serif;font-size:11px;color:#a3a3a3;line-height:1.5;">
-                  This notification was sent by <span style="color:#ffffff;">{$senderName}</span>.<br>
+                <td style="font-family:Arial,sans-serif;font-size:11px;color:#aebbb4;line-height:1.6;">
+                  Sent securely by <span style="color:#ffffff;font-weight:600;">{$senderName}</span>.<br>
                   {$replyGuidance}
                 </td>
-                <td align="right" style="font-family:Arial,sans-serif;font-size:11px;color:#8a8a8a;white-space:nowrap;">
+                <td align="right" style="font-family:Arial,sans-serif;font-size:11px;color:#829087;white-space:nowrap;">
                   &copy; {$year} {$senderName}
                 </td>
               </tr>

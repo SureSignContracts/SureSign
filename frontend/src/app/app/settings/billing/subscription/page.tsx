@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { ArrowLeft, RefreshCw, CreditCard, ShieldCheck, CalendarSync, ArrowDown } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useBillingOverview, useBillingPlans } from '@/hooks/useBilling';
 import EmptyState from '@/components/ui/EmptyState';
@@ -13,7 +13,7 @@ import SubscriptionIntelligenceSection from '@/components/billing/intelligence/S
 
 function Skeleton() {
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6 p-4 pb-12 sm:p-6 lg:p-8">
       <div className="h-9 w-64 rounded-lg animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
       <div className="h-20 rounded-2xl animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
       <div className="h-56 rounded-2xl animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
@@ -48,15 +48,29 @@ export default function SubscriptionPage() {
         <Link href="/app/settings/billing" className="inline-flex items-center gap-1.5 text-xs mb-4 transition-all duration-200 hover:opacity-70 hover:-translate-x-0.5" style={{ color: 'var(--text-muted)' }}>
           <ArrowLeft size={13} /> Back to Billing
         </Link>
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center transition-transform duration-300 hover:scale-105" style={{ backgroundColor: 'var(--bg-elevated)' }}>
-            <RefreshCw size={18} style={{ color: 'var(--text-secondary)' }} />
+        <section className="relative overflow-hidden rounded-2xl bg-[#18211d] text-white shadow-[0_24px_60px_rgba(24,33,29,0.16)]">
+          <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-[#9ee5b5]/10 blur-3xl" />
+          <div className="relative flex flex-wrap items-start justify-between gap-6 px-6 py-7 sm:px-8 sm:py-8">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#9ee5b5]">Workspace subscription</p>
+              <h1 className="mt-4 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">Choose how your team operates.</h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-white/50">Select the level of contract control, commercial workflow and support that fits your organisation.</p>
+            </div>
+            <a href="#plans" className="inline-flex items-center gap-2 rounded-xl bg-[#9ee5b5] px-4 py-3 text-sm font-semibold text-[#18211d] transition hover:-translate-y-0.5 hover:bg-[#b5edc7]">Compare plans <ArrowDown size={15} /></a>
           </div>
-          <div>
-            <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Subscription</h1>
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Your plan, upgrades and downgrades</p>
+          <div className="relative grid border-t border-white/10 sm:grid-cols-3">
+            {[
+              { icon: CreditCard, label: 'Secure checkout', detail: 'Payments handled by Stripe' },
+              { icon: CalendarSync, label: 'Flexible billing', detail: 'Monthly or annual terms' },
+              { icon: ShieldCheck, label: 'Controlled access', detail: 'Plan limits stay visible' },
+            ].map(item => (
+              <div key={item.label} className="flex items-center gap-3 border-b border-white/10 px-6 py-4 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0">
+                <item.icon size={15} className="text-[#9ee5b5]" />
+                <div><p className="text-xs font-medium text-white/75">{item.label}</p><p className="mt-0.5 text-[11px] text-white/30">{item.detail}</p></div>
+              </div>
+            ))}
           </div>
-        </div>
+        </section>
       </div>
 
       {overviewError || !overview ? (
@@ -68,27 +82,28 @@ export default function SubscriptionPage() {
         />
       ) : (
         <>
-          <AccessStatusBanner
-            access={overview.access}
-            graceEndsAt={overview.subscription?.grace_period_ends_at}
-            timeZone={timeZone}
-          />
+          {overview.access.mode !== 'none' && (
+            <AccessStatusBanner
+              access={overview.access}
+              graceEndsAt={overview.subscription?.grace_period_ends_at}
+              timeZone={timeZone}
+            />
+          )}
 
           {(!overview.has_subscription || overview.subscription?.is_abandoned_checkout) && (
-            <div
-              className="rounded-2xl p-5 ss-animate-in"
-              style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
-            >
-              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+            <div className="ss-animate-in flex items-start gap-4 rounded-2xl bg-[#e7eee9] p-5">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-white text-[#247044] shadow-[0_5px_16px_rgba(24,33,29,0.05)]"><CreditCard size={17} /></div>
+              <div><p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
                 {overview.subscription?.is_abandoned_checkout
                   ? 'Your previous Checkout was cancelled before payment was taken.'
-                  : "Your organisation doesn't have an active subscription yet."}
+                  : 'Your workspace is ready for a plan.'}
               </p>
               <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
                 {overview.subscription?.is_abandoned_checkout
                   ? 'No subscription was created and nothing was charged. Choose a plan below whenever you’re ready.'
-                  : 'Choose a plan below to get started with secure Stripe Checkout.'}
+                  : 'Compare the operating levels below and continue through secure Stripe Checkout when you are ready.'}
               </p>
+              </div>
             </div>
           )}
 

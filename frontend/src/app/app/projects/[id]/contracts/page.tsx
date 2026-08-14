@@ -33,6 +33,7 @@ import { useAiAnalysisStore } from '@/store/aiAnalysisStore';
 import SharedSection from '@/components/ai/Section';
 import SharedAnalysisLoadingDisplay from '@/components/ai/AnalysisLoadingDisplay';
 import PageTourButton from '@/components/tours/PageTourButton';
+import { ProjectModuleHeader } from '@/components/projects/ProjectModuleHeader';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
@@ -1924,48 +1925,41 @@ export default function ProjectContractsPage() {
   );
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-1.5">
-            <h1 className="text-[1.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>Contracts</h1>
-            <PageTourButton tourKey="page-contracts" label="Take a tour of this page" />
-          </div>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Contract documents and sub-contract agreements</p>
-        </div>
-        {canWrite && (
-        <button
-          data-tour="contracts-new"
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.98]"
-          style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
-        >
-          <Plus size={15} />
-          New Contract
-        </button>
-        )}
-      </div>
+    <div className="ss-projects-page mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <ProjectModuleHeader
+        category="Contract administration"
+        title="Contracts"
+        description="Manage main contracts, sub-contract agreements and the records that govern project delivery."
+        icon={FileSignature}
+        tour={<PageTourButton tourKey="page-contracts" label="Take a tour of this page" />}
+        action={canWrite ? (
+          <button data-tour="contracts-new" onClick={() => setShowModal(true)} className="flex h-11 items-center gap-2 whitespace-nowrap rounded-xl bg-[#9ee5b5] px-5 text-sm font-semibold text-[#18211d] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#b4edc6] active:translate-y-0">
+            <Plus size={16} /> New contract
+          </button>
+        ) : undefined}
+      />
 
-      <div className="flex items-center gap-3 flex-wrap" data-tour="contracts-filters">
-        <div className="relative">
+      <div className="ss-animate-in flex flex-wrap items-center gap-2 rounded-2xl p-2" data-tour="contracts-filters" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '80ms' }}>
+        <div className="relative min-w-[240px] flex-1">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search contracts…"
-            className="pl-9 pr-4 py-2 rounded-lg text-sm outline-none"
-            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)', width: 240, boxShadow: 'var(--shadow-card)' }}
+            className="w-full rounded-xl py-2.5 pl-9 pr-4 text-sm outline-none transition-shadow duration-200 focus:ring-2 focus:ring-[var(--gold)]/20"
+            style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-primary)' }}
           />
         </div>
-        <div className="flex gap-1 p-1 rounded-full" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+        <div className="flex gap-1 rounded-xl p-1" style={{ backgroundColor: 'var(--bg-elevated)' }}>
           {(['active', 'archived'] as const).map(f => (
             <button
               key={f}
               onClick={() => setContractFilter(f)}
-              className="px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-all active:scale-[0.97]"
+              className="rounded-lg px-4 py-2 text-xs font-semibold capitalize transition-all duration-200 hover:-translate-y-px active:translate-y-0"
               style={{
                 backgroundColor: contractFilter === f ? 'var(--gold)' : 'transparent',
                 color: contractFilter === f ? 'var(--accent-fg)' : 'var(--text-secondary)',
+                boxShadow: contractFilter === f ? '0 5px 14px rgba(0,0,0,0.08)' : 'none',
               }}
             >
               {f === 'active' ? 'Active' : 'Archived'}
@@ -1989,7 +1983,11 @@ export default function ProjectContractsPage() {
           </Button>
         </div>
       ) : (
-        <div className="rounded-2xl overflow-visible" data-tour="contracts-table" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+        <section className="ss-animate-in relative z-30 overflow-visible rounded-2xl" data-tour="contracts-table" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '140ms' }}>
+          <div className="flex items-end justify-between border-b px-5 py-4" style={{ borderColor: 'var(--border)' }}>
+            <div><h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Main contracts</h2><p className="mt-0.5 text-xs" style={{ color: 'var(--text-muted)' }}>The agreements governing this project</p></div>
+            <span className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>{contracts.length} record{contracts.length === 1 ? '' : 's'}</span>
+          </div>
           <table className="w-full text-sm">
             <thead>
               <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
@@ -2018,7 +2016,8 @@ export default function ProjectContractsPage() {
                     <td className="px-5 py-3 text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>{c.completion_date ? formatDate(c.completion_date) : '—'}</td>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: badge.bg, color: badge.text }}>
+                        <span className="inline-flex items-center gap-1.5 text-xs font-medium" style={{ color: badge.text }}>
+                          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: badge.text }} />
                           {CONTRACT_STATUS_LABELS[c.status ?? ''] ?? c.status ?? 'Draft'}
                         </span>
                         {!hasFile && (
@@ -2039,9 +2038,9 @@ export default function ProjectContractsPage() {
                         </button>
                         {openMenuId === c.id && (
                           <>
-                            <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
+                            <div className="fixed inset-0 z-40" onClick={() => setOpenMenuId(null)} />
                             <div
-                              className="absolute right-0 top-full mt-1 z-20 min-w-[160px] rounded-xl shadow-lg overflow-hidden"
+                              className="absolute right-0 top-full z-50 mt-1 min-w-[180px] overflow-hidden rounded-xl shadow-lg"
                               style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
                             >
                               {hasFile && (
@@ -2155,20 +2154,20 @@ export default function ProjectContractsPage() {
               })}
             </tbody>
           </table>
-        </div>
+        </section>
       )}
 
       {/* ── Subcontracts (Trade Packages) ── */}
-      <div className="space-y-3" data-tour="contracts-subcontracts">
-        <div className="flex items-center justify-between">
+      <section className="ss-animate-in relative z-10 overflow-hidden rounded-2xl" data-tour="contracts-subcontracts" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '190ms' }}>
+        <div className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
           <div>
-            <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Subcontracts</h2>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Trade package subcontract agreements</p>
+            <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Trade packages</h2>
+            <p className="mt-0.5 text-xs" style={{ color: 'var(--text-muted)' }}>Subcontract agreements and package workspaces</p>
           </div>
           {canWrite && (
             <button
               onClick={() => setShowCreatePackageModal(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.98]"
+              className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 hover:-translate-y-px active:translate-y-0"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
             >
               <Plus size={15} />
@@ -2178,7 +2177,7 @@ export default function ProjectContractsPage() {
         </div>
 
         {tradePackages.length === 0 ? (
-          <div className="rounded-2xl p-12 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+          <div className="border-t p-12 text-center" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-elevated)' }}>
             <FileSignature size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No trade packages created yet</p>
             {canWrite && (
@@ -2188,7 +2187,7 @@ export default function ProjectContractsPage() {
             )}
           </div>
         ) : (
-          <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+          <div className="overflow-x-auto border-t" style={{ borderColor: 'var(--border)' }}>
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
@@ -2214,40 +2213,40 @@ export default function ProjectContractsPage() {
                     <td className="px-5 py-3"><TpStatusBadge status={pkg.status} /></td>
                     <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>{pkg.files_count ?? 0} file{(pkg.files_count ?? 0) !== 1 ? 's' : ''}</td>
                     <td className="px-5 py-3">
-                      <div className="flex items-center gap-1 flex-wrap">
+                      <div className="flex flex-wrap items-center justify-end gap-1">
                         <Link
                           href={`/app/projects/${id}/subcontracts/${pkg.id}`}
-                          className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors hover:bg-[var(--bg-hover)]"
-                          style={{ color: 'var(--gold)' }}
+                          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all duration-200 hover:-translate-y-px"
+                          style={{ backgroundColor: '#18211d', color: '#9ee5b5' }}
                         >
                           <LayoutDashboard size={11} />
-                          Open Workspace
+                          Open
                         </Link>
                         <button
                           onClick={() => setViewPackageId(pkg.id)}
-                          className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors hover:bg-[var(--bg-hover)]"
+                          title="View documents"
+                          className="grid h-8 w-8 place-items-center rounded-lg transition-colors hover:bg-[var(--bg-hover)]"
                           style={{ color: 'var(--text-muted)' }}
                         >
                           <Eye size={11} />
-                          Documents
                         </button>
                         {canWrite && (
                           <>
                             <Link
                               href={`/app/projects/${id}/subcontracts/${pkg.id}?edit=1`}
-                              className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors hover:bg-[var(--bg-hover)]"
+                              title="Edit trade package"
+                              className="grid h-8 w-8 place-items-center rounded-lg transition-colors hover:bg-[var(--bg-hover)]"
                               style={{ color: 'var(--text-muted)' }}
                             >
                               <Pencil size={11} />
-                              Edit
                             </Link>
                             <button
                               onClick={() => setGeneratePackage({ id: pkg.id, name: pkg.name, package_code: pkg.package_code, package_reference: pkg.package_reference, contractor_name: pkg.contractor_name })}
-                              className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors hover:bg-[var(--bg-hover)]"
+                              title="Generate documents"
+                              className="grid h-8 w-8 place-items-center rounded-lg transition-colors hover:bg-[var(--bg-hover)]"
                               style={{ color: 'var(--text-muted)' }}
                             >
                               <FileSignature size={11} />
-                              Generate Docs
                             </button>
                           </>
                         )}
@@ -2266,16 +2265,16 @@ export default function ProjectContractsPage() {
             </table>
           </div>
         )}
-      </div>
+      </section>
 
       {/* ── AI Analysis History ── */}
       {aiEnabled && aiAnalyses.length > 0 && (
-        <div className="space-y-3" data-tour="contracts-ai-history">
-          <div>
-            <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>AI analysis history</h2>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Previous AI contract analysis runs</p>
+        <section className="ss-animate-in overflow-hidden rounded-2xl" data-tour="contracts-ai-history" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '240ms' }}>
+          <div className="flex items-end justify-between px-5 py-4 sm:px-6">
+            <div><h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Analysis history</h2><p className="mt-0.5 text-xs" style={{ color: 'var(--text-muted)' }}>Previous contract analysis runs and outputs</p></div>
+            <span className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>{aiAnalyses.length} run{aiAnalyses.length === 1 ? '' : 's'}</span>
           </div>
-          <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+          <div className="overflow-x-auto border-t" style={{ borderColor: 'var(--border)' }}>
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
@@ -2306,7 +2305,8 @@ export default function ProjectContractsPage() {
                         {a.contract?.title ?? contractForRow?.title ?? `Contract #${a.contract_id}`}
                       </td>
                       <td className="px-5 py-3">
-                        <span className="text-xs px-2 py-0.5 rounded-full capitalize" style={{ backgroundColor: badge.bg, color: badge.text }}>
+                        <span className="inline-flex items-center gap-1.5 text-xs font-medium capitalize" style={{ color: badge.text }}>
+                          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: badge.text }} />
                           {a.status}
                         </span>
                       </td>
@@ -2314,12 +2314,12 @@ export default function ProjectContractsPage() {
                         {a.creator?.name ?? '—'}
                       </td>
                       <td className="px-5 py-3">
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center justify-end gap-1">
                           {canView && (
                             <button
                               onClick={() => setViewAnalysis(a)}
-                              className="text-xs px-2 py-1 rounded-lg transition-colors hover:bg-[var(--bg-hover)]"
-                              style={{ color: 'var(--gold)' }}
+                              className="rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--bg-hover)]"
+                              style={{ color: 'var(--text-primary)', border: '1px solid var(--border)' }}
                             >
                               View Result
                             </button>
@@ -2328,7 +2328,7 @@ export default function ProjectContractsPage() {
                             <button
                               onClick={() => doGenerateBrief(a.id)}
                               disabled={generatingBriefId === a.id}
-                              className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-50"
+                              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-50"
                               style={{ color: 'var(--text-secondary)' }}
                               title="Generate Contract Intelligence Brief PDF"
                             >
@@ -2341,7 +2341,7 @@ export default function ProjectContractsPage() {
                           {canView && contractForRow && (
                             <button
                               onClick={() => { setAnalyseContract(contractForRow); }}
-                              className="text-xs px-2 py-1 rounded-lg transition-colors hover:bg-[var(--bg-hover)]"
+                              className="rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--bg-hover)]"
                               style={{ color: 'var(--text-muted)' }}
                             >
                               Re-run
@@ -2355,7 +2355,7 @@ export default function ProjectContractsPage() {
               </tbody>
             </table>
           </div>
-        </div>
+        </section>
       )}
 
       {canWrite && showModal && (

@@ -3,13 +3,14 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { ScrollText, Lock } from 'lucide-react';
+import { ScrollText, Building2, Coins } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
 import PaginationBar from '@/components/ui/PaginationBar';
 import Select from '@/components/ui/Select';
 import Modal from '@/components/ui/Modal';
 import { formatDate } from '@/lib/utils';
+import PlatformPageHero from '@/components/admin/PlatformPageHero';
 
 interface Transaction {
   id: number;
@@ -56,18 +57,17 @@ export default function AiCreditsTransactionsPage() {
   });
 
   const rows = data?.data ?? [];
+  const visibleAmount = rows.reduce((total, transaction) => total + transaction.amount, 0);
+  const visibleOrganizations = new Set(rows.map(transaction => transaction.organization_id)).size;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-5">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-          <ScrollText size={22} style={{ color: 'var(--gold)' }} />
-          Transactions
-        </h1>
-        <p className="mt-1 text-sm flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
-          <Lock size={12} /> Immutable ledger entries. No editing exists anywhere in this system.
-        </p>
-      </div>
+    <div className="mx-auto max-w-7xl space-y-7 p-4 pb-12 sm:p-6 lg:p-8">
+      <PlatformPageHero eyebrow="Immutable ledger" title="Transactions" description="Audit every AI Credit grant, reservation, settlement and adjustment recorded by the platform." loading={isLoading}
+        metrics={[
+          { label: 'Transactions', value: data?.total ?? rows.length, detail: 'ledger entries', icon: ScrollText },
+          { label: 'Visible amount', value: visibleAmount, detail: 'net credits on this page', icon: Coins },
+          { label: 'Organisations', value: visibleOrganizations, detail: 'represented here', icon: Building2 },
+        ]} />
 
       <div className="flex items-center gap-3 flex-wrap">
         <Select value={workflow} onChange={e => { setWorkflow(e.target.value); setPage(1); }} size="sm">

@@ -265,24 +265,33 @@ export default function ProjectSetupPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
+    <div className="ss-setup-page mx-auto max-w-6xl px-4 py-7 sm:px-6 lg:py-10">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="ss-setup-header-in mb-7 flex items-start justify-between gap-5">
         <div>
-          <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Set up your project</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>{project?.name}</p>
+          <div className="mb-2 flex items-center gap-2 text-xs font-semibold" style={{ color: 'var(--gold)' }}>
+            <span className="h-px w-5" style={{ backgroundColor: 'var(--gold)' }} />
+            Project setup
+          </div>
+          <h1 className="text-2xl font-semibold tracking-[-0.03em] sm:text-3xl" style={{ color: 'var(--text-primary)' }}>
+            Give {project?.name ?? 'your project'} a strong start.
+          </h1>
+          <p className="mt-2 max-w-xl text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
+            Add the governing agreement now so the contract record is ready for notices, payments and change control.
+          </p>
         </div>
         <button
           onClick={goToWorkspace}
-          className="text-xs font-medium flex-shrink-0 px-3 py-1.5 rounded-lg transition-colors hover:bg-[var(--bg-hover)]"
-          style={{ color: 'var(--text-muted)' }}
+          className="flex flex-shrink-0 items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold transition-colors hover:bg-[var(--bg-hover)]"
+          style={{ color: 'var(--text-secondary)' }}
         >
-          Skip for now →
+          Skip for now <ArrowRight size={13} />
         </button>
       </div>
 
       {!focalContract ? (
         <EntryPanel
+          key={effectiveMode}
           mode={effectiveMode}
           contracts={contracts}
           uploadTitle={uploadTitle} setUploadTitle={setUploadTitle}
@@ -374,7 +383,7 @@ function EntryPanel({
 
   if (mode === 'choice') {
     return (
-      <div className="rounded-2xl p-6" style={CARD_STYLE}>
+      <div className="ss-setup-panel-in rounded-2xl p-6" style={CARD_STYLE}>
         <h2 className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>This project already has a Contract</h2>
         <p className="text-sm mb-5" style={{ color: 'var(--text-secondary)' }}>
           Analyse one of the existing Contracts, or add another one.
@@ -393,7 +402,7 @@ function EntryPanel({
 
   if (mode === 'select') {
     return (
-      <div className="rounded-2xl p-6" style={CARD_STYLE}>
+      <div className="ss-setup-panel-in rounded-2xl p-6" style={CARD_STYLE}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Select a Contract to analyse</h2>
           <button onClick={onBackToChoice} className="text-xs flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
@@ -405,7 +414,7 @@ function EntryPanel({
             <button
               key={c.id}
               onClick={() => onSelectExisting(c)}
-              className="w-full flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-left transition-colors hover:border-[var(--gold)]"
+              className="group w-full flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-left transition-[border-color,background-color,transform] duration-200 hover:-translate-y-0.5 hover:border-[var(--gold)] hover:bg-[var(--bg-hover)] active:translate-y-px"
               style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}
             >
               <div className="min-w-0">
@@ -416,7 +425,7 @@ function EntryPanel({
                   {c.status && <span className="text-xs capitalize" style={{ color: 'var(--text-muted)' }}>{c.status}</span>}
                 </div>
               </div>
-              <ArrowRight size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+              <ArrowRight size={14} className="flex-shrink-0 transition-transform duration-200 group-hover:translate-x-1" style={{ color: 'var(--text-muted)' }} />
             </button>
           ))}
         </div>
@@ -426,42 +435,77 @@ function EntryPanel({
 
   // mode === 'upload'
   return (
-    <div className="rounded-2xl p-6" style={CARD_STYLE}>
-      {hasContracts && (
-        <button onClick={onBackToChoice} className="text-xs flex items-center gap-1 mb-4" style={{ color: 'var(--text-muted)' }}>
-          <ArrowLeft size={12} /> Back
-        </button>
-      )}
-      <h2 className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
-        {hasContracts ? 'Add another Contract' : 'Set up your project from an agreement'}
-      </h2>
-      <p className="text-sm mb-5" style={{ color: 'var(--text-secondary)' }}>
-        {hasContracts
-          ? 'Upload the agreement and SureSign can analyse it to help structure the Contract record.'
-          : 'If you already have the agreement governing your work on this project, upload it and SureSign can analyse it to help structure the Contract record.'}
-      </p>
+    <div className="ss-setup-panel-in grid overflow-hidden rounded-2xl border lg:grid-cols-[0.78fr_1.22fr]" style={{ borderColor: 'var(--border)', boxShadow: 'var(--shadow-card)' }}>
+      <aside className="ss-setup-panel-left relative overflow-hidden bg-[#18211d] p-7 text-[#f4f7f5] sm:p-9 lg:min-h-[590px]">
+        <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full border border-[#a5d6b5]/10" />
+        <div className="absolute -right-8 -top-12 h-40 w-40 rounded-full border border-[#a5d6b5]/10" />
 
-      <div className="space-y-4">
-        <div>
-          <label style={LABEL_STYLE}>Contract Title</label>
+        {hasContracts && (
+          <button onClick={onBackToChoice} className="relative mb-10 flex items-center gap-1.5 text-xs font-semibold text-[#b9c5bf] transition-colors hover:text-white">
+            <ArrowLeft size={13} /> Back to contracts
+          </button>
+        )}
+
+        <div className="ss-setup-reveal relative flex h-full flex-col" style={{ animationDelay: '300ms' }}>
+          <div className="mb-8 flex h-11 w-11 items-center justify-center rounded-xl border border-[#a5d6b5]/20 bg-[#a5d6b5]/10">
+            <FileText size={20} className="text-[#9ee5b5]" />
+          </div>
+          <h2 className="max-w-sm text-2xl font-semibold leading-tight tracking-[-0.03em] sm:text-3xl">
+            {hasContracts ? 'Bring another contract into focus.' : 'Start with the document that governs the work.'}
+          </h2>
+          <p className="mt-4 max-w-sm text-sm leading-6 text-[#b9c5bf]">
+            SureSign reads the agreement and prepares a structured contract record for your review.
+          </p>
+
+          <div className="mt-10 space-y-5 lg:mt-auto">
+            {[
+              ['Key dates', 'Surface commencement, completion and notice dates.'],
+              ['Commercial terms', 'Organise contract value, payment and retention details.'],
+              ['Contract controls', 'Prepare the record for notices, variations and delay.'],
+            ].map(([title, body], index) => (
+              <div
+                key={title}
+                className="ss-setup-detail flex gap-3"
+                style={{ animationDelay: `${620 + index * 90}ms` }}
+              >
+                <CheckCircle size={17} className="mt-0.5 flex-shrink-0 text-[#9ee5b5]" />
+                <div>
+                  <p className="text-sm font-semibold">{title}</p>
+                  <p className="mt-0.5 text-xs leading-5 text-[#91a099]">{body}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </aside>
+
+      <section className="ss-setup-panel-right bg-[var(--bg-surface)] p-6 sm:p-9">
+        <div className="ss-setup-reveal mb-7" style={{ animationDelay: '360ms' }}>
+          <h2 className="text-lg font-semibold tracking-[-0.02em]" style={{ color: 'var(--text-primary)' }}>Add your agreement</h2>
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>A title is optional. You can edit every extracted detail before saving it.</p>
+        </div>
+
+        <div className="space-y-5">
+        <div className="ss-setup-reveal" style={{ animationDelay: '440ms' }}>
+          <label className="font-medium" style={LABEL_STYLE}>Contract title <span style={{ color: 'var(--text-muted)' }}>(optional)</span></label>
           <input
-            className={INPUT_CLS} style={INPUT_STYLE} value={uploadTitle}
+            className={`${INPUT_CLS} h-11`} style={INPUT_STYLE} value={uploadTitle}
             onChange={e => setUploadTitle(e.target.value)}
-            placeholder="Defaults to the file name if left blank"
+            placeholder="For example, JCT Design and Build Contract"
           />
         </div>
-        <div>
-          <label style={LABEL_STYLE}>Contract Type *</label>
+        <div className="ss-setup-reveal" style={{ animationDelay: '520ms' }}>
+          <label className="font-medium" style={LABEL_STYLE}>Contract type *</label>
           <Select className="w-full" value={uploadType} onChange={e => setUploadType(e.target.value)}>
             <option value="">Select contract type…</option>
             {CONTRACT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
           </Select>
-          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-            This isn&rsquo;t guessed from the document — choose the one that matches what you&rsquo;re uploading.
+          <p className="mt-1.5 text-xs leading-5" style={{ color: 'var(--text-muted)' }}>
+            Choose the type that best matches the agreement you are uploading.
           </p>
         </div>
-        <div>
-          <label style={LABEL_STYLE}>Contract File *</label>
+        <div className="ss-setup-reveal" style={{ animationDelay: '600ms' }}>
+          <label className="font-medium" style={LABEL_STYLE}>Contract file *</label>
           <input
             id="setup-upload-file"
             type="file"
@@ -471,14 +515,19 @@ function EntryPanel({
           />
           {uploadFile ? (
             <div
-              className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl"
+              className="ss-setup-file-ready flex min-h-24 items-center justify-between gap-4 rounded-xl px-4 py-4"
               style={{ backgroundColor: 'var(--gold-8)', border: '1px solid var(--gold-30)' }}
             >
-              <div className="flex items-center gap-2 min-w-0">
-                <FileText size={16} style={{ color: 'var(--gold)', flexShrink: 0 }} />
-                <span className="text-sm truncate" style={{ color: 'var(--text-primary)' }}>{uploadFile.name}</span>
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--bg-surface)]">
+                  <FileText size={18} style={{ color: 'var(--gold)' }} />
+                </span>
+                <div className="min-w-0">
+                  <span className="block truncate text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{uploadFile.name}</span>
+                  <span className="mt-0.5 block text-xs" style={{ color: 'var(--text-muted)' }}>Ready to upload</span>
+                </div>
               </div>
-              <button onClick={() => setUploadFile(null)} className="text-xs flex-shrink-0" style={{ color: 'var(--text-muted)' }}>
+              <button onClick={() => setUploadFile(null)} className="flex-shrink-0 rounded-lg px-2 py-1 text-xs font-semibold hover:bg-[var(--bg-hover)]" style={{ color: 'var(--text-secondary)' }}>
                 Remove
               </button>
             </div>
@@ -488,37 +537,41 @@ function EntryPanel({
               onDragOver={e => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
               onDrop={e => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files?.[0] ?? null); }}
-              className="w-full flex flex-col items-center justify-center gap-3 py-10 rounded-xl border-dashed transition-colors cursor-pointer"
+              className="group flex min-h-40 w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-dashed px-5 py-8 text-center transition-all duration-200 hover:-translate-y-0.5"
               style={{
                 border: `2px dashed ${dragOver ? 'var(--gold)' : 'var(--border)'}`,
-                backgroundColor: dragOver ? 'var(--gold-8)' : 'var(--bg-base)',
+                backgroundColor: dragOver ? 'var(--gold-8)' : 'var(--bg-elevated)',
                 color: 'var(--text-muted)',
               }}
             >
-              <Upload size={24} style={{ color: dragOver ? 'var(--gold)' : 'var(--text-muted)' }} />
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl border bg-[var(--bg-surface)] transition-transform duration-200 group-hover:scale-105" style={{ borderColor: dragOver ? 'var(--gold)' : 'var(--border)' }}>
+                <Upload size={19} style={{ color: dragOver ? 'var(--gold)' : 'var(--text-secondary)' }} />
+              </span>
               <div className="text-center">
-                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Click to upload or drag and drop</p>
-                <p className="text-xs mt-1">PDF, DOCX, TXT supported</p>
+                <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Drop your agreement here</p>
+                <p className="mt-1 text-xs">or click to browse PDF, DOC, DOCX or TXT</p>
               </div>
             </label>
           )}
         </div>
       </div>
 
-      <div className="flex items-center justify-between mt-6">
+        <div className="ss-setup-reveal mt-7 flex flex-col-reverse items-stretch justify-between gap-3 border-t pt-6 sm:flex-row sm:items-center" style={{ borderColor: 'var(--border)', animationDelay: '700ms' }}>
         {!hasContracts && (
-          <button onClick={onSkip} className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+          <button onClick={onSkip} className="rounded-lg px-2 py-2 text-sm font-medium transition-colors hover:bg-[var(--bg-hover)]" style={{ color: 'var(--text-secondary)' }}>
             I&rsquo;ll add this later
           </button>
         )}
         <Button
           onClick={onSubmitUpload}
           disabled={!uploadFile || !uploadType || submitting}
-          className={hasContracts ? 'ml-auto' : ''}
+          size="lg"
+          className={`${hasContracts ? 'ml-auto' : ''} min-w-40`}
         >
-          {submitting ? 'Saving…' : 'Upload Agreement'}
+          {submitting ? 'Uploading…' : 'Upload agreement'}
         </Button>
-      </div>
+        </div>
+      </section>
     </div>
   );
 }
@@ -545,7 +598,7 @@ function ContractStatusPanel({
   const status = analysis?.status ?? null;
 
   return (
-    <div className="rounded-2xl p-6 space-y-4" style={CARD_STYLE}>
+    <div className="ss-setup-panel-in rounded-2xl p-6 space-y-4" style={CARD_STYLE}>
       <div className="flex items-center gap-2">
         <FileText size={16} style={{ color: 'var(--gold)' }} />
         <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{contract.title}</p>
@@ -581,7 +634,7 @@ function ContractStatusPanel({
         <StatusBlock
           icon={<Loader2 size={20} className="animate-spin" style={{ color: 'var(--gold)' }} />}
           title="SureSign is analysing your contract"
-          body="Your Project and Contract are already saved. You can continue working while the analysis runs — SureSign will notify you when it&rsquo;s ready."
+          body="Your Project and Contract are already saved. You can continue working while the analysis runs. SureSign will notify you when it&rsquo;s ready."
           actions={
             <>
               <Button onClick={onContinue}>Continue to Project</Button>

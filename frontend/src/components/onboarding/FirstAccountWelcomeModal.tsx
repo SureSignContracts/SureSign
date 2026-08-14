@@ -1,7 +1,6 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import Image from 'next/image';
 import {
   ArrowLeft,
   ArrowRight,
@@ -67,49 +66,55 @@ export default function FirstAccountWelcomeModal({
       icon={current.icon}
       size="xl"
       showCloseButton
+      borderless
       onClose={() => onComplete(actionRef.current)}
     >
       {(close) => (
-        <div className="grid min-h-0 gap-6 md:grid-cols-[0.82fr_1.18fr] md:gap-8">
+        <div className="grid min-h-0 gap-6 md:grid-cols-[0.88fr_1.12fr] md:gap-8">
           <div
-            className="relative hidden min-h-[390px] overflow-hidden rounded-2xl border md:flex md:flex-col md:justify-between"
-            style={{
-              backgroundColor: '#11110f',
-              borderColor: 'rgba(255,255,255,0.09)',
-            }}
+            className="relative hidden min-h-[440px] overflow-hidden rounded-2xl bg-[#18211d] md:flex md:flex-col md:justify-between"
           >
-            <div className="relative z-10 p-6">
-              <Image
-                src="/logo_white/SureSign_WLOGO.webp"
-                alt="SureSign"
-                width={32}
-                height={32}
-                className="h-8 w-8 object-contain"
-              />
-              <p className="mt-16 max-w-[14ch] text-[1.65rem] font-semibold leading-[1.08] tracking-[-0.045em] text-white">
+            <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-[#9ee5b5]/10 blur-3xl" />
+            <div className="relative z-10 p-7">
+              <div className="flex items-center justify-between">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#9ee5b5] font-bold text-[#18211d]">S</div>
+                <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-white/30">Chapter 0{screen + 1}</span>
+              </div>
+              <p className="mt-12 max-w-[13ch] text-[1.8rem] font-semibold leading-[1.06] tracking-[-0.045em] text-white">
                 Run the contract, not the paperwork.
               </p>
-              <p className="mt-3 max-w-[30ch] text-xs leading-relaxed text-white/55">
-                A practical workspace for construction contract administration.
-              </p>
+              <p className="mt-4 max-w-[31ch] text-xs leading-5 text-white/45">A connected operating record for construction delivery.</p>
             </div>
 
-            <div className="relative h-44">
-              <Image
-                src="/dashboard/hero-construction.webp"
-                alt="Construction professionals reviewing project work"
-                fill
-                sizes="360px"
-                className="object-contain object-bottom opacity-90"
-              />
+            <div key={screen} className="ss-welcome-screen relative mx-7 mb-7 rounded-2xl bg-white/[0.045] p-5">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#9ee5b5] text-[#18211d]"><current.icon size={18} /></div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.14em] text-white/30">Working record</p>
+                  <p className="mt-1 text-sm font-medium text-white/80">Contract intelligence</p>
+                </div>
+              </div>
+              <div className="my-4 h-px bg-white/10" />
+              <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-2 text-center">
+                {['Contract', 'Actions', 'Evidence'].map((label, index) => (
+                  <div key={label} className="contents">
+                    <div>
+                      <span className="mx-auto flex h-7 w-7 items-center justify-center rounded-lg bg-white/[0.07] text-[10px] font-semibold text-[#9ee5b5]">0{index + 1}</span>
+                      <p className="mt-2 text-[9px] text-white/40">{label}</p>
+                    </div>
+                    {index < 2 && <ArrowRight size={11} className="text-white/20" />}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
-          <div className="flex min-h-[390px] flex-col">
+          <div className="flex min-h-[440px] flex-col py-1">
             <div key={screen} className="ss-welcome-screen flex-1">
-              <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
-                {screen + 1} of {SCREENS.length}
-              </p>
+              <div className="flex items-center gap-3">
+                <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.15em] text-[#3f8f60]">0{screen + 1} / 0{SCREENS.length}</p>
+                <div className="h-1 flex-1 overflow-hidden rounded-full bg-[#e7ece8]"><div className="h-full rounded-full bg-[#68d391] transition-all duration-500" style={{ width: `${((screen + 1) / SCREENS.length) * 100}%` }} /></div>
+              </div>
               <h3 className="mt-4 max-w-[16ch] text-[1.75rem] font-semibold leading-[1.08] tracking-[-0.04em]" style={{ color: 'var(--text-primary)' }}>
                 {current.title}
               </h3>
@@ -117,17 +122,16 @@ export default function FirstAccountWelcomeModal({
                 {current.description}
               </p>
 
-              <div className="mt-8 space-y-5">
+              <div className="mt-7 space-y-2">
                 {current.points.map(({ icon: PointIcon, title, body }) => (
-                  <div key={title} className="flex items-start gap-3">
+                  <div key={title} className="group flex items-start gap-3 rounded-2xl bg-[#f3f6f4] p-4 transition duration-200 hover:-translate-y-0.5 hover:bg-[#edf3ef]">
                     <div
-                      className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border"
-                      style={{ backgroundColor: 'var(--bg-elevated)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+                      className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-white text-[#247044] shadow-[0_4px_14px_rgba(24,33,29,0.05)] transition-transform group-hover:scale-105"
                     >
                       <PointIcon size={16} strokeWidth={1.75} />
                     </div>
                     <div>
-                      <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{title}</p>
+                      <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{title}</p>
                       <p className="mt-1 max-w-[42ch] text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>{body}</p>
                     </div>
                   </div>
@@ -170,7 +174,7 @@ export default function FirstAccountWelcomeModal({
                     type="button"
                     onClick={() => setScreen(value => value + 1)}
                     className="inline-flex h-10 items-center gap-2 whitespace-nowrap rounded-xl px-4 text-xs font-semibold transition-[transform,opacity] hover:-translate-y-0.5 hover:opacity-90 active:translate-y-px"
-                    style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
+                    style={{ backgroundColor: '#18211d', color: '#ffffff' }}
                   >
                     Next <ArrowRight size={14} />
                   </button>
@@ -188,7 +192,7 @@ export default function FirstAccountWelcomeModal({
                       type="button"
                       onClick={() => finish(close, 'tour')}
                       className="inline-flex h-10 items-center gap-2 whitespace-nowrap rounded-xl px-4 text-xs font-semibold transition-[transform,opacity] hover:-translate-y-0.5 hover:opacity-90 active:translate-y-px"
-                      style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
+                      style={{ backgroundColor: '#9ee5b5', color: '#18211d' }}
                     >
                       Take quick tour <ArrowRight size={14} />
                     </button>

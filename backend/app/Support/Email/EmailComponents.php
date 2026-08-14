@@ -16,24 +16,19 @@ namespace App\Support\Email;
  * titles, enquiry text can all reach here) — callers must never
  * pre-escape and must never pass raw HTML through as "safe".
  *
- * Button hierarchy (approved): primary CTA gets solid black fill;
+ * Button hierarchy (approved): primary CTA gets the SureSign mint fill;
  * secondary gets an outlined treatment; tertiary actions (reschedule/
  * cancel) are plain underlined text links, deliberately never styled as
  * buttons, so a destructive/lower-priority action never competes visually
  * with the primary CTA.
  *
- * Theme (revised, post Communications Platform Batch 4): black/white/grey
- * only — no brand-gold accent anywhere in this file or in
- * `EmailNotificationService::buildHtml()`'s wrapper. `success`/`muted`
- * status tones are the one deliberate exception (a semantic colour, not a
- * brand accent) — green still means "available/good news" the way it
- * would in any product UI; nothing else in the system uses colour to
- * carry meaning.
+ * Theme: forest ink, quiet mineral neutrals and one mint brand accent.
+ * Semantic status colours remain reserved for actual status information.
  */
 class EmailComponents
 {
-    private const ACCENT = '#111111';
-    private const INK    = '#1a1a1a';
+    private const ACCENT = '#9ee5b5';
+    private const INK    = '#18211d';
 
     /**
      * @param  string  $variant  'primary' | 'secondary'
@@ -45,19 +40,19 @@ class EmailComponents
 
         $isPrimary = $variant === 'primary';
         $bg     = $isPrimary ? self::ACCENT : '#ffffff';
-        $color  = $isPrimary ? '#ffffff' : self::INK;
-        $border = $isPrimary ? self::ACCENT : '#d4d4d4';
+        $color  = self::INK;
+        $border = $isPrimary ? self::ACCENT : '#cfd8d2';
 
         // Table-based "bulletproof button" pattern — renders correctly
         // across Outlook/Gmail/Apple Mail without relying on unsupported
         // CSS (padding on <a> is inconsistent in Outlook's Word rendering
         // engine, hence the table cell carrying the padding instead).
         return <<<HTML
-<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin:4px 0;">
+<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin:22px 0 8px;">
   <tr>
-    <td align="center" bgcolor="{$bg}" style="border-radius:4px;border:1px solid {$border};">
+    <td align="center" bgcolor="{$bg}" style="border-radius:10px;border:1px solid {$border};box-shadow:0 8px 18px rgba(24,33,29,0.10);">
       <a href="{$url}" target="_blank" rel="noopener noreferrer"
-         style="display:inline-block;padding:13px 28px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:{$color};text-decoration:none;min-width:120px;text-align:center;">
+         style="display:inline-block;padding:14px 24px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:{$color};text-decoration:none;min-width:150px;text-align:center;letter-spacing:0.1px;">
         {$label}
       </a>
     </td>
@@ -80,7 +75,7 @@ HTML;
         }
 
         $links = array_map(
-            fn (array $a) => '<a href="' . e($a['url']) . '" style="color:#6b6b6b;text-decoration:underline;font-family:Arial,sans-serif;font-size:13px;">' . e($a['label']) . '</a>',
+            fn (array $a) => '<a href="' . e($a['url']) . '" style="color:#53615a;text-decoration:underline;font-family:Arial,sans-serif;font-size:13px;">' . e($a['label']) . '</a>',
             $actions,
         );
 
@@ -99,8 +94,8 @@ HTML;
         $tr = '';
         foreach ($rows as $label => $value) {
             $tr .= '<tr>'
-                . '<td style="padding:6px 12px 6px 0;font-family:Arial,sans-serif;font-size:13px;color:#8a8a8a;white-space:nowrap;vertical-align:top;">' . e($label) . '</td>'
-                . '<td style="padding:6px 0;font-family:Arial,sans-serif;font-size:14px;color:' . self::INK . ';font-weight:600;">' . e($value) . '</td>'
+                . '<td style="padding:8px 14px 8px 0;font-family:Arial,sans-serif;font-size:12px;color:#748078;white-space:nowrap;vertical-align:top;">' . e($label) . '</td>'
+                . '<td style="padding:8px 0;font-family:Arial,sans-serif;font-size:14px;color:' . self::INK . ';font-weight:600;">' . e($value) . '</td>'
                 . '</tr>';
         }
 
@@ -123,19 +118,19 @@ HTML;
             default   => self::ACCENT,
         };
 
-        return '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:16px 0;background:#f5f5f5;border-left:3px solid ' . $accent . ';">'
-            . '<tr><td style="padding:12px 16px;font-family:Arial,sans-serif;font-size:14px;color:' . self::INK . ';line-height:1.5;">' . e($text) . '</td></tr>'
+        return '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:18px 0;background:#f3f7f4;border-left:3px solid ' . $accent . ';border-radius:0 10px 10px 0;">'
+            . '<tr><td style="padding:14px 16px;font-family:Arial,sans-serif;font-size:14px;color:' . self::INK . ';line-height:1.6;">' . e($text) . '</td></tr>'
             . '</table>';
     }
 
     public static function paragraph(string $text): string
     {
-        return '<p style="margin:0 0 12px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:#3a3a3a;">' . e($text) . '</p>';
+        return '<p style="margin:0 0 15px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.72;color:#46524c;">' . e($text) . '</p>';
     }
 
     public static function heading(string $text): string
     {
-        return '<p style="margin:0 0 6px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:#3a3a3a;">' . e($text) . '</p>';
+        return '<p style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:#46524c;">' . e($text) . '</p>';
     }
 
     public static function supportBlock(?string $supportEmail): string
@@ -144,7 +139,7 @@ HTML;
             ? "Questions? Contact us at {$supportEmail}."
             : 'Questions? Please get in touch with us.';
 
-        return '<p style="margin:20px 0 0;font-family:Arial,sans-serif;font-size:13px;color:#8a8a8a;">' . e($text) . '</p>';
+        return '<p style="margin:24px 0 0;padding-top:18px;border-top:1px solid #e3e9e5;font-family:Arial,sans-serif;font-size:12px;line-height:1.6;color:#748078;">' . e($text) . '</p>';
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -174,7 +169,7 @@ HTML;
      */
     public static function hairline(): string
     {
-        return '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:28px 0;"><tr><td style="border-top:1px solid #ececec;font-size:0;line-height:0;">&nbsp;</td></tr></table>';
+        return '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:28px 0;"><tr><td style="border-top:1px solid #e3e9e5;font-size:0;line-height:0;">&nbsp;</td></tr></table>';
     }
 
     /**
@@ -193,9 +188,9 @@ HTML;
         $i = 0;
         foreach ($rows as $label => $value) {
             $i++;
-            $borderStyle = $i < $count ? 'border-bottom:1px solid #eeeeee;' : '';
+            $borderStyle = $i < $count ? 'border-bottom:1px solid #e3e9e5;' : '';
             $cells[] = '<tr><td style="padding:14px 0;' . $borderStyle . '">'
-                . '<p style="margin:0;font-family:Arial,sans-serif;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#a3a3a3;">' . e($label) . '</p>'
+                . '<p style="margin:0;font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:#7b8880;">' . e($label) . '</p>'
                 . '<p style="margin:5px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:600;color:' . self::INK . ';">' . e($value) . '</p>'
                 . '</td></tr>';
         }
@@ -212,6 +207,6 @@ HTML;
      */
     public static function quietNote(string $text): string
     {
-        return '<p style="margin:16px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.7;color:#7a7a7a;">' . e($text) . '</p>';
+        return '<p style="margin:18px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.7;color:#748078;">' . e($text) . '</p>';
     }
 }

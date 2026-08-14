@@ -3,10 +3,10 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { ScrollText, Search, Filter } from 'lucide-react';
-import { formatDate } from '@/lib/utils';
+import { ScrollText, Search, AlertTriangle, Bug } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
+import PlatformPageHero from '@/components/admin/PlatformPageHero';
 
 const LEVEL_TONE: Record<string, 'info' | 'warning' | 'danger' | 'neutral'> = {
   info: 'info',
@@ -31,13 +31,18 @@ export default function AdminSystemLogsPage() {
   );
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>System Logs</h1>
-        <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-          Platform-wide application logs and error tracking
-        </p>
-      </div>
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+      <PlatformPageHero
+        eyebrow="Runtime intelligence"
+        title="System logs"
+        description="Inspect application events, warnings and failures across the SureSign platform."
+        metrics={[
+          { label: 'Visible events', value: logs.length, detail: 'in the current view', icon: ScrollText },
+          { label: 'Errors', value: logs.filter((log: any) => log.level === 'error').length, detail: 'require investigation', icon: Bug },
+          { label: 'Warnings', value: logs.filter((log: any) => log.level === 'warning').length, detail: 'worth reviewing', icon: AlertTriangle },
+        ]}
+        loading={isLoading}
+      />
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">

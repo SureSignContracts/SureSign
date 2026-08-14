@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Sparkles, Plus, Pencil, Trash2, X, Eye, EyeOff } from 'lucide-react';
+import { Sparkles, Plus, Pencil, Trash2, X, Eye, EyeOff, Radio, FileEdit } from 'lucide-react';
 import api from '@/lib/api';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import Select from '@/components/ui/Select';
 import ProductUpdateContent from '@/components/product-updates/ProductUpdateContent';
+import PlatformPageHero from '@/components/admin/PlatformPageHero';
 import {
   CATEGORY_LABELS, AUDIENCE_LABELS,
   type AdminProductUpdate, type ProductUpdateCategory, type ProductUpdateAudience, type ProductUpdateStatus,
@@ -50,6 +51,7 @@ export default function AdminProductUpdatesPage() {
     queryKey: ['admin', 'product-updates'],
     queryFn: () => api.get('/admin/product-updates').then(r => r.data.data as AdminProductUpdate[]),
   });
+  const updates = data ?? [];
 
   const saveMutation = useMutation({
     mutationFn: () => {
@@ -105,27 +107,24 @@ export default function AdminProductUpdatesPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-            <Sparkles size={20} />
-            Product Updates
-          </h1>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-            &quot;What&apos;s New in SureSign&quot; — shown once, per user, after a Product Update is published.
-            Editing an already-published update never resets who has already seen it; publish a new update instead.
-          </p>
-        </div>
-        <button
+    <div className="mx-auto max-w-7xl space-y-7 p-4 pb-12 sm:p-6 lg:p-8">
+      <PlatformPageHero
+        eyebrow="Release communications"
+        title="Product Updates"
+        description="Prepare and publish concise release notes that explain what changed across the SureSign product."
+        loading={isLoading}
+        metrics={[
+          { label: 'Updates', value: updates.length, detail: 'all release notes', icon: Sparkles },
+          { label: 'Published', value: updates.filter(update => update.status === 'published').length, detail: 'visible to users', icon: Radio },
+          { label: 'Drafts', value: updates.filter(update => update.status === 'draft').length, detail: 'being prepared', icon: FileEdit },
+        ]}
+        action={<button
           onClick={openCreate}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium flex-shrink-0"
-          style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
+          className="flex flex-shrink-0 items-center gap-2 rounded-xl bg-[#9ee5b5] px-4 py-2.5 text-sm font-semibold text-[#18211d] transition-colors hover:bg-[#b3efc6] active:scale-[0.98]"
         >
-          <Plus size={14} />
-          New Update
-        </button>
-      </div>
+          <Plus size={14} /> New update
+        </button>}
+      />
 
       {showForm && (
         <div className="rounded-2xl p-5 space-y-3" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>

@@ -11,7 +11,7 @@ import { effectiveTodayYmd, parseDateOnly } from '@/lib/dateTime';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import CountUp from '@/components/ui/CountUp';
-import { DollarSign, FileText, MessageSquare, GitBranch, AlertCircle, Activity, BarChart2, ChevronRight, ShieldAlert, TrendingUp, Zap, FileCheck, HeartHandshake, Pencil, MapPin, ExternalLink, Copy, Sparkles } from 'lucide-react';
+import { DollarSign, FileText, MessageSquare, GitBranch, AlertCircle, Activity, BarChart2, ChevronRight, ShieldAlert, TrendingUp, Zap, FileCheck, HeartHandshake, Pencil, MapPin, ExternalLink, Copy, Sparkles, ArrowUpRight, Building2, BriefcaseBusiness } from 'lucide-react';
 import PageTourButton from '@/components/tours/PageTourButton';
 import Link from 'next/link';
 import { formatDateTime } from '@/lib/dateTime';
@@ -87,7 +87,8 @@ function ProjectHealthWidget({ health }: { health: any }) {
   const cfg = HEALTH_CONFIG[health.rating as keyof typeof HEALTH_CONFIG] ?? HEALTH_CONFIG.healthy;
   const domains = health.domains ?? {};
   return (
-    <div className="ss-animate-in rounded-2xl p-5 flex flex-col gap-4" data-tour="overview-health" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+    <div className="ss-animate-in group relative flex flex-col gap-4 overflow-hidden rounded-2xl p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)]" data-tour="overview-health" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+      <div className="absolute inset-x-0 top-0 h-1 origin-left transition-transform duration-500 group-hover:scale-x-[1.02]" style={{ backgroundColor: cfg.color }} />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <TrendingUp size={14} style={{ color: 'var(--text-muted)' }} />
@@ -100,8 +101,8 @@ function ProjectHealthWidget({ health }: { health: any }) {
         </span>
       </div>
 
-      <div className="text-center py-1">
-        <p className="text-4xl font-bold tabular-nums" style={{ color: cfg.color }}>{health.score}</p>
+      <div className="py-2">
+        <p className="text-5xl font-semibold tabular-nums tracking-[-0.05em]" style={{ color: cfg.color }}>{health.score}</p>
         <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>out of 100</p>
       </div>
 
@@ -154,7 +155,7 @@ function ActionRow({ action }: { action: any }) {
   const clickable = Boolean(action.action_url);
   return (
     <div
-      className={`flex items-start gap-3 py-2.5 ${clickable ? 'cursor-pointer transition-opacity hover:opacity-80' : ''}`}
+      className={`-mx-2 flex items-start gap-3 rounded-xl px-2 py-3 ${clickable ? 'cursor-pointer transition-colors hover:bg-[var(--bg-hover)]' : ''}`}
       style={{ borderBottom: '1px solid var(--border)' }}
       onClick={clickable ? () => router.push(action.action_url) : undefined}
     >
@@ -189,7 +190,7 @@ function UpcomingActionsWidget({ actions }: { actions: any }) {
   const allVisible = [...overdue, ...dueToday, ...upcoming7].slice(0, 8);
 
   return (
-    <div className="ss-animate-in rounded-2xl p-5 flex flex-col gap-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+    <div className="ss-animate-in flex min-h-full flex-col gap-4 rounded-2xl p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)]" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '80ms' }}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Zap size={14} style={{ color: 'var(--text-muted)' }} />
@@ -467,7 +468,7 @@ function InfoRow({ label, value }: { label: string; value?: string | null }) {
   return (
     <div className="flex items-start gap-3 py-2.5" style={{ borderBottom: '1px solid var(--border)' }}>
       <span className="text-xs min-w-[140px] pt-0.5" style={{ color: 'var(--text-muted)' }}>{label}</span>
-      <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{value || '—'}</span>
+      <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{value || 'Not set'}</span>
     </div>
   );
 }
@@ -482,22 +483,23 @@ function StatCard({
   return (
     <div
       onClick={() => href && router.push(href)}
-      className="ss-animate-in group rounded-xl px-4 py-3 flex items-center gap-3 transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-pop)] hover:-translate-y-0.5"
+      className="ss-animate-in group relative flex min-h-[116px] items-end overflow-hidden border-r border-white/10 px-5 py-4 transition-colors duration-300 last:border-r-0 hover:bg-white/[0.055]"
       style={{
-        backgroundColor: 'var(--bg-surface)',
         cursor: href ? 'pointer' : 'default',
-        border: '1px solid var(--border)',
         animationDelay: `${delay}ms`,
       }}
     >
-      <div className="w-9 h-9 rounded-lg flex items-center justify-center transition-transform duration-200 group-hover:scale-110" style={{ backgroundColor: 'var(--gold-15)' }}>
-        <Icon size={16} style={{ color: 'var(--gold)' }} />
+      <div className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] text-[#9ee5b5] transition-all duration-300 group-hover:-rotate-3 group-hover:scale-105 group-hover:bg-[#9ee5b5] group-hover:text-[#18211d]">
+        <Icon size={16} />
       </div>
-      <div>
-        <div className="text-lg font-bold leading-none tabular-nums" style={{ color: 'var(--text-primary)' }}>
+      <div className="relative">
+        <div className="text-3xl font-semibold leading-none tabular-nums tracking-[-0.04em] text-white">
           {typeof value === 'number' ? <CountUp value={value} delay={delay} /> : value}
         </div>
-        <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{label}</div>
+        <div className="mt-2 flex items-center gap-1.5 text-xs text-white/55 transition-colors group-hover:text-white/80">
+          {label}
+          {href && <ChevronRight size={12} className="transition-transform duration-200 group-hover:translate-x-0.5" />}
+        </div>
       </div>
     </div>
   );
@@ -769,41 +771,36 @@ export default function ProjectOverviewPage() {
     );
   }
 
-  const statusColors: Record<string, { bg: string; text: string }> = {
-    active:    { bg: 'rgba(34,197,94,0.12)',  text: '#4ade80' },
-    on_hold:   { bg: 'rgba(234,179,8,0.12)',  text: '#facc15' },
-    completed: { bg: 'rgba(59,130,246,0.12)', text: '#60a5fa' },
-    cancelled: { bg: 'rgba(239,68,68,0.12)',  text: '#f87171' },
-  };
-  const badge = statusColors[project?.status] ?? { bg: 'rgba(90,86,82,0.2)', text: '#9a9490' };
-
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="ss-projects-page mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-1.5">
-            <h1 className="text-[1.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>
-              {project?.name}
-            </h1>
-            <PageTourButton tourKey="page-project-overview" label="Take a tour of this page" />
+      <section className="ss-animate-in relative overflow-hidden rounded-2xl bg-[#18211d] text-white shadow-[0_24px_60px_rgba(24,33,29,0.16)]">
+        <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-[#9ee5b5]/10 blur-3xl" />
+        <div className="relative flex flex-col gap-7 px-6 pb-7 pt-6 sm:px-8 sm:pt-8 lg:flex-row lg:items-end lg:justify-between lg:px-10 lg:pb-9">
+          <div className="max-w-2xl">
+            <div className="mb-5 flex items-center gap-2 text-xs font-medium text-white/50">
+              <BriefcaseBusiness size={14} className="text-[#9ee5b5]" />
+              Project overview
+              <span className="h-1 w-1 rounded-full bg-white/25" />
+              <span className="capitalize">{project?.status?.replace(/_/g, ' ')}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
+                {project?.name}
+              </h1>
+              <PageTourButton tourKey="page-project-overview" label="Take a tour of this page" />
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-white/60">
+              {project?.code && <span>{project.code}</span>}
+              {project?.type && (
+                <span className="inline-flex items-center gap-1.5"><Building2 size={14} />{project.type}</span>
+              )}
+              {(project?.organization?.name || project?.client?.name) && (
+                <span>{project?.organization?.name ?? project?.client?.name}</span>
+              )}
+            </div>
           </div>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-            {project?.code} {project?.type ? `· ${project.type}` : ''}
-          </p>
-          {(project?.organization?.name || project?.client?.name) && (
-            <p className="mt-1 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
-              Company: {project?.organization?.name ?? project?.client?.name}
-            </p>
-          )}
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span
-            className="px-3 py-1 rounded-full text-xs font-medium capitalize"
-            style={{ backgroundColor: badge.bg, color: badge.text }}
-          >
-            {project?.status?.replace(/_/g, ' ')}
-          </span>
+          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
           {/* Phase D — optional Contract-Assisted Setup re-entry. Purely a
               convenience link, never persisted "incomplete Project" state —
               a still-usable Contracts workspace remains available
@@ -818,38 +815,38 @@ export default function ProjectOverviewPage() {
           {canOperate && analysesKnown && !hasConfirmedAnalysis && (
             <button
               onClick={() => router.push(`/app/projects/${id}/setup`)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors hover:bg-[var(--bg-hover)]"
-              style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+              className="flex h-10 items-center gap-2 rounded-xl border border-white/15 bg-white/[0.06] px-4 text-xs font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.1] active:translate-y-0"
             >
-              <Sparkles size={12} /> Set up from Contract
+              <Sparkles size={14} className="text-[#9ee5b5]" /> Set up from contract
             </button>
           )}
           {canOperate && (
             <button
               onClick={() => setEditOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors hover:bg-[var(--bg-hover)]"
-              style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+              className="group flex h-10 items-center gap-2 rounded-xl bg-[#9ee5b5] px-4 text-xs font-semibold text-[#18211d] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#b4edc6] active:translate-y-0"
             >
-              <Pencil size={12} /> Edit Project
+              <Pencil size={14} /> Edit project
+              <ArrowUpRight size={13} className="transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </button>
           )}
+          </div>
         </div>
-      </div>
+
+        {/* Clickable project signals */}
+        <div className="relative grid grid-cols-2 border-t border-white/10 lg:grid-cols-4" data-tour="overview-stats">
+          <StatCard label="Open RFIs"           value={statsData?.open_rfis ?? 0}           icon={MessageSquare} href={`/app/projects/${id}/rfis?status=open`} index={0} />
+          <StatCard label="Pending variations"  value={statsData?.pending_variations ?? 0}  icon={GitBranch}     href={`/app/projects/${id}/variations?status=pending`} index={1} />
+          <StatCard label="Payment applications" value={statsData?.payment_apps ?? 0}       icon={DollarSign}    href={`/app/projects/${id}/commercial`} index={2} />
+          <StatCard label="Open snagging"        value={statsData?.open_snagging ?? 0}      icon={AlertCircle}   href={`/app/projects/${id}/snagging`} index={3} />
+        </div>
+      </section>
 
       {editOpen && project && (
         <EditProjectModal project={project} projectId={id} onClose={() => setEditOpen(false)} />
       )}
 
-      {/* Clickable stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" data-tour="overview-stats">
-        <StatCard label="Open RFIs"          value={statsData?.open_rfis ?? 0}          icon={MessageSquare} href={`/app/projects/${id}/rfis?status=open`} index={0} />
-        <StatCard label="Pending Variations"  value={statsData?.pending_variations ?? 0}  icon={GitBranch}     href={`/app/projects/${id}/variations?status=pending`} index={1} />
-        <StatCard label="Payment Apps"        value={statsData?.payment_apps ?? 0}        icon={DollarSign}    href={`/app/projects/${id}/commercial`} index={2} />
-        <StatCard label="Open Snagging"       value={statsData?.open_snagging ?? 0}       icon={AlertCircle}   href={`/app/projects/${id}/snagging`} index={3} />
-      </div>
-
       {/* Operational intelligence — health + actions (most urgent first) */}
-      <div className="grid lg:grid-cols-2 gap-5">
+      <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
         <ProjectHealthWidget health={projectHealth} />
         <UpcomingActionsWidget actions={upcomingActions} />
       </div>
@@ -1066,4 +1063,3 @@ export default function ProjectOverviewPage() {
     </div>
   );
 }
-

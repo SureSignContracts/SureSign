@@ -8,6 +8,7 @@ import {
   Loader2, MapPin, Search, User, Users, X, XCircle,
 } from 'lucide-react';
 import api from '@/lib/api';
+import PlatformPageHero from '@/components/admin/PlatformPageHero';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -131,7 +132,6 @@ function CompanyPanel({ companyNumber, onClose }: { companyNumber: string; onClo
     staleTime: 5 * 60 * 1000,
   });
 
-  const active = detail?.company_status?.toLowerCase() === 'active';
   const officers = officersData?.items ?? [];
   const activeOfficers = officers.filter(o => !o.resigned_on);
   const resignedOfficers = officers.filter(o => o.resigned_on);
@@ -435,14 +435,18 @@ export default function FindCompanyPage() {
   const endNum = Math.min(page * PAGE_SIZE, totalResults);
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Find Company</h1>
-        <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-          Search the UK Companies House register
-        </p>
-      </div>
+    <div className="mx-auto max-w-7xl space-y-7 p-4 pb-12 sm:p-6 lg:p-8">
+      <PlatformPageHero
+        eyebrow="External intelligence"
+        title="Find Company"
+        description="Search the official UK Companies House register before onboarding an organisation or preparing a contract."
+        loading={searchMutation.isPending}
+        metrics={[
+          { label: 'Matches', value: totalResults, detail: submittedQuery ? `for “${submittedQuery}”` : 'ready to search', icon: Building2 },
+          { label: 'Results shown', value: results?.length ?? 0, detail: 'on this page', icon: FileText },
+          { label: 'Register', value: 'UK', detail: 'Companies House', icon: CheckCircle2 },
+        ]}
+      />
 
       {/* API key warning */}
       {apiKeyMissing && (

@@ -95,35 +95,6 @@ function dayLabel(days: number): string {
   return `${days}d remaining`;
 }
 
-/** Compact attention-summary tile — a real server-computed count, an icon, and an optional click action. */
-function SummaryStatCard({
-  icon: Icon, value, label, tone, onClick, index,
-}: {
-  icon: typeof AlertTriangle;
-  value: number;
-  label: string;
-  tone: { bg: string; text: string };
-  onClick?: () => void;
-  index: number;
-}) {
-  const Tag = onClick ? 'button' : 'div';
-  return (
-    <Tag
-      onClick={onClick}
-      className={`ss-animate-in flex items-center gap-3 rounded-xl p-3.5 text-left transition-all duration-200 ${onClick ? 'cursor-pointer hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]' : ''}`}
-      style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', animationDelay: staggerDelay(index) }}
-    >
-      <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: tone.bg }}>
-        <Icon size={18} style={{ color: tone.text }} />
-      </div>
-      <div className="min-w-0">
-        <p className="text-2xl font-bold leading-none tabular-nums" style={{ color: 'var(--text-primary)' }}>{value}</p>
-        <p className="text-xs mt-0.5 leading-snug" style={{ color: 'var(--text-muted)' }}>{label}</p>
-      </div>
-    </Tag>
-  );
-}
-
 export default function AppDashboardPage() {
   const user = useAuthStore((s) => s.user);
   const router = useRouter();
@@ -173,7 +144,8 @@ export default function AppDashboardPage() {
 
   function jumpToNeedsAttention(status: ItemStatus | 'all') {
     setUrgencyFilter(status);
-    document.getElementById('dashboard-needs-attention')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.getElementById('dashboard-needs-attention')?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
   }
 
   if (isLoading) {
@@ -213,48 +185,63 @@ export default function AppDashboardPage() {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-8">
+    <div className="ss-projects-page ss-workspace-page-in mx-auto max-w-7xl space-y-7 p-4 sm:p-6 lg:py-9">
       {/* Hero */}
-      <div
-        className="ss-animate-in relative flex items-stretch gap-6 rounded-2xl p-6 overflow-hidden"
-        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}
+      <section
+        className="ss-workspace-hero-in grid overflow-hidden rounded-2xl bg-[#18211d] text-[#f4f7f5] lg:grid-cols-[1.08fr_0.92fr]"
         data-tour="dashboard-header"
       >
-        <div className="flex-1 min-w-0 flex flex-col justify-center">
-          <div className="flex items-center gap-1.5">
-            <h1 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
-              Good day, {firstName}
-            </h1>
-            <PageTourButton tourKey="page-dashboard" label="Take a tour of this page" />
+        <div className="ss-workspace-left-in relative overflow-hidden p-7 sm:p-9 lg:p-11">
+          <div className="absolute -left-28 -top-32 h-80 w-80 rounded-full border border-[#a5d6b5]/10 transition-transform duration-700 ease-out hover:scale-105" />
+          <div className="relative">
+            <div className="mb-8 flex items-center justify-between gap-4">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#a5d6b5]/20 bg-[#a5d6b5]/10 text-[#9ee5b5]">
+                <Activity size={20} />
+              </div>
+              <span style={{ '--text-muted': '#b9c5bf' } as React.CSSProperties}>
+                <PageTourButton tourKey="page-dashboard" label="Take a tour of this page" />
+              </span>
+            </div>
+            <h1 className="text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">Good day, {firstName}.</h1>
+            <p className="mt-4 max-w-xl text-sm leading-6 text-[#b9c5bf] sm:text-base">
+              {totalUrgent > 0
+                ? `${totalUrgent} item${totalUrgent === 1 ? '' : 's'} need${totalUrgent === 1 ? 's' : ''} your attention across the organisation.`
+                : 'Your organisation has no overdue or due-today items.'}
+            </p>
+            {totalUrgent > 0 && (
+              <button onClick={() => jumpToNeedsAttention('all')} className="mt-7 inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+                Review urgent work <ArrowRight size={14} />
+              </button>
+            )}
+
+            <div className="absolute bottom-0 right-0 hidden w-36 translate-x-4 translate-y-6 opacity-75 xl:block">
+              <Image src="/dashboard/hero-construction.webp" alt="" width={480} height={291} className="h-auto w-full object-contain" priority />
+            </div>
           </div>
-          <p className="mt-1.5 text-sm max-w-md" style={{ color: 'var(--text-secondary)' }}>
-            {totalUrgent > 0
-              ? `${totalUrgent} item${totalUrgent === 1 ? '' : 's'} need${totalUrgent === 1 ? 's' : ''} attention across your organisation.`
-              : 'What requires attention across your organisation today.'}
-          </p>
         </div>
 
-        {/* Hero visual — hidden on small screens rather than left as dead
-            decorative space (mobile keeps the first viewport action-focused,
-            per the visual direction). Explicit width/height on the source
-            asset (matching its real aspect ratio) avoids any layout shift;
-            `object-contain` lets it sit inside the fixed-height slot without
-            cropping. See docs/dashboard/overview.md and the batch report for
-            this asset's source/license. */}
-        <div
-          className="hidden md:flex w-48 flex-shrink-0 items-center justify-center rounded-xl relative overflow-hidden"
-          style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}
-        >
-          <Image
-            src="/dashboard/hero-construction.webp"
-            alt=""
-            width={480}
-            height={291}
-            className="w-full h-full object-contain p-2"
-            priority
-          />
+        <div className="ss-workspace-right-in grid grid-cols-2 border-t border-[#a5d6b5]/10 bg-[#202c26] lg:border-l lg:border-t-0">
+          {[
+            { label: 'Overdue', value: counts?.overdue ?? 0, icon: AlertTriangle, color: '#fda4af', status: 'overdue' as const },
+            { label: 'Due today', value: counts?.due_today ?? 0, icon: Clock, color: '#fdba74', status: 'due_today' as const },
+            { label: 'Due soon', value: counts?.due_soon ?? 0, icon: Clock, color: '#fde68a', status: 'due_soon' as const },
+            { label: 'Commercial dates', value: data?.commercial_snapshot.commercial_deadline_count ?? 0, icon: CalendarClock, color: '#9ee5b5', commercial: true },
+          ].map((stat, index) => (
+            <button
+              key={stat.label}
+              onClick={() => stat.commercial ? router.push(data?.commercial_snapshot.action_url ?? '/app/commercial') : jumpToNeedsAttention(stat.status!)}
+              className="ss-animate-in group/stat flex min-h-32 flex-col justify-between border-[#a5d6b5]/10 p-5 text-left transition-colors duration-300 hover:bg-[#26342d] sm:p-6 [&:nth-child(odd)]:border-r [&:nth-child(-n+2)]:border-b"
+              style={{ animationDelay: `${130 + (index * 60)}ms` }}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs text-[#91a099]">{stat.label}</p>
+                <stat.icon size={14} className="transition-transform duration-300 group-hover/stat:scale-110" style={{ color: stat.color }} />
+              </div>
+              <p className="mt-4 text-3xl font-semibold tracking-[-0.04em] tabular-nums" style={{ color: stat.color }}>{stat.value}</p>
+            </button>
+          ))}
         </div>
-      </div>
+      </section>
 
       {!data?.meta.has_projects ? (
         <EmptyState
@@ -265,27 +252,16 @@ export default function AppDashboardPage() {
         />
       ) : (
         <>
-          {/* Attention Summary */}
-          <section aria-label="Attention summary">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <SummaryStatCard index={0} icon={AlertTriangle} value={counts?.overdue ?? 0} label="Overdue"
-                tone={{ bg: 'rgba(239,68,68,0.15)', text: '#f87171' }} onClick={() => jumpToNeedsAttention('overdue')} />
-              <SummaryStatCard index={1} icon={Clock} value={counts?.due_today ?? 0} label="Due Today"
-                tone={{ bg: 'rgba(249,115,22,0.15)', text: '#fb923c' }} onClick={() => jumpToNeedsAttention('due_today')} />
-              <SummaryStatCard index={2} icon={Clock} value={counts?.due_soon ?? 0} label="Due Soon"
-                tone={{ bg: 'rgba(234,179,8,0.15)', text: '#facc15' }} onClick={() => jumpToNeedsAttention('due_soon')} />
-              <SummaryStatCard index={3} icon={CalendarClock} value={data?.commercial_snapshot.commercial_deadline_count ?? 0} label="Commercial Deadlines"
-                tone={{ bg: 'var(--gold-15)', text: 'var(--gold)' }} onClick={() => router.push(data?.commercial_snapshot.action_url ?? '/app/commercial')} />
-            </div>
-          </section>
-
           {/* Project Map */}
-          {data?.project_map && <ProjectMap data={data.project_map} />}
+          {data?.project_map && <div className="ss-animate-in" style={{ animationDelay: '220ms' }}><ProjectMap data={data.project_map} /></div>}
 
           {/* Portfolio Health + Commercial Position */}
-          <div className="grid lg:grid-cols-2 gap-6">
-            <section data-tour="dashboard-portfolio-health">
-              <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>Portfolio Health</h2>
+          <div className="grid gap-5 lg:grid-cols-2">
+            <section className="ss-animate-in rounded-2xl border p-5 sm:p-6" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '280ms' }} data-tour="dashboard-portfolio-health">
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold tracking-[-0.02em]" style={{ color: 'var(--text-primary)' }}>Portfolio health</h2>
+                <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>Delivery pressure across active projects.</p>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 {[
                   { label: 'Active Projects', value: data?.portfolio_health.active_projects ?? 0, icon: FolderKanban, tone: { bg: 'var(--bg-elevated)', text: 'var(--text-primary)' } },
@@ -295,10 +271,10 @@ export default function AppDashboardPage() {
                 ].map((stat, i) => (
                   <div
                     key={stat.label}
-                    className="ss-animate-in rounded-xl p-3.5 flex items-center gap-3 transition-shadow duration-200 hover:shadow-[var(--shadow-card)]"
-                    style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', animationDelay: staggerDelay(i) }}
+                    className="group ss-animate-in flex items-center gap-3 rounded-xl p-3.5 transition-all duration-300 hover:-translate-y-0.5"
+                    style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', animationDelay: staggerDelay(i) }}
                   >
-                    <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: stat.tone.bg }}>
+                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-105" style={{ backgroundColor: stat.tone.bg }}>
                       <stat.icon size={16} style={{ color: stat.tone.text }} />
                     </div>
                     <div className="min-w-0">
@@ -310,19 +286,22 @@ export default function AppDashboardPage() {
               </div>
             </section>
 
-            <section data-tour="dashboard-commercial-snapshot">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Commercial Position</h2>
+            <section className="ss-animate-in rounded-2xl border p-5 sm:p-6" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '340ms' }} data-tour="dashboard-commercial-snapshot">
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold tracking-[-0.02em]" style={{ color: 'var(--text-primary)' }}>Commercial position</h2>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>Outstanding value and retained funds.</p>
+                </div>
                 <a href={data?.commercial_snapshot.action_url ?? '/app/commercial'} className="flex items-center gap-1 text-xs font-medium hover:opacity-80" style={{ color: 'var(--gold)' }}>
-                  Open Global Commercial <ArrowRight size={11} />
+                  Open commercial <ArrowRight size={11} />
                 </a>
               </div>
               {(data?.commercial_snapshot.by_currency.length ?? 0) === 0 ? (
                 <EmptyState surface icon={Landmark} title="No commercial data yet" description="Commercial figures will appear here once payment applications exist." />
               ) : (
                 <div
-                  className="rounded-xl p-4 space-y-3 ss-animate-in"
-                  style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}
+                  className="ss-animate-in space-y-3 rounded-xl p-4"
+                  style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}
                 >
                   {data!.commercial_snapshot.by_currency.map((block) => (
                     <div key={block.currency} className="grid grid-cols-2 gap-3">
@@ -368,9 +347,12 @@ export default function AppDashboardPage() {
           </div>
 
           {/* Needs Attention */}
-          <section id="dashboard-needs-attention" data-tour="dashboard-needs-attention">
-            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-              <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Needs Attention</h2>
+          <section id="dashboard-needs-attention" className="ss-animate-in rounded-2xl border p-5 sm:p-6" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '400ms' }} data-tour="dashboard-needs-attention">
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold tracking-[-0.025em]" style={{ color: 'var(--text-primary)' }}>Needs attention</h2>
+                <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Deadlines and records that may affect delivery.</p>
+              </div>
               {items.length > 0 && (
                 <div className="flex gap-2 flex-wrap">
                   <Select aria-label="Filter by urgency" value={urgencyFilter} onChange={e => setUrgencyFilter(e.target.value as 'all' | ItemStatus)}
@@ -413,8 +395,8 @@ export default function AppDashboardPage() {
                       tabIndex={0}
                       onClick={() => router.push(item.action_url)}
                       onKeyDown={e => e.key === 'Enter' && router.push(item.action_url)}
-                      className="ss-animate-in flex items-center gap-3 p-3.5 rounded-xl border cursor-pointer transition-all duration-200 hover:border-[var(--gold)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
-                      style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', animationDelay: staggerDelay(i) }}
+                      className="group ss-animate-in flex cursor-pointer items-center gap-3 rounded-xl border p-3.5 transition-all duration-300 hover:-translate-y-0.5 hover:border-[var(--gold)] hover:shadow-[var(--shadow-card)]"
+                      style={{ backgroundColor: 'var(--bg-elevated)', borderColor: 'var(--border)', animationDelay: staggerDelay(i) }}
                     >
                       <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: s.bg }}>
                         <StatusIcon size={16} style={{ color: s.text }} />
@@ -438,6 +420,7 @@ export default function AppDashboardPage() {
                           )}
                         </div>
                       </div>
+                      <ArrowRight size={14} className="flex-shrink-0 transition-transform duration-300 group-hover:translate-x-1" style={{ color: 'var(--gold)' }} />
                     </div>
                   );
                 })}
@@ -466,18 +449,21 @@ export default function AppDashboardPage() {
 
           {/* Recent Activity */}
           {recentActivity.length > 0 && (
-            <section data-tour="dashboard-recent-activity">
-              <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>Recent Activity</h2>
-              <div className="ss-animate-in space-y-0.5">
+            <section className="ss-animate-in rounded-2xl border p-5 sm:p-6" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '460ms' }} data-tour="dashboard-recent-activity">
+              <div className="mb-4">
+                <h2 className="text-xl font-semibold tracking-[-0.025em]" style={{ color: 'var(--text-primary)' }}>Recent activity</h2>
+                <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>The latest recorded changes across your organisation.</p>
+              </div>
+              <div className="ss-animate-in space-y-1">
                 {visibleActivity.map(activity => (
-                  <div key={activity.id} className="flex items-center gap-3 px-2 py-2 rounded-lg transition-colors duration-150 hover:bg-[var(--bg-hover)]">
-                    <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+                  <div key={activity.id} className="group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-200 hover:translate-x-0.5 hover:bg-[var(--bg-hover)]">
+                    <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-105" style={{ backgroundColor: 'var(--bg-elevated)' }}>
                       <Activity size={11} style={{ color: 'var(--text-muted)' }} />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm truncate" style={{ color: 'var(--text-primary)' }}>{activity.description}</p>
                       <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
-                        {activity.project_name} · {activity.actor} · {new Date(activity.timestamp).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        {activity.project_name} / {activity.actor} / {new Date(activity.timestamp).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
                   </div>

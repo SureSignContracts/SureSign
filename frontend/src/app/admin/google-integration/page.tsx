@@ -9,6 +9,7 @@ import { getErrorMessage } from '@/lib/getErrorMessage';
 import { useAuthStore } from '@/store/authStore';
 import Button from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import PlatformPageHero from '@/components/admin/PlatformPageHero';
 
 interface ConnectionDiagnostics {
   connected: boolean;
@@ -133,17 +134,14 @@ export default function GoogleIntegrationPage() {
   const healthState = health?.state ?? 'not_connected';
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-5">
-      <div>
-        <h1 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-          <Link2 size={20} /> Google Integration
-        </h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-          Platform-level Google Calendar connection foundation. Stage 4A — connection, health, and
-          readiness only. Calendar event creation, Google Meet links, and customer-facing automation
-          are not yet built.
-        </p>
-      </div>
+    <div className="mx-auto max-w-7xl space-y-7 p-4 pb-12 sm:p-6 lg:p-8">
+      <PlatformPageHero eyebrow="Connected systems" title="Google Integration" description="Monitor the platform Google Calendar connection, authorization health and meeting readiness." loading={isLoading}
+        metrics={[
+          { label: 'Connection', value: connection?.connected ? 'Connected' : 'Offline', detail: connection?.connected_email ?? 'no account connected', icon: Link2 },
+          { label: 'Health', value: HEALTH_LABEL[healthState] ?? healthState, detail: health?.missing_scopes?.length ? `${health.missing_scopes.length} missing scopes` : 'authorization state', icon: Activity },
+          { label: 'Meet readiness', value: readiness?.meet_available ? 'Ready' : 'Unavailable', detail: readiness?.ready ? 'integration operational' : 'configuration required', icon: CheckCircle2 },
+        ]}
+      />
 
       <div className="rounded-2xl p-5 space-y-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
         <div className="flex items-center justify-between">

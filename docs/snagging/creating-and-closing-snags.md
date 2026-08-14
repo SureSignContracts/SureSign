@@ -42,11 +42,19 @@ specific snags.
 
 ## Drawing Locations
 
-If a snag has been linked to a location on a [Drawing](../drawings/viewing-a-drawing.md#linking-project-records),
-a **Drawing Locations** section on the snag shows every drawing location
+A snag may also be created directly from a location on a
+[Drawing](../drawings/viewing-a-drawing.md#creating-records-from-a-drawing-location)
+— select **Create Record → Create Snag** from that location's marker. The
+location's label, if it has one, suggests a starting value for Location
+(you can still edit or clear it), and the drawing link is recorded
+automatically — you don't need to link it separately afterward.
+
+If a snag has been linked to a location on a
+[Drawing](../drawings/viewing-a-drawing.md#linking-existing-records)
+(whether created this way or linked to an existing snag afterward), a
+**Drawing Locations** section on the snag shows every drawing location
 it's linked from, with an **Open Drawing** action that jumps straight to
-the correct drawing, revision, and page. Linking is done from the Drawing
-Viewer, not from here.
+the correct drawing, revision, and page.
 
 ## Related
 

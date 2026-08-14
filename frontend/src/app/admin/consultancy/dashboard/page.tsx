@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import api from '@/lib/api';
 import Button from '@/components/ui/Button';
+import PlatformPageHero from '@/components/admin/PlatformPageHero';
 
 interface DashboardSummary {
   totals: {
@@ -100,34 +101,38 @@ export default function ConsultancyDashboardPage() {
     (attention?.awaiting_customer_unknown_age ?? 0);
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3 ss-animate-in">
-        <div>
-          <h1 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-            <HeartHandshake size={20} /> Consultancy Dashboard
-          </h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-            What needs attention, and where to click next.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link href="/admin/consultancy/queue">
-            <Button variant="secondary" size="md" className="rounded-full"><ListChecks size={14} /> Full Queue</Button>
+    <div className="mx-auto max-w-7xl space-y-7 p-4 pb-12 sm:p-6 lg:p-8">
+      <PlatformPageHero
+        eyebrow="Consultancy control"
+        title="Consultancy"
+        description="See demand, ownership and customer response across every active consultancy engagement."
+        loading={isLoading}
+        metrics={[
+          { label: 'Consultations', value: totals?.all ?? 0, detail: 'all engagements', icon: HeartHandshake },
+          { label: 'Awaiting consultant', value: totals?.awaiting_consultant ?? 0, detail: 'needs an expert response', icon: Clock },
+          { label: 'Awaiting customer', value: totals?.awaiting_customer ?? 0, detail: 'customer action due', icon: Hourglass },
+          { label: 'Unassigned', value: totals?.unassigned ?? 0, detail: 'without an owner', icon: UserX },
+        ]}
+        action={
+          <div className="flex max-w-xl flex-wrap items-center justify-end gap-2">
+          <Link href="/admin/consultancy/queue" className="flex items-center gap-2 rounded-xl bg-[#9ee5b5] px-3.5 py-2.5 text-xs font-semibold text-[#18211d] transition-colors hover:bg-[#b3efc6]">
+            <ListChecks size={14} /> Queue
           </Link>
-          <Link href="/admin/consultancy/services">
-            <Button variant="secondary" size="md" className="rounded-full"><Settings2 size={14} /> Consultancy Services</Button>
+          <Link href="/admin/consultancy/services" className="flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-white/65 transition-colors hover:bg-white/[0.06] hover:text-white">
+            <Settings2 size={13} /> Services
           </Link>
-          <Link href="/admin/consultancy/availability">
-            <Button variant="secondary" size="md" className="rounded-full"><CalendarClock size={14} /> Availability</Button>
+          <Link href="/admin/consultancy/availability" className="flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-white/65 transition-colors hover:bg-white/[0.06] hover:text-white">
+            <CalendarClock size={13} /> Availability
           </Link>
-          <Link href="/admin/consultancy/settings">
-            <Button variant="secondary" size="md" className="rounded-full"><Settings2 size={14} /> Settings</Button>
+          <Link href="/admin/consultancy/settings" className="flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-white/65 transition-colors hover:bg-white/[0.06] hover:text-white">
+            <Settings2 size={13} /> Settings
           </Link>
-          <Link href="/admin/consultancy/reservations">
-            <Button variant="secondary" size="md" className="rounded-full"><Timer size={14} /> Reservations</Button>
+          <Link href="/admin/consultancy/reservations" className="flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-white/65 transition-colors hover:bg-white/[0.06] hover:text-white">
+            <Timer size={13} /> Reservations
           </Link>
-        </div>
-      </div>
+          </div>
+        }
+      />
 
       {isError ? (
         <div className="rounded-2xl p-8 text-center ss-animate-in" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
@@ -136,20 +141,6 @@ export default function ConsultancyDashboardPage() {
         </div>
       ) : (
         <>
-          {/* Totals */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 ss-animate-in" style={{ animationDelay: '50ms' }}>
-            {isLoading ? (
-              [...Array(4)].map((_, i) => <SkeletonCard key={i} />)
-            ) : (
-              <>
-                <StatCard label="All Consultations" value={totals?.all ?? 0} icon={ListChecks} href="/admin/consultancy/queue" />
-                <StatCard label="Awaiting Consultant" value={totals?.awaiting_consultant ?? 0} icon={Clock} tone="warning" href="/admin/consultancy/queue?engagement_status=awaiting_consultant" />
-                <StatCard label="Awaiting Customer" value={totals?.awaiting_customer ?? 0} icon={Hourglass} tone="warning" href="/admin/consultancy/queue?engagement_status=awaiting_customer" />
-                <StatCard label="Unassigned" value={totals?.unassigned ?? 0} icon={UserX} tone={totals && totals.unassigned > 0 ? 'danger' : 'default'} href="/admin/consultancy/queue?unassigned=1" />
-              </>
-            )}
-          </div>
-
           {/* Attention panel */}
           <div className="rounded-2xl p-5 ss-animate-in" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '100ms' }}>
             <div className="flex items-center justify-between mb-3">

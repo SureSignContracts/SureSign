@@ -56,7 +56,7 @@ const NAV_GROUPS = [
   {
     label: 'AI Credits',
     items: [
-      { href: '/admin/ai-credits', label: 'Dashboard', icon: Wallet, pageKey: 'ai-credits' },
+      { href: '/admin/ai-credits', label: 'Dashboard', icon: Wallet, pageKey: 'ai-credits', exact: true },
       { href: '/admin/ai-credits/organizations', label: 'Organisations', icon: Building2, pageKey: 'ai-credits' },
       { href: '/admin/ai-credits/transactions', label: 'Transactions', icon: ScrollText, pageKey: 'ai-credits' },
       { href: '/admin/ai-credits/shadow-activity', label: 'Shadow Activity', icon: Activity, pageKey: 'ai-credits' },
@@ -338,10 +338,10 @@ function NavItem({
             'group relative flex items-center justify-center w-9 h-9 mx-auto rounded-xl',
             'transition-all duration-150 ease-out',
             active
-              ? 'bg-[var(--bg-surface)] shadow-sm'
+              ? 'bg-[#18211d] shadow-sm'
               : 'hover:bg-[var(--bg-surface)]',
           )}
-          style={{ color: active ? 'var(--text-primary)' : 'var(--text-secondary)' }}
+          style={{ color: active ? '#9ee5b5' : 'var(--text-secondary)' }}
         >
           <Icon
             size={18}
@@ -353,7 +353,7 @@ function NavItem({
           {active && (
             <span
               className="absolute right-1 top-1 w-1 h-1 rounded-full"
-              style={{ backgroundColor: 'var(--text-primary)' }}
+              style={{ backgroundColor: '#9ee5b5' }}
             />
           )}
           <SidebarCountBadge count={badge ?? 0} className="absolute -right-2 -top-1" />
@@ -371,16 +371,16 @@ function NavItem({
         'group relative flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm',
         'transition-all duration-150 ease-out',
         active
-          ? 'font-semibold bg-[var(--bg-surface)] shadow-sm'
+          ? 'font-semibold bg-[#18211d] shadow-sm'
           : 'hover:bg-[var(--bg-surface)] hover:translate-x-0.5',
       )}
-      style={{ color: active ? 'var(--text-primary)' : 'var(--text-secondary)' }}
+      style={{ color: active ? '#ffffff' : 'var(--text-secondary)' }}
     >
       {/* Left accent bar */}
       <span
         className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] rounded-full transition-all duration-200 ease-out"
         style={{
-          backgroundColor: 'var(--text-primary)',
+          backgroundColor: '#9ee5b5',
           height: active ? '18px' : '0px',
           opacity: active ? 1 : 0,
         }}

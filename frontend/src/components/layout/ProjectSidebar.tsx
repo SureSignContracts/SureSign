@@ -23,6 +23,7 @@ interface ProjectSidebarProps {
   isLoading?: boolean;
   mobileOpen?: boolean;
   onMobileClose?: () => void;
+  className?: string;
 }
 
 interface NavItem {
@@ -278,6 +279,7 @@ export default function ProjectSidebar({
   isLoading,
   mobileOpen = false,
   onMobileClose,
+  className,
 }: ProjectSidebarProps) {
   const pathname = usePathname();
   const handleSidebarScroll = useAutoHideScrollbar();
@@ -365,6 +367,7 @@ export default function ProjectSidebar({
           'fixed inset-y-0 left-0 transition-transform duration-300 ease-out',
           'lg:static lg:z-auto lg:flex-shrink-0 lg:transition-none',
           mobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0',
+          className,
         )}
         style={{ backgroundColor: 'var(--bg-base)' }}
       >

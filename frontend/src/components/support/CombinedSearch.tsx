@@ -58,9 +58,9 @@ export function CombinedSearch() {
           <input
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Search the Help Center — Knowledge Base and FAQ…"
+            placeholder="Search the knowledge base and frequently asked questions..."
             aria-label="Search Help Center"
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none"
+            className="w-full rounded-xl py-3 pl-9 pr-4 text-sm outline-none transition-all duration-200 focus:border-[var(--gold)] focus:ring-2 focus:ring-[var(--gold)]/10"
             style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
           />
         </div>

@@ -9,7 +9,6 @@ import {
   User, Building2, Palette, ArrowRight, ArrowLeft,
   Check, Upload, X, AlertCircle,
 } from 'lucide-react';
-import { Card } from '@/components/ui/Card';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 
 // ─── Form state types ────────────────────────────────────────────────────────
@@ -107,6 +106,8 @@ function ImageUploadCard({
       >
         {preview ? (
           <>
+            {/* Blob previews are local, temporary objects and cannot use Next Image optimization. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={preview} alt={label} className="w-full h-full object-contain" />
             <button
               type="button"
@@ -301,12 +302,46 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-start justify-center px-4 py-10"
-         style={{ backgroundColor: 'var(--bg-base)' }}>
-      <div className="w-full max-w-2xl">
+    <div className="flex min-h-dvh items-center justify-center bg-[#eef1ef] p-4 sm:p-8">
+      <div className="grid min-h-[760px] w-full max-w-6xl overflow-hidden rounded-2xl bg-[var(--bg-surface)] shadow-[0_30px_90px_rgba(24,33,29,0.16)] lg:grid-cols-[320px_minmax(0,1fr)]">
+        <aside className="relative hidden overflow-hidden bg-[#18211d] p-8 text-white lg:flex lg:flex-col">
+          <div className="pointer-events-none absolute -right-24 -top-20 h-72 w-72 rounded-full bg-[#9ee5b5]/10 blur-3xl" />
+          <div className="relative">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#9ee5b5] font-bold text-[#18211d]">S</div>
+            <p className="mt-9 text-xs font-semibold uppercase tracking-[0.16em] text-[#9ee5b5]">Workspace setup</p>
+            <h1 className="mt-3 text-3xl font-semibold leading-tight tracking-[-0.04em]">Make SureSign yours.</h1>
+            <p className="mt-3 text-sm leading-6 text-white/45">A few practical details before your organisation workspace goes live.</p>
+          </div>
+
+          <div className="relative mt-12 space-y-2">
+            {STEPS.map((item) => {
+              const active = step === item.id;
+              const complete = step > item.id;
+              return (
+                <div key={item.id} className={`flex items-center gap-3 rounded-xl px-3 py-3 transition-colors ${active ? 'bg-white/[0.07]' : ''}`}>
+                  <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${active || complete ? 'bg-[#9ee5b5] text-[#18211d]' : 'bg-white/[0.06] text-white/35'}`}>
+                    {complete ? <Check size={15} /> : <item.icon size={15} />}
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.13em] text-white/30">Step {item.id} of 3</p>
+                    <p className={`mt-0.5 text-sm font-medium ${active ? 'text-white' : complete ? 'text-[#9ee5b5]' : 'text-white/40'}`}>{item.label}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <p className="relative mt-auto border-t border-white/10 pt-5 text-xs leading-5 text-white/35">Your progress is saved after each step. Branding can be updated later.</p>
+        </aside>
+
+        <main className="max-h-[92vh] overflow-y-auto p-6 sm:p-9 lg:p-12">
 
         {/* Exit button */}
-        <div className="mb-6 flex justify-end">
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'var(--gold)' }}>Step {step} of 3</p>
+            <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>{STEPS[step - 1].label}</p>
+          </div>
           <button
             onClick={() => { logout().finally(() => router.push('/login')); }}
             className="text-xs font-medium px-3 py-1.5 rounded-lg"
@@ -316,48 +351,7 @@ export default function OnboardingPage() {
           </button>
         </div>
 
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4 text-lg font-bold"
-               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>S</div>
-          <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Welcome to SureSign Contracts</h1>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            Let's set up your account before you get started
-          </p>
-        </div>
-
-        {/* Step indicator */}
-        <div className="flex items-center justify-center mb-8">
-          {STEPS.map((s, i) => (
-            <div key={s.id} className="flex items-center">
-              <div className="flex flex-col items-center gap-1">
-                <div
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-all"
-                  style={
-                    step > s.id
-                      ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
-                      : step === s.id
-                      ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', boxShadow: '0 0 0 4px rgba(0,0,0,0.1)' }
-                      : { backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)', border: '1px solid var(--border)' }
-                  }
-                >
-                  {step > s.id ? <Check size={14} /> : <s.icon size={14} />}
-                </div>
-                <span className="text-xs font-medium whitespace-nowrap"
-                      style={{ color: step === s.id ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-                  {s.label}
-                </span>
-              </div>
-              {i < STEPS.length - 1 && (
-                <div className="w-16 h-px mx-2 mb-5"
-                     style={{ backgroundColor: step > s.id ? 'var(--gold)' : 'var(--border)' }} />
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Card */}
-        <Card className="p-8">
+        <div className="ss-animate-in">
 
           {/* Step 1: Your Profile */}
           {step === 1 && (
@@ -369,7 +363,7 @@ export default function OnboardingPage() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field label="First Name" required
                   value={profile.first_name} onChange={setP('first_name')}
                   placeholder="John" error={profileErrors.first_name} />
@@ -378,7 +372,7 @@ export default function OnboardingPage() {
                   placeholder="Smith" error={profileErrors.last_name} />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field label="Phone Number" type="tel"
                   value={profile.phone} onChange={setP('phone')}
                   placeholder="+44 20 7946 0000" error={profileErrors.phone} />
@@ -392,7 +386,7 @@ export default function OnboardingPage() {
                 <Field label="Address Line"
                   value={profile.address} onChange={setP('address')}
                   placeholder="10 Construction Way" />
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <Field label="City"
                     value={profile.city} onChange={setP('city')}
                     placeholder="London" />
@@ -400,7 +394,7 @@ export default function OnboardingPage() {
                     value={profile.province} onChange={setP('province')}
                     placeholder="England" />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <Field label="Postal Code"
                     value={profile.postal_code} onChange={setP('postal_code')}
                     placeholder="EC1A 1BB" />
@@ -427,7 +421,7 @@ export default function OnboardingPage() {
                 <Field label="Registered Company Name" required
                   value={company.name} onChange={setO('name')}
                   placeholder="Acme Construction Ltd" error={companyErrors.name} />
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <Field label="Company Number"
                     value={company.acn} onChange={setO('acn')} placeholder="12345678" />
                   <Field label="VAT / Tax Number"
@@ -437,7 +431,7 @@ export default function OnboardingPage() {
 
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem' }} className="space-y-4">
                 <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Contact & Online</p>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <Field label="Company Email" type="email"
                     value={company.email} onChange={setO('email')}
                     placeholder="info@acme.com" error={companyErrors.email} />
@@ -452,7 +446,7 @@ export default function OnboardingPage() {
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem' }} className="space-y-3">
                 <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Registered Address</p>
                 <Field label="Street Address" value={company.address} onChange={setO('address')} placeholder="10 Construction Way" />
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <Field label="City" value={company.city} onChange={setO('city')} placeholder="London" />
                   <Field label="State / County" value={company.state} onChange={setO('state')} placeholder="England" />
                   <Field label="Postcode" value={company.postcode} onChange={setO('postcode')} placeholder="EC1A 1BB" />
@@ -572,11 +566,12 @@ export default function OnboardingPage() {
               </button>
             )}
           </div>
-        </Card>
+        </div>
 
         <p className="text-center text-xs mt-4" style={{ color: 'var(--text-muted)' }}>
           You can update all of this later in Settings
         </p>
+        </main>
       </div>
     </div>
   );

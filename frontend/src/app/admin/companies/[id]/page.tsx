@@ -13,15 +13,12 @@ import toast from 'react-hot-toast';
 import Select from '@/components/ui/Select';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import {
-  ArrowLeft, Building2, Users, FolderKanban, Search, Plus, X,
-  Calendar, DollarSign, ChevronRight, MapPin, Phone, Mail, Hash, User, CreditCard,
+  ArrowLeft, FolderKanban, Search, Plus, X,
+  ChevronRight, MapPin, Phone, Mail, Hash, User, CreditCard,
 } from 'lucide-react';
 
-const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  active:    { bg: 'rgba(34,197,94,0.12)',  text: '#4ade80' },
-  on_hold:   { bg: 'rgba(234,179,8,0.12)',  text: '#facc15' },
-  completed: { bg: 'rgba(59,130,246,0.12)', text: '#60a5fa' },
-  cancelled: { bg: 'rgba(239,68,68,0.12)',  text: '#f87171' },
+const STATUS_COLORS: Record<string, string> = {
+  active: '#299a54', on_hold: '#b7791f', completed: '#4779c7', cancelled: '#d25454',
 };
 
 const EMPTY_FORM = {
@@ -105,77 +102,78 @@ export default function AdminCompanyDetailPage() {
   const totalValue     = allProjects.reduce((s: number, p: any) => s + parseFloat(p.contract_value ?? 0), 0);
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="mx-auto flex max-w-7xl flex-col gap-6 p-4 pb-12 sm:p-6 lg:p-8">
       {/* Back */}
       <Link
         href="/admin/companies"
-        className="inline-flex items-center gap-1.5 text-xs transition-colors hover:text-[var(--text-primary)]"
+        className="order-0 inline-flex items-center gap-1.5 self-start text-xs transition-colors hover:text-[var(--text-primary)]"
         style={{ color: 'var(--text-muted)' }}
       >
         <ArrowLeft size={13} /> All Companies
       </Link>
 
       {/* Company header */}
-      <div className="rounded-2xl p-6" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+      <section className="order-1 relative overflow-hidden rounded-2xl bg-[#18211d] p-6 text-white shadow-[0_24px_60px_rgba(24,33,29,0.16)] sm:p-8">
+        <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-[#9ee5b5]/10 blur-3xl" />
         <div className="flex items-start gap-5">
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-bold flex-shrink-0 overflow-hidden"
-            style={org.logo_url ? { border: '1px solid var(--border)' } : { backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}
+            style={org.logo_url ? { border: '1px solid rgba(255,255,255,0.12)', backgroundColor: '#fff' } : { backgroundColor: 'rgba(158,229,181,0.14)', color: '#9ee5b5' }}
           >
             {org.logo_url
-              ? <img src={org.logo_url} alt={org.name} className="w-full h-full object-contain p-1" />
+              ? <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={org.logo_url} alt={org.name} className="w-full h-full object-contain p-1" />
+                </>
               : org.name?.charAt(0)?.toUpperCase()
             }
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{org.name}</h1>
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#9ee5b5]">Company workspace</p>
+            <h1 className="text-2xl font-semibold tracking-[-0.035em] text-white sm:text-3xl">{org.name}</h1>
             {org.slug && (
-              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{org.slug}</p>
+              <p className="mt-1 text-xs text-white/45">{org.slug}</p>
             )}
             <span
-              className="inline-flex mt-2 px-2.5 py-0.5 rounded-full text-xs font-medium"
-              style={{ backgroundColor: 'rgba(34,197,94,0.1)', color: '#4ade80' }}
+              className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-[#9ee5b5]"
             >
+              <span className="h-1.5 w-1.5 rounded-full bg-[#9ee5b5]" />
               {org.is_active !== false ? 'Active' : 'Inactive'}
             </span>
           </div>
         </div>
 
         {/* Company info grid */}
-        <div className="mt-5 grid grid-cols-2 sm:grid-cols-3 gap-x-8 gap-y-3">
+        <div className="relative mt-7 grid grid-cols-1 gap-x-8 gap-y-5 border-t border-white/10 pt-6 sm:grid-cols-2 lg:grid-cols-3">
           {org.contact_name && (
             <div className="flex items-center gap-2">
-              <User size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+              <User size={13} className="flex-shrink-0 text-white/30" />
               <div>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Contact Name</p>
-                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{org.contact_name}</p>
+                <p className="text-xs text-white/35">Contact Name</p><p className="text-sm font-medium text-white/80">{org.contact_name}</p>
               </div>
             </div>
           )}
           {org.email && (
             <div className="flex items-center gap-2">
-              <Mail size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+              <Mail size={13} className="flex-shrink-0 text-white/30" />
               <div>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Email</p>
-                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{org.email}</p>
+                <p className="text-xs text-white/35">Email</p><p className="text-sm font-medium text-white/80">{org.email}</p>
               </div>
             </div>
           )}
           {org.phone && (
             <div className="flex items-center gap-2">
-              <Phone size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+              <Phone size={13} className="flex-shrink-0 text-white/30" />
               <div>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Contact Number</p>
-                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{org.phone}</p>
+                <p className="text-xs text-white/35">Contact Number</p><p className="text-sm font-medium text-white/80">{org.phone}</p>
               </div>
             </div>
           )}
           {org.address && (
             <div className="flex items-center gap-2">
-              <MapPin size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+              <MapPin size={13} className="flex-shrink-0 text-white/30" />
               <div>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Address</p>
-                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                <p className="text-xs text-white/35">Address</p><p className="text-sm font-medium text-white/80">
                   {[org.address, org.city, org.state, org.postcode, org.country].filter(Boolean).join(', ')}
                 </p>
               </div>
@@ -183,40 +181,38 @@ export default function AdminCompanyDetailPage() {
           )}
           {org.acn && (
             <div className="flex items-center gap-2">
-              <Hash size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+              <Hash size={13} className="flex-shrink-0 text-white/30" />
               <div>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Company Number (ACN)</p>
-                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{org.acn}</p>
+                <p className="text-xs text-white/35">Company Number (ACN)</p><p className="text-sm font-medium text-white/80">{org.acn}</p>
               </div>
             </div>
           )}
           {org.abn && (
             <div className="flex items-center gap-2">
-              <Hash size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+              <Hash size={13} className="flex-shrink-0 text-white/30" />
               <div>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>VAT / ABN</p>
-                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{org.abn}</p>
+                <p className="text-xs text-white/35">VAT / ABN</p><p className="text-sm font-medium text-white/80">{org.abn}</p>
               </div>
             </div>
           )}
         </div>
-      </div>
+      </section>
 
       {/* Stats row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="ss-animate-in rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '0ms' }}>
+      <div className="order-3 grid grid-cols-2 gap-px overflow-hidden rounded-2xl sm:grid-cols-4" style={{ backgroundColor: 'var(--border)', border: '1px solid var(--border)' }}>
+        <div className="ss-animate-in p-4" style={{ backgroundColor: 'var(--bg-surface)', animationDelay: '0ms' }}>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Total Projects</p>
           <p className="text-2xl font-bold mt-1 tabular-nums" style={{ color: 'var(--gold)' }}>{allProjects.length}</p>
         </div>
-        <div className="ss-animate-in rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '50ms' }}>
+        <div className="ss-animate-in p-4" style={{ backgroundColor: 'var(--bg-surface)', animationDelay: '50ms' }}>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Active</p>
           <p className="text-2xl font-bold mt-1 tabular-nums" style={{ color: '#4ade80' }}>{activeCount}</p>
         </div>
-        <div className="ss-animate-in rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '100ms' }}>
+        <div className="ss-animate-in p-4" style={{ backgroundColor: 'var(--bg-surface)', animationDelay: '100ms' }}>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Completed</p>
           <p className="text-2xl font-bold mt-1 tabular-nums" style={{ color: '#60a5fa' }}>{completedCount}</p>
         </div>
-        <div className="ss-animate-in rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '150ms' }}>
+        <div className="ss-animate-in p-4" style={{ backgroundColor: 'var(--bg-surface)', animationDelay: '150ms' }}>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Total Contract Value</p>
           <p className="text-lg font-bold mt-1 tabular-nums" style={{ color: 'var(--text-primary)' }}>{formatCurrency(totalValue)}</p>
         </div>
@@ -227,7 +223,7 @@ export default function AdminCompanyDetailPage() {
           with an unrelated, heavier data fetch/action set). */}
       <Link
         href={`/admin/companies/${id}/subscription`}
-        className="flex items-center justify-between rounded-2xl p-4 transition-opacity hover:opacity-90"
+        className="order-4 flex items-center justify-between rounded-2xl p-4 transition-opacity hover:opacity-90"
         style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}
       >
         <div className="flex items-center gap-3">
@@ -243,20 +239,19 @@ export default function AdminCompanyDetailPage() {
       </Link>
 
       {/* Organisation URL Branding, Phase 1 */}
-      <OrganisationUrlBrandingSection organizationId={id} organizationName={org.name} urlSlug={org.url_slug ?? null} />
+      <div className="order-5"><OrganisationUrlBrandingSection organizationId={id} organizationName={org.name} urlSlug={org.url_slug ?? null} /></div>
 
       {/* Organisation URL Branding, Phase 2 — customer-owned domains */}
-      <OrganisationDomainsSection organizationId={id} organizationName={org.name} />
+      <div className="order-6"><OrganisationDomainsSection organizationId={id} organizationName={org.name} /></div>
 
       {/* Projects section */}
-      <div className="space-y-4">
+      <section className="order-2 space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
-          <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Projects</h2>
+          <div><p className="text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-muted)' }}>Company portfolio</p><h2 className="mt-1 text-xl font-semibold tracking-[-0.025em]" style={{ color: 'var(--text-primary)' }}>Projects</h2></div>
           <div className="flex items-center gap-3 flex-wrap">
             <button
               onClick={() => { setForm(EMPTY_FORM); setFormErrors({}); setShowModal(true); }}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-opacity hover:opacity-80 active:scale-[0.98]"
-              style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
+              className="flex items-center gap-1.5 rounded-xl bg-[#18211d] px-3.5 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-[#24312b] active:scale-[0.98]"
             >
               <Plus size={13} /> New Project
             </button>
@@ -304,65 +299,53 @@ export default function AdminCompanyDetailPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {projects.map((p: any, i: number) => {
-              const badge = STATUS_COLORS[p.status] ?? { bg: 'var(--bg-elevated)', text: 'var(--text-muted)' };
+              const statusColor = STATUS_COLORS[p.status] ?? 'var(--text-muted)';
               return (
                 <Link
                   key={p.id}
                   href={`/app/projects/${p.id}/overview`}
-                  className="group block rounded-2xl p-5 hover:-translate-y-0.5 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-pop)] transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ss-animate-in"
-                  style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', animationDelay: `${Math.min(i * 45, 360)}ms` }}
+                  className="group flex min-h-[224px] flex-col rounded-2xl p-5 transition-all duration-300 hover:-translate-y-1 hover:border-[#9ee5b5]/70 hover:shadow-[0_18px_36px_rgba(24,33,29,0.10)] ss-animate-in"
+                  style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: '0 3px 12px rgba(24,33,29,0.05)', animationDelay: `${Math.min(i * 45, 360)}ms` }}
                 >
-                  <div className="flex items-start justify-between mb-3">
-                    <div
-                      className="w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
-                      style={{ backgroundColor: 'rgba(59,130,246,0.1)', color: '#3b82f6' }}
-                    >
+                  <div className="flex items-start justify-between">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}>
                       <FolderKanban size={15} />
                     </div>
-                    <span
-                      className="text-xs px-2 py-0.5 rounded-full font-medium capitalize"
-                      style={{ backgroundColor: badge.bg, color: badge.text }}
-                    >
-                      {p.status?.replace(/_/g, ' ')}
-                    </span>
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-medium capitalize" style={{ color: statusColor }}><span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: statusColor }} />{p.status?.replace(/_/g, ' ')}</span>
                   </div>
 
-                  <p className="font-semibold text-sm leading-snug" style={{ color: 'var(--text-primary)' }}>{p.name}</p>
+                  <p className="mt-5 text-base font-semibold leading-snug tracking-[-0.02em]" style={{ color: 'var(--text-primary)' }}>{p.name}</p>
                   {p.code && (
                     <p className="text-[11px] mt-0.5 font-mono" style={{ color: 'var(--text-muted)' }}>{p.code}</p>
                   )}
 
-                  <div className="mt-3 space-y-1">
+                  <div className="mt-4 grid grid-cols-2 gap-3 border-y py-3" style={{ borderColor: 'var(--border)' }}>
                     {p.contract_value && (
-                      <div className="flex items-center gap-1.5 text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>
-                        <DollarSign size={11} />
-                        {formatCurrency(p.contract_value)}
+                      <div><p className="text-[10px] uppercase tracking-[0.08em]" style={{ color: 'var(--text-muted)' }}>Value</p><p className="mt-1 text-xs font-semibold tabular-nums" style={{ color: 'var(--text-primary)' }}>{formatCurrency(p.contract_value)}</p>
                       </div>
                     )}
                     {p.end_date && (
-                      <div className="flex items-center gap-1.5 text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>
-                        <Calendar size={11} />
-                        Due {formatDate(p.end_date)}
+                      <div><p className="text-[10px] uppercase tracking-[0.08em]" style={{ color: 'var(--text-muted)' }}>Completion</p><p className="mt-1 text-xs font-medium tabular-nums" style={{ color: 'var(--text-primary)' }}>{formatDate(p.end_date)}</p>
                       </div>
                     )}
                   </div>
 
-                  <div className="mt-3 pt-3 flex items-center justify-between" style={{ borderTop: '1px solid var(--border)' }}>
+                  <div className="mt-auto flex items-center justify-between pt-4">
                     <span className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
                       {p.users_count ?? 0} members
                     </span>
-                    <ChevronRight size={13} className="opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--text-muted)' }} />
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full transition-colors group-hover:bg-[#9ee5b5]"><ChevronRight size={13} className="transition-transform group-hover:translate-x-0.5" style={{ color: 'var(--text-muted)' }} /></span>
                   </div>
                 </Link>
               );
             })}
           </div>
         )}
-      </div>
+      </section>
 
       {/* ── Create Project Modal ── */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+        <div className="order-7 fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
           <div className="w-full max-w-lg rounded-2xl shadow-2xl ss-animate-in" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>

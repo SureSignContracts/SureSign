@@ -413,30 +413,31 @@ export default function DrawingViewerPage() {
   } : null;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)]">
+    <div className="ss-animate-in flex h-[calc(100vh-64px)] flex-col overflow-hidden bg-[#101713]">
       {/* Header — construction metadata context, not a Document-preview
           header (Part G). Kept deliberately restrained: no hotspot count,
           no approval percentage, no AI summary. */}
       <div
-        className="flex items-center justify-between gap-3 px-4 py-3 flex-wrap flex-shrink-0"
-        style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)' }}
+        className="relative flex flex-shrink-0 flex-wrap items-center justify-between gap-4 overflow-hidden px-5 py-4 sm:px-6"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.09)', backgroundColor: '#18211d' }}
       >
+        <div className="pointer-events-none absolute -right-12 -top-16 h-40 w-40 rounded-full bg-[#9ee5b5]/10 blur-3xl" />
         <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={() => router.push(backHref)}
             aria-label="Back to Drawing Register"
-            className="p-2 rounded-lg flex-shrink-0 transition-colors hover:bg-[var(--bg-hover)]"
+            className="flex-shrink-0 rounded-xl border border-white/10 p-2.5 text-white/65 transition-all duration-200 hover:-translate-x-0.5 hover:bg-white/[0.07] hover:text-white"
           >
-            <ArrowLeft size={16} style={{ color: 'var(--text-secondary)' }} />
+            <ArrowLeft size={16} />
           </button>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-mono text-sm font-semibold" style={{ color: 'var(--gold)' }}>{drawing.drawing_number}</span>
-              <h1 className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{drawing.title}</h1>
+              <span className="font-mono text-xs font-semibold uppercase tracking-[0.1em] text-[#9ee5b5]">{drawing.drawing_number}</span>
+              <h1 className="truncate text-base font-semibold text-white">{drawing.title}</h1>
             </div>
             <div className="flex items-center gap-2 flex-wrap mt-0.5">
               {drawing.discipline && (
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{drawing.discipline}</span>
+                <span className="text-xs text-white/45">{drawing.discipline}</span>
               )}
               {drawing.status && (
                 <span
@@ -447,20 +448,20 @@ export default function DrawingViewerPage() {
                 </span>
               )}
               {drawing.location_reference && (
-                <span className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{drawing.location_reference}</span>
+                <span className="truncate text-xs text-white/45">{drawing.location_reference}</span>
               )}
               {/* Revision context — real metadata only, never an invented
                   label for a migrated/unrecorded revision (Part Q/R). */}
               {viewingRevisionLabel ? (
-                <span className="text-xs font-medium" style={{ color: isHistorical ? '#fb923c' : 'var(--gold)' }}>
+                <span className="text-xs font-medium" style={{ color: isHistorical ? '#fb923c' : '#9ee5b5' }}>
                   Revision {viewingRevisionLabel} {isHistorical ? '· Historical' : '· Current'}
                 </span>
               ) : currentRevisionLabel ? (
-                <span className="text-xs font-medium" style={{ color: 'var(--gold)' }}>
+                <span className="text-xs font-medium text-[#9ee5b5]">
                   Revision {currentRevisionLabel} · Current
                 </span>
               ) : null}
-              <span className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
+              <span className="truncate text-xs text-white/40">
                 &middot; {activeDocument.file_name || activeDocument.title}
               </span>
             </div>
@@ -471,10 +472,10 @@ export default function DrawingViewerPage() {
           {fileType === 'pdf' && editable && (
             <button
               onClick={toggleAddLocation}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+              className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-200 hover:-translate-y-px active:translate-y-0"
               style={authoringMode === 'placing'
-                ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
-                : { border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+                ? { backgroundColor: '#9ee5b5', color: '#18211d' }
+                : { border: '1px solid rgba(255,255,255,0.13)', color: 'rgba(255,255,255,0.72)' }}
             >
               {authoringMode === 'placing' ? <X size={13} /> : <MapPin size={13} />}
               {authoringMode === 'placing' ? 'Cancel' : 'Add Location'}
@@ -482,15 +483,13 @@ export default function DrawingViewerPage() {
           )}
           <button
             onClick={() => setShowRevisions(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors hover:bg-[var(--bg-hover)]"
-            style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+            className="flex items-center gap-1.5 rounded-xl border border-white/10 px-3 py-2 text-xs font-medium text-white/70 transition-all duration-200 hover:-translate-y-px hover:bg-white/[0.07] hover:text-white"
           >
             <History size={13} /> Revisions
           </button>
           <button
             onClick={() => handleDownload(activeDocument)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors hover:bg-[var(--bg-hover)]"
-            style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+            className="flex items-center gap-1.5 rounded-xl border border-white/10 px-3 py-2 text-xs font-medium text-white/70 transition-all duration-200 hover:-translate-y-px hover:bg-white/[0.07] hover:text-white"
           >
             <Download size={13} /> Download
           </button>
@@ -516,15 +515,28 @@ export default function DrawingViewerPage() {
       )}
 
       {/* No current revision yet (Part E) — authoring stays honestly
-          unavailable; never a fallback to the legacy document. */}
+          unavailable; never a fallback to the legacy document. Neutral
+          background (matching the header/toolbar rows above and below,
+          rather than its own competing colour band) with a direct action —
+          the button uses the app's own standard gold accent treatment,
+          same as every other primary action on this page (Fit Width, Add
+          Location), rather than a one-off colour. */}
       {canOperate && noCurrentRevision && fileType === 'pdf' && (
         <div
-          className="flex items-center px-4 py-2 flex-shrink-0"
-          style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}
+          className="flex items-center justify-between gap-3 px-4 py-2.5 flex-wrap flex-shrink-0"
+          style={{ backgroundColor: '#202a25', borderBottom: '1px solid rgba(255,255,255,0.09)' }}
         >
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            Add a drawing revision before recording drawing locations.
+          <p className="flex items-center gap-2 text-xs font-medium text-white/65">
+            <History size={13} className="flex-shrink-0 text-[#9ee5b5]" />
+            Add a drawing revision before you can record drawing locations on this drawing.
           </p>
+          <button
+            onClick={() => setShowRevisions(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium flex-shrink-0 transition-all hover:opacity-90 active:scale-[0.98]"
+            style={{ backgroundColor: '#9ee5b5', color: '#18211d' }}
+          >
+            <History size={12} /> Add Revision
+          </button>
         </div>
       )}
 
@@ -550,7 +562,8 @@ export default function DrawingViewerPage() {
       )}
 
       {/* Viewer body */}
-      <div className="flex-1 min-h-0">
+      <div className="min-h-0 flex-1 bg-[#101713] p-3">
+        <div className="h-full overflow-hidden rounded-xl border border-white/10 bg-[var(--bg-elevated)] shadow-[0_18px_50px_rgba(0,0,0,0.28)]">
         {fileType === 'pdf' && (
           // key={document.id} forces a fresh instance per Document — this
           // route can navigate from one Drawing/revision straight to
@@ -609,6 +622,7 @@ export default function DrawingViewerPage() {
             </p>
           </div>
         )}
+        </div>
       </div>
 
       {showRevisions && (

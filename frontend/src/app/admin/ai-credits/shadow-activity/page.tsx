@@ -3,12 +3,13 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { Activity } from 'lucide-react';
+import { Activity, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
 import PaginationBar from '@/components/ui/PaginationBar';
 import Select from '@/components/ui/Select';
 import { formatDate } from '@/lib/utils';
+import PlatformPageHero from '@/components/admin/PlatformPageHero';
 
 interface ShadowRow {
   id: number;
@@ -51,19 +52,17 @@ export default function AiCreditsShadowActivityPage() {
   });
 
   const rows = data?.data ?? [];
+  const sufficient = rows.filter(row => row.shadow_enforcement_result === 'sufficient').length;
+  const insufficient = rows.filter(row => row.shadow_enforcement_result === 'insufficient').length;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-5">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-          <Activity size={22} style={{ color: 'var(--gold)' }} />
-          Shadow Activity
-        </h1>
-        <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-          What a real balance check would have decided for each analysis — never enforced. Helps validate a
-          future commercial rollout before enforcement is ever switched on.
-        </p>
-      </div>
+    <div className="mx-auto max-w-7xl space-y-7 p-4 pb-12 sm:p-6 lg:p-8">
+      <PlatformPageHero eyebrow="Policy simulation" title="Shadow Activity" description="Review what a live balance check would have decided without enforcing or interrupting customer workflows." loading={isLoading}
+        metrics={[
+          { label: 'Evaluations', value: data?.total ?? rows.length, detail: 'shadow decisions', icon: Activity },
+          { label: 'Sufficient', value: sufficient, detail: 'visible evaluations', icon: ShieldCheck },
+          { label: 'Insufficient', value: insufficient, detail: 'visible evaluations', icon: ShieldAlert },
+        ]} />
 
       <div className="flex items-center gap-3 flex-wrap">
         <Select value={workflow} onChange={e => { setWorkflow(e.target.value); setPage(1); }} size="sm">

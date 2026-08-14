@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PromptActionButton from '@/components/prompts/PromptActionButton';
 import PageTourButton from '@/components/tours/PageTourButton';
+import { ProjectModuleHeader, ProjectModuleMetric } from '@/components/projects/ProjectModuleHeader';
 import Button from '@/components/ui/Button';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import EvidenceSection from '@/components/documents/EvidenceSection';
@@ -144,41 +145,28 @@ export default function ProjectRfisPage() {
   });
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-1.5">
-            <h1 className="text-[1.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>RFIs</h1>
-            <PageTourButton tourKey="page-rfis" label="Take a tour of this page" />
-          </div>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Requests for Information</p>
-        </div>
-        {canWrite && (
-        <button
-          data-tour="rfis-new"
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 active:scale-[0.98]"
-          style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
-        >
-          <Plus size={15} />
-          New RFI
-        </button>
-        )}
-      </div>
-
-      {/* Summary */}
-      <div className="grid grid-cols-3 gap-4" data-tour="rfis-summary">
+    <div className="ss-projects-page mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <ProjectModuleHeader
+        category="Project communication"
+        title="RFIs"
+        description="Raise, route and close requests for information without losing the response trail."
+        icon={MessageSquare}
+        metricColumns={3}
+        tour={<PageTourButton tourKey="page-rfis" label="Take a tour of this page" />}
+        action={canWrite ? (
+          <button data-tour="rfis-new" onClick={() => setShowModal(true)} className="flex h-11 items-center gap-2 whitespace-nowrap rounded-xl bg-[#9ee5b5] px-5 text-sm font-semibold text-[#18211d] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#b4edc6] active:translate-y-0">
+            <Plus size={16} /> New RFI
+          </button>
+        ) : undefined}
+      >
         {[
           { label: 'Total', value: (data?.data ?? []).length, color: 'var(--gold)' },
           { label: 'Open', value: openCount, color: '#facc15' },
           { label: 'Pending Response', value: pendingCount, color: '#fb923c' },
-        ].map(s => (
-          <div key={s.label} className="rounded-xl p-4" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{s.label}</p>
-            <p className="text-xl font-bold mt-1 tabular-nums" style={{ color: s.color }}>{s.value}</p>
-          </div>
+        ].map((s, index) => (
+          <ProjectModuleMetric key={s.label} label={s.label} value={s.value} tone={s.color} index={index} />
         ))}
-      </div>
+      </ProjectModuleHeader>
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap" data-tour="rfis-filters">

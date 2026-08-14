@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { X, Eye, FileText } from 'lucide-react';
+import { X, Eye, FileText, Upload } from 'lucide-react';
 import api from '@/lib/api';
 import { formatDateTime } from '@/lib/dateTime';
 import { normalizeApiError } from '@/lib/normalizeApiError';
@@ -106,6 +106,17 @@ export default function DrawingModal({
   const qc = useQueryClient();
   const isEdit = !!drawing;
 
+  // Register Drawing (create mode only) can either upload a brand-new file
+  // right here, or pick a document already sitting in the project's
+  // Document Register (the previous, only, flow) — 'upload' is the more
+  // common case, so it's the default; both create the exact same real
+  // Document row via the exact same existing endpoints, just in a
+  // different order, so nothing about Drawing/Document architecture
+  // changes (see internal-docs/drawing-hotspot-record-relationships.md's
+  // sibling note in the Drawings user guide for why a Drawing never
+  // stores a file itself).
+  const [documentMode, setDocumentMode] = useState<'upload' | 'existing'>('upload');
+  const [newFile, setNewFile] = useState<File | null>(null);
   const [documentId, setDocumentId] = useState<string>('');
   const [docSearch, setDocSearch] = useState('');
   const [form, setForm] = useState({
@@ -142,7 +153,7 @@ export default function DrawingModal({
   }));
 
   const mutation = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       const payload = {
         drawing_number: form.drawing_number,
         title: form.title,
@@ -150,9 +161,29 @@ export default function DrawingModal({
         status: form.status || null,
         location_reference: form.location_reference || null,
       };
-      return isEdit
-        ? api.put(`/projects/${projectId}/drawings/${drawing.id}`, payload).then(r => r.data)
-        : api.post(`/projects/${projectId}/drawings`, { ...payload, document_id: documentId }).then(r => r.data);
+      if (isEdit) {
+        return api.put(`/projects/${projectId}/drawings/${drawing.id}`, payload).then(r => r.data);
+      }
+
+      let resolvedDocumentId = documentId;
+      if (documentMode === 'upload' && newFile) {
+        // Same Document Register creation endpoint Document Register's own
+        // "New Document" action uses — this is a real Document row, not a
+        // second upload mechanism. Its title defaults to the drawing's own
+        // title (falling back to the filename) so the two don't have to be
+        // typed twice; document_type 'drawing' matches Document Register's
+        // own existing filter of that same name.
+        const uploadForm = new FormData();
+        uploadForm.append('file', newFile);
+        uploadForm.append('title', form.title.trim() || newFile.name);
+        uploadForm.append('type', 'drawing');
+        const uploaded = await api.post(`/projects/${projectId}/documents`, uploadForm, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        resolvedDocumentId = String(uploaded.data.id);
+      }
+
+      return api.post(`/projects/${projectId}/drawings`, { ...payload, document_id: resolvedDocumentId }).then(r => r.data);
     },
     onSuccess: () => {
       toast.success(isEdit ? 'Drawing updated' : 'Drawing registered');
@@ -170,7 +201,8 @@ export default function DrawingModal({
     },
   });
 
-  const canSubmit = form.drawing_number.trim() && form.title.trim() && (isEdit || documentId);
+  const canSubmit = form.drawing_number.trim() && form.title.trim() &&
+    (isEdit || (documentMode === 'upload' ? !!newFile : !!documentId));
 
   return (
     <>
@@ -264,22 +296,68 @@ export default function DrawingModal({
                 </p>
               </div>
             ) : (
-              <Field label="Document" required error={fieldErrors.document_id?.[0]}>
-                <Combobox
-                  value={documentId}
-                  onValueChange={setDocumentId}
-                  onSearch={setDocSearch}
-                  loading={eligibleQuery.isFetching}
-                  options={documentOptions}
-                  placeholder="Select a project document…"
-                  searchPlaceholder="Search documents…"
-                  emptyMessage={eligibleQuery.isError ? 'Failed to load documents.' : 'No eligible documents found.'}
-                  className="w-full"
-                  error={!!fieldErrors.document_id}
-                />
-                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                  Only project documents not already registered as a drawing are shown. Upload new files from Documents first.
-                </p>
+              <Field label="Document" required error={fieldErrors.document_id?.[0] ?? fieldErrors.file?.[0]}>
+                {/* Two ways to supply the underlying Document — 'upload' is
+                    new, 'existing' is the original (only) flow, unchanged. */}
+                <div className="flex gap-1 p-1 rounded-lg mb-2" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+                  <button
+                    type="button"
+                    onClick={() => setDocumentMode('upload')}
+                    className="flex-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all"
+                    style={documentMode === 'upload' ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' } : { color: 'var(--text-secondary)' }}
+                  >
+                    Upload new file
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDocumentMode('existing')}
+                    className="flex-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all"
+                    style={documentMode === 'existing' ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' } : { color: 'var(--text-secondary)' }}
+                  >
+                    Select existing document
+                  </button>
+                </div>
+
+                {documentMode === 'upload' ? (
+                  <>
+                    <label
+                      className="flex items-center gap-2 w-full rounded-lg px-3 py-2.5 text-sm cursor-pointer transition-colors hover:bg-[var(--bg-hover)]"
+                      style={{ ...INPUT_STYLE, borderColor: fieldErrors.file ? '#f87171' : undefined }}
+                    >
+                      <Upload size={14} style={{ color: 'var(--text-muted)' }} className="flex-shrink-0" />
+                      <span className="truncate" style={{ color: newFile ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                        {newFile ? newFile.name : 'Choose a PDF, Word, or image file…'}
+                      </span>
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
+                        onChange={e => setNewFile(e.target.files?.[0] ?? null)}
+                      />
+                    </label>
+                    <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                      Uploads directly into this project&rsquo;s Document Register (as a Drawing-type document) and registers it in one step.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Combobox
+                      value={documentId}
+                      onValueChange={setDocumentId}
+                      onSearch={setDocSearch}
+                      loading={eligibleQuery.isFetching}
+                      options={documentOptions}
+                      placeholder="Select a project document…"
+                      searchPlaceholder="Search documents…"
+                      emptyMessage={eligibleQuery.isError ? 'Failed to load documents.' : 'No eligible documents found.'}
+                      className="w-full"
+                      error={!!fieldErrors.document_id}
+                    />
+                    <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                      Only project documents not already registered as a drawing are shown.
+                    </p>
+                  </>
+                )}
               </Field>
             )}
 

@@ -2,8 +2,9 @@
 
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { HardDrive } from 'lucide-react';
+import { HardDrive, Building2, Database } from 'lucide-react';
 import { formatBytes } from '@/lib/formatBytes';
+import PlatformPageHero from '@/components/admin/PlatformPageHero';
 
 interface OrganizationStorage {
   id: number;
@@ -39,25 +40,13 @@ export default function AdminStoragePage() {
   const totalBytes = data?.total_bytes ?? 0;
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-7">
-      <div>
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Storage</h1>
-        <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-          Platform-wide storage usage across all organizations
-        </p>
-      </div>
-
-      {/* Overall usage */}
-      <div
-        className="rounded-2xl p-6 flex items-center gap-3"
-        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}
-      >
-        <HardDrive size={20} style={{ color: 'var(--gold)' }} />
-        <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>Total Files Storage</span>
-        <span className="ml-auto text-lg font-bold tabular-nums" style={{ color: 'var(--text-primary)' }}>
-          {isLoading ? '–' : formatBytes(totalBytes)}
-        </span>
-      </div>
+    <div className="mx-auto max-w-7xl space-y-7 p-4 pb-12 sm:p-6 lg:p-8">
+      <PlatformPageHero eyebrow="File infrastructure" title="Storage" description="Track the document footprint held across every organisation on the SureSign platform." loading={isLoading}
+        metrics={[
+          { label: 'Storage used', value: formatBytes(totalBytes), detail: 'all uploaded files', icon: HardDrive },
+          { label: 'Organisations', value: byOrganization.length, detail: 'with storage records', icon: Building2 },
+          { label: 'Capacity view', value: data?.total_gb ? `${data.total_gb} GB` : 'Live', detail: 'platform storage', icon: Database },
+        ]} />
 
       {/* By organization */}
       <div>

@@ -4,15 +4,15 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import api from '@/lib/api';
-import { formatDate } from '@/lib/utils';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
-import { FolderKanban, Search, Building2, Calendar, DollarSign, ChevronRight } from 'lucide-react';
+import PlatformPageHero from '@/components/admin/PlatformPageHero';
+import { FolderKanban, Search, Building2, Activity, ChevronRight } from 'lucide-react';
 
-const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  active:    { bg: 'rgba(34,197,94,0.12)',   text: '#4ade80' },
-  on_hold:   { bg: 'rgba(234,179,8,0.12)',   text: '#facc15' },
-  completed: { bg: 'rgba(59,130,246,0.12)',  text: '#60a5fa' },
-  cancelled: { bg: 'rgba(239,68,68,0.12)',   text: '#f87171' },
+const STATUS_COLORS: Record<string, string> = {
+  active: '#299a54',
+  on_hold: '#b7791f',
+  completed: '#4779c7',
+  cancelled: '#d25454',
 };
 
 export default function AdminProjectsPage() {
@@ -32,26 +32,22 @@ export default function AdminProjectsPage() {
   });
 
   const projects = data?.data ?? [];
+  const activeProjects = projects.filter((project: any) => project.status === 'active').length;
+  const representedCompanies = new Set(projects.map((project: any) => project.organization?.id).filter(Boolean)).size;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-            All Projects
-          </h1>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-            Platform-wide view — all projects across all companies
-          </p>
-        </div>
-        <div
-          className="text-xs px-3 py-1.5 rounded-full font-medium tabular-nums"
-          style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)', border: '1px solid var(--gold-30)' }}
-        >
-          {data?.total ?? 0} total
-        </div>
-      </div>
+    <div className="mx-auto max-w-7xl space-y-7 p-4 pb-12 sm:p-6 lg:p-8">
+      <PlatformPageHero
+        eyebrow="Portfolio control"
+        title="Projects"
+        description="A platform-wide view of live construction work, contract value and delivery status."
+        metrics={[
+          { label: 'Projects', value: data?.total ?? projects.length, detail: 'on the platform', icon: FolderKanban },
+          { label: 'Active', value: activeProjects, detail: 'in the current view', icon: Activity },
+          { label: 'Companies', value: representedCompanies, detail: 'represented here', icon: Building2 },
+        ]}
+        loading={isLoading}
+      />
 
       {/* Filters */}
       <div className="flex items-center gap-3 flex-wrap">
@@ -88,102 +84,75 @@ export default function AdminProjectsPage() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
-        {/* Table header */}
-        <div
-          className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr_40px] gap-4 px-5 py-3 text-xs font-medium uppercase tracking-wider"
-          style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}
-        >
-          <span>Project</span>
-          <span>Company</span>
-          <span>Contract Type</span>
-          <span>Value</span>
-          <span>Status</span>
-          <span />
+      {isLoading ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[...Array(6)].map((_, index) => <div key={index} className="h-60 animate-pulse rounded-2xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }} />)}
         </div>
-
-        {isLoading ? (
-          <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="px-5 py-4 h-14 animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)', opacity: 0.5 }} />
-            ))}
-          </div>
-        ) : projects.length === 0 ? (
-          <div className="py-20 text-center">
+      ) : projects.length === 0 ? (
+          <div className="rounded-2xl py-20 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
             <FolderKanban size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No projects found</p>
           </div>
-        ) : (
-          <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
-            {projects.map((p: any) => {
-              const badge = STATUS_COLORS[p.status] ?? { bg: 'rgba(90,86,82,0.2)', text: '#9a9490' };
+      ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {projects.map((p: any, index: number) => {
+              const statusColor = STATUS_COLORS[p.status] ?? 'var(--text-muted)';
               return (
                 <Link
                   key={p.id}
                   href={`/app/projects/${p.id}/overview`}
-                  className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr_40px] gap-4 items-center px-5 py-3.5 hover:bg-[var(--bg-hover)] transition-colors"
+                  className="group flex min-h-[236px] flex-col overflow-hidden rounded-2xl p-5 transition-all duration-300 hover:-translate-y-1 hover:border-[#9ee5b5]/70 hover:shadow-[0_18px_36px_rgba(24,33,29,0.10)] ss-animate-in"
+                  style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: '0 3px 12px rgba(24,33,29,0.05)', animationDelay: `${Math.min(index * 55, 440)}ms` }}
                 >
-                  {/* Project name + code */}
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
-                      {p.name}
-                    </p>
-                    {p.code && (
-                      <p className="text-[11px] font-mono truncate" style={{ color: 'var(--text-muted)' }}>{p.code}</p>
-                    )}
-                  </div>
-
-                  {/* Company */}
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div
-                      className="w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0"
-                      style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}
-                    >
-                      {p.organization?.name?.charAt(0)?.toUpperCase() ?? '?'}
-                    </div>
-                    <span className="text-sm truncate" style={{ color: 'var(--text-secondary)' }}>
-                      {p.organization?.name ?? '—'}
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[10px] tracking-[0.08em]" style={{ color: 'var(--text-muted)' }}>{String(index + 1).padStart(2, '0')}</span>
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-medium capitalize" style={{ color: statusColor }}>
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: statusColor }} />
+                      {p.status?.replace(/_/g, ' ') || 'Unknown'}
                     </span>
                   </div>
-
-                  {/* Contract type */}
-                  <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                    {p.contract_type || p.type || '—'}
-                  </span>
-
-                  {/* Value */}
-                  <span className="text-sm font-medium tabular-nums" style={{ color: 'var(--text-primary)' }}>
-                    {p.contract_value ? formatCurrency(p.contract_value) : '—'}
-                  </span>
-
-                  {/* Status */}
-                  <span
-                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize w-fit"
-                    style={{ backgroundColor: badge.bg, color: badge.text }}
-                  >
-                    {p.status?.replace(/_/g, ' ')}
-                  </span>
-
-                  <ChevronRight size={14} style={{ color: 'var(--text-muted)' }} />
+                  <div className="mt-5 flex items-start gap-3.5">
+                    <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}>
+                      <FolderKanban size={18} />
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="truncate text-base font-semibold tracking-[-0.02em]" style={{ color: 'var(--text-primary)' }}>{p.name}</h2>
+                      <p className="mt-1 truncate font-mono text-[11px]" style={{ color: 'var(--text-muted)' }}>{p.code || 'No project code'}</p>
+                    </div>
+                  </div>
+                  <div className="mt-5 flex items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    <Building2 size={13} className="opacity-45" />
+                    <span className="truncate">{p.organization?.name ?? 'Company not assigned'}</span>
+                  </div>
+                  <div className="mt-auto grid grid-cols-2 border-t pt-4" style={{ borderColor: 'var(--border)' }}>
+                    <div className="border-r pr-3" style={{ borderColor: 'var(--border)' }}>
+                      <p className="text-[10px] uppercase tracking-[0.08em]" style={{ color: 'var(--text-muted)' }}>Contract</p>
+                      <p className="mt-1 truncate text-xs font-medium" style={{ color: 'var(--text-primary)' }}>{p.contract_type || p.type || 'Not set'}</p>
+                    </div>
+                    <div className="flex items-end justify-between pl-3">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-[0.08em]" style={{ color: 'var(--text-muted)' }}>Value</p>
+                        <p className="mt-1 text-xs font-semibold tabular-nums" style={{ color: 'var(--text-primary)' }}>{p.contract_value ? formatCurrency(p.contract_value) : 'Not set'}</p>
+                      </div>
+                      <span className="flex h-7 w-7 items-center justify-center rounded-full transition-colors duration-200 group-hover:bg-[#9ee5b5]"><ChevronRight size={14} className="transition-transform group-hover:translate-x-0.5" style={{ color: 'var(--text-secondary)' }} /></span>
+                    </div>
+                  </div>
                 </Link>
               );
             })}
           </div>
-        )}
+      )}
 
-        {/* Pagination info */}
-        {data && data.total > data.per_page && (
+      {data && data.total > data.per_page && (
           <div
-            className="px-5 py-3 flex items-center justify-between text-xs"
-            style={{ borderTop: '1px solid var(--border)', color: 'var(--text-muted)' }}
+            className="flex items-center justify-between border-t px-1 pt-4 text-xs"
+            style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}
           >
             <span>
               Showing {data.from}–{data.to} of {data.total} projects
             </span>
           </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }

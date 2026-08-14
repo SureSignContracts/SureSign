@@ -312,7 +312,7 @@ export default function DrawingPdfCanvas({ previewEndpoint, initialPage, onPageG
       {/* Toolbar */}
       <div
         className="flex items-center justify-center gap-1 sm:gap-2 flex-wrap px-3 py-2 flex-shrink-0"
-        style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)' }}
+        style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-elevated)' }}
       >
         <button
           onClick={() => goToPage(pageNum - 1)}

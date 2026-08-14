@@ -116,7 +116,7 @@ function TourRow({
   onLaunch: () => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 px-5 py-3.5" style={{ borderBottom: '1px solid var(--border)' }}>
+    <div className="group flex items-center justify-between gap-4 px-5 py-4 transition-colors duration-200 hover:bg-[var(--bg-hover)]" style={{ borderBottom: '1px solid var(--border)' }}>
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{tour.label}</p>
@@ -131,7 +131,7 @@ function TourRow({
       <button
         onClick={onLaunch}
         disabled={launching}
-        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-60 flex-shrink-0"
+        className="flex flex-shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-60"
         style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
       >
         {launching ? <Loader2 size={12} className="animate-spin" /> : <RotateCcw size={12} />}
@@ -180,41 +180,34 @@ export default function GuidedToursPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-start gap-3">
-        <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--gold-15)' }}>
-          <Compass size={20} style={{ color: 'var(--gold)' }} />
+    <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6 lg:py-9">
+      <section className="ss-animate-in overflow-hidden rounded-2xl bg-[#18211d] text-white shadow-[0_24px_70px_rgba(24,33,29,0.16)]">
+        <div className="relative p-7 sm:p-10">
+          <div className="absolute -right-16 -top-24 h-72 w-72 rounded-full border border-[#9ee5b5]/10" />
+          <p className="relative mb-7 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#9ee5b5]"><Compass size={14} /> Product orientation</p>
+          <h1 className="relative max-w-3xl text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">Learn the workflow by moving through the real work.</h1>
+          <p className="relative mt-4 max-w-2xl text-sm leading-6 text-[#b9c5bf] sm:text-base">Short, contextual walkthroughs for each part of SureSign—ready when you need them.</p>
         </div>
-        <div>
-          <h1 className="text-[1.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>Guided Tours</h1>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-            Walkthroughs of every page in SureSign, grouped by where you&apos;ll use them.
-          </p>
-        </div>
-      </div>
-
-      {/* Progress */}
-      <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+        <div className="border-t border-white/10 px-7 py-5 sm:px-10">
+          <div className="mb-3 flex items-center justify-between">
+          <p className="text-sm font-medium text-white">
             {completedCount} of {totalCount} tours completed
           </p>
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{progressPct}%</p>
+          <p className="text-xs font-semibold text-[#9ee5b5]">{progressPct}%</p>
         </div>
-        <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+        <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
           <div
-            className="h-full rounded-full transition-all duration-300"
-            style={{ width: `${progressPct}%`, backgroundColor: 'var(--gold)' }}
+            className="h-full rounded-full bg-[#9ee5b5] transition-all duration-700 motion-reduce:transition-none"
+            style={{ width: `${progressPct}%` }}
           />
         </div>
-      </div>
+        </div>
+      </section>
 
       {/* Recommended next */}
       {nextTour && (
         <div
-          className="rounded-2xl p-5 flex items-center justify-between gap-3"
-          style={{ backgroundColor: 'var(--gold-15)', border: '1px solid var(--gold)' }}
+          className="ss-animate-in flex items-center justify-between gap-4 rounded-2xl bg-[#e3f5e9] p-5"
         >
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--gold)' }}>Recommended next</p>
@@ -224,7 +217,7 @@ export default function GuidedToursPage() {
           <button
             onClick={() => handleLaunch(nextTour)}
             disabled={launchingKey === nextTour.key}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-60 flex-shrink-0"
+            className="flex flex-shrink-0 items-center gap-1.5 rounded-lg px-4 py-2.5 text-xs font-medium transition-all hover:-translate-y-0.5 active:scale-[0.98] disabled:opacity-60"
             style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
           >
             {launchingKey === nextTour.key ? <Loader2 size={12} className="animate-spin" /> : <ArrowRight size={12} />}
@@ -239,10 +232,10 @@ export default function GuidedToursPage() {
         if (tours.length === 0) return null;
         const GroupIcon = GROUP_ICONS[group] ?? Compass;
         return (
-          <div key={group} className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
-            <div className="flex items-center gap-2.5 px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
-              <GroupIcon size={15} style={{ color: 'var(--text-secondary)' }} />
-              <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{group}</h2>
+          <div key={group} className="overflow-hidden rounded-2xl bg-[var(--bg-surface)] shadow-[0_12px_32px_rgba(24,33,29,0.07)]">
+            <div className="flex items-center gap-3 border-b px-5 py-4" style={{ borderColor: 'var(--border)' }}>
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#e7f5eb] text-[#347b50]"><GroupIcon size={15} /></span>
+              <div><p className="text-[9px] font-semibold uppercase tracking-[0.15em]" style={{ color: 'var(--text-secondary)' }}>Tour group</p><h2 className="mt-0.5 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{group}</h2></div>
             </div>
             <div>
               {tours.map(tour => (

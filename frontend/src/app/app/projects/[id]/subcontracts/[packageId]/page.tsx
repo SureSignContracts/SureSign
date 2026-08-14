@@ -220,62 +220,60 @@ export default function TradePackageWorkspacePage() {
   };
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="ss-projects-page mx-auto max-w-7xl space-y-6 p-4 pb-12 sm:p-6 lg:p-8">
       {/* Header */}
-      <div className="ss-animate-in">
+      <section className="ss-animate-in relative overflow-hidden rounded-2xl bg-[#18211d] text-white shadow-[0_24px_60px_rgba(24,33,29,0.16)]">
+        <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-[#9ee5b5]/10 blur-3xl" />
         <Link
           href={`/app/projects/${projectId}/contracts`}
-          className="inline-flex items-center gap-1.5 text-xs mb-3 transition-colors hover:opacity-80"
-          style={{ color: 'var(--text-muted)' }}
+          className="relative mx-6 mt-6 inline-flex items-center gap-1.5 text-xs text-white/45 transition-colors hover:text-white sm:mx-8"
         >
           <ArrowLeft size={13} /> Subcontracts
         </Link>
-        <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="relative flex flex-wrap items-end justify-between gap-6 px-6 pb-7 pt-6 sm:px-8 sm:pb-8">
           <div className="flex items-start gap-3" data-tour="tp-header">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'rgba(167,139,250,0.12)' }}>
-              <Package size={18} style={{ color: '#a78bfa' }} />
+            <div className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-xl bg-[#9ee5b5]/15 text-[#9ee5b5]">
+              <Package size={19} />
             </div>
             <div>
               <div className="flex items-center gap-2.5 flex-wrap">
-                <h1 className="text-[1.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>{pkg.name}</h1>
+                <h1 className="text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">{pkg.name}</h1>
                 <StatusBadge status={pkg.status} />
                 <PageTourButton tourKey="page-trade-package" label="Take a tour of this page" />
               </div>
-              <p className="mt-1 text-sm font-mono" style={{ color: 'var(--gold)' }}>
+              <p className="mt-2 font-mono text-xs uppercase tracking-[0.12em] text-[#9ee5b5]">
                 {pkg.package_reference ?? pkg.package_code ?? '—'}
               </p>
+              <p className="mt-2 text-sm text-white/50">{pkg.contractor_name ?? 'Contractor not assigned'}</p>
             </div>
           </div>
           {canManageTradePackages && (
             <div className="flex items-center gap-2" data-tour="tp-actions">
               <button
                 onClick={() => setShowAiOnboarding(true)}
-                className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-xl transition-all duration-150 hover:opacity-80 active:scale-[0.97]"
-                style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)', border: '1px solid var(--border)' }}
+                className="flex items-center gap-1.5 rounded-xl border border-white/10 px-3 py-2.5 text-sm font-medium text-white/70 transition-all duration-200 hover:-translate-y-px hover:bg-white/[0.07] hover:text-white active:translate-y-0"
               >
                 <Sparkles size={14} /> AI Analysis
               </button>
               <button
                 onClick={() => setShowGenerate(true)}
-                className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-xl transition-all duration-150 hover:opacity-80 active:scale-[0.97]"
-                style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+                className="flex items-center gap-1.5 rounded-xl border border-white/10 px-3 py-2.5 text-sm font-medium text-white/70 transition-all duration-200 hover:-translate-y-px hover:bg-white/[0.07] hover:text-white active:translate-y-0"
               >
                 <FileText size={14} /> Generate Documents
               </button>
               <button
                 onClick={() => setShowEdit(true)}
-                className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-xl transition-all duration-150 hover:opacity-90 active:scale-[0.97]"
-                style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
+                className="flex items-center gap-1.5 rounded-xl bg-[#9ee5b5] px-4 py-2.5 text-sm font-semibold text-[#18211d] transition-all duration-200 hover:-translate-y-px hover:bg-[#b4edc6] active:translate-y-0"
               >
                 <Pencil size={14} /> Edit Package
               </button>
             </div>
           )}
         </div>
-      </div>
+      </section>
 
       {/* Tabs */}
-      <div className="ss-animate-in flex items-center gap-1 border-b overflow-x-auto" data-tour="tp-tabs" style={{ borderColor: 'var(--border)', animationDelay: '40ms' }}>
+      <div className="ss-animate-in flex items-center gap-1 overflow-x-auto rounded-2xl p-2" data-tour="tp-tabs" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '70ms' }}>
         {tabs.map(t => {
           const active = tab === t.key;
           return (
@@ -290,11 +288,10 @@ export default function TradePackageWorkspacePage() {
                 // 'delay' from a prior visit would render no content).
                 t.key === 'delay-eot' ? 'delay' : t.key === 'compliance' ? 'risks' : undefined
               )}
-              className={`flex items-center gap-1.5 px-3.5 py-2.5 text-sm font-medium transition-colors relative whitespace-nowrap ${active ? '' : 'hover:text-[var(--text-secondary)]'}`}
-              style={{ color: active ? 'var(--text-primary)' : 'var(--text-muted)' }}
+              className="relative flex items-center gap-1.5 whitespace-nowrap rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200 hover:-translate-y-px active:translate-y-0"
+              style={active ? { color: '#18211d', backgroundColor: 'var(--gold)', boxShadow: '0 5px 14px rgba(0,0,0,0.08)' } : { color: 'var(--text-muted)' }}
             >
               <t.icon size={14} /> {t.label}
-              {active && <span className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: 'var(--gold)' }} />}
             </button>
           );
         })}
@@ -321,7 +318,7 @@ export default function TradePackageWorkspacePage() {
         />
       )}
       {tab === 'documents'   && <DocumentsTab projectId={projectId} packageId={packageId} onNavigateSource={navigateToSource} />}
-      {tab === 'ai-analysis' && <AiAnalysisTab projectId={projectId} pkg={pkg} onStartNew={() => setShowAiOnboarding(true)} />}
+      {tab === 'ai-analysis' && <AiAnalysisTab pkg={pkg} onStartNew={() => setShowAiOnboarding(true)} />}
       {tab === 'activity'    && <ActivityTab projectId={projectId} packageId={packageId} onNavigateSource={navigateToSource} />}
 
       {showEdit && (
@@ -374,8 +371,8 @@ export default function TradePackageWorkspacePage() {
 function InfoCard({ icon: Icon, title, children, delay = 0 }: { icon: React.ElementType; title: string; children: React.ReactNode; delay?: number }) {
   return (
     <div
-      className="ss-animate-in rounded-2xl p-5"
-      style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: `${delay}ms` }}
+      className="ss-animate-in border-b border-r p-5 sm:p-6"
+      style={{ borderColor: 'var(--border)', animationDelay: `${delay}ms` }}
     >
       <div className="flex items-center gap-2 mb-4">
         <Icon size={15} style={{ color: 'var(--text-muted)' }} />
@@ -401,11 +398,11 @@ function StatTile({ label, value, onClick, tone, delay = 0 }: { label: string; v
     <button
       onClick={onClick}
       disabled={!onClick}
-      className={`ss-animate-in rounded-2xl p-4 text-left transition-all duration-200 disabled:cursor-default ${onClick ? 'hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.98]' : ''}`}
-      style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: `${delay}ms` }}
+      className={`ss-animate-in min-h-[96px] border-b border-r p-4 text-left transition-colors duration-200 disabled:cursor-default ${onClick ? 'hover:bg-[var(--bg-hover)]' : ''}`}
+      style={{ borderColor: 'var(--border)', animationDelay: `${delay}ms` }}
     >
-      <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{label}</p>
-      <p className="text-lg font-bold tabular-nums" style={{ color }}>{value}</p>
+      <p className="text-2xl font-semibold tabular-nums tracking-[-0.04em]" style={{ color }}>{value}</p>
+      <p className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>{label}</p>
     </button>
   );
 }
@@ -484,7 +481,7 @@ function OverviewTab({ pkg, projectId, formatCurrency, onNavigateTab, onNavigate
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <section className="grid grid-cols-2 overflow-hidden rounded-2xl sm:grid-cols-3 lg:grid-cols-6" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
         <StatTile
           label="Next Payment Due"
           value={nextPayment ? formatDate(nextPayment.date) : '—'}
@@ -498,15 +495,12 @@ function OverviewTab({ pkg, projectId, formatCurrency, onNavigateTab, onNavigate
           delay={40}
         />
         <StatTile label="Programme" value={milestones.length ? `${completeMilestones}/${milestones.length}` : '—'} onClick={() => onNavigateTab('programme')} delay={80} />
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <StatTile label="Open Delay Events" value={openDelays} tone={openDelays > 0 ? 'warning' : 'default'} onClick={() => onNavigateTab('delay-eot')} delay={100} />
         <StatTile label="Pending EOTs" value={pendingEots} tone={pendingEots > 0 ? 'warning' : 'default'} onClick={() => onNavigateTab('delay-eot')} delay={140} />
         <StatTile label="Open L&E Claims" value={openLe} tone={openLe > 0 ? 'warning' : 'default'} onClick={() => onNavigateTab('delay-eot')} delay={180} />
-      </div>
+      </section>
 
-      <div className="grid md:grid-cols-2 gap-4">
+      <section className="grid overflow-hidden rounded-2xl md:grid-cols-2" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
         <InfoCard icon={Building2} title="Contractor" delay={0}>
           <Row label="Name" value={pkg.contractor_name} />
           <Row label="Contact" value={pkg.contractor_contact_name} />
@@ -546,13 +540,13 @@ function OverviewTab({ pkg, projectId, formatCurrency, onNavigateTab, onNavigate
             </div>
           )}
         </InfoCard>
-      </div>
+      </section>
 
-      <div className="grid md:grid-cols-3 gap-4">
+      <section className="grid overflow-hidden rounded-2xl md:grid-cols-3" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
         <button
           onClick={() => onNavigateTab('ai-analysis')}
-          className="ss-animate-in rounded-2xl p-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:scale-[0.98]"
-          style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '0ms' }}
+          className="ss-animate-in border-b border-r p-5 text-left transition-colors duration-200 hover:bg-[var(--bg-hover)] md:border-b-0"
+          style={{ borderColor: 'var(--border)', animationDelay: '0ms' }}
         >
           <div className="flex items-center gap-2 mb-3">
             <Sparkles size={15} style={{ color: 'var(--gold)' }} />
@@ -571,8 +565,8 @@ function OverviewTab({ pkg, projectId, formatCurrency, onNavigateTab, onNavigate
         </button>
 
         <div
-          className="ss-animate-in rounded-2xl p-5"
-          style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '60ms' }}
+          className="ss-animate-in border-b border-r p-5 md:border-b-0"
+          style={{ borderColor: 'var(--border)', animationDelay: '60ms' }}
         >
           <div className="flex items-center gap-2 mb-3">
             <CalendarDays size={15} style={{ color: 'var(--text-muted)' }} />
@@ -599,8 +593,8 @@ function OverviewTab({ pkg, projectId, formatCurrency, onNavigateTab, onNavigate
         </div>
 
         <div
-          className="ss-animate-in rounded-2xl p-5"
-          style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '120ms' }}
+          className="ss-animate-in p-5"
+          style={{ animationDelay: '120ms' }}
         >
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -627,7 +621,7 @@ function OverviewTab({ pkg, projectId, formatCurrency, onNavigateTab, onNavigate
             </ul>
           )}
         </div>
-      </div>
+      </section>
     </div>
   );
 }
@@ -1017,7 +1011,7 @@ function CommercialTab({ summary, apps, formatCurrency, pkg, projectId }: {
 
 // ─── AI Analysis ─────────────────────────────────────────────────────────────
 
-function AiAnalysisTab({ projectId, pkg, onStartNew }: { projectId: string; pkg: TradePackage; onStartNew: () => void }) {
+function AiAnalysisTab({ pkg, onStartNew }: { pkg: TradePackage; onStartNew: () => void }) {
   const [expanded, setExpanded] = useState<number | null>(null);
   const queryClient = useQueryClient();
 

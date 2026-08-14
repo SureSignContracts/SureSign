@@ -2,15 +2,15 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { HeartHandshake, Plus } from 'lucide-react';
+import { HeartHandshake, Plus, Clock, Globe, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Modal from '@/components/ui/Modal';
-import { Badge } from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
 import { getErrorMessage } from '@/lib/getErrorMessage';
+import PlatformPageHero from '@/components/admin/PlatformPageHero';
 
 interface ConsultancyServiceRow {
   id: number;
@@ -133,61 +133,29 @@ export default function ConsultancyServicesPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-5">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-            <HeartHandshake size={20} /> Consultancy Services
-          </h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-            The Consultancy Service catalogue — each service is a commercial/presentation wrapper around a scheduling type. Super Admin or Admin can manage this.
-          </p>
-        </div>
-        <Button onClick={openCreate}><Plus size={14} /> New Service</Button>
-      </div>
+    <div className="mx-auto max-w-7xl space-y-7 p-4 pb-12 sm:p-6 lg:p-8">
+      <PlatformPageHero eyebrow="Service catalogue" title="Consultancy Services" description="Shape the consultancy offers customers can book, including duration, price and channel availability." loading={isLoading}
+        metrics={[
+          { label: 'Services', value: services?.length ?? 0, detail: 'catalogue entries', icon: HeartHandshake },
+          { label: 'Enabled', value: services?.filter(service => service.enabled).length ?? 0, detail: 'available services', icon: Clock },
+          { label: 'Public', value: services?.filter(service => service.publicly_bookable).length ?? 0, detail: 'marketing-site offers', icon: Globe },
+        ]}
+        action={<button onClick={openCreate} className="flex items-center gap-2 rounded-xl bg-[#9ee5b5] px-4 py-2.5 text-sm font-semibold text-[#18211d] transition-colors hover:bg-[#b3efc6] active:scale-[0.98]"><Plus size={14} />New service</button>}
+      />
 
-      <div className="rounded-2xl overflow-x-auto" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
-        <table className="w-full min-w-[820px]">
-          <thead>
-            <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
-              {['Service', 'Duration', 'Price', 'Visibility', 'Status', ''].map((h, i) => (
-                <th key={i} className="text-left px-4 py-3 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              [...Array(3)].map((_, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)' }}>
-                  {[...Array(6)].map((_, j) => (
-                    <td key={j} className="px-4 py-3"><div className="h-4 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)', width: '60%' }} /></td>
-                  ))}
-                </tr>
-              ))
-            ) : !services || services.length === 0 ? (
-              <tr><td colSpan={6}><EmptyState icon={HeartHandshake} title="No Consultancy Services yet" description="Create your first service to start offering consultations." /></td></tr>
-            ) : services.map((s, idx) => (
-              <tr key={s.id} style={{ borderBottom: idx < services.length - 1 ? '1px solid var(--border)' : undefined, backgroundColor: 'var(--bg-surface)' }}>
-                <td className="px-4 py-3 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                  {s.display_name}
-                  {s.is_introductory && <Badge tone="accent" className="ml-2">Introductory</Badge>}
-                </td>
-                <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-secondary)' }}>{s.appointment_type.duration_minutes} min</td>
-                <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-secondary)' }}>{formatPrice(s)}</td>
-                <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  {[s.publicly_bookable && 'Public', s.available_to_existing_customers && 'Customers'].filter(Boolean).join(' · ') || 'Internal only'}
-                </td>
-                <td className="px-4 py-3"><Badge tone={s.enabled ? 'success' : 'neutral'}>{s.enabled ? 'Enabled' : 'Disabled'}</Badge></td>
-                <td className="px-4 py-3">
-                  <button onClick={() => openEdit(s)} className="text-xs font-medium hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2" style={{ color: 'var(--gold)' }} aria-label={`Edit ${s.display_name}`}>
-                    Edit
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {isLoading ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{[...Array(6)].map((_, i) => <div key={i} className="h-64 animate-pulse rounded-2xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }} />)}</div>
+      : !services || services.length === 0 ? <div className="rounded-2xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}><EmptyState icon={HeartHandshake} title="No Consultancy Services yet" description="Create your first service to start offering consultations." /></div>
+      : <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {services.map((service, index) => (
+            <button key={service.id} onClick={() => openEdit(service)} className="group flex min-h-[260px] flex-col rounded-2xl p-5 text-left transition-all duration-300 hover:-translate-y-1 hover:border-[#9ee5b5]/70 hover:shadow-[0_18px_36px_rgba(24,33,29,0.10)] ss-animate-in" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: '0 3px 12px rgba(24,33,29,0.05)', animationDelay: `${Math.min(index * 55, 440)}ms` }}>
+              <div className="flex items-center justify-between"><span className="font-mono text-[10px] uppercase tracking-[0.08em]" style={{ color: 'var(--text-muted)' }}>{service.code}</span><span className="inline-flex items-center gap-1.5 text-[11px] font-medium" style={{ color: service.enabled ? '#299a54' : 'var(--text-muted)' }}><span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: service.enabled ? '#35b966' : 'var(--text-muted)' }} />{service.enabled ? 'Enabled' : 'Disabled'}</span></div>
+              <h2 className="mt-6 text-lg font-semibold tracking-[-0.025em]" style={{ color: 'var(--text-primary)' }}>{service.display_name}</h2>
+              <p className="mt-2 line-clamp-2 text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>{service.public_description || service.description || 'No service description has been added.'}</p>
+              <div className="mt-5 grid grid-cols-2 border-y py-3" style={{ borderColor: 'var(--border)' }}><div className="border-r" style={{ borderColor: 'var(--border)' }}><p className="text-[10px] uppercase tracking-[0.08em]" style={{ color: 'var(--text-muted)' }}>Duration</p><p className="mt-1 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{service.appointment_type.duration_minutes} min</p></div><div className="pl-4"><p className="text-[10px] uppercase tracking-[0.08em]" style={{ color: 'var(--text-muted)' }}>Price</p><p className="mt-1 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{formatPrice(service)}</p></div></div>
+              <div className="mt-auto flex items-center justify-between pt-4"><div className="flex flex-wrap gap-x-3 text-[11px]" style={{ color: 'var(--text-secondary)' }}>{service.publicly_bookable && <span>Public</span>}{service.available_to_existing_customers && <span>Existing customers</span>}{service.is_introductory && <span style={{ color: 'var(--gold)' }}>Introductory</span>}</div><span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full transition-colors group-hover:bg-[#9ee5b5]"><ChevronRight size={14} className="transition-transform group-hover:translate-x-0.5" /></span></div>
+            </button>
+          ))}
+        </div>}
 
       {modalOpen && (
         <Modal title={editing ? 'Edit Consultancy Service' : 'New Consultancy Service'} icon={HeartHandshake} onClose={closeModal} busy={saveMutation.isPending}>

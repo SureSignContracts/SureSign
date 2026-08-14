@@ -22,6 +22,7 @@ import { useUserInheritedSubscription } from '@/hooks/useBilling';
 import { SubscriptionSummaryView } from '@/types/subscriptionIntelligence';
 import UsageMeter from '@/components/billing/intelligence/UsageMeter';
 import { getErrorMessage } from '@/lib/getErrorMessage';
+import PlatformPageHero from '@/components/admin/PlatformPageHero';
 
 const ACCESS_MODE_TONE: Record<string, Tone> = {
   none: 'neutral', trial: 'accent', full: 'success', grace: 'warning', restricted: 'danger',
@@ -353,26 +354,58 @@ function ManageUserModal({
   const initials = user.name?.split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase() || '?';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm p-4" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }} onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md" style={{ backgroundColor: 'rgba(9,14,12,0.76)' }} onClick={onClose}>
       <div
-        className="w-full max-w-md rounded-2xl p-6 ss-animate-in max-h-[90vh] overflow-y-auto"
-        style={{ backgroundColor: 'var(--bg-panel)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}
+        className="grid max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-2xl ss-animate-in md:grid-cols-[280px_minmax(0,1fr)]"
+        style={{ backgroundColor: 'var(--bg-panel)', boxShadow: '0 28px 80px rgba(8, 14, 11, 0.38)' }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-start justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-                 style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}>
+        <aside className="relative hidden overflow-hidden bg-[#18211d] p-7 text-white md:flex md:flex-col">
+          <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-[#9ee5b5]/10 blur-3xl" />
+          <div className="relative">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9ee5b5]">Identity control</p>
+            <div className="mt-8 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#9ee5b5] text-base font-bold text-[#18211d] shadow-[0_12px_30px_rgba(158,229,181,0.18)]">
               {initials}
             </div>
-            <div>
-              <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Manage User</h2>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{user.email}</p>
+            <h2 className="mt-5 text-xl font-semibold tracking-[-0.03em]">{user.name}</h2>
+            <p className="mt-1 break-all text-xs text-white/45">{user.email}</p>
+
+            <div className="mt-8 space-y-4 border-t border-white/10 pt-6">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium">Account access</p>
+                  <p className="mt-0.5 text-[11px] text-white/40">Allow this user to sign in</p>
+                </div>
+                <Toggle checked={user.is_active} onChange={onToggleActive} disabled={actionLoading} />
+              </div>
+              <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl bg-white/10">
+                <div className="bg-[#18211d] p-3">
+                  <p className="text-[10px] text-white/35">Joined</p>
+                  <p className="mt-1 text-xs font-medium">{user.created_at ? formatDate(user.created_at) : '—'}</p>
+                </div>
+                <div className="bg-[#18211d] p-3">
+                  <p className="text-[10px] text-white/35">Last active</p>
+                  <p className="mt-1 text-xs font-medium">{user.last_login_at ? formatDate(user.last_login_at) : 'Never'}</p>
+                </div>
+              </div>
             </div>
           </div>
-          <button onClick={onClose}><X size={16} style={{ color: 'var(--text-muted)' }} /></button>
-        </div>
+
+          <div className="relative mt-auto border-t border-white/10 pt-5">
+            <p className="text-[10px] uppercase tracking-[0.14em] text-white/30">Current role</p>
+            <p className="mt-2 flex items-center gap-2 text-sm font-medium text-[#9ee5b5]"><Shield size={14} />{user.roles[0] ?? 'Client'}</p>
+          </div>
+        </aside>
+
+        <main className="relative max-h-[90vh] overflow-y-auto p-6 sm:p-8">
+          <div className="mb-7 pr-10">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] md:hidden" style={{ color: 'var(--gold)' }}>Identity control</p>
+            <h2 className="text-xl font-semibold tracking-[-0.025em]" style={{ color: 'var(--text-primary)' }}>Manage user</h2>
+            <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Profile, permissions and account security</p>
+          </div>
+          <button onClick={onClose} aria-label="Close user manager" className="absolute right-5 top-5 rounded-xl p-2 transition-colors hover:bg-[var(--bg-hover)]">
+            <X size={17} style={{ color: 'var(--text-muted)' }} />
+          </button>
 
         {/* ── Account Information ── */}
         <section className="mb-6">
@@ -388,7 +421,7 @@ function ManageUserModal({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3 mb-1">
+          <div className="grid grid-cols-2 gap-3 mb-1 md:hidden">
             <div className="rounded-xl px-3.5 py-2.5" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
               <p className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>Joined</p>
               <p className="text-sm mt-0.5 tabular-nums" style={{ color: 'var(--text-primary)' }}>
@@ -403,13 +436,13 @@ function ManageUserModal({
             </div>
           </div>
 
-          <StatusRow
+          <div className="md:hidden"><StatusRow
             label="Active"
             description="Deactivated users cannot log in."
             checked={user.is_active}
             onChange={onToggleActive}
             disabled={actionLoading}
-          />
+          /></div>
         </section>
 
         <div style={{ borderTop: '1px solid var(--border)', margin: '0 0 20px' }} />
@@ -570,6 +603,7 @@ function ManageUserModal({
           <SectionHeader>Danger Zone</SectionHeader>
           <ConfirmButton label="Remove User" icon={<Trash2 size={13} />} onConfirm={onRemove} loading={actionLoading} danger />
         </section>
+        </main>
       </div>
     </div>
   );
@@ -797,28 +831,31 @@ export default function AdminUsersPage() {
   if (currentUser && !isSuperAdmin) return null;
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Users</h1>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>
-            Manage team members and access
-            {!isLoading && totalUsers > 0 && <span className="ml-1">· {totalUsers} total</span>}
-          </p>
-        </div>
-        <button
-          onClick={() => setInviteOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.98]"
-          style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
-        >
-          <UserPlus size={15} />
-          Invite User
-        </button>
-      </div>
+    <div className="mx-auto max-w-7xl space-y-6 p-4 pb-12 sm:p-6 lg:p-8">
+      <PlatformPageHero
+        eyebrow="Identity & access"
+        title="Users"
+        description="Manage platform operators, client accounts and the access attached to every identity."
+        metrics={[
+          { label: 'Registered users', value: totalUsers, detail: 'across the platform', icon: Users },
+          { label: 'Active in view', value: users.filter(user => user.is_active && !user.banned_at).length, detail: 'current result set', icon: ShieldCheck },
+          { label: 'Verified in view', value: users.filter(user => user.email_verified_at).length, detail: 'confirmed email addresses', icon: Mail },
+          { label: 'Operators in view', value: users.filter(user => user.is_platform_operator).length, detail: 'platform-level access', icon: KeyRound },
+        ]}
+        loading={isLoading}
+        action={(
+          <button
+            onClick={() => setInviteOpen(true)}
+            className="inline-flex items-center gap-2 whitespace-nowrap rounded-xl bg-[#9ee5b5] px-4 py-3 text-sm font-semibold text-[#18211d] transition duration-200 hover:-translate-y-0.5 hover:bg-[#b5edc7] active:translate-y-0"
+          >
+            <UserPlus size={16} />
+            Invite user
+          </button>
+        )}
+      />
 
       {/* Filters row */}
-      <div className="flex gap-3 mb-5">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <div className="flex gap-1 p-1 rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
           {STATUS_FILTERS.map(f => (
             <button
@@ -848,7 +885,7 @@ export default function AdminUsersPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl overflow-x-auto" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+      <div className="overflow-x-auto rounded-2xl" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
         <table className="w-full min-w-[820px]">
           <thead>
             <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
@@ -884,15 +921,15 @@ export default function AdminUsersPage() {
               return (
                 <tr
                   key={u.id}
+                  className="group transition-colors hover:bg-[var(--bg-hover)]"
                   style={{
                     borderBottom: idx < users.length - 1 ? '1px solid var(--border)' : undefined,
-                    backgroundColor: 'var(--bg-surface)',
                     opacity: u.is_active && !u.banned_at ? 1 : 0.6,
                   }}
                 >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-xs font-bold transition-transform duration-200 group-hover:-translate-y-0.5"
                            style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}>
                         {initials}
                       </div>

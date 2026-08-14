@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, CreditCard, Loader2, RefreshCw } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CreditCard, Loader2, ReceiptText, RefreshCw, ShieldCheck, WalletCards } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useBillingOverview, PORTAL_RETURN_FLAG_KEY } from '@/hooks/useBilling';
 import EmptyState from '@/components/ui/EmptyState';
@@ -14,7 +14,7 @@ import { subscriptionStatusLabel } from '@/lib/billingStatus';
 
 function Skeleton() {
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div className="h-9 w-64 rounded-lg animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
       <div className="h-20 rounded-2xl animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
       <div className="h-56 rounded-2xl animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
@@ -58,20 +58,24 @@ export default function BillingPage() {
   if (overviewLoading) return <Skeleton />;
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:py-9">
       <div className="ss-animate-in">
         <Link href="/app/settings" className="inline-flex items-center gap-1.5 text-xs mb-4 transition-all duration-200 hover:opacity-70 hover:-translate-x-0.5" style={{ color: 'var(--text-muted)' }}>
           <ArrowLeft size={13} /> Back to Settings
         </Link>
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center transition-transform duration-300 hover:scale-105" style={{ backgroundColor: 'var(--bg-elevated)' }}>
-            <CreditCard size={18} style={{ color: 'var(--text-secondary)' }} />
+        <section className="overflow-hidden rounded-2xl bg-[#18211d] text-white shadow-[0_24px_70px_rgba(24,33,29,0.16)]">
+          <div className="p-7 sm:p-10">
+            <p className="mb-7 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#9ee5b5]"><CreditCard size={14} /> Financial record</p>
+            <h1 className="text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">Billing, without the bookkeeping fog.</h1>
+            <p className="mt-4 max-w-2xl text-sm leading-6 text-[#b9c5bf] sm:text-base">Review payment methods, invoices and completed transactions in one dependable record.</p>
           </div>
-          <div>
-            <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Billing</h1>
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Payment methods, invoices and payment history</p>
+          <div className="grid border-t border-white/10 sm:grid-cols-3">
+            {[[WalletCards, 'Payment methods', 'Managed securely in Stripe'], [ReceiptText, 'Invoice trail', 'Downloadable billing records'], [ShieldCheck, 'Secure portal', 'Sensitive details stay protected']].map(([Icon, label, description]) => {
+              const ItemIcon = Icon as typeof WalletCards;
+              return <div key={label as string} className="flex items-start gap-3 px-7 py-5 sm:border-r sm:border-white/10 last:border-r-0"><ItemIcon size={16} className="mt-0.5 text-[#9ee5b5]" /><div><p className="text-sm font-semibold">{label as string}</p><p className="mt-1 text-xs text-[#8f9c96]">{description as string}</p></div></div>;
+            })}
           </div>
-        </div>
+        </section>
       </div>
 
       {returningFromPortal && (
@@ -99,8 +103,7 @@ export default function BillingPage() {
         <>
           <Link
             href="/app/settings/billing/subscription"
-            className="group flex items-center justify-between rounded-2xl p-5 ss-animate-in transition-colors hover:bg-[var(--bg-hover)]"
-            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+            className="group flex items-center justify-between rounded-2xl bg-[var(--bg-surface)] p-5 shadow-[0_12px_32px_rgba(24,33,29,0.07)] ss-animate-in transition-all duration-200 hover:-translate-y-0.5"
           >
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--bg-elevated)' }}>

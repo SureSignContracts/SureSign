@@ -3,14 +3,14 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { HeartHandshake, Plus, Calendar, ChevronRight } from 'lucide-react';
+import { HeartHandshake, Plus, Calendar, ChevronRight, Clock, ArrowRight, CheckCircle } from 'lucide-react';
 import api from '@/lib/api';
 import { Badge } from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import EmptyState from '@/components/ui/EmptyState';
 import PaginationBar from '@/components/ui/PaginationBar';
 import { formatDate } from '@/lib/utils';
-import { EASE, staggerDelay } from '@/lib/motion';
+import { EASE } from '@/lib/motion';
 import PageTourButton from '@/components/tours/PageTourButton';
 
 interface ConsultationRow {
@@ -24,52 +24,62 @@ interface ConsultationRow {
 
 function ConsultationCard({ row, index }: { row: ConsultationRow; index: number }) {
   const serviceName = row.consultation_enquiry?.consultancy_service?.display_name ?? row.appointment_type.name;
+  const startsAt = new Date(row.starts_at);
+  const day = startsAt.toLocaleDateString('en-GB', { day: '2-digit' });
+  const month = startsAt.toLocaleDateString('en-GB', { month: 'short' });
+  const time = startsAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
   return (
     <Link
       href={`/app/consultations/${row.id}`}
-      className={`group ss-animate-in rounded-2xl p-5 flex flex-col gap-3 transition-all duration-300 ${EASE} hover:-translate-y-0.5 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-pop)]`}
+      className={`group ss-consultancy-card-in flex min-h-56 flex-col overflow-hidden rounded-2xl transition-all duration-300 ${EASE} hover:-translate-y-1 active:translate-y-px shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-pop)]`}
       style={{
         backgroundColor: 'var(--bg-surface)',
         border: '1px solid var(--border)',
-        animationDelay: staggerDelay(index),
+        animationDelay: `${520 + Math.min(index * 80, 480)}ms`,
       }}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3 min-w-0">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ring-1"
-            style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)', boxShadow: 'inset 0 0 0 1px var(--gold-8)' }}
-          >
-            <HeartHandshake size={17} />
+      <div className="flex items-start gap-4 p-5">
+        <div className="flex w-16 flex-shrink-0 flex-col items-center overflow-hidden rounded-xl border" style={{ borderColor: 'var(--border)' }}>
+          <span className="w-full py-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}>
+            {month}
+          </span>
+          <span className="py-2 text-2xl font-semibold tracking-[-0.04em]" style={{ color: 'var(--text-primary)' }}>{day}</span>
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-base font-semibold tracking-[-0.015em]" style={{ color: 'var(--text-primary)' }}>
+                {serviceName}
+              </p>
+              <p className="mt-1 truncate font-mono text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                {row.reference}
+              </p>
+            </div>
+            <Badge status={row.status} />
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold leading-tight truncate" style={{ color: 'var(--text-primary)' }}>
-              {serviceName}
+
+          {row.consultation_enquiry?.title && (
+            <p className="line-clamp-2 text-sm leading-5" style={{ color: 'var(--text-secondary)' }}>
+              {row.consultation_enquiry.title}
             </p>
-            <p className="font-mono text-[11px] mt-1 truncate" style={{ color: 'var(--text-muted)' }}>
-              {row.reference}
-            </p>
+          )}
+
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+            <span className="flex items-center gap-1.5"><Calendar size={13} /> {formatDate(row.starts_at)}</span>
+            <span className="flex items-center gap-1.5"><Clock size={13} /> {time}</span>
           </div>
         </div>
-        <Badge status={row.status} />
       </div>
 
-      {row.consultation_enquiry?.title && (
-        <p className="text-sm truncate" style={{ color: 'var(--text-secondary)' }}>
-          {row.consultation_enquiry.title}
-        </p>
-      )}
-
-      <div className="flex items-center justify-between gap-3 pt-2" style={{ borderTop: '1px solid var(--border)' }}>
-        <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>
-          <Calendar size={13} /> {formatDate(row.starts_at)}
-        </div>
+      <div className="mt-auto flex items-center justify-between gap-3 border-t px-5 py-3.5" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-elevated)' }}>
+        <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Appointment details</span>
         <div
-          className={`flex items-center gap-1 text-xs font-medium opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 ${EASE}`}
+          className={`flex items-center gap-1 text-xs font-semibold transition-transform duration-300 ${EASE} group-hover:translate-x-1`}
           style={{ color: 'var(--gold)' }}
         >
-          View details <ChevronRight size={13} />
+          View <ChevronRight size={13} />
         </div>
       </div>
     </Link>
@@ -89,61 +99,106 @@ export default function ConsultationsPage() {
   const consultations: ConsultationRow[] = data?.data ?? [];
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-5">
-      <div className="flex items-center justify-between flex-wrap gap-3" data-tour="consultations-header">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-            <HeartHandshake size={22} /> Consultancy
-            <PageTourButton tourKey="page-consultations" label="Take a tour of this page" />
-          </h1>
-          <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>
-            Book time with a real construction professional for guidance on your project.
-          </p>
-        </div>
-        <Link href="/app/consultations/new" data-tour="consultations-book-button">
-          <Button className="gap-2"><Plus size={15} /> Book a Consultation</Button>
-        </Link>
-      </div>
+    <div className="ss-consultancy-page-in mx-auto max-w-6xl space-y-8 p-4 sm:p-6 lg:py-9">
+      <section className="ss-consultancy-hero-in grid overflow-hidden rounded-2xl bg-[#18211d] text-[#f4f7f5] lg:grid-cols-[1.35fr_0.65fr]" data-tour="consultations-header">
+        <div className="ss-consultancy-left-in relative overflow-hidden p-7 sm:p-9 lg:p-11">
+          <div className="absolute -left-24 -top-28 h-72 w-72 rounded-full border border-[#a5d6b5]/10" />
+          <div className="ss-consultancy-reveal relative" style={{ animationDelay: '260ms' }}>
+            <div className="mb-7 flex h-11 w-11 items-center justify-center rounded-xl border border-[#a5d6b5]/20 bg-[#a5d6b5]/10 text-[#9ee5b5]">
+              <HeartHandshake size={21} />
+            </div>
+            <div className="flex items-start gap-2">
+              <h1 className="flex-1 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">Expert guidance, when the contract gets complicated.</h1>
+              <span style={{ '--text-muted': '#b9c5bf' } as React.CSSProperties}>
+                <PageTourButton tourKey="page-consultations" label="Take a tour of this page" />
+              </span>
+            </div>
+            <p className="mt-4 max-w-2xl text-sm leading-6 text-[#b9c5bf] sm:text-base">
+              Talk through payment, variations, notices or delay with an experienced construction professional.
+            </p>
 
-      <div data-tour="consultations-list">
+            <Link href="/app/consultations/new" className="mt-7 inline-block" data-tour="consultations-book-button">
+              <Button size="lg" className="gap-2">
+                <Plus size={16} /> Book a consultation
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        <div className="ss-consultancy-right-in flex flex-col justify-center border-t border-[#a5d6b5]/10 bg-[#202c26] p-7 sm:p-9 lg:border-l lg:border-t-0">
+          <p className="ss-consultancy-reveal text-sm font-semibold text-[#f4f7f5]" style={{ animationDelay: '380ms' }}>Built around your project</p>
+          <div className="mt-5 space-y-4">
+            {[
+              'Private, focused discussion',
+              'Practical next-step guidance',
+              'Consultation record kept together',
+            ].map((item, index) => (
+              <div key={item} className="ss-consultancy-reveal flex items-center gap-3 text-sm text-[#b9c5bf]" style={{ animationDelay: `${460 + (index * 75)}ms` }}>
+                <CheckCircle size={16} className="flex-shrink-0 text-[#9ee5b5]" />
+                {item}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section data-tour="consultations-list">
+        <div className="ss-consultancy-list-in mb-4 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-semibold tracking-[-0.025em]" style={{ color: 'var(--text-primary)' }}>Your consultations</h2>
+            <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
+              {isLoading ? 'Loading your appointments…' : consultations.length === 0 ? 'Your booked sessions will appear here.' : `${data?.total ?? consultations.length} appointment${(data?.total ?? consultations.length) === 1 ? '' : 's'} in your record.`}
+            </p>
+          </div>
+          {consultations.length > 0 && (
+            <Link href="/app/consultations/new" className="group inline-flex items-center gap-2 text-sm font-semibold" style={{ color: 'var(--gold)' }}>
+              Book a consultation <ArrowRight size={14} className="transition-transform duration-200 group-hover:translate-x-1" />
+            </Link>
+          )}
+        </div>
+
         {isLoading ? (
-          <div className="grid gap-3 sm:grid-cols-2" aria-busy="true" aria-live="polite">
+          <div className="grid gap-4 sm:grid-cols-2" aria-busy="true" aria-live="polite">
             <span className="sr-only">Loading your consultations…</span>
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-32 rounded-2xl animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+              <div key={i} className="ss-consultancy-card-in" style={{ animationDelay: `${520 + Math.min(i * 70, 350)}ms` }}>
+                <div className="h-56 animate-pulse rounded-2xl" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+              </div>
             ))}
           </div>
         ) : consultations.length === 0 ? (
-          <div className="rounded-2xl" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+          <div className="ss-consultancy-card-in rounded-2xl" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '520ms' }}>
             <EmptyState
               icon={HeartHandshake}
               title="No consultations yet"
               description="Book a consultation to discuss a payment notice, variation, or any contract administration question with an experienced professional."
               action={
                 <Link href="/app/consultations/new">
-                  <Button size="sm">Book a Consultation</Button>
+                  <Button size="sm">Book a consultation</Button>
                 </Link>
               }
             />
           </div>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             {consultations.map((c, idx) => (
               <ConsultationCard key={c.id} row={c} index={idx} />
             ))}
           </div>
         )}
-      </div>
+      </section>
 
       {!isLoading && data?.total > 0 && (
-        <PaginationBar
-          page={data.current_page ?? page}
-          lastPage={data.last_page ?? 1}
-          total={data.total ?? 0}
-          perPage={perPage}
-          onPage={setPage}
-          onPerPage={n => { setPerPage(n); setPage(1); }}
-        />
+        <div className="ss-consultancy-list-in" style={{ animationDelay: '660ms' }}>
+          <PaginationBar
+            page={data.current_page ?? page}
+            lastPage={data.last_page ?? 1}
+            total={data.total ?? 0}
+            perPage={perPage}
+            onPage={setPage}
+            onPerPage={n => { setPerPage(n); setPage(1); }}
+          />
+        </div>
       )}
     </div>
   );

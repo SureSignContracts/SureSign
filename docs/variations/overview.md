@@ -95,8 +95,14 @@ the Final Account.
 
 ## Drawing Locations
 
-If a variation has been linked to a location on a [Drawing](../drawings/viewing-a-drawing.md#linking-project-records),
-a **Drawing Locations** section on the variation shows every drawing
-location it's linked from, with an **Open Drawing** action that jumps
-straight to the correct drawing, revision, and page. Linking is done from
-the Drawing Viewer, not from here.
+A variation can be connected to a drawing location, but only by linking an
+*existing* variation — select **Link Existing** from that location's
+marker in the [Drawing Viewer](../drawings/viewing-a-drawing.md#linking-existing-records)
+and choose it. There is no way to create a new variation directly from a
+drawing location (unlike Snags, RFIs, and QA Reports) — a variation's own
+commercial workflow always starts from its normal creation screen.
+
+If a variation has been linked to a location on a Drawing, a **Drawing
+Locations** section on the variation shows every drawing location it's
+linked from, with an **Open Drawing** action that jumps straight to the
+correct drawing, revision, and page.

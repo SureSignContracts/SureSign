@@ -10,6 +10,7 @@ import { DelayEventsTab } from './DelayEventsTab';
 import { EotRequestsTab } from './EotRequestsTab';
 import { LossAndExpenseTab } from './LossAndExpenseTab';
 import PageTourButton from '@/components/tours/PageTourButton';
+import { ProjectModuleHeader, ProjectModuleMetric } from '@/components/projects/ProjectModuleHeader';
 
 // ─── Shared types (re-exported for the tab components) ────────────────────────
 
@@ -128,33 +129,41 @@ export default function DelayEotPage() {
   ];
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <div>
-        <div className="flex items-center gap-1.5">
-          <h1 className="text-[1.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>Delay &amp; EOT</h1>
-          <PageTourButton tourKey="page-delay-eot" label="Take a tour of this page" />
-        </div>
-        <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-          Delay events, extensions of time, and loss &amp; expense claims for this project
-        </p>
-      </div>
+    <div className="ss-projects-page mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <ProjectModuleHeader
+        category="Contract administration"
+        title="Delay & EOT"
+        description="Manage delay events, extensions of time and associated loss and expense claims."
+        icon={Clock3}
+        tour={<PageTourButton tourKey="page-delay-eot" label="Take a tour of this page" />}
+        metricColumns={3}
+      >
+        <ProjectModuleMetric label="Open delay events" value={counts.openDelays} tone="#fb923c" active={tab === 'delay-events'} onClick={() => setTab('delay-events')} index={0} />
+        <ProjectModuleMetric label="EOT decisions pending" value={counts.undecidedEots} tone="#facc15" active={tab === 'eot'} onClick={() => setTab('eot')} index={1} />
+        <ProjectModuleMetric label="Outstanding claims" value={counts.outstandingClaims} tone="#9ee5b5" active={tab === 'loss-and-expense'} onClick={() => setTab('loss-and-expense')} index={2} />
+      </ProjectModuleHeader>
 
-      <div className="flex gap-1 p-1 rounded-full w-fit overflow-x-auto" data-tour="delay-eot-tabs" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
-        {TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all active:scale-[0.97] whitespace-nowrap"
-            style={tab === t.id ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' } : { color: 'var(--text-secondary)' }}>
-            <t.icon size={14} />{t.label}
-            {t.count > 0 && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                style={tab === t.id
-                  ? { backgroundColor: 'rgba(0,0,0,0.15)', color: 'inherit' }
-                  : { backgroundColor: 'rgba(239,68,68,0.15)', color: '#f87171' }}>
-                {t.count}
-              </span>
-            )}
-          </button>
-        ))}
+      <div className="ss-animate-in flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-3 shadow-[var(--shadow-card)] lg:flex-row lg:items-center lg:justify-between" data-tour="delay-eot-tabs" style={{ animationDelay: '90ms' }}>
+        <div className="flex gap-1 overflow-x-auto rounded-xl bg-[var(--bg-elevated)] p-1">
+          {TABS.map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className="flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-all active:scale-[0.97]"
+              style={tab === t.id ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' } : { color: 'var(--text-secondary)' }}>
+              <t.icon size={14} />{t.label}
+              {t.count > 0 && (
+                <span className="rounded-md px-1.5 py-0.5 text-[10px] font-bold"
+                  style={tab === t.id
+                    ? { backgroundColor: 'rgba(0,0,0,0.15)', color: 'inherit' }
+                    : { backgroundColor: 'rgba(239,68,68,0.12)', color: '#f87171' }}>
+                  {t.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        <p className="px-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+          {tab === 'delay-events' ? 'Record cause, notice and estimated impact.' : tab === 'eot' ? 'Assess entitlement and determine time awarded.' : 'Track associated cost recovery and assessment.'}
+        </p>
       </div>
 
       {tab === 'delay-events' && (

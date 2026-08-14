@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { ClipboardList, Search, ChevronDown, ChevronRight } from 'lucide-react';
+import { ClipboardList, Search, ChevronDown, ChevronRight, ShieldCheck, Users } from 'lucide-react';
 import EmptyState from '@/components/ui/EmptyState';
 import Select from '@/components/ui/Select';
 import { useAuthStore } from '@/store/authStore';
+import PlatformPageHero from '@/components/admin/PlatformPageHero';
 
 const ACTION_LABELS: Record<string, { label: string; color: string }> = {
   'contract.created':               { label: 'Contract Created',       color: '#60a5fa' },
@@ -118,14 +119,18 @@ export default function AuditLogPage() {
   const total: number    = data?.total ?? 0;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-5 pb-10">
-      <div>
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Audit Log</h1>
-        <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-          Immutable record of all key actions across the platform
-          {!isLoading && total > 0 && <span className="ml-1">· {total} entries</span>}
-        </p>
-      </div>
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-5 pb-10">
+      <PlatformPageHero
+        eyebrow="Governance trail"
+        title="Audit log"
+        description="A durable record of meaningful platform actions, who performed them and when."
+        metrics={[
+          { label: 'Recorded actions', value: total, detail: 'across the platform', icon: ShieldCheck },
+          { label: 'Visible entries', value: entries.length, detail: 'on this page', icon: ClipboardList },
+          { label: 'Actors', value: new Set(entries.map(entry => entry.user?.id).filter(Boolean)).size, detail: 'represented here', icon: Users },
+        ]}
+        loading={isLoading}
+      />
 
       {/* Toolbar */}
       <div className="flex gap-3 flex-wrap items-center">

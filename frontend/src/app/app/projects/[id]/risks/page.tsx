@@ -5,10 +5,11 @@ import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
-import { Plus, X, Trash2 } from 'lucide-react';
+import { Plus, X, Trash2, ShieldAlert } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getErrorMessage, INPUT_STYLE, CATEGORY_LABELS, SeverityBadge, StatusBadge, Field } from '@/components/risks/riskShared';
 import PageTourButton from '@/components/tours/PageTourButton';
+import { ProjectModuleHeader, ProjectModuleMetric } from '@/components/projects/ProjectModuleHeader';
 import Select from '@/components/ui/Select';
 
 type Risk = {
@@ -68,35 +69,50 @@ export default function RiskRegisterPage() {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6 pb-12">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <div className="flex items-center gap-1.5">
-            <h1 className="text-[1.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>
-              Risk register
-            </h1>
-            <PageTourButton tourKey="page-risks" label="Take a tour of this page" />
-          </div>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
-            Risks across the main contract and every trade package, AI-derived and manually raised.
-          </p>
-        </div>
-        <button
-          data-tour="risks-new"
-          onClick={() => setShowCreate(true)}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition-all active:scale-[0.98] hover:opacity-90"
-          style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
-        >
-          <Plus size={14} /> Add risk
-        </button>
-      </div>
+    <div className="ss-projects-page mx-auto max-w-7xl space-y-6 p-4 pb-12 sm:p-6 lg:p-8">
+      <ProjectModuleHeader
+        category="Contract administration"
+        title="Risk register"
+        description="Surface contractual and delivery risks across the main contract and every trade package."
+        icon={ShieldAlert}
+        tour={<PageTourButton tourKey="page-risks" label="Take a tour of this page" />}
+        action={(
+          <button data-tour="risks-new" onClick={() => setShowCreate(true)} className="flex h-11 items-center gap-2 whitespace-nowrap rounded-xl bg-[#9ee5b5] px-5 text-sm font-semibold text-[#18211d] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#b4edc6] active:translate-y-0">
+            <Plus size={16} /> Add risk
+          </button>
+        )}
+        metricColumns={5}
+      >
+        {[
+          { key: 'all' as const, label: 'Total exposure', value: risks.length, tone: '#9ee5b5' },
+          { key: 'critical' as const, label: 'Critical', value: counts.critical, tone: '#f87171' },
+          { key: 'high' as const, label: 'High', value: counts.high, tone: '#fb923c' },
+          { key: 'medium' as const, label: 'Medium', value: counts.medium, tone: '#facc15' },
+          { key: 'low' as const, label: 'Low', value: counts.low, tone: '#9ee5b5' },
+        ].map((metric, index) => (
+          <ProjectModuleMetric
+            key={metric.key}
+            label={metric.label}
+            value={metric.value}
+            tone={metric.tone}
+            active={filter === metric.key}
+            onClick={() => setFilter(metric.key)}
+            index={index}
+          />
+        ))}
+      </ProjectModuleHeader>
 
-      <div className="flex gap-1 p-1 rounded-full w-fit flex-wrap" data-tour="risks-filters" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+      <div className="ss-animate-in flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 shadow-[var(--shadow-card)] sm:flex-row sm:items-center sm:justify-between" data-tour="risks-filters" style={{ animationDelay: '100ms' }}>
+        <div>
+          <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Risk exposure</p>
+          <p className="mt-0.5 text-xs" style={{ color: 'var(--text-muted)' }}>Filter the register by contractual severity.</p>
+        </div>
+        <div className="flex w-fit flex-wrap gap-1 rounded-xl bg-[var(--bg-elevated)] p-1">
         {(['all', 'critical', 'high', 'medium', 'low'] as const).map(s => (
           <button
             key={s}
             onClick={() => setFilter(s)}
-            className="px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-all active:scale-[0.97]"
+            className="rounded-lg px-3 py-1.5 text-xs font-medium capitalize transition-all active:scale-[0.97]"
             style={filter === s
               ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
               : { color: 'var(--text-secondary)' }}
@@ -104,9 +120,10 @@ export default function RiskRegisterPage() {
             {s === 'all' ? `All (${risks.length})` : `${s[0].toUpperCase()}${s.slice(1)} (${counts[s]})`}
           </button>
         ))}
+        </div>
       </div>
 
-      <div className="rounded-xl overflow-hidden" data-tour="risks-table" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+      <div className="ss-animate-in overflow-hidden rounded-2xl bg-[var(--bg-surface)]" data-tour="risks-table" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '150ms' }}>
         <table className="w-full text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>

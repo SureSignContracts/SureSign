@@ -15,6 +15,7 @@ import { SUPPORT_CATEGORIES, SUPPORT_STATUSES, SUPPORT_STATUS_LABELS, SUPPORT_ST
 import { formatDateTime } from '@/lib/dateTime';
 import { useAuthStore } from '@/store/authStore';
 import Select from '@/components/ui/Select';
+import PlatformPageHero from '@/components/admin/PlatformPageHero';
 
 interface TicketSummary {
   id: number;
@@ -339,37 +340,19 @@ export default function AdminSupportPage() {
   const tickets = data?.data ?? [];
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Support</h1>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Support tickets submitted from across all organizations</p>
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
-        {[
-          { label: 'Waiting for Support', value: data?.counts?.waiting_for_support ?? 0, icon: AlertCircle, color: '#facc15' },
-          { label: 'Waiting for You',      value: data?.counts?.waiting_for_you ?? 0,      icon: Clock,       color: '#60a5fa' },
-          { label: 'Resolved',             value: data?.counts?.resolved ?? 0,             icon: CheckCircle2, color: '#4ade80' },
-          { label: 'Total',                value: data?.counts?.total ?? 0,                icon: MessageSquare, color: 'var(--gold)' },
-        ].map((stat, i) => (
-          <div
-            key={stat.label}
-            className="rounded-xl p-4 flex items-center gap-3 ss-animate-in"
-            style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: `${Math.min(i * 45, 360)}ms` }}
-          >
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: stat.color + '18' }}>
-              <stat.icon size={16} style={{ color: stat.color }} />
-            </div>
-            <div>
-              <p className="text-xl font-bold tabular-nums" style={{ color: 'var(--text-primary)' }}>{isLoading ? '–' : stat.value}</p>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{stat.label}</p>
-            </div>
-          </div>
-        ))}
-      </div>
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+      <PlatformPageHero
+        eyebrow="Service desk"
+        title="Support"
+        description="Triage customer questions, product issues and requests from one operational queue."
+        metrics={[
+          { label: 'Waiting for support', value: data?.counts?.waiting_for_support ?? 0, detail: 'needs a first response', icon: AlertCircle },
+          { label: 'Waiting for customer', value: data?.counts?.waiting_for_you ?? 0, detail: 'response requested', icon: Clock },
+          { label: 'Resolved', value: data?.counts?.resolved ?? 0, detail: 'closed tickets', icon: CheckCircle2 },
+          { label: 'Total tickets', value: data?.counts?.total ?? 0, detail: 'across the platform', icon: MessageSquare },
+        ]}
+        loading={isLoading}
+      />
 
       {/* Search + filters */}
       <div className="flex flex-wrap items-center gap-2">

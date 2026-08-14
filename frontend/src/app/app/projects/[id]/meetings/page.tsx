@@ -13,6 +13,7 @@ import { Users2, Plus, Search, Calendar, Clock, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PageTourButton from '@/components/tours/PageTourButton';
+import { ProjectModuleHeader } from '@/components/projects/ProjectModuleHeader';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
 
@@ -461,27 +462,19 @@ export default function ProjectMeetingsPage() {
   });
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-1.5">
-            <h1 className="text-[1.75rem] font-bold" style={{ color: 'var(--text-primary)' }}>Meetings</h1>
-            <PageTourButton tourKey="page-meetings" label="Take a tour of this page" />
-          </div>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Meeting minutes and action items</p>
-        </div>
-        {canWrite && (
-        <button
-          data-tour="meetings-new"
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.98]"
-          style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
-        >
-          <Plus size={15} />
-          New Meeting
-        </button>
-        )}
-      </div>
+    <div className="ss-projects-page mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <ProjectModuleHeader
+        category="Project communication"
+        title="Meetings"
+        description="Capture meeting records, decisions and action items in a structured project history."
+        icon={Users2}
+        tour={<PageTourButton tourKey="page-meetings" label="Take a tour of this page" />}
+        action={canWrite ? (
+          <button data-tour="meetings-new" onClick={() => setShowModal(true)} className="flex h-11 items-center gap-2 whitespace-nowrap rounded-xl bg-[#9ee5b5] px-5 text-sm font-semibold text-[#18211d] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#b4edc6] active:translate-y-0">
+            <Plus size={16} /> New meeting
+          </button>
+        ) : undefined}
+      />
 
       <div className="flex gap-3 flex-wrap" data-tour="meetings-filters">
         <div className="relative">
