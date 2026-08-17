@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowRight, Eye, EyeOff, KeyRound } from 'lucide-react';
 import api from '@/lib/api';
 import { getErrorMessage } from '@/lib/getErrorMessage';
+import RecoveryShell from '@/components/auth/RecoveryShell';
 
 const EASE = 'cubic-bezier(0.32, 0.72, 0, 1)';
 
@@ -49,52 +50,34 @@ function ResetPasswordForm() {
 
   if (!token || !email) {
     return (
-      <div className="min-h-dvh flex items-center justify-center px-6" style={{ backgroundColor: '#ffffff' }}>
-        <div className="w-full max-w-[380px] space-y-4 text-center">
-          <p className="text-sm" style={{ color: '#737373' }}>
+      <RecoveryShell eyebrow="Link unavailable" title="Request a fresh reset link." description="This recovery link is missing information or is no longer complete." icon={KeyRound}>
+        <div className="space-y-5">
+          <p className="text-sm leading-6 text-[#68736d]">
             This password reset link is missing required information.
           </p>
-          <a href="/forgot-password" className="text-sm font-medium hover:underline" style={{ color: '#0f0f0f' }}>
+          <a href="/forgot-password" className="flex h-12 items-center justify-center rounded-xl bg-[#18211d] text-sm font-semibold text-white transition-all hover:-translate-y-0.5">
             Request a new link
           </a>
         </div>
-      </div>
+      </RecoveryShell>
     );
   }
 
   return (
-    <div className="min-h-dvh flex items-center justify-center px-6" style={{ backgroundColor: '#ffffff' }}>
-      <div className="w-full max-w-[380px] space-y-8">
-        <div>
-          <div
-            className="w-11 h-11 rounded-xl flex items-center justify-center mb-6"
-            style={{ backgroundColor: '#0f0f0f' }}
-          >
-            <KeyRound size={18} strokeWidth={1.75} color="#ffffff" />
-          </div>
-          <h2 className="text-[1.7rem] font-semibold" style={{ color: '#0f0f0f', letterSpacing: '-0.025em' }}>
-            Reset your password
-          </h2>
-          <p className="mt-1.5 text-sm" style={{ color: '#737373' }}>
-            Choose a new password for <strong>{email}</strong>.
-          </p>
-        </div>
-
+    <RecoveryShell eyebrow="Secure credentials" title="Set a new password." description={`Choose a strong replacement password for ${email}.`} icon={KeyRound}>
+      <div className="space-y-6">
         {error && (
           <div
-            className="rounded-xl px-4 py-3 text-sm"
-            style={{ backgroundColor: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.18)', color: '#b91c1c' }}
+            className="border-l-2 border-[#b7554c] bg-[#f9eeec] px-4 py-3 text-sm text-[#96392f]"
           >
             {error}
           </div>
         )}
 
         {done ? (
-          <div
-            className="rounded-xl px-4 py-3 text-sm"
-            style={{ backgroundColor: 'rgba(22,163,74,0.06)', border: '1px solid rgba(22,163,74,0.18)', color: '#15803d' }}
-          >
-            Password reset successfully. Redirecting to sign in…
+          <div className="rounded-xl bg-[#e9f6ed] p-5 text-sm text-[#286c43]" role="status">
+            <p className="font-semibold">Password updated</p>
+            <p className="mt-1.5 text-[#52705e]">Your new credentials are ready. Redirecting you to sign in…</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -110,14 +93,14 @@ function ResetPasswordForm() {
                   required
                   autoComplete="new-password"
                   placeholder="••••••••"
-                  className="w-full px-4 py-3 pr-11 rounded-xl text-sm bg-[#f7f7f7] border border-[#e5e5e5] focus:border-[#0f0f0f] focus:bg-white focus-visible:outline-2 focus-visible:outline-[#0f0f0f] focus-visible:outline-offset-2"
+                  className="h-12 w-full rounded-xl border border-[#e1e5e2] bg-[#f5f6f5] px-4 pr-12 text-sm hover:bg-[#f0f2f1] focus:border-[#4d8966] focus:bg-white focus-visible:outline-2 focus-visible:outline-[#4d8966] focus-visible:outline-offset-2"
                   style={{ color: '#0f0f0f', transition: `border-color 300ms ${EASE}, background-color 300ms ${EASE}` }}
                 />
                 <button
                   type="button"
-                  tabIndex={-1}
                   onClick={() => setShowPw(p => !p)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 rounded transition-opacity hover:opacity-60"
+                  aria-label={showPw ? 'Hide passwords' : 'Show passwords'}
+                  className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg transition-colors hover:bg-[#e8ebe9]"
                   style={{ color: '#a3a3a3' }}
                 >
                   {showPw ? <EyeOff size={15} strokeWidth={1.75} /> : <Eye size={15} strokeWidth={1.75} />}
@@ -139,7 +122,7 @@ function ResetPasswordForm() {
                 required
                 autoComplete="new-password"
                 placeholder="••••••••"
-                className="w-full px-4 py-3 rounded-xl text-sm bg-[#f7f7f7] border border-[#e5e5e5] focus:border-[#0f0f0f] focus:bg-white focus-visible:outline-2 focus-visible:outline-[#0f0f0f] focus-visible:outline-offset-2"
+                className="h-12 w-full rounded-xl border border-[#e1e5e2] bg-[#f5f6f5] px-4 text-sm hover:bg-[#f0f2f1] focus:border-[#4d8966] focus:bg-white focus-visible:outline-2 focus-visible:outline-[#4d8966] focus-visible:outline-offset-2"
                 style={{ color: '#0f0f0f', transition: `border-color 300ms ${EASE}, background-color 300ms ${EASE}` }}
               />
             </div>
@@ -147,17 +130,15 @@ function ResetPasswordForm() {
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative w-full flex items-center justify-center rounded-full py-3 pl-6 pr-12 text-sm font-medium hover:bg-[#262626] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+              className="group relative flex h-12 w-full items-center justify-center rounded-xl bg-[#18211d] pl-6 pr-12 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(24,33,29,0.18)] active:translate-y-px disabled:cursor-not-allowed disabled:opacity-40"
               style={{
-                backgroundColor: '#0f0f0f',
-                color: '#ffffff',
                 transition: `background-color 300ms ${EASE}, transform 200ms ${EASE}, opacity 200ms ${EASE}`,
               }}
             >
               {isLoading ? 'Resetting…' : 'Reset password'}
               <span
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center group-hover:translate-x-0.5"
-                style={{ backgroundColor: 'rgba(255,255,255,0.12)', transition: `transform 300ms ${EASE}` }}
+                style={{ backgroundColor: 'rgba(255,255,255,0.12)', color: '#ffffff', transition: `transform 300ms ${EASE}` }}
               >
                 <ArrowRight size={13} strokeWidth={2} />
               </span>
@@ -165,7 +146,7 @@ function ResetPasswordForm() {
           </form>
         )}
       </div>
-    </div>
+    </RecoveryShell>
   );
 }
 
