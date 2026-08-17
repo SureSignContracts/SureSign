@@ -42,6 +42,14 @@ export type ProjectSuggestion = {
   suggested: SuggestionValue;
   already_matches: boolean;
   default_selected: boolean;
+  // Project Location only (Phase 2 — Geoapify geocoding). 'missing' covers
+  // no coordinates at all AND an incomplete pair (one set, one null) —
+  // never treated as a valid existing pin. map_pin_action_required is true
+  // exactly when the text already matches but the pin doesn't — the one
+  // case where an already_matches row still has a real, selectable action
+  // (a geocode-only "Set map position").
+  map_pin_status?: 'set' | 'missing';
+  map_pin_action_required?: boolean;
 };
 
 type SuggestionsResponse = {
@@ -83,6 +91,7 @@ export default function ProjectSuggestionsPanel({
   // setState here either).
   const [userSelected, setUserSelected] = useState<Set<string> | null>(null);
   const [appliedSummary, setAppliedSummary] = useState<string[] | null>(null);
+  const [locationResult, setLocationResult] = useState<{ textual_location_applied: boolean; map_position: string } | null>(null);
 
   const { data, isLoading, isError } = useQuery<SuggestionsResponse>({
     queryKey: ['project-contract-suggestions', projectId, contractId, analysisId],
@@ -90,7 +99,10 @@ export default function ProjectSuggestionsPanel({
   });
 
   const suggestions = data?.suggestions ?? [];
-  const actionable = suggestions.filter(s => !s.already_matches);
+  // A row is actionable (gets a checkbox) either because its text doesn't
+  // match yet, OR — Project Location's own edge case — the text already
+  // matches but the map pin is missing/incomplete (map_pin_action_required).
+  const actionable = suggestions.filter(s => !s.already_matches || s.map_pin_action_required);
   const defaultSelected = new Set(suggestions.filter(s => s.default_selected).map(s => s.key));
   const selected = userSelected ?? defaultSelected;
 
@@ -104,28 +116,36 @@ export default function ProjectSuggestionsPanel({
     mutationFn: () => api.post(`/projects/${projectId}/contracts/${contractId}/analyses/${analysisId}/apply-project-suggestions`, {
       suggestions: Array.from(selected),
     }).then(r => r.data),
-    onSuccess: (res: { applied: string[] }) => {
+    onSuccess: (res: { applied: string[]; message?: string; project_location_result?: { textual_location_applied: boolean; map_position: string } | null }) => {
       qc.invalidateQueries({ queryKey: ['project', projectId] });
       qc.invalidateQueries({ queryKey: ['project-contract-suggestions', projectId, contractId, analysisId] });
       setAppliedSummary(res.applied ?? []);
+      setLocationResult(res.project_location_result ?? null);
       setUserSelected(new Set());
+      // The backend already builds the exact Part 25 outcome message
+      // (reliable match / no match / map-position-only update) — shown
+      // verbatim rather than re-deriving the same logic client-side.
       if ((res.applied ?? []).length > 0) {
-        // A genuinely-changed Project Location clears any existing map pin
-        // server-side (see ProjectContractSetupSyncService's stale-coordinate
-        // safety note) — SureSign doesn't yet geocode a text address into a
-        // new one automatically, so say so here rather than let the map
-        // silently go blank with no explanation.
-        toast.success(
-          (res.applied ?? []).includes('project_location')
-            ? 'Applied to the Project. Any previous map pin was removed — see the note below.'
-            : 'Applied to the Project.'
-        );
+        toast.success(res.message ?? 'Applied to the Project.');
         onApplied();
       } else {
-        toast('Nothing to apply — the selected details already match the Project.');
+        toast(res.message ?? 'Nothing to apply — the selected details already match the Project.');
       }
     },
-    onError: (err: unknown) => toast.error(getErrorMessage(err, 'Failed to apply Project suggestions.')),
+    onError: (err: unknown) => {
+      // normalizeApiError deliberately discards a 5xx response's own
+      // message (see its docblock) — but a Geoapify provider failure is a
+      // deliberate, already-safe 503 from our own controller, not an
+      // infrastructure crash. 'code' is the documented escape hatch: show
+      // the backend's own message for this specific, known code, and fall
+      // back to the generic handling for everything else.
+      const data = (err as { response?: { data?: { code?: string; message?: string } } })?.response?.data;
+      if (data?.code === 'geocoding_unavailable' && data.message) {
+        toast.error(data.message);
+        return;
+      }
+      toast.error(getErrorMessage(err, 'Failed to apply Project suggestions.'));
+    },
   });
 
   return (
@@ -174,14 +194,26 @@ export default function ProjectSuggestionsPanel({
                     <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
                       {appliedSummary.map(k => suggestions.find(s => s.key === k)?.label ?? k).join(', ')}
                     </p>
-                    {appliedSummary.includes('project_location') && (
+                    {locationResult && (
                       <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>
-                        Since the Project Location changed, any existing map pin was removed. SureSign
-                        doesn&rsquo;t yet convert an address into map coordinates automatically — set a new pin
-                        via Edit Project, or a future update will do this for you.
+                        {locationResult.map_position === 'updated' ? (
+                          'SureSign found a reliable map position and updated the pin.'
+                        ) : locationResult.textual_location_applied ? (
+                          <>Since the Project Location changed, any existing map pin was removed. SureSign
+                            couldn&rsquo;t confidently determine a new map position — set one via Edit Project,
+                            or a future update will do this for you.</>
+                        ) : (
+                          'SureSign couldn’t confidently determine a map position for the existing address.'
+                        )}
                       </p>
                     )}
                   </>
+                ) : locationResult ? (
+                  // Part 21 — a geocode-only "Set map position" action that
+                  // found no reliable match: nothing in the Project actually
+                  // changed, so this deliberately isn't in `applied`, but
+                  // the attempt itself still needs acknowledging.
+                  <p className="text-sm" style={{ color: 'var(--text-primary)' }}>SureSign could not confidently determine the map position.</p>
                 ) : (
                   <p className="text-sm" style={{ color: 'var(--text-primary)' }}>Nothing was applied — the selected details already match the Project.</p>
                 )}
@@ -201,25 +233,38 @@ export default function ProjectSuggestionsPanel({
             </p>
           )}
 
-          {!isLoading && !isError && suggestions.map(s => (
+          {!isLoading && !isError && suggestions.map(s => {
+            // Project Location's own edge case (Part 20/21): text already
+            // matches but the map pin is missing/incomplete — still a real,
+            // selectable action ("Set map position"), so it gets a checkbox
+            // like any other actionable row, not the static checkmark every
+            // other already-matching suggestion gets.
+            const showCheckbox = !s.already_matches || s.map_pin_action_required;
+            const showMissingPinRow = s.already_matches && s.map_pin_action_required;
+            return (
             <div
               key={s.key}
-              className={`flex items-start gap-4 rounded-xl bg-white px-5 py-4 shadow-[0_6px_18px_rgba(24,33,29,0.05)] transition-transform duration-200 ${!s.already_matches && selected.has(s.key) ? '-translate-y-0.5 ring-2 ring-[#78c993]' : ''}`}
+              className={`flex items-start gap-4 rounded-xl bg-white px-5 py-4 shadow-[0_6px_18px_rgba(24,33,29,0.05)] transition-transform duration-200 ${showCheckbox && selected.has(s.key) ? '-translate-y-0.5 ring-2 ring-[#78c993]' : ''}`}
             >
-              {s.already_matches ? (
-                <CheckCircle size={16} style={{ color: '#4ade80', flexShrink: 0, marginTop: 2 }} />
-              ) : (
+              {showCheckbox ? (
                 <input
                   type="checkbox"
                   checked={selected.has(s.key)}
                   onChange={() => toggle(s.key)}
                   className="mt-1 flex-shrink-0"
-                  aria-label={`Apply ${s.label}`}
+                  aria-label={showMissingPinRow ? `Set map position for ${s.label}` : `Apply ${s.label}`}
                 />
+              ) : (
+                <CheckCircle size={16} style={{ color: '#4ade80', flexShrink: 0, marginTop: 2 }} />
               )}
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{s.label}</p>
-                {s.already_matches ? (
+                {showMissingPinRow ? (
+                  <div className="mt-1 space-y-0.5">
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Address: Already matches</p>
+                    <p className="text-xs" style={{ color: 'var(--gold)' }}>Map position: Not set</p>
+                  </div>
+                ) : s.already_matches ? (
                   <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Already matches your Project</p>
                 ) : hasLocationLines(s) ? (
                   // Project Location's own display — a multi-line address
@@ -256,7 +301,8 @@ export default function ProjectSuggestionsPanel({
                 )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="flex flex-shrink-0 items-center justify-between bg-white px-6 py-4">

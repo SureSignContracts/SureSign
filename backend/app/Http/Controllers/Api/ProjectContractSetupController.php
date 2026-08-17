@@ -61,15 +61,43 @@ class ProjectContractSetupController extends Controller
             $result = $this->syncService->apply($project, $contract, $analysis, $validated['suggestions']);
         } catch (ProjectContractSuggestionValidationException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\App\Services\Geocoding\GeocodingProviderException $e) {
+            // Sanitized, fixed, customer-safe message only — never this
+            // exception's own ->getMessage() (see its docblock). Nothing
+            // selected in this request was persisted — the geocoding call
+            // happens before ProjectContractSetupSyncService::apply() ever
+            // opens its DB transaction.
+            //
+            // 'code' is required here, not optional: the frontend's own
+            // Error Handling Standard (normalizeApiError) deliberately
+            // discards a 5xx response's `message` and substitutes a fixed
+            // generic string, to guard against a real infrastructure crash
+            // leaking detail — but this 503 is a deliberate, already-safe
+            // response from this controller, not a crash. 'code' is the
+            // documented escape hatch for exactly that: the frontend checks
+            // for this specific code to show this message instead of the
+            // generic one, the same convention Billing already uses for
+            // 'checkout_unavailable'/'plan_change_conflict'.
+            return response()->json([
+                'message' => 'Project Location could not be applied because the map location service is currently unavailable.',
+                'code' => 'geocoding_unavailable',
+            ], 503);
         }
+
+        $locationResult = $result['project_location_result'] ?? null;
 
         if (empty($result['applied'])) {
             return response()->json([
-                'message' => 'Nothing was applied — the selected details already match the Project, or are no longer available.',
+                'message' => $locationResult !== null
+                    ? $this->locationResultMessage($locationResult, false)
+                    : 'Nothing was applied — the selected details already match the Project, or are no longer available.',
                 'project' => $result['project'],
                 'applied' => [],
+                'project_location_result' => $locationResult,
             ]);
         }
+
+        $locationApplied = in_array(ProjectContractSuggestionKeys::PROJECT_LOCATION, $result['applied'], true);
 
         \App\Services\ProjectActivityService::record(
             $project,
@@ -78,14 +106,50 @@ class ProjectContractSetupController extends Controller
             'Applied confirmed Contract details to Project',
             'From "' . $contract->title . '" (Contract #' . $contract->id . ', analysis #' . $analysis->id . '): ' . implode(', ', $result['applied']),
             $contract,
-            ['contract_id' => $contract->id, 'analysis_id' => $analysis->id, 'applied' => $result['applied']]
+            array_filter([
+                'contract_id' => $contract->id,
+                'analysis_id' => $analysis->id,
+                'applied' => $result['applied'],
+                // Part 37 — a small, safe boolean only; never the raw
+                // Geoapify response, confidence score, or place_id.
+                'map_position_updated' => $locationApplied ? ($locationResult['map_position'] ?? null) === 'updated' : null,
+            ], fn ($v) => $v !== null)
         );
 
         return response()->json([
-            'message' => 'Applied to the Project.',
+            'message' => $locationApplied && $locationResult !== null
+                ? $this->locationResultMessage($locationResult, true)
+                : 'Applied to the Project.',
             'project' => $result['project'],
             'applied' => $result['applied'],
+            'project_location_result' => $locationResult,
         ]);
+    }
+
+    /**
+     * The five customer-facing Project Location outcome messages (Part 25)
+     * — never mentions AI, Geoapify, confidence scores, or internal
+     * terminology. $wasApplied distinguishes "a real Project mutation
+     * happened" (C/B/A) from "nothing changed, geocode-only action found no
+     * reliable match" (D) — see ProjectContractSetupSyncService's own
+     * Part 20/21 handling for why that specific case is never in `applied`.
+     */
+    private function locationResultMessage(array $locationResult, bool $wasApplied): string
+    {
+        $mapUpdated = ($locationResult['map_position'] ?? null) === 'updated';
+        $textApplied = (bool) ($locationResult['textual_location_applied'] ?? false);
+
+        if (!$wasApplied) {
+            return 'SureSign could not confidently determine the map position.'; // (D)
+        }
+
+        if ($mapUpdated) {
+            return $textApplied
+                ? 'Project Location applied and map position updated.' // (A)
+                : 'Project map position updated.'; // (C)
+        }
+
+        return 'Project Location applied. SureSign could not confidently determine the new map position, so no map pin has been set.'; // (B)
     }
 
     /**

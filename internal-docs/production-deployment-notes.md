@@ -9,6 +9,27 @@ feature-level data/migration prerequisites instead). Add a new section here
 only when a feature genuinely introduces one — most features need nothing
 here at all.
 
+## Contract-Assisted Project Location — Geoapify geocoding (Phase 2)
+
+**Applies to:** any environment where you want applying a confirmed
+Contract's Project Location to also set a map position automatically.
+
+**What's required:** set `GEOAPIFY_API_KEY` (see `.env.example`) to a real
+Geoapify API key. This is entirely optional — the feature degrades safely
+without it: the textual Project Location (address/city/state/postcode/
+country) can still be reviewed and applied exactly as before, it just won't
+attempt a map position, and the customer sees a clear "map location service
+is currently unavailable" message rather than a silent failure or an
+invented pin. Server-side only — never exposed to the frontend, never
+logged.
+
+Optional tuning: `GEOAPIFY_BASE_URL` (default `https://api.geoapify.com`)
+and `GEOAPIFY_MIN_CONFIDENCE` (default `0.95`, the minimum
+`rank.confidence` a Geoapify candidate must meet before SureSign accepts it
+as the Project's map position — see `App\Services\Geocoding\GeoapifyGeocodingProvider`).
+Lowering this weakens "no pin is better than wrong pin" safety; only change
+it with real evidence of miscalibration, not for convenience.
+
 ## Drawing Hotspot Authoring — legacy revision backfill (Drawing Phase 6)
 
 **Applies to:** any environment that already has Drawing Register data from

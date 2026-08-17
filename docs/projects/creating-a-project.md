@@ -135,18 +135,37 @@ it differs, applying it replaces the whole location with what's shown
 (never a partial mix of old and new), so what you see before applying is
 exactly what you get afterwards.
 
-Applying Project Location updates your Project's address fields only
-(Address, City, State/Region, Postcode, Country). SureSign does not yet
-turn a text address into map coordinates automatically, so applying it
-does not set a new map position. **If your Project's address actually
-changes** and it already had a map pin, that pin is removed at the same
-time — SureSign will not leave an old pin pointing at a site your Project
-no longer names. (If the applied location already matched your Project,
-nothing changes and any existing pin is left exactly as it was.) To show
-the Project on the [Project Map](../dashboard/overview.md) again, set its
-Latitude/Longitude yourself via
-[Project Settings](project-settings.md#what-you-can-change) — a future
-update will do this automatically once SureSign supports it.
+Applying Project Location updates your Project's address fields (Address,
+City, State/Region, Postcode, Country), and — where the address is specific
+enough and SureSign can confidently determine a real-world position —
+automatically sets the Project's map position too, so it appears correctly
+on the [Project Map](../dashboard/overview.md) without you doing anything
+else. SureSign never invents a map position: a vague location (just a city,
+region, or country, with no street-level address) is deliberately never
+turned into a precise pin, and if SureSign can't confidently determine the
+exact position it tells you so rather than guess. In both cases you'll see
+a clear result after applying:
+
+- **A specific address with a confident match** — "Project Location applied
+  and map position updated."
+- **A location that's too vague, or one SureSign can't confidently place**
+  — "Project Location applied. SureSign could not confidently determine the
+  new map position, so no map pin has been set."
+
+**If your Project's address actually changes** and it already had a map
+pin, that old pin is never left in place representing the wrong site — it's
+either replaced with a fresh, confident position, or cleared if none could
+be confidently determined. (If the applied location already matched your
+Project, nothing changes and any existing pin is left exactly as it was.)
+
+**If your Project's address already matches the confirmed Contract but has
+no map position yet**, Project Suggestions offers a dedicated "Set map
+position" action for just the map pin — your address text is never touched
+by this action.
+
+You can always set or correct a Project's map position yourself afterwards
+via [Project Settings](project-settings.md#what-you-can-change), regardless
+of whether it was set automatically.
 
 This step only ever changes your Project's own summary fields. It never
 changes the Contract itself, never re-confirms or re-analyses it, and never

@@ -33,8 +33,11 @@ status badge.
   (can also be filled in from a confirmed Contract during
   [Contract-Assisted Project Setup](creating-a-project.md#applying-confirmed-contract-details-to-your-project)
   — either way, it remains fully editable here afterwards)
-- Geographic coordinates (Latitude/Longitude) — set manually; SureSign does
-  not yet convert a text address into coordinates automatically
+- Geographic coordinates (Latitude/Longitude) — always editable manually
+  here regardless of how they were set; applying Project Location from a
+  confirmed Contract can also set these automatically when the address is
+  specific enough for SureSign to confidently determine a position (see
+  [Creating a Project](creating-a-project.md#applying-confirmed-contract-details-to-your-project))
 
 **Project Type** (the type of work — New Build, Refurbishment, etc.) is set
 at creation and is not yet editable in-app.

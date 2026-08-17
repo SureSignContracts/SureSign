@@ -39,4 +39,22 @@ return [
         'api_key' => env('COMPANIES_HOUSE_API_KEY'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Geoapify (Contract-Assisted Project Location, Phase 2)
+    |--------------------------------------------------------------------------
+    | Deterministic forward-geocoding provider for turning a confirmed
+    | Contract's textual Project Location into map coordinates — see
+    | App\Services\Geocoding\GeoapifyGeocodingProvider. Never called for AI
+    | extraction/analysis; a completely separate, deterministic external
+    | service. min_confidence is config-driven (not hardcoded) so the
+    | acceptance threshold can be tuned without a code change if real-world
+    | testing shows it's miscalibrated — see that provider's own docblock.
+    */
+    'geoapify' => [
+        'api_key' => env('GEOAPIFY_API_KEY'),
+        'base_url' => env('GEOAPIFY_BASE_URL', 'https://api.geoapify.com'),
+        'min_confidence' => (float) env('GEOAPIFY_MIN_CONFIDENCE', 0.95),
+    ],
+
 ];

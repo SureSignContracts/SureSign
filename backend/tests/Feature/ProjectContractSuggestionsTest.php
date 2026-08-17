@@ -8,6 +8,7 @@ use App\Models\Organization;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -906,13 +907,15 @@ class ProjectContractSuggestionsTest extends TestCase
 
     // ── Project Location ─────────────────────────────────────────────────────
     //
-    // Contract-Assisted Project Location & Automatic Map Pin, Part 1-9:
-    // structured extraction schema, confirmed-data-only suggestion, the one
-    // grouped project_location key, current-vs-suggested comparison/default
-    // selection, and applying the textual address fields. Deliberately does
-    // NOT cover geocoding/coordinates — that remains a separate, not-yet-
-    // approved provider decision; Project::$latitude/$longitude are verified
-    // untouched by every test below instead.
+    // Contract-Assisted Project Location & Automatic Map Pin, Parts 1-9 (AI
+    // extraction schema, confirmed-data-only suggestion, the one grouped
+    // project_location key, current-vs-suggested comparison/default
+    // selection, applying the textual address fields) and Phase 2 (Parts
+    // 10-13: deterministic Geoapify geocoding, stale-coordinate safety,
+    // provider-failure atomicity, the matching-text/missing-pin edge case).
+    // Every test here that reaches ProjectGeocodingService fakes the
+    // outbound HTTP call via fakeGeoapifyNoMatch()/fakeGeoapifyReliableMatch()
+    // — never a real external request.
 
     private function confirmedLocation(array $overrides = []): array
     {
@@ -923,6 +926,44 @@ class ProjectContractSuggestionsTest extends TestCase
             'postal_code'  => 'M3 4AB',
             'country'      => 'United Kingdom',
         ], $overrides);
+    }
+
+    /** Configures a fake Geoapify API key so GeoapifyGeocodingProvider doesn't short-circuit on "not configured." */
+    private function fakeGeoapifyConfigured(): void
+    {
+        config(['services.geoapify.api_key' => 'test-key']);
+    }
+
+    /** A successful Geoapify response with zero candidates reliable enough to accept. */
+    private function fakeGeoapifyNoMatch(): void
+    {
+        $this->fakeGeoapifyConfigured();
+        Http::fake(['api.geoapify.com/*' => Http::response(['results' => []], 200)]);
+    }
+
+    /** A successful Geoapify response with one high-confidence building-level candidate. */
+    private function fakeGeoapifyReliableMatch(float $lat, float $lon): void
+    {
+        $this->fakeGeoapifyConfigured();
+        Http::fake(['api.geoapify.com/*' => Http::response([
+            'results' => [[
+                'lat' => $lat,
+                'lon' => $lon,
+                'result_type' => 'building',
+                'rank' => ['confidence' => 0.98, 'match_type' => 'full_match'],
+            ]],
+        ], 200)]);
+    }
+
+    private function fakeGeoapifyHttpFailure(int $status = 503): void
+    {
+        $this->fakeGeoapifyConfigured();
+        Http::fake(['api.geoapify.com/*' => Http::response([], $status)]);
+    }
+
+    private function fakeGeoapifyNotConfigured(): void
+    {
+        config(['services.geoapify.api_key' => null]);
     }
 
     public function test_confirmed_project_location_with_blank_project_produces_a_default_selected_suggestion(): void
@@ -1080,6 +1121,7 @@ class ProjectContractSuggestionsTest extends TestCase
             'confirmed_data_json' => $this->confirmedV2(['contract_overview' => ['project_location' => $this->confirmedLocation()]]),
         ]);
         Sanctum::actingAs($user);
+        $this->fakeGeoapifyNoMatch();
 
         $response = $this->postJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/apply-project-suggestions", [
             'suggestions' => ['project_location'],
@@ -1096,16 +1138,17 @@ class ProjectContractSuggestionsTest extends TestCase
         $this->assertEquals('United Kingdom', $fresh->country);
     }
 
-    public function test_applying_a_different_project_location_clears_stale_coordinates(): void
+    public function test_applying_a_different_project_location_with_no_reliable_match_clears_stale_coordinates(): void
     {
         $org = $this->makeOrg();
         $user = $this->makeUser($org);
         // A Project with pre-existing coordinates (e.g. set manually via
         // Edit Project) AND a different existing textual address — applying
         // a genuinely different confirmed location must clear the stale
-        // coordinates, since they belong to the OLD address and no
-        // geocoding provider exists yet to produce a real replacement (see
-        // ProjectContractSetupSyncService's "stale-coordinate safety" note).
+        // coordinates, since they belong to the OLD address (Part 15 — a
+        // successful geocode attempt that finds no reliable match still
+        // clears them; see the sibling "reliable match" test for the case
+        // where a fresh coordinate replaces them instead).
         $project = $this->makeProject($org, $user, [
             'address' => '1 Old Site Lane', 'city' => 'Leeds', 'country' => 'United Kingdom',
             'latitude' => 51.5074, 'longitude' => -0.1278,
@@ -1116,15 +1159,46 @@ class ProjectContractSuggestionsTest extends TestCase
             'confirmed_data_json' => $this->confirmedV2(['contract_overview' => ['project_location' => $this->confirmedLocation()]]),
         ]);
         Sanctum::actingAs($user);
+        $this->fakeGeoapifyNoMatch();
 
-        $this->postJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/apply-project-suggestions", [
+        $response = $this->postJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/apply-project-suggestions", [
             'suggestions' => ['project_location'],
-        ])->assertStatus(200);
+        ]);
+        $response->assertStatus(200);
+        $this->assertSame('Project Location applied. SureSign could not confidently determine the new map position, so no map pin has been set.', $response->json('message'));
 
         $fresh = $project->fresh();
         $this->assertEquals('25 Riverside Road', $fresh->address); // the new address applied
         $this->assertNull($fresh->latitude);  // the OLD coordinates must not survive
         $this->assertNull($fresh->longitude);
+    }
+
+    public function test_applying_a_different_project_location_with_reliable_match_stores_new_coordinates(): void
+    {
+        $org = $this->makeOrg();
+        $user = $this->makeUser($org);
+        $project = $this->makeProject($org, $user, [
+            'address' => '1 Old Site Lane', 'city' => 'Leeds', 'country' => 'United Kingdom',
+            'latitude' => 51.5074, 'longitude' => -0.1278, // Sydney/London-style stale coordinates
+        ]);
+        $contract = $this->makeContract($project, $user);
+        $analysis = $this->makeAnalysis($project, $contract, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2(['contract_overview' => ['project_location' => $this->confirmedLocation()]]),
+        ]);
+        Sanctum::actingAs($user);
+        $this->fakeGeoapifyReliableMatch(53.4808, -2.2426); // Manchester
+
+        $response = $this->postJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/apply-project-suggestions", [
+            'suggestions' => ['project_location'],
+        ]);
+        $response->assertStatus(200);
+        $this->assertSame('Project Location applied and map position updated.', $response->json('message'));
+
+        $fresh = $project->fresh();
+        $this->assertEquals('25 Riverside Road', $fresh->address);
+        $this->assertEquals(53.4808, (float) $fresh->latitude);
+        $this->assertEquals(-2.2426, (float) $fresh->longitude);
     }
 
     public function test_applying_a_matching_project_location_preserves_existing_coordinates(): void
@@ -1242,6 +1316,7 @@ class ProjectContractSuggestionsTest extends TestCase
             'confirmed_data_json' => $this->confirmedV2(['contract_overview' => ['project_location' => $this->confirmedLocation()]]),
         ]);
         Sanctum::actingAs($user);
+        $this->fakeGeoapifyNoMatch();
 
         $before = \Illuminate\Support\Facades\DB::table('ai_credit_ledger_entries')->count();
 
@@ -1263,6 +1338,7 @@ class ProjectContractSuggestionsTest extends TestCase
             'confirmed_data_json' => $this->confirmedV2(['contract_overview' => ['project_location' => $this->confirmedLocation()]]),
         ]);
         Sanctum::actingAs($user);
+        $this->fakeGeoapifyNoMatch();
 
         // Only the key is accepted — any raw address value submitted alongside
         // it is ignored; the backend always recomputes from confirmed data.
@@ -1335,6 +1411,7 @@ class ProjectContractSuggestionsTest extends TestCase
         $analysis = $this->makeAnalysis($project, $contract, ['status' => 'confirmed', 'confirmed_data_json' => $confirmedData]);
         $originalContractUpdatedAt = $contract->updated_at;
         Sanctum::actingAs($user);
+        $this->fakeGeoapifyNoMatch();
 
         $this->postJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/apply-project-suggestions", [
             'suggestions' => ['project_location'],
@@ -1365,6 +1442,7 @@ class ProjectContractSuggestionsTest extends TestCase
             ]),
         ]);
         Sanctum::actingAs($user);
+        $this->fakeGeoapifyNoMatch();
 
         $this->postJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/apply-project-suggestions", [
             'suggestions' => ['project_location'],
@@ -1426,5 +1504,314 @@ class ProjectContractSuggestionsTest extends TestCase
         $response = $this->getJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/project-suggestions");
 
         $this->assertNull(collect($response->json('suggestions'))->firstWhere('key', 'project_location'));
+    }
+
+    // ── Phase 2 (Geoapify geocoding) — provider failure, no-geocode-call, and missing-pin coverage ──
+
+    public function test_provider_failure_leaves_text_and_coordinates_completely_untouched(): void
+    {
+        $org = $this->makeOrg();
+        $user = $this->makeUser($org);
+        $project = $this->makeProject($org, $user, [
+            'address' => '1 Old Site Lane', 'city' => 'Leeds', 'country' => 'United Kingdom',
+            'latitude' => 51.5074, 'longitude' => -0.1278,
+        ]);
+        $contract = $this->makeContract($project, $user);
+        $analysis = $this->makeAnalysis($project, $contract, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2(['contract_overview' => ['project_location' => $this->confirmedLocation()]]),
+        ]);
+        Sanctum::actingAs($user);
+        $this->fakeGeoapifyHttpFailure(503);
+
+        $response = $this->postJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/apply-project-suggestions", [
+            'suggestions' => ['project_location'],
+        ]);
+
+        $response->assertStatus(503);
+        $this->assertSame(
+            'Project Location could not be applied because the map location service is currently unavailable.',
+            $response->json('message')
+        );
+        // A structured code, not just message text — lets the frontend show
+        // this specific message despite the 5xx-message-suppression rule in
+        // normalizeApiError (see the controller's own comment).
+        $this->assertSame('geocoding_unavailable', $response->json('code'));
+
+        $fresh = $project->fresh();
+        $this->assertEquals('1 Old Site Lane', $fresh->address);
+        $this->assertEquals(51.5074, (float) $fresh->latitude);
+        $this->assertEquals(-0.1278, (float) $fresh->longitude);
+    }
+
+    public function test_provider_failure_with_other_selected_suggestions_applies_nothing_at_all(): void
+    {
+        $org = $this->makeOrg();
+        $user = $this->makeUser($org);
+        $project = $this->makeProject($org, $user);
+        $contract = $this->makeContract($project, $user, ['commencement_date' => '2026-09-01']);
+        $analysis = $this->makeAnalysis($project, $contract, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2([
+                'contract_overview' => ['project_location' => $this->confirmedLocation()],
+            ]),
+        ]);
+        Sanctum::actingAs($user);
+        $this->fakeGeoapifyHttpFailure(500);
+
+        $response = $this->postJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/apply-project-suggestions", [
+            'suggestions' => ['project_location', 'start_date'],
+        ]);
+
+        $response->assertStatus(503);
+
+        // Neither suggestion persisted — provider failure is atomic across
+        // the whole selection, not just project_location.
+        $fresh = $project->fresh();
+        $this->assertNull($fresh->address);
+        $this->assertNull($fresh->start_date);
+    }
+
+    public function test_preview_never_calls_geoapify(): void
+    {
+        $org = $this->makeOrg();
+        $user = $this->makeUser($org);
+        $project = $this->makeProject($org, $user);
+        $contract = $this->makeContract($project, $user);
+        $analysis = $this->makeAnalysis($project, $contract, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2(['contract_overview' => ['project_location' => $this->confirmedLocation()]]),
+        ]);
+        Sanctum::actingAs($user);
+        $this->fakeGeoapifyConfigured();
+        Http::fake(); // any request at all would fail this test
+
+        $this->getJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/project-suggestions")
+            ->assertStatus(200);
+
+        Http::assertNothingSent();
+    }
+
+    public function test_unselected_project_location_never_calls_geoapify(): void
+    {
+        $org = $this->makeOrg();
+        $user = $this->makeUser($org);
+        $project = $this->makeProject($org, $user);
+        $contract = $this->makeContract($project, $user, ['commencement_date' => '2026-09-01']);
+        $analysis = $this->makeAnalysis($project, $contract, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2(['contract_overview' => ['project_location' => $this->confirmedLocation()]]),
+        ]);
+        Sanctum::actingAs($user);
+        $this->fakeGeoapifyConfigured();
+        Http::fake();
+
+        $this->postJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/apply-project-suggestions", [
+            'suggestions' => ['start_date'],
+        ])->assertStatus(200);
+
+        Http::assertNothingSent();
+    }
+
+    public function test_matching_text_with_valid_coordinates_never_calls_geoapify(): void
+    {
+        $org = $this->makeOrg();
+        $user = $this->makeUser($org);
+        $project = $this->makeProject($org, $user, [
+            'address' => '25 Riverside Road', 'city' => 'Manchester', 'postcode' => 'M3 4AB', 'country' => 'United Kingdom',
+            'latitude' => 53.4808, 'longitude' => -2.2426,
+        ]);
+        $contract = $this->makeContract($project, $user);
+        $analysis = $this->makeAnalysis($project, $contract, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2(['contract_overview' => ['project_location' => $this->confirmedLocation()]]),
+        ]);
+        Sanctum::actingAs($user);
+        $this->fakeGeoapifyConfigured();
+        Http::fake();
+
+        $this->postJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/apply-project-suggestions", [
+            'suggestions' => ['project_location'],
+        ])->assertStatus(200);
+
+        Http::assertNothingSent();
+    }
+
+    public function test_too_coarse_location_never_calls_geoapify(): void
+    {
+        $org = $this->makeOrg();
+        $user = $this->makeUser($org);
+        $project = $this->makeProject($org, $user);
+        $contract = $this->makeContract($project, $user);
+        $analysis = $this->makeAnalysis($project, $contract, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2([
+                'contract_overview' => ['project_location' => [
+                    'address_line' => null, 'city' => 'Dubai', 'region' => null,
+                    'postal_code' => null, 'country' => 'United Arab Emirates',
+                ]],
+            ]),
+        ]);
+        Sanctum::actingAs($user);
+        $this->fakeGeoapifyConfigured();
+        Http::fake();
+
+        $this->postJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/apply-project-suggestions", [
+            'suggestions' => ['project_location'],
+        ])->assertStatus(200);
+
+        Http::assertNothingSent();
+    }
+
+    public function test_cross_tenant_apply_never_calls_geoapify(): void
+    {
+        $orgB = $this->makeOrg('Org B Ltd');
+        $userB = $this->makeUser($orgB);
+        $projectB = $this->makeProject($orgB, $userB);
+        $contractB = $this->makeContract($projectB, $userB);
+        $analysisB = $this->makeAnalysis($projectB, $contractB, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2(['contract_overview' => ['project_location' => $this->confirmedLocation()]]),
+        ]);
+
+        $orgA = $this->makeOrg('Org A Ltd');
+        $userA = $this->makeUser($orgA);
+        Sanctum::actingAs($userA);
+        $this->fakeGeoapifyConfigured();
+        Http::fake();
+
+        $this->postJson("/api/projects/{$projectB->id}/contracts/{$contractB->id}/analyses/{$analysisB->id}/apply-project-suggestions", [
+            'suggestions' => ['project_location'],
+        ])->assertStatus(403);
+
+        Http::assertNothingSent(); // authorization fails before Geoapify is ever reached
+    }
+
+    public function test_matching_text_with_missing_pin_is_actionable_and_default_selected(): void
+    {
+        $org = $this->makeOrg();
+        $user = $this->makeUser($org);
+        // Text matches exactly, but no coordinates exist yet (Part 20).
+        $project = $this->makeProject($org, $user, [
+            'address' => '25 Riverside Road', 'city' => 'Manchester', 'postcode' => 'M3 4AB', 'country' => 'United Kingdom',
+        ]);
+        $contract = $this->makeContract($project, $user);
+        $analysis = $this->makeAnalysis($project, $contract, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2(['contract_overview' => ['project_location' => $this->confirmedLocation()]]),
+        ]);
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/project-suggestions");
+
+        $row = collect($response->json('suggestions'))->firstWhere('key', 'project_location');
+        $this->assertNotNull($row);
+        $this->assertTrue($row['already_matches']);
+        $this->assertSame('missing', $row['map_pin_status']);
+        $this->assertTrue($row['map_pin_action_required']);
+        $this->assertTrue($row['default_selected']); // safe to default-select: can only add a pin, never touches correct text
+    }
+
+    public function test_matching_text_missing_pin_with_reliable_match_saves_coordinates_leaving_text_unchanged(): void
+    {
+        $org = $this->makeOrg();
+        $user = $this->makeUser($org);
+        $project = $this->makeProject($org, $user, [
+            'address' => '25 Riverside Road', 'city' => 'Manchester', 'postcode' => 'M3 4AB', 'country' => 'United Kingdom',
+        ]);
+        $contract = $this->makeContract($project, $user);
+        $analysis = $this->makeAnalysis($project, $contract, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2(['contract_overview' => ['project_location' => $this->confirmedLocation()]]),
+        ]);
+        Sanctum::actingAs($user);
+        $this->fakeGeoapifyReliableMatch(53.4808, -2.2426);
+
+        $response = $this->postJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/apply-project-suggestions", [
+            'suggestions' => ['project_location'],
+        ]);
+
+        $response->assertStatus(200);
+        $this->assertContains('project_location', $response->json('applied'));
+        $this->assertSame('Project map position updated.', $response->json('message'));
+
+        $fresh = $project->fresh();
+        $this->assertEquals('25 Riverside Road', $fresh->address); // text never touched
+        $this->assertEquals(53.4808, (float) $fresh->latitude);
+        $this->assertEquals(-2.2426, (float) $fresh->longitude);
+    }
+
+    public function test_matching_text_missing_pin_with_no_reliable_match_creates_no_false_pin_and_is_not_applied(): void
+    {
+        $org = $this->makeOrg();
+        $user = $this->makeUser($org);
+        $project = $this->makeProject($org, $user, [
+            'address' => '25 Riverside Road', 'city' => 'Manchester', 'postcode' => 'M3 4AB', 'country' => 'United Kingdom',
+        ]);
+        $contract = $this->makeContract($project, $user);
+        $analysis = $this->makeAnalysis($project, $contract, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2(['contract_overview' => ['project_location' => $this->confirmedLocation()]]),
+        ]);
+        Sanctum::actingAs($user);
+        $this->fakeGeoapifyNoMatch();
+
+        $response = $this->postJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/apply-project-suggestions", [
+            'suggestions' => ['project_location'],
+        ]);
+
+        $response->assertStatus(200);
+        $this->assertNotContains('project_location', $response->json('applied')); // no real Project mutation happened
+        $this->assertSame('SureSign could not confidently determine the map position.', $response->json('message'));
+
+        $fresh = $project->fresh();
+        $this->assertEquals('25 Riverside Road', $fresh->address);
+        $this->assertNull($fresh->latitude);
+        $this->assertNull($fresh->longitude);
+    }
+
+    public function test_partial_coordinate_pair_is_treated_as_a_missing_pin(): void
+    {
+        $org = $this->makeOrg();
+        $user = $this->makeUser($org);
+        // Only latitude set, longitude null — must never count as a valid
+        // existing pin (Part 22).
+        $project = $this->makeProject($org, $user, [
+            'address' => '25 Riverside Road', 'city' => 'Manchester', 'postcode' => 'M3 4AB', 'country' => 'United Kingdom',
+            'latitude' => 53.4808, 'longitude' => null,
+        ]);
+        $contract = $this->makeContract($project, $user);
+        $analysis = $this->makeAnalysis($project, $contract, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2(['contract_overview' => ['project_location' => $this->confirmedLocation()]]),
+        ]);
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/project-suggestions");
+
+        $row = collect($response->json('suggestions'))->firstWhere('key', 'project_location');
+        $this->assertSame('missing', $row['map_pin_status']);
+        $this->assertTrue($row['map_pin_action_required']);
+    }
+
+    public function test_applying_project_location_never_touches_client_id(): void
+    {
+        $org = $this->makeOrg();
+        $client = \App\Models\Client::create(['organization_id' => $org->id, 'name' => 'Existing Client Ltd']);
+        $user = $this->makeUser($org);
+        $project = $this->makeProject($org, $user, ['client_id' => $client->id]);
+        $contract = $this->makeContract($project, $user);
+        $analysis = $this->makeAnalysis($project, $contract, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2(['contract_overview' => ['project_location' => $this->confirmedLocation()]]),
+        ]);
+        Sanctum::actingAs($user);
+        $this->fakeGeoapifyNoMatch();
+
+        $this->postJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/apply-project-suggestions", [
+            'suggestions' => ['project_location'],
+        ])->assertStatus(200);
+
+        $this->assertEquals($client->id, $project->fresh()->client_id);
     }
 }

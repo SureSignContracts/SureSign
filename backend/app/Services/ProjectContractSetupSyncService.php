@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Contract;
 use App\Models\ContractAiAnalysis;
 use App\Models\Project;
+use App\Services\Geocoding\ProjectGeocodingService;
 use App\Support\Projects\ProjectContractSuggestionKeys;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -34,24 +35,33 @@ use Illuminate\Support\Facades\DB;
  *     recomputes suggestions itself from the confirmed source before
  *     writing anything, so a caller can only submit which *keys* to
  *     apply, never raw values;
- *   - NEVER derives Project Location from `latitude`/`longitude`, and NEVER
- *     generates, invents, or looks up a coordinate value — `PROJECT_LOCATION`
- *     only ever *writes* the textual address fields (`address`/`city`/
- *     `state`/`postcode`/`country`) from confirmed data. Deterministic
- *     geocoding of that confirmed textual address into real coordinates is
- *     a deliberately separate, not-yet-built concern (pending an approved
- *     geocoding provider — see this class's own "stale-coordinate safety"
- *     note below for the one narrow exception to "never touches
- *     latitude/longitude");
- *   - **Stale-coordinate safety (interim, pending geocoding):** whenever
- *     applying `PROJECT_LOCATION` genuinely changes the Project's textual
- *     location (i.e. it wasn't already matching), `Project::$latitude`/
- *     `$longitude` are CLEARED (set to null) in the same update — never
- *     recalculated, never guessed, never left pointing at the old address's
- *     site. When the applied location already matches the Project's
- *     existing one, coordinates are left completely untouched. This is not
- *     geocoding and adds no provider — it only prevents an existing map pin
- *     from silently misrepresenting a site the Project no longer names.
+ *   - NEVER derives Project Location from `latitude`/`longitude` itself, and
+ *     the AI provider NEVER generates or looks up a coordinate value —
+ *     `PROJECT_LOCATION`'s textual fields (`address`/`city`/`state`/
+ *     `postcode`/`country`) always come from confirmed data alone.
+ *     Coordinates ARE now (Phase 2) written, but only ever as the direct,
+ *     validated output of `ProjectGeocodingService`'s deterministic
+ *     Geoapify lookup — never invented, never AI-derived, never guessed;
+ *   - **Stale-coordinate safety.** Whenever applying `PROJECT_LOCATION`
+ *     genuinely changes the Project's textual location (i.e. it wasn't
+ *     already matching), `Project::$latitude`/`$longitude` are always
+ *     recomputed in the same update: replaced with a fresh, validated
+ *     Geoapify match if one is found, or cleared to null otherwise — never
+ *     left pointing at the OLD address's site either way. When the applied
+ *     location already matches the Project's existing one, textual fields
+ *     and (if already valid) coordinates are left untouched, UNLESS the
+ *     map pin is specifically missing/incomplete, in which case an
+ *     explicit geocode-only action is available (Part 20/21 — see
+ *     `projectLocationSuggestion()`'s own docblock for `map_pin_status`);
+ *   - **Provider-failure atomicity.** A `GeocodingProviderException` (auth,
+ *     timeout, rate limit, 5xx, malformed response — never "no reliable
+ *     match," which is a normal successful outcome) is thrown from inside
+ *     `apply()`'s selection loop, before any `Project` field has been
+ *     written and before the transaction opens — it propagates straight out
+ *     of `apply()` uncaught, so if `project_location` was selected
+ *     alongside any other suggestion in the same request, NONE of them
+ *     persist. `ProjectContractSetupController` is responsible for
+ *     catching it and returning a safe, generic error.
  *
  * Reads prefer structured `Contract` columns where — and only where —
  * they reliably distinguish "genuinely confirmed" from "never touched":
@@ -78,6 +88,11 @@ use Illuminate\Support\Facades\DB;
  */
 class ProjectContractSetupSyncService
 {
+    public function __construct(
+        private readonly ProjectGeocodingService $geocoding,
+    ) {
+    }
+
     /**
      * Build the current suggestion set for one confirmed Contract analysis.
      * Purely a read — never writes anything. Only entries with an actual
@@ -120,7 +135,12 @@ class ProjectContractSetupSyncService
      * applied atomically (see the date-consistency check below, which can
      * still reject the whole apply after date fields are otherwise valid).
      *
-     * @return array{project: Project, applied: string[]}
+     * @return array{project: Project, applied: string[], project_location_result: ?array{textual_location_applied: bool, map_position: string}}
+     * @throws \App\Services\Geocoding\GeocodingProviderException on a
+     *   geocoding provider/system failure while project_location is being
+     *   processed — propagates uncaught; see class docblock's
+     *   provider-failure atomicity note. Never thrown for "no reliable
+     *   match," which is a normal, successful outcome.
      */
     public function apply(Project $project, Contract $contract, ContractAiAnalysis $analysis, array $selectedKeys): array
     {
@@ -134,14 +154,29 @@ class ProjectContractSetupSyncService
 
         $updates = [];
         $applied = [];
+        $projectLocationResult = null;
 
         foreach ($selectedKeys as $key) {
             $row = $available->get($key);
+            if (!$row) {
+                continue;
+            }
+
+            $isProjectLocation = $key === ProjectContractSuggestionKeys::PROJECT_LOCATION;
+
             // Not currently available, or already matches — nothing to do.
             // Silently skipped rather than an error: re-selecting a row
             // that has since started matching (e.g. the user already
-            // edited the Project manually) is not a failure.
-            if (!$row || $row['already_matches']) {
+            // edited the Project manually) is not a failure. PROJECT_LOCATION
+            // is the one exception (Part 20/21): matching text with a
+            // missing/incomplete map pin still has real work to do (a
+            // geocode-only action), so it's only skipped once BOTH the
+            // text matches AND the pin is already valid.
+            if ($isProjectLocation) {
+                if ($row['already_matches'] && ($row['map_pin_status'] ?? null) === 'set') {
+                    continue;
+                }
+            } elseif ($row['already_matches']) {
                 continue;
             }
 
@@ -173,25 +208,58 @@ class ProjectContractSetupSyncService
                     // any component the confirmed Contract didn't state.
                     // Mixing old and new components with no visible rule for
                     // which wins would be more confusing than predictable.
+                    // Skipped entirely when text already matches (Part
+                    // 20/21's geocode-only action) — the textual fields are
+                    // never touched in that case.
+                    $textAlreadyMatches = $row['already_matches'];
                     $location = $row['suggested']['location'] ?? [];
-                    $updates['address']  = $location['address']  ?? null;
-                    $updates['city']     = $location['city']     ?? null;
-                    $updates['state']    = $location['state']    ?? null;
-                    $updates['postcode'] = $location['postcode'] ?? null;
-                    $updates['country']  = $location['country']  ?? null;
+                    $textChanged = false;
 
-                    // Stale-coordinate safety (interim, pending geocoding —
-                    // see class docblock). Reaching this case at all already
-                    // guarantees the location genuinely changed: the loop
-                    // above skips (`continue`) any row where
-                    // already_matches is true before the switch is ever
-                    // reached, so this line only ever runs when the textual
-                    // location is actually different from what the Project
-                    // had before. Never recalculated, never guessed at —
-                    // always cleared to null, since no geocoding provider
-                    // exists yet to produce a real replacement value.
-                    $updates['latitude']  = null;
-                    $updates['longitude'] = null;
+                    if (!$textAlreadyMatches) {
+                        $updates['address']  = $location['address']  ?? null;
+                        $updates['city']     = $location['city']     ?? null;
+                        $updates['state']    = $location['state']    ?? null;
+                        $updates['postcode'] = $location['postcode'] ?? null;
+                        $updates['country']  = $location['country']  ?? null;
+                        $textChanged = true;
+                    }
+
+                    // Geocode OUTSIDE any DB transaction (Part 13) — a
+                    // GeocodingProviderException here propagates straight
+                    // out of apply() uncaught, before $project->update() has
+                    // ever been called and before DB::transaction() below is
+                    // ever reached, so nothing selected in this request
+                    // persists (see class docblock's provider-failure
+                    // atomicity note). ProjectContractSetupController is
+                    // responsible for catching it and returning a safe error.
+                    $outcome = $this->geocoding->resolve($location);
+
+                    if ($outcome->isMatched()) {
+                        $updates['latitude']  = $outcome->latitude;
+                        $updates['longitude'] = $outcome->longitude;
+                        $projectLocationResult = ['textual_location_applied' => $textChanged, 'map_position' => 'updated'];
+                    } elseif ($textChanged) {
+                        // Stale-coordinate safety: the text is changing
+                        // regardless of geocoding, so any old coordinates
+                        // must never survive attached to the new address —
+                        // cleared even though no fresh reliable match was
+                        // found (Part 15).
+                        $updates['latitude']  = null;
+                        $updates['longitude'] = null;
+                        $projectLocationResult = ['textual_location_applied' => true, 'map_position' => 'not_found'];
+                    } else {
+                        // Geocode-only action (Part 20/21) with no reliable
+                        // match — the Project doesn't actually change at all
+                        // (coordinates were already missing/null and stay
+                        // that way), so this is deliberately NOT marked
+                        // applied and creates no activity entry (Part 21:
+                        // "do not create a misleading successful
+                        // field-change activity if no actual Project data
+                        // changed") — only the result is reported so the
+                        // frontend can still show the warning.
+                        $projectLocationResult = ['textual_location_applied' => false, 'map_position' => 'not_found'];
+                        continue 2;
+                    }
                     break;
                 default:
                     continue 2; // unrecognised key — never mark as applied
@@ -201,7 +269,7 @@ class ProjectContractSetupSyncService
         }
 
         if (empty($updates)) {
-            return ['project' => $project, 'applied' => []];
+            return ['project' => $project, 'applied' => [], 'project_location_result' => $projectLocationResult];
         }
 
         // Date-consistency check (Part 10) — considers the resulting state,
@@ -221,7 +289,7 @@ class ProjectContractSetupSyncService
             $project->update($updates);
         });
 
-        return ['project' => $project->refresh(), 'applied' => $applied];
+        return ['project' => $project->refresh(), 'applied' => $applied, 'project_location_result' => $projectLocationResult];
     }
 
     // ── Individual suggestion builders ──────────────────────────────────────
@@ -447,8 +515,24 @@ class ProjectContractSetupSyncService
      * suggest something useful; a completely empty project_location
      * produces no suggestion at all, never an empty one.
      *
-     * Deliberately does NOT read or write `Project::$latitude`/
-     * `$longitude` — see this class's own docblock.
+     * `map_pin_status` (`'set'`/`'missing'`) and `map_pin_action_required`
+     * (Part 20/21's "matching text, missing pin" edge case) — a Project
+     * whose textual location already matches the confirmed Contract but
+     * has no valid map position would otherwise be permanently stuck: the
+     * normal `already_matches` short-circuit means nothing to apply, so
+     * this workflow could never be used to add the missing pin. Deliberately
+     * still `project_location` — no second persisted suggestion key exists
+     * for this. `default_selected` is true for exactly this case (a
+     * geocode-only action that can only add a pin, never touches already-
+     * correct text, so it's safe to default-select) even though `matches`
+     * is true; false in every other already-matching case, matching the
+     * existing behaviour for every other suggestion type.
+     *
+     * A coordinate pair is only ever "set" when BOTH latitude and longitude
+     * are present and pass the same range validation
+     * `GeoapifyGeocodingProvider` applies to a fresh result (Part 22) — a
+     * partial pair (one set, one null) is always "missing," never treated
+     * as a valid existing pin.
      */
     private function projectLocationSuggestion(Project $project, Contract $contract, ContractAiAnalysis $analysis): ?array
     {
@@ -500,6 +584,14 @@ class ProjectContractSetupSyncService
             }
         }
 
+        $mapPinSet = $this->hasValidCoordinatePair($project);
+        // Part 20/21: matching text + missing pin gets its own actionable,
+        // default-selected outcome; every other already-matching case (pin
+        // already set) stays exactly as before — nothing to do, never
+        // preselected.
+        $mapPinActionRequired = $matches && !$mapPinSet;
+        $defaultSelected = $matches ? $mapPinActionRequired : ($currentIsBlank);
+
         return [
             'key'   => ProjectContractSuggestionKeys::PROJECT_LOCATION,
             'label' => 'Project Location',
@@ -513,8 +605,32 @@ class ProjectContractSetupSyncService
             // extra 'label'/'reason' fields on 'suggested'.
             'suggested' => ['value' => $this->locationSummary($suggested), 'lines' => $this->locationLines($suggested), 'location' => $suggested],
             'already_matches'  => $matches,
-            'default_selected' => !$matches && $currentIsBlank,
+            'default_selected' => $defaultSelected,
+            'map_pin_status' => $mapPinSet ? 'set' : 'missing',
+            'map_pin_action_required' => $mapPinActionRequired,
         ];
+    }
+
+    /**
+     * A coordinate pair counts as a genuinely valid existing pin only when
+     * BOTH latitude and longitude are present and within range — mirrors
+     * `GeoapifyGeocodingProvider`'s own validation so a Project can never
+     * be considered to have a valid pin that a fresh geocode would itself
+     * have rejected. A partial pair (Part 22) is always "missing."
+     */
+    private function hasValidCoordinatePair(Project $project): bool
+    {
+        return $this->isValidLatitude($project->latitude) && $this->isValidLongitude($project->longitude);
+    }
+
+    private function isValidLatitude(mixed $value): bool
+    {
+        return $value !== null && is_numeric($value) && (float) $value >= -90 && (float) $value <= 90;
+    }
+
+    private function isValidLongitude(mixed $value): bool
+    {
+        return $value !== null && is_numeric($value) && (float) $value >= -180 && (float) $value <= 180;
     }
 
     /**
