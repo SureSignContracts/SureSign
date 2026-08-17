@@ -24,6 +24,7 @@ export default function AppTeamPage() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('Read-only User');
+  const [inviteBetaNotice, setInviteBetaNotice] = useState(false);
   const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -32,11 +33,12 @@ export default function AppTeamPage() {
   });
 
   const inviteMutation = useMutation({
-    mutationFn: (payload: { email: string; role: string }) => api.post('/users/invite', payload),
+    mutationFn: (payload: { email: string; role: string; include_beta_notice: boolean }) => api.post('/users/invite', payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['team-users'] });
       setInviteOpen(false);
       setInviteEmail('');
+      setInviteBetaNotice(false);
     },
   });
 
@@ -184,6 +186,17 @@ export default function AppTeamPage() {
                   {ROLES.map(r => <option key={r}>{r}</option>)}
                 </Select>
               </div>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={inviteBetaNotice}
+                  onChange={e => setInviteBetaNotice(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  Include beta notice in invitation email
+                </span>
+              </label>
             </div>
             <div className="flex gap-3 mt-6">
               <button
@@ -194,7 +207,7 @@ export default function AppTeamPage() {
                 Cancel
               </button>
               <button
-                onClick={() => inviteMutation.mutate({ email: inviteEmail, role: inviteRole })}
+                onClick={() => inviteMutation.mutate({ email: inviteEmail, role: inviteRole, include_beta_notice: inviteBetaNotice })}
                 disabled={!inviteEmail || inviteMutation.isPending}
                 className="flex-1 py-2.5 rounded-lg text-sm font-medium disabled:opacity-60 active:scale-[0.98]"
                 style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}

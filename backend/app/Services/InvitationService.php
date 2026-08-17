@@ -27,8 +27,13 @@ class InvitationService
      * Sends (or re-sends) the invitation email for an already-created,
      * not-yet-accepted User. Never called for a User that has already
      * completed setup.
+     *
+     * @param bool $includeBetaNotice Per-invite admin choice, set from the
+     *   invite form (see UserController::invite()) — deliberately not a
+     *   global setting, since not every invited recipient should
+     *   necessarily be told the same thing about beta status.
      */
-    public function send(User $user): void
+    public function send(User $user, bool $includeBetaNotice = false): void
     {
         $acceptUrl = $this->linkService->acceptUrl($user);
         $expiryDays = (int) config('suresign.invitation.link_expiry_days');
@@ -39,6 +44,7 @@ class InvitationService
             $acceptUrl,
             $user->organization?->name,
             $expiryDays,
+            $includeBetaNotice,
         )->afterCommit();
     }
 

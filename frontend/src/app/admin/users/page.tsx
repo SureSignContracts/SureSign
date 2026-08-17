@@ -712,6 +712,7 @@ export default function AdminUsersPage() {
   const [inviteOpen, setInviteOpen]     = useState(false);
   const [inviteEmail, setInviteEmail]   = useState('');
   const [inviteRole, setInviteRole]     = useState<InviteRole>('Client');
+  const [inviteBetaNotice, setInviteBetaNotice] = useState(false);
   const [manageUser, setManageUser]     = useState<AdminUser | null>(null);
   const [passwordUser, setPasswordUser]   = useState<AdminUser | null>(null);
   const [passwordResult, setPasswordResult] = useState<string | null>(null);
@@ -745,12 +746,13 @@ export default function AdminUsersPage() {
   });
 
   const inviteMutation = useMutation({
-    mutationFn: (payload: { email: string; role: InviteRole }) => api.post('/users/invite', payload).then(r => r.data),
+    mutationFn: (payload: { email: string; role: InviteRole; include_beta_notice: boolean }) => api.post('/users/invite', payload).then(r => r.data),
     onSuccess: (res: any) => {
       qc.invalidateQueries({ queryKey: ['admin-users'] });
       setInviteOpen(false);
       setInviteEmail('');
       setInviteRole('Client');
+      setInviteBetaNotice(false);
       // The recipient sets their own password via the invitation email —
       // no credential is ever generated for display here (see
       // UserController::invite()).
@@ -1039,13 +1041,22 @@ export default function AdminUsersPage() {
                   {INVITE_ROLES.map((r: string) => <option key={r} value={r}>{r}</option>)}
                 </Select>
               </div>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox" checked={inviteBetaNotice} onChange={e => setInviteBetaNotice(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  Include beta notice in invitation email
+                </span>
+              </label>
             </div>
             <div className="flex gap-3 mt-6">
               <button onClick={() => setInviteOpen(false)} className="flex-1 py-2.5 rounded-lg text-sm font-medium"
                       style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
                 Cancel
               </button>
-              <button onClick={() => inviteMutation.mutate({ email: inviteEmail, role: inviteRole })}
+              <button onClick={() => inviteMutation.mutate({ email: inviteEmail, role: inviteRole, include_beta_notice: inviteBetaNotice })}
                       disabled={!inviteEmail || inviteMutation.isPending}
                       className="flex-1 py-2.5 rounded-lg text-sm font-medium transition-opacity disabled:opacity-60 active:scale-[0.98]"
                       style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>

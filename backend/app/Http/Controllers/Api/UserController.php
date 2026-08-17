@@ -136,6 +136,9 @@ class UserController extends Controller
             // trashed rows here or a re-invite would wrongly 422 as "taken".
             'email' => ['required', 'email', 'max:255', Rule::unique('users')->whereNull('deleted_at')],
             'role'  => 'required|string|in:' . implode(',', self::ALLOWED_ROLES),
+            // Per-invite admin choice, not a global setting — see
+            // InvitationEmailService's docblock.
+            'include_beta_notice' => 'sometimes|boolean',
         ]);
 
         // An internal compatibility secret only — users.password is
@@ -188,7 +191,7 @@ class UserController extends Controller
         $role = Role::firstOrCreate(['name' => $validated['role'], 'guard_name' => 'web']);
         $user->assignRole($role);
 
-        $this->invitations->send($user);
+        $this->invitations->send($user, $validated['include_beta_notice'] ?? false);
 
         ActivityLog::record(
             'user.invited',

@@ -29,12 +29,13 @@ class SendInvitationEmailJob implements ShouldQueue
         public readonly string $acceptUrl,
         public readonly ?string $organizationName,
         public readonly int $expiryDays,
+        public readonly bool $includeBetaNotice = false,
     ) {
     }
 
     public function handle(InvitationEmailService $service): void
     {
-        $sent = $service->send($this->email, $this->name, $this->acceptUrl, $this->organizationName, $this->expiryDays);
+        $sent = $service->send($this->email, $this->name, $this->acceptUrl, $this->organizationName, $this->expiryDays, $this->includeBetaNotice);
 
         if (!$sent) {
             Log::info("SendInvitationEmailJob: delivery failed for {$this->email} — see EmailNotificationService logs.");
