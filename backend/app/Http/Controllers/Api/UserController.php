@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator as ValidatorFacade;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Spatie\Permission\Models\Role;
@@ -141,6 +142,87 @@ class UserController extends Controller
             'include_beta_notice' => 'sometimes|boolean',
         ]);
 
+        $result = $this->inviteOneUser($validated['email'], $validated['role'], $validated['include_beta_notice'] ?? false);
+
+        return response()->json([
+            'message' => "Invitation sent to {$result['email']}.",
+            'data'    => $result,
+        ], 201);
+    }
+
+    /**
+     * Bulk Invite — same per-user invitation path as invite() above
+     * (inviteOneUser()), just fed from a list instead of a single email.
+     * One shared role + one shared include_beta_notice for the whole batch,
+     * not per-row — the realistic case (inviting a group of similar users)
+     * without the extra input-format/validation complexity of per-row
+     * roles. Deliberately partial-success honest (see the Error Handling
+     * Standard): a bad email in the batch never aborts the rest — each
+     * email is validated independently and the response reports exactly
+     * which succeeded and which didn't, with a reason.
+     */
+    public function bulkInvite(Request $request)
+    {
+        $validated = $request->validate([
+            'emails'   => 'required|array|min:1|max:100',
+            'emails.*' => 'string',
+            'role'     => 'required|string|in:' . implode(',', self::ALLOWED_ROLES),
+            'include_beta_notice' => 'sometimes|boolean',
+        ]);
+
+        $role = $validated['role'];
+        $includeBetaNotice = $validated['include_beta_notice'] ?? false;
+
+        // Normalize + dedupe within the batch itself (case-insensitive),
+        // preserving first-occurrence order — a pasted list commonly has
+        // blank lines or accidental repeats.
+        $emails = [];
+        $seen = [];
+        foreach ($validated['emails'] as $raw) {
+            $email = strtolower(trim((string) $raw));
+            if ($email === '' || isset($seen[$email])) {
+                continue;
+            }
+            $seen[$email] = true;
+            $emails[] = $email;
+        }
+
+        $invited = [];
+        $failed = [];
+
+        foreach ($emails as $email) {
+            $rowValidator = ValidatorFacade::make(['email' => $email], [
+                'email' => ['required', 'email', 'max:255', Rule::unique('users')->whereNull('deleted_at')],
+            ]);
+
+            if ($rowValidator->fails()) {
+                $failed[] = ['email' => $email, 'reason' => $rowValidator->errors()->first('email')];
+                continue;
+            }
+
+            $invited[] = $this->inviteOneUser($email, $role, $includeBetaNotice);
+        }
+
+        return response()->json([
+            'message' => count($invited) . ' of ' . count($emails) . ' invitation(s) sent.',
+            'data'    => [
+                'invited' => $invited,
+                'failed'  => $failed,
+            ],
+        ], 201);
+    }
+
+    /**
+     * Shared by invite() and bulkInvite() — creates (or restores a
+     * soft-deleted) User for an already-validated, available email,
+     * assigns the role, and sends the invitation. Callers are responsible
+     * for their own email validation/uniqueness check before calling this,
+     * so a bulk caller can report a per-row failure instead of throwing.
+     *
+     * @return array{id: int, email: string, role: string}
+     */
+    private function inviteOneUser(string $email, string $role, bool $includeBetaNotice): array
+    {
         // An internal compatibility secret only — users.password is
         // non-nullable, but this value is never surfaced anywhere (API
         // response, frontend, email, log, or activity metadata) and is
@@ -151,7 +233,7 @@ class UserController extends Controller
 
         // Reuse the soft-deleted record for this email instead of colliding
         // with the DB-level unique constraint that a fresh insert would hit.
-        $user = User::onlyTrashed()->where('email', $validated['email'])->first();
+        $user = User::onlyTrashed()->where('email', $email)->first();
 
         if ($user) {
             $user->restore();
@@ -162,7 +244,7 @@ class UserController extends Controller
                 // a guessed human name. The invitation email greeting reads
                 // first_name only (see InvitationService::send()), which
                 // stays null here, so it correctly falls back to "Hi,".
-                'name'                 => $validated['email'],
+                'name'                 => $email,
                 'first_name'           => null,
                 'last_name'            => null,
                 'password'             => Hash::make($tempPassword),
@@ -180,35 +262,32 @@ class UserController extends Controller
             $user->syncRoles([]);
         } else {
             $user = User::create([
-                'name'      => $validated['email'],
-                'email'     => $validated['email'],
+                'name'      => $email,
+                'email'     => $email,
                 'password'  => Hash::make($tempPassword),
                 'is_active' => true,
                 'must_change_password' => true,
             ]);
         }
 
-        $role = Role::firstOrCreate(['name' => $validated['role'], 'guard_name' => 'web']);
-        $user->assignRole($role);
+        $roleModel = Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']);
+        $user->assignRole($roleModel);
 
-        $this->invitations->send($user, $validated['include_beta_notice'] ?? false);
+        $this->invitations->send($user, $includeBetaNotice);
 
         ActivityLog::record(
             'user.invited',
-            "Invited {$user->email} to SureSign as {$validated['role']}",
+            "Invited {$user->email} to SureSign as {$role}",
             Auth::user(),
             $user,
-            ['role' => $validated['role']],
+            ['role' => $role],
         );
 
-        return response()->json([
-            'message' => "Invitation sent to {$user->email}.",
-            'data'    => [
-                'id'    => $user->id,
-                'email' => $user->email,
-                'role'  => $validated['role'],
-            ],
-        ], 201);
+        return [
+            'id'    => $user->id,
+            'email' => $user->email,
+            'role'  => $role,
+        ];
     }
 
     public function show(string $id)

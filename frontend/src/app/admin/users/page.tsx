@@ -713,6 +713,9 @@ export default function AdminUsersPage() {
   const [inviteEmail, setInviteEmail]   = useState('');
   const [inviteRole, setInviteRole]     = useState<InviteRole>('Client');
   const [inviteBetaNotice, setInviteBetaNotice] = useState(false);
+  const [inviteMode, setInviteMode]     = useState<'single' | 'bulk'>('single');
+  const [bulkEmailsText, setBulkEmailsText] = useState('');
+  const [bulkResult, setBulkResult] = useState<{ invited: { email: string }[]; failed: { email: string; reason: string }[] } | null>(null);
   const [manageUser, setManageUser]     = useState<AdminUser | null>(null);
   const [passwordUser, setPasswordUser]   = useState<AdminUser | null>(null);
   const [passwordResult, setPasswordResult] = useState<string | null>(null);
@@ -760,6 +763,40 @@ export default function AdminUsersPage() {
     },
     onError: (e: any) => {
       toast.error(e?.response?.data?.message ?? e?.response?.data?.errors?.email?.[0] ?? 'Failed to send invitation.');
+    },
+  });
+
+  // Splits on newlines and/or commas (so a column pasted from a
+  // spreadsheet or a comma-separated list both work), trims whitespace,
+  // and drops blank lines — deduping and per-email validation both happen
+  // server-side (UserController::bulkInvite()) so failures are reported
+  // per email rather than guessed at here.
+  const parseBulkEmails = (text: string): string[] =>
+    text.split(/[\n,]/).map(e => e.trim()).filter(Boolean);
+
+  const bulkInviteMutation = useMutation({
+    mutationFn: (payload: { emails: string[]; role: InviteRole; include_beta_notice: boolean }) =>
+      api.post('/users/bulk-invite', payload).then(r => r.data),
+    onSuccess: (res: any) => {
+      qc.invalidateQueries({ queryKey: ['admin-users'] });
+      const invited: { email: string }[] = res?.data?.invited ?? [];
+      const failed: { email: string; reason: string }[] = res?.data?.failed ?? [];
+      setBulkResult({ invited, failed });
+      if (failed.length === 0) {
+        // Every email succeeded — close and reset exactly like the single
+        // invite flow. A partial result stays open (see JSX below) so the
+        // admin can see and act on which emails failed and why, per the
+        // Error Handling Standard's partial-success honesty rule.
+        setInviteOpen(false);
+        setBulkEmailsText('');
+        setInviteRole('Client');
+        setInviteBetaNotice(false);
+        setBulkResult(null);
+      }
+      toast.success(res?.message ?? `${invited.length} invitation(s) sent.`);
+    },
+    onError: (e: any) => {
+      toast.error(e?.response?.data?.message ?? 'Failed to send invitations.');
     },
   });
 
@@ -847,7 +884,7 @@ export default function AdminUsersPage() {
         loading={isLoading}
         action={(
           <button
-            onClick={() => setInviteOpen(true)}
+            onClick={() => { setInviteMode('single'); setBulkResult(null); setInviteOpen(true); }}
             className="inline-flex items-center gap-2 whitespace-nowrap rounded-xl bg-[#9ee5b5] px-4 py-3 text-sm font-semibold text-[#18211d] transition duration-200 hover:-translate-y-0.5 hover:bg-[#b5edc7] active:translate-y-0"
           >
             <UserPlus size={16} />
@@ -1021,25 +1058,68 @@ export default function AdminUsersPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }} onClick={() => setInviteOpen(false)}>
           <div className="w-full max-w-md rounded-2xl p-6 ss-animate-in" style={{ backgroundColor: 'var(--bg-panel)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }} onClick={e => e.stopPropagation()}>
             <h2 className="text-lg font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Invite User</h2>
-            <p className="text-xs mb-5" style={{ color: 'var(--text-muted)' }}>Create a new user account and share their credentials</p>
+            <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
+              {inviteMode === 'single' ? 'Create a new user account and share their credentials' : 'Invite a list of users at once, all with the same role'}
+            </p>
+
+            {/* Single / Bulk mode toggle */}
+            <div className="flex gap-1 p-1 rounded-lg mb-4" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+              {(['single', 'bulk'] as const).map(mode => (
+                <button
+                  key={mode}
+                  onClick={() => { setInviteMode(mode); setBulkResult(null); }}
+                  className="flex-1 py-1.5 rounded-md text-xs font-medium transition-colors"
+                  style={inviteMode === mode
+                    ? { backgroundColor: 'var(--bg-panel)', color: 'var(--text-primary)', boxShadow: 'var(--shadow-card)' }
+                    : { color: 'var(--text-muted)' }}
+                >
+                  {mode === 'single' ? 'Single' : 'Bulk'}
+                </button>
+              ))}
+            </div>
+
             <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Email</label>
-                <div className="relative">
-                  <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
-                  <input
-                    type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
-                    placeholder="colleague@company.com"
-                    className="w-full pl-9 pr-4 py-2.5 rounded-lg text-sm outline-none"
+              {inviteMode === 'single' ? (
+                <div>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Email</label>
+                  <div className="relative">
+                    <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+                    <input
+                      type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
+                      placeholder="colleague@company.com"
+                      className="w-full pl-9 pr-4 py-2.5 rounded-lg text-sm outline-none"
+                      style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                    Emails <span style={{ color: 'var(--text-muted)' }}>(one per line, or comma-separated — up to 100)</span>
+                  </label>
+                  <textarea
+                    value={bulkEmailsText}
+                    onChange={e => setBulkEmailsText(e.target.value)}
+                    placeholder={'jane@company.com\njohn@company.com'}
+                    rows={5}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none resize-none"
                     style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                   />
+                  {bulkEmailsText.trim() && (
+                    <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                      {parseBulkEmails(bulkEmailsText).length} email(s) detected
+                    </p>
+                  )}
                 </div>
-              </div>
+              )}
               <div>
                 <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Role</label>
                 <Select value={inviteRole} onChange={e => setInviteRole(e.target.value as typeof INVITE_ROLES[number])} className="w-full">
                   {INVITE_ROLES.map((r: string) => <option key={r} value={r}>{r}</option>)}
                 </Select>
+                {inviteMode === 'bulk' && (
+                  <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Applies to every email in this batch.</p>
+                )}
               </div>
               <label className="flex items-start gap-2 cursor-pointer">
                 <input
@@ -1050,18 +1130,46 @@ export default function AdminUsersPage() {
                   Include beta notice in invitation email
                 </span>
               </label>
+
+              {/* Partial-success results — a bad email in the batch never
+                  blocks the rest (see UserController::bulkInvite()); shown
+                  here so the admin can see and fix exactly what failed,
+                  rather than only a generic toast. */}
+              {bulkResult && bulkResult.failed.length > 0 && (
+                <div className="rounded-lg p-3 text-xs" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+                  <p className="font-medium mb-1.5" style={{ color: 'var(--text-primary)' }}>
+                    {bulkResult.invited.length} sent, {bulkResult.failed.length} failed:
+                  </p>
+                  <ul className="space-y-0.5">
+                    {bulkResult.failed.map(f => (
+                      <li key={f.email} style={{ color: 'var(--text-muted)' }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>{f.email}</span> — {f.reason}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setInviteOpen(false)} className="flex-1 py-2.5 rounded-lg text-sm font-medium"
+              <button onClick={() => { setInviteOpen(false); setBulkResult(null); }} className="flex-1 py-2.5 rounded-lg text-sm font-medium"
                       style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
-                Cancel
+                {bulkResult ? 'Close' : 'Cancel'}
               </button>
-              <button onClick={() => inviteMutation.mutate({ email: inviteEmail, role: inviteRole, include_beta_notice: inviteBetaNotice })}
-                      disabled={!inviteEmail || inviteMutation.isPending}
-                      className="flex-1 py-2.5 rounded-lg text-sm font-medium transition-opacity disabled:opacity-60 active:scale-[0.98]"
-                      style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
-                {inviteMutation.isPending ? 'Creating…' : 'Create User'}
-              </button>
+              {inviteMode === 'single' ? (
+                <button onClick={() => inviteMutation.mutate({ email: inviteEmail, role: inviteRole, include_beta_notice: inviteBetaNotice })}
+                        disabled={!inviteEmail || inviteMutation.isPending}
+                        className="flex-1 py-2.5 rounded-lg text-sm font-medium transition-opacity disabled:opacity-60 active:scale-[0.98]"
+                        style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+                  {inviteMutation.isPending ? 'Creating…' : 'Create User'}
+                </button>
+              ) : (
+                <button onClick={() => bulkInviteMutation.mutate({ emails: parseBulkEmails(bulkEmailsText), role: inviteRole, include_beta_notice: inviteBetaNotice })}
+                        disabled={parseBulkEmails(bulkEmailsText).length === 0 || bulkInviteMutation.isPending}
+                        className="flex-1 py-2.5 rounded-lg text-sm font-medium transition-opacity disabled:opacity-60 active:scale-[0.98]"
+                        style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+                  {bulkInviteMutation.isPending ? 'Sending…' : `Invite ${parseBulkEmails(bulkEmailsText).length || ''}`.trim()}
+                </button>
+              )}
             </div>
           </div>
         </div>
