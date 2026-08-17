@@ -11,6 +11,27 @@ use Illuminate\Support\Facades\Log;
 class EmailNotificationService
 {
     /**
+     * The SureSign mark (cropped from the same white/transparent logo asset
+     * the frontend already uses for dark surfaces —
+     * frontend/public/logo_white/SureSign_WLOGO.webp, e.g. AdminSidebar's
+     * dark theme and the login page's dark panel), re-exported as a small
+     * transparent PNG at frontend/public/email/logo-mark.png and referenced
+     * here as a real URL. Deliberately hardcoded rather than sourced from
+     * `SuresignSetting::email_header_url` — that setting replaces the
+     * *entire* generated header block with a single caller-supplied banner
+     * image, which isn't what this is; this is only the fallback header's
+     * 34x34 icon slot.
+     *
+     * NOT embedded as a base64 data URI — verified live against production
+     * (Brevo) that this fails: Brevo strips/rewrites embedded `data:` image
+     * URIs in outbound HTML (its image-proxy/tracking layer only handles
+     * real fetchable URLs), which rendered as a broken-image icon in Gmail,
+     * not merely a missing one. A real hosted URL is the only option that
+     * actually works through this provider.
+     */
+    private const EMAIL_LOGO_MARK_PATH = '/email/logo-mark.png';
+
+    /**
      * Send a notification email if the event is enabled in notification_settings.
      *
      * Recipients are resolved from the event's organization (its own contact
@@ -375,12 +396,14 @@ class EmailNotificationService
             ? 'Reply to this message to contact the sender.'
             : 'Please do not reply directly to this message.';
 
+        $logoMarkUrl = rtrim(config('suresign.frontend_url'), '/') . self::EMAIL_LOGO_MARK_PATH;
+
         $headerSection = $settings->email_header_url
             ? '<img src="' . e($settings->email_header_url) . '" style="width:100%;max-width:600px;display:block;" alt="' . $senderName . '" />'
             : '<table width="100%" cellpadding="0" cellspacing="0" role="presentation"><tr>'
               . '<td style="padding:28px 40px;background:#18211d;">'
               . '<table width="100%" cellpadding="0" cellspacing="0" role="presentation"><tr>'
-              . '<td valign="middle"><span style="display:inline-block;width:34px;height:34px;line-height:34px;border-radius:10px;background:#9ee5b5;font-family:Arial,sans-serif;font-size:15px;font-weight:800;color:#18211d;text-align:center;vertical-align:middle;">S</span>'
+              . '<td valign="middle"><img src="' . e($logoMarkUrl) . '" width="34" height="34" style="display:inline-block;width:34px;height:34px;vertical-align:middle;" alt="' . $senderName . '" />'
               . '<span style="display:inline-block;margin-left:12px;font-family:Arial,Helvetica,sans-serif;font-size:19px;font-weight:700;color:#ffffff;letter-spacing:-0.2px;vertical-align:middle;">' . $senderName . '</span></td>'
               . '<td align="right" valign="middle" style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;color:#9ee5b5;letter-spacing:1.3px;text-transform:uppercase;">Contract clarity</td>'
               . '</tr></table>'
