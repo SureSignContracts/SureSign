@@ -33,7 +33,25 @@ use Illuminate\Support\Facades\DB;
  *   - NEVER trusts a value the frontend proposes — `apply()` always
  *     recomputes suggestions itself from the confirmed source before
  *     writing anything, so a caller can only submit which *keys* to
- *     apply, never raw values.
+ *     apply, never raw values;
+ *   - NEVER derives Project Location from `latitude`/`longitude`, and NEVER
+ *     generates, invents, or looks up a coordinate value — `PROJECT_LOCATION`
+ *     only ever *writes* the textual address fields (`address`/`city`/
+ *     `state`/`postcode`/`country`) from confirmed data. Deterministic
+ *     geocoding of that confirmed textual address into real coordinates is
+ *     a deliberately separate, not-yet-built concern (pending an approved
+ *     geocoding provider — see this class's own "stale-coordinate safety"
+ *     note below for the one narrow exception to "never touches
+ *     latitude/longitude");
+ *   - **Stale-coordinate safety (interim, pending geocoding):** whenever
+ *     applying `PROJECT_LOCATION` genuinely changes the Project's textual
+ *     location (i.e. it wasn't already matching), `Project::$latitude`/
+ *     `$longitude` are CLEARED (set to null) in the same update — never
+ *     recalculated, never guessed, never left pointing at the old address's
+ *     site. When the applied location already matches the Project's
+ *     existing one, coordinates are left completely untouched. This is not
+ *     geocoding and adds no provider — it only prevents an existing map pin
+ *     from silently misrepresenting a site the Project no longer names.
  *
  * Reads prefer structured `Contract` columns where — and only where —
  * they reliably distinguish "genuinely confirmed" from "never touched":
@@ -85,6 +103,9 @@ class ProjectContractSetupSyncService
             $rows[] = $row;
         }
         if ($row = $this->roleSuggestion($project, $contract, $analysis)) {
+            $rows[] = $row;
+        }
+        if ($row = $this->projectLocationSuggestion($project, $contract, $analysis)) {
             $rows[] = $row;
         }
 
@@ -143,6 +164,34 @@ class ProjectContractSetupSyncService
                     break;
                 case ProjectContractSuggestionKeys::ORGANIZATION_ROLE:
                     $updates['organization_role'] = $row['suggested']['value'];
+                    break;
+                case ProjectContractSuggestionKeys::PROJECT_LOCATION:
+                    // Wholesale replace, not a per-field merge — the user
+                    // reviewed and applied the confirmed location exactly as
+                    // displayed (Current vs Suggested), so every component
+                    // is set to precisely what was shown, including null for
+                    // any component the confirmed Contract didn't state.
+                    // Mixing old and new components with no visible rule for
+                    // which wins would be more confusing than predictable.
+                    $location = $row['suggested']['location'] ?? [];
+                    $updates['address']  = $location['address']  ?? null;
+                    $updates['city']     = $location['city']     ?? null;
+                    $updates['state']    = $location['state']    ?? null;
+                    $updates['postcode'] = $location['postcode'] ?? null;
+                    $updates['country']  = $location['country']  ?? null;
+
+                    // Stale-coordinate safety (interim, pending geocoding —
+                    // see class docblock). Reaching this case at all already
+                    // guarantees the location genuinely changed: the loop
+                    // above skips (`continue`) any row where
+                    // already_matches is true before the switch is ever
+                    // reached, so this line only ever runs when the textual
+                    // location is actually different from what the Project
+                    // had before. Never recalculated, never guessed at —
+                    // always cleared to null, since no geocoding provider
+                    // exists yet to produce a real replacement value.
+                    $updates['latitude']  = null;
+                    $updates['longitude'] = null;
                     break;
                 default:
                     continue 2; // unrecognised key — never mark as applied
@@ -380,6 +429,141 @@ class ProjectContractSetupSyncService
             'already_matches'  => false,
             'default_selected' => false, // a role decision is never preselected, even when blank
         ];
+    }
+
+    /**
+     * Project/Site Location — one grouped suggestion, never five separate
+     * keys (see ProjectContractSuggestionKeys' own docblock). Read
+     * exclusively from confirmed_data_json's own
+     * `contract_overview.project_location` — the schema field the AI
+     * extraction prompt keeps structurally distinct from every party's own
+     * address (`parties.*.address`), so a company registered office can
+     * never surface here by construction, not by extra filtering logic
+     * added on top. A v1 (pre-v2.0) confirmed analysis has no equivalent
+     * field at all — no suggestion, never a guess.
+     *
+     * Supports a partial confirmed address (e.g. city + country only, no
+     * street/postcode) — at least one non-blank component is enough to
+     * suggest something useful; a completely empty project_location
+     * produces no suggestion at all, never an empty one.
+     *
+     * Deliberately does NOT read or write `Project::$latitude`/
+     * `$longitude` — see this class's own docblock.
+     */
+    private function projectLocationSuggestion(Project $project, Contract $contract, ContractAiAnalysis $analysis): ?array
+    {
+        $data = is_array($analysis->confirmed_data_json) ? $analysis->confirmed_data_json : [];
+        $location = $data['contract_overview']['project_location'] ?? null;
+        if (!is_array($location)) {
+            return null;
+        }
+
+        $suggested = [
+            'address'  => $this->normalizeLocationComponent($location['address_line'] ?? null),
+            'city'     => $this->normalizeLocationComponent($location['city'] ?? null),
+            'state'    => $this->normalizeLocationComponent($location['region'] ?? null),
+            'postcode' => $this->normalizeLocationComponent($location['postal_code'] ?? null),
+            'country'  => $this->normalizeLocationComponent($location['country'] ?? null),
+        ];
+
+        if (array_filter($suggested, fn ($v) => $v !== null) === []) {
+            return null; // the Contract never named a project/site location at all
+        }
+
+        $current = [
+            'address'  => $this->normalizeLocationComponent($project->address),
+            'city'     => $this->normalizeLocationComponent($project->city),
+            'state'    => $this->normalizeLocationComponent($project->state),
+            'postcode' => $this->normalizeLocationComponent($project->postcode),
+            'country'  => $this->normalizeLocationComponent($project->country),
+        ];
+        // Project::$country used to have a DB-level NOT NULL default
+        // ('AU') — fixed schema-only in
+        // 2026_08_17_000002_fix_projects_country_default.php, WITHOUT
+        // backfilling existing rows, because `country` is a free-text
+        // field (not a fixed dropdown) and there is no provable way to
+        // distinguish a row that only ever got 'AU' from the old default
+        // from one where a user genuinely typed "AU". Precisely because
+        // that ambiguity isn't provable, it is never reinterpreted here
+        // either — an existing 'AU' (or any other non-blank value) always
+        // counts as real, already-present location data, exactly like any
+        // other stored value. A Project is "blank" only when every one of
+        // these five fields is actually null after normalization; nothing
+        // is special-cased.
+        $currentIsBlank = array_filter($current, fn ($v) => $v !== null) === [];
+
+        $matches = true;
+        foreach ($suggested as $field => $value) {
+            if (!$this->locationComponentsMatch($current[$field], $value)) {
+                $matches = false;
+                break;
+            }
+        }
+
+        return [
+            'key'   => ProjectContractSuggestionKeys::PROJECT_LOCATION,
+            'label' => 'Project Location',
+            'current'   => ['value' => $this->locationSummary($current), 'lines' => $this->locationLines($current)],
+            // 'location' carries the structured components apply() reads
+            // directly — never re-derived from 'lines' (a flattened,
+            // order-dependent display array with no reliable way back to
+            // named fields). Not raw AI JSON — the same normalized values
+            // already computed above, just not stripped before the
+            // response goes out, exactly like organization_role's own
+            // extra 'label'/'reason' fields on 'suggested'.
+            'suggested' => ['value' => $this->locationSummary($suggested), 'lines' => $this->locationLines($suggested), 'location' => $suggested],
+            'already_matches'  => $matches,
+            'default_selected' => !$matches && $currentIsBlank,
+        ];
+    }
+
+    /**
+     * Trim + collapse whitespace only — matches Part 7's explicitly
+     * limited comparison-normalization rule (safe presentation differences
+     * only, never fuzzy address matching). Returns null for an empty
+     * result so "" and null are always treated identically downstream.
+     */
+    private function normalizeLocationComponent(mixed $value): ?string
+    {
+        if (!is_string($value)) {
+            return null;
+        }
+        $normalized = preg_replace('/\s+/', ' ', trim($value)) ?? '';
+        return $normalized === '' ? null : $normalized;
+    }
+
+    /**
+     * Both null counts as a match (an unset component on both sides is not
+     * a difference); exactly one null is always a mismatch; otherwise an
+     * exact case-insensitive comparison — never fuzzy matching, per Part 7.
+     */
+    private function locationComponentsMatch(?string $a, ?string $b): bool
+    {
+        if ($a === null && $b === null) {
+            return true;
+        }
+        if ($a === null || $b === null) {
+            return false;
+        }
+        return strcasecmp($a, $b) === 0;
+    }
+
+    /** Display order matches the Project field mapping: address, city, state/region, postcode, country. */
+    private function locationLines(array $location): array
+    {
+        return array_values(array_filter([
+            $location['address'] ?? null,
+            $location['city'] ?? null,
+            $location['state'] ?? null,
+            $location['postcode'] ?? null,
+            $location['country'] ?? null,
+        ], fn ($v) => $v !== null));
+    }
+
+    private function locationSummary(array $location): ?string
+    {
+        $lines = $this->locationLines($location);
+        return $lines === [] ? null : implode(', ', $lines);
     }
 
     /**

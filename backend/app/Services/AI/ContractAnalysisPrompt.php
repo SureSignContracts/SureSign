@@ -49,6 +49,7 @@ Schema v2.0 specific rules:
 - "executive_summary.intelligence_score": 0–100. A complete JCT with all schedules = 85+. A short framework with few terms = 20–40.
 - "executive_summary.section_confidence": Rate each section high/medium/low based on how clearly those clauses appeared.
 - For arrays (deadlines, notices, deliverables, risks, obligations sub-arrays): return all items found. Return [] if none found.
+- "contract_overview.project_location": This is the PROJECT/SITE location — where the contracted works themselves are physically located — never a registered office, correspondence address, payment/remittance address, or notice-service address for the Employer, Contractor, Subcontractor, Architect, Quantity Surveyor, Project Manager, or any other party. A contract naming only company addresses and no separate site/works address means this is empty — do not substitute a party's address for it. Extract only the components explicitly stated; leave any component null if not present (e.g. a vague reference like "the Works" with no address at all means every component is null; "North London" with no street/postcode means only city is filled and the rest stay null). Never combine, split, or infer a component from a different one, and never construct a full address from partial information. This field represents a physical location only — never return coordinates, a map link, or a "latitude"/"longitude" value anywhere in this schema.
 PROMPT;
     }
 
@@ -78,7 +79,14 @@ Extract structured information from the following construction contract and retu
     "trade_package_reference": null,
     "design_responsibility": null,
     "currency": "GBP",
-    "governing_law": null
+    "governing_law": null,
+    "project_location": {
+      "address_line": null,
+      "city": null,
+      "region": null,
+      "postal_code": null,
+      "country": null
+    }
   },
   "parties": {
     "employer": { "name": null, "company": null, "address": null, "contact_name": null, "contact_email": null },

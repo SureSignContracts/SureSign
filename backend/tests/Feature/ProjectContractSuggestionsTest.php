@@ -903,4 +903,528 @@ class ProjectContractSuggestionsTest extends TestCase
         $response->assertStatus(200);
         $this->assertEquals('2026-09-01', $project->fresh()->start_date->toDateString());
     }
+
+    // ── Project Location ─────────────────────────────────────────────────────
+    //
+    // Contract-Assisted Project Location & Automatic Map Pin, Part 1-9:
+    // structured extraction schema, confirmed-data-only suggestion, the one
+    // grouped project_location key, current-vs-suggested comparison/default
+    // selection, and applying the textual address fields. Deliberately does
+    // NOT cover geocoding/coordinates — that remains a separate, not-yet-
+    // approved provider decision; Project::$latitude/$longitude are verified
+    // untouched by every test below instead.
+
+    private function confirmedLocation(array $overrides = []): array
+    {
+        return array_replace_recursive([
+            'address_line' => '25 Riverside Road',
+            'city'         => 'Manchester',
+            'region'       => null,
+            'postal_code'  => 'M3 4AB',
+            'country'      => 'United Kingdom',
+        ], $overrides);
+    }
+
+    public function test_confirmed_project_location_with_blank_project_produces_a_default_selected_suggestion(): void
+    {
+        $org = $this->makeOrg();
+        $user = $this->makeUser($org);
+        $project = $this->makeProject($org, $user); // no address/city/state/postcode/country
+        $contract = $this->makeContract($project, $user);
+        $analysis = $this->makeAnalysis($project, $contract, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2(['contract_overview' => ['project_location' => $this->confirmedLocation()]]),
+        ]);
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/project-suggestions");
+
+        $row = collect($response->json('suggestions'))->firstWhere('key', 'project_location');
+        $this->assertNotNull($row);
+        $this->assertFalse($row['already_matches']);
+        $this->assertTrue($row['default_selected']);
+        $this->assertEquals(
+            ['25 Riverside Road', 'Manchester', 'M3 4AB', 'United Kingdom'],
+            $row['suggested']['lines']
+        );
+    }
+
+    public function test_project_with_differing_location_shows_suggestion_but_not_preselected(): void
+    {
+        $org = $this->makeOrg();
+        $user = $this->makeUser($org);
+        $project = $this->makeProject($org, $user, [
+            'address' => '1 Old Site Lane', 'city' => 'Leeds', 'postcode' => 'LS1 1AA', 'country' => 'United Kingdom',
+        ]);
+        $contract = $this->makeContract($project, $user);
+        $analysis = $this->makeAnalysis($project, $contract, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2(['contract_overview' => ['project_location' => $this->confirmedLocation()]]),
+        ]);
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/project-suggestions");
+
+        $row = collect($response->json('suggestions'))->firstWhere('key', 'project_location');
+        $this->assertNotNull($row);
+        $this->assertFalse($row['already_matches']);
+        $this->assertFalse($row['default_selected']); // never preselect over an existing differing location
+    }
+
+    public function test_existing_country_au_is_never_reinterpreted_as_blank(): void
+    {
+        // A Project whose stored country is exactly 'AU', with every other
+        // location field genuinely null — this is INDISTINGUISHABLE from
+        // the pre-fix schema default at the application level (see
+        // 2026_08_17_000002_fix_projects_country_default.php's own
+        // docblock: no provable way exists to tell "never touched" apart
+        // from "a user genuinely typed AU"). Precisely because it can't be
+        // proven, it must NEVER be treated as blank here either — a
+        // non-null country, on its own, always counts as real,
+        // already-present Project location data.
+        $org = $this->makeOrg();
+        $user = $this->makeUser($org);
+        $project = $this->makeProject($org, $user, ['country' => 'AU']);
+        $contract = $this->makeContract($project, $user);
+        $analysis = $this->makeAnalysis($project, $contract, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2(['contract_overview' => ['project_location' => $this->confirmedLocation()]]),
+        ]);
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/project-suggestions");
+
+        $row = collect($response->json('suggestions'))->firstWhere('key', 'project_location');
+        $this->assertNotNull($row);
+        $this->assertFalse($row['already_matches']); // 'AU' != 'United Kingdom' — a genuine difference
+        $this->assertFalse($row['default_selected']); // never preselected — country counts as existing data
+        // The suggestion preview is read-only regardless — confirmed
+        // explicitly here since this is the specific value under audit.
+        $this->assertEquals('AU', $project->fresh()->country);
+    }
+
+    public function test_project_location_already_matching_confirmed_contract_is_marked_already_matches(): void
+    {
+        $org = $this->makeOrg();
+        $user = $this->makeUser($org);
+        // Deliberately differs only by whitespace/case — Part 7's safe
+        // normalization (trim/case-fold/collapse whitespace) must still
+        // treat this as a match; it is not a fuzzy address match.
+        $project = $this->makeProject($org, $user, [
+            'address' => '  25   Riverside Road', 'city' => 'MANCHESTER', 'postcode' => 'm3 4ab', 'country' => 'united kingdom',
+        ]);
+        $contract = $this->makeContract($project, $user);
+        $analysis = $this->makeAnalysis($project, $contract, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2(['contract_overview' => ['project_location' => $this->confirmedLocation()]]),
+        ]);
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/project-suggestions");
+
+        $row = collect($response->json('suggestions'))->firstWhere('key', 'project_location');
+        $this->assertNotNull($row);
+        $this->assertTrue($row['already_matches']);
+    }
+
+    public function test_no_confirmed_project_location_produces_no_suggestion(): void
+    {
+        $org = $this->makeOrg();
+        $user = $this->makeUser($org);
+        $project = $this->makeProject($org, $user);
+        $contract = $this->makeContract($project, $user);
+        $analysis = $this->makeAnalysis($project, $contract, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2(), // no contract_overview.project_location at all
+        ]);
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/project-suggestions");
+
+        $this->assertNull(collect($response->json('suggestions'))->firstWhere('key', 'project_location'));
+    }
+
+    public function test_only_a_party_registered_office_address_never_produces_a_project_location_suggestion(): void
+    {
+        $org = $this->makeOrg();
+        $user = $this->makeUser($org);
+        $project = $this->makeProject($org, $user);
+        $contract = $this->makeContract($project, $user);
+        // Employer/Contractor registered-office addresses exist in the
+        // confirmed data, but contract_overview.project_location itself was
+        // never populated — this must never fall back to a party's address.
+        $analysis = $this->makeAnalysis($project, $contract, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2([
+                'parties' => [
+                    'employer' => ['name' => 'Property Holdings Ltd', 'address' => '1 Finance Street, London, EC1 1AA'],
+                    'main_contractor' => ['name' => 'Concrete Specialist Ltd', 'address' => '99 Depot Road, Birmingham, B1 1AA'],
+                ],
+            ]),
+        ]);
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/project-suggestions");
+
+        $this->assertNull(collect($response->json('suggestions'))->firstWhere('key', 'project_location'));
+    }
+
+    public function test_applying_project_location_updates_the_correct_textual_project_fields(): void
+    {
+        $org = $this->makeOrg();
+        $user = $this->makeUser($org);
+        $project = $this->makeProject($org, $user);
+        $contract = $this->makeContract($project, $user);
+        $analysis = $this->makeAnalysis($project, $contract, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2(['contract_overview' => ['project_location' => $this->confirmedLocation()]]),
+        ]);
+        Sanctum::actingAs($user);
+
+        $response = $this->postJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/apply-project-suggestions", [
+            'suggestions' => ['project_location'],
+        ]);
+
+        $response->assertStatus(200);
+        $this->assertContains('project_location', $response->json('applied'));
+
+        $fresh = $project->fresh();
+        $this->assertEquals('25 Riverside Road', $fresh->address);
+        $this->assertEquals('Manchester', $fresh->city);
+        $this->assertNull($fresh->state);
+        $this->assertEquals('M3 4AB', $fresh->postcode);
+        $this->assertEquals('United Kingdom', $fresh->country);
+    }
+
+    public function test_applying_a_different_project_location_clears_stale_coordinates(): void
+    {
+        $org = $this->makeOrg();
+        $user = $this->makeUser($org);
+        // A Project with pre-existing coordinates (e.g. set manually via
+        // Edit Project) AND a different existing textual address — applying
+        // a genuinely different confirmed location must clear the stale
+        // coordinates, since they belong to the OLD address and no
+        // geocoding provider exists yet to produce a real replacement (see
+        // ProjectContractSetupSyncService's "stale-coordinate safety" note).
+        $project = $this->makeProject($org, $user, [
+            'address' => '1 Old Site Lane', 'city' => 'Leeds', 'country' => 'United Kingdom',
+            'latitude' => 51.5074, 'longitude' => -0.1278,
+        ]);
+        $contract = $this->makeContract($project, $user);
+        $analysis = $this->makeAnalysis($project, $contract, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2(['contract_overview' => ['project_location' => $this->confirmedLocation()]]),
+        ]);
+        Sanctum::actingAs($user);
+
+        $this->postJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/apply-project-suggestions", [
+            'suggestions' => ['project_location'],
+        ])->assertStatus(200);
+
+        $fresh = $project->fresh();
+        $this->assertEquals('25 Riverside Road', $fresh->address); // the new address applied
+        $this->assertNull($fresh->latitude);  // the OLD coordinates must not survive
+        $this->assertNull($fresh->longitude);
+    }
+
+    public function test_applying_a_matching_project_location_preserves_existing_coordinates(): void
+    {
+        $org = $this->makeOrg();
+        $user = $this->makeUser($org);
+        // Project's textual location already matches the confirmed Contract
+        // exactly — applying it is a no-op for the location fields
+        // (already_matches short-circuits before the switch/case even
+        // runs), so the coordinates that DO correctly represent this
+        // address must survive untouched.
+        $project = $this->makeProject($org, $user, [
+            'address' => '25 Riverside Road', 'city' => 'Manchester', 'postcode' => 'M3 4AB', 'country' => 'United Kingdom',
+            'latitude' => 53.4808, 'longitude' => -2.2426,
+        ]);
+        $contract = $this->makeContract($project, $user);
+        $analysis = $this->makeAnalysis($project, $contract, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2(['contract_overview' => ['project_location' => $this->confirmedLocation()]]),
+        ]);
+        Sanctum::actingAs($user);
+
+        $response = $this->postJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/apply-project-suggestions", [
+            'suggestions' => ['project_location'],
+        ]);
+
+        $response->assertStatus(200);
+        $this->assertNotContains('project_location', $response->json('applied')); // already matched — nothing to apply
+
+        $fresh = $project->fresh();
+        $this->assertEquals(53.4808, (float) $fresh->latitude);
+        $this->assertEquals(-2.2426, (float) $fresh->longitude);
+    }
+
+    public function test_failed_or_unauthorized_apply_leaves_coordinates_unchanged(): void
+    {
+        $orgB = $this->makeOrg('Org B Ltd');
+        $userB = $this->makeUser($orgB);
+        $projectB = $this->makeProject($orgB, $userB, ['latitude' => 51.5074, 'longitude' => -0.1278]);
+        $contractB = $this->makeContract($projectB, $userB);
+        $analysisB = $this->makeAnalysis($projectB, $contractB, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2(['contract_overview' => ['project_location' => $this->confirmedLocation()]]),
+        ]);
+
+        $orgA = $this->makeOrg('Org A Ltd');
+        $userA = $this->makeUser($orgA);
+        Sanctum::actingAs($userA);
+
+        $response = $this->postJson("/api/projects/{$projectB->id}/contracts/{$contractB->id}/analyses/{$analysisB->id}/apply-project-suggestions", [
+            'suggestions' => ['project_location'],
+        ]);
+
+        $response->assertStatus(403);
+        $fresh = $projectB->fresh();
+        $this->assertEquals(51.5074, (float) $fresh->latitude);
+        $this->assertEquals(-0.1278, (float) $fresh->longitude);
+    }
+
+    public function test_unselected_project_location_leaves_coordinates_unchanged(): void
+    {
+        $org = $this->makeOrg();
+        $user = $this->makeUser($org);
+        $project = $this->makeProject($org, $user, [
+            'address' => '1 Old Site Lane', 'latitude' => 51.5074, 'longitude' => -0.1278,
+        ]);
+        $contract = $this->makeContract($project, $user, ['commencement_date' => '2026-09-01']);
+        $analysis = $this->makeAnalysis($project, $contract, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2([
+                'contract_overview' => ['project_location' => $this->confirmedLocation()],
+            ]),
+        ]);
+        Sanctum::actingAs($user);
+
+        $this->postJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/apply-project-suggestions", [
+            'suggestions' => ['start_date'], // project_location deliberately not selected
+        ])->assertStatus(200);
+
+        $fresh = $project->fresh();
+        $this->assertEquals('1 Old Site Lane', $fresh->address);
+        $this->assertEquals(51.5074, (float) $fresh->latitude);
+        $this->assertEquals(-0.1278, (float) $fresh->longitude);
+    }
+
+    public function test_applying_without_project_location_selected_leaves_project_location_fields_unchanged(): void
+    {
+        $org = $this->makeOrg();
+        $user = $this->makeUser($org);
+        $project = $this->makeProject($org, $user, ['address' => '1 Old Site Lane']);
+        $contract = $this->makeContract($project, $user, ['commencement_date' => '2026-09-01']);
+        $analysis = $this->makeAnalysis($project, $contract, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2([
+                'contract_overview' => ['project_location' => $this->confirmedLocation()],
+            ]),
+        ]);
+        Sanctum::actingAs($user);
+
+        $this->postJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/apply-project-suggestions", [
+            'suggestions' => ['start_date'], // project_location deliberately not selected
+        ])->assertStatus(200);
+
+        $this->assertEquals('1 Old Site Lane', $project->fresh()->address);
+    }
+
+    public function test_applying_project_location_creates_zero_ai_credit_ledger_entries(): void
+    {
+        $org = $this->makeOrg();
+        $user = $this->makeUser($org);
+        $project = $this->makeProject($org, $user);
+        $contract = $this->makeContract($project, $user);
+        $analysis = $this->makeAnalysis($project, $contract, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2(['contract_overview' => ['project_location' => $this->confirmedLocation()]]),
+        ]);
+        Sanctum::actingAs($user);
+
+        $before = \Illuminate\Support\Facades\DB::table('ai_credit_ledger_entries')->count();
+
+        $this->postJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/apply-project-suggestions", [
+            'suggestions' => ['project_location'],
+        ])->assertStatus(200);
+
+        $this->assertEquals($before, \Illuminate\Support\Facades\DB::table('ai_credit_ledger_entries')->count());
+    }
+
+    public function test_frontend_cannot_submit_arbitrary_location_values_for_project_location(): void
+    {
+        $org = $this->makeOrg();
+        $user = $this->makeUser($org);
+        $project = $this->makeProject($org, $user);
+        $contract = $this->makeContract($project, $user);
+        $analysis = $this->makeAnalysis($project, $contract, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2(['contract_overview' => ['project_location' => $this->confirmedLocation()]]),
+        ]);
+        Sanctum::actingAs($user);
+
+        // Only the key is accepted — any raw address value submitted alongside
+        // it is ignored; the backend always recomputes from confirmed data.
+        $this->postJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/apply-project-suggestions", [
+            'suggestions' => ['project_location'],
+            'address' => 'Somewhere Else Entirely', 'city' => 'Nowhere', 'latitude' => 1.23, 'longitude' => 4.56,
+        ])->assertStatus(200);
+
+        $fresh = $project->fresh();
+        $this->assertEquals('25 Riverside Road', $fresh->address);
+        $this->assertEquals('Manchester', $fresh->city);
+        $this->assertNull($fresh->latitude);
+        $this->assertNull($fresh->longitude);
+    }
+
+    public function test_org_a_cannot_apply_org_b_project_location_suggestion(): void
+    {
+        $orgB = $this->makeOrg('Org B Ltd');
+        $userB = $this->makeUser($orgB);
+        $projectB = $this->makeProject($orgB, $userB);
+        $contractB = $this->makeContract($projectB, $userB);
+        $analysisB = $this->makeAnalysis($projectB, $contractB, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2(['contract_overview' => ['project_location' => $this->confirmedLocation()]]),
+        ]);
+
+        $orgA = $this->makeOrg('Org A Ltd');
+        $userA = $this->makeUser($orgA);
+        Sanctum::actingAs($userA);
+
+        $response = $this->postJson("/api/projects/{$projectB->id}/contracts/{$contractB->id}/analyses/{$analysisB->id}/apply-project-suggestions", [
+            'suggestions' => ['project_location'],
+        ]);
+
+        $response->assertStatus(403);
+        $this->assertNull($projectB->fresh()->address);
+    }
+
+    public function test_multiple_contracts_never_merge_project_location_suggestions(): void
+    {
+        $org = $this->makeOrg();
+        $user = $this->makeUser($org);
+        $project = $this->makeProject($org, $user);
+        $contractA = $this->makeContract($project, $user, ['title' => 'Contract A']);
+        $contractB = $this->makeContract($project, $user, ['title' => 'Contract B']);
+        $analysisA = $this->makeAnalysis($project, $contractA, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2(['contract_overview' => ['project_location' => $this->confirmedLocation(['city' => 'Manchester'])]]),
+        ]);
+        $analysisB = $this->makeAnalysis($project, $contractB, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2(['contract_overview' => ['project_location' => $this->confirmedLocation(['city' => 'Bristol'])]]),
+        ]);
+        Sanctum::actingAs($user);
+
+        $responseA = $this->getJson("/api/projects/{$project->id}/contracts/{$contractA->id}/analyses/{$analysisA->id}/project-suggestions");
+        $responseB = $this->getJson("/api/projects/{$project->id}/contracts/{$contractB->id}/analyses/{$analysisB->id}/project-suggestions");
+
+        $this->assertEquals('Manchester', collect($responseA->json('suggestions'))->firstWhere('key', 'project_location')['suggested']['location']['city']);
+        $this->assertEquals('Bristol', collect($responseB->json('suggestions'))->firstWhere('key', 'project_location')['suggested']['location']['city']);
+    }
+
+    public function test_applying_project_location_does_not_alter_contract_or_confirmed_data(): void
+    {
+        $org = $this->makeOrg();
+        $user = $this->makeUser($org);
+        $project = $this->makeProject($org, $user);
+        $contract = $this->makeContract($project, $user);
+        $confirmedData = $this->confirmedV2(['contract_overview' => ['project_location' => $this->confirmedLocation()]]);
+        $analysis = $this->makeAnalysis($project, $contract, ['status' => 'confirmed', 'confirmed_data_json' => $confirmedData]);
+        $originalContractUpdatedAt = $contract->updated_at;
+        Sanctum::actingAs($user);
+
+        $this->postJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/apply-project-suggestions", [
+            'suggestions' => ['project_location'],
+        ])->assertStatus(200);
+
+        $freshContract = $contract->fresh();
+        $freshAnalysis = $analysis->fresh();
+        $this->assertEquals($originalContractUpdatedAt->toDateTimeString(), $freshContract->updated_at->toDateTimeString());
+        $this->assertEquals('confirmed', $freshAnalysis->status);
+        $this->assertEquals($confirmedData, $freshAnalysis->confirmed_data_json);
+    }
+
+    public function test_applying_project_location_never_changes_organization_role(): void
+    {
+        $org = $this->makeOrg();
+        $user = $this->makeUser($org);
+        $project = $this->makeProject($org, $user, ['organization_role' => 'employer']);
+        $contract = $this->makeContract($project, $user);
+        $analysis = $this->makeAnalysis($project, $contract, [
+            'status' => 'confirmed',
+            // Would otherwise suggest 'main_contractor' via roleSuggestion()
+            // if organization_role were null — Project already has one set,
+            // so that suggestion never appears, and applying project_location
+            // alone must not touch it regardless.
+            'confirmed_data_json' => $this->confirmedV2([
+                'contract_overview' => ['project_location' => $this->confirmedLocation()],
+                'parties' => ['main_contractor' => ['name' => 'Concrete Specialist Ltd']],
+            ]),
+        ]);
+        Sanctum::actingAs($user);
+
+        $this->postJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/apply-project-suggestions", [
+            'suggestions' => ['project_location'],
+        ])->assertStatus(200);
+
+        $this->assertEquals('employer', $project->fresh()->organization_role);
+    }
+
+    public function test_partial_project_location_only_city_and_country_is_handled_safely(): void
+    {
+        $org = $this->makeOrg();
+        $user = $this->makeUser($org);
+        $project = $this->makeProject($org, $user);
+        $contract = $this->makeContract($project, $user);
+        $analysis = $this->makeAnalysis($project, $contract, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2([
+                'contract_overview' => ['project_location' => [
+                    'address_line' => null, 'city' => 'Dubai', 'region' => null,
+                    'postal_code' => null, 'country' => 'United Arab Emirates',
+                ]],
+            ]),
+        ]);
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/project-suggestions");
+        $row = collect($response->json('suggestions'))->firstWhere('key', 'project_location');
+        $this->assertNotNull($row);
+        $this->assertEquals(['Dubai', 'United Arab Emirates'], $row['suggested']['lines']);
+
+        $this->postJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/apply-project-suggestions", [
+            'suggestions' => ['project_location'],
+        ])->assertStatus(200);
+
+        $fresh = $project->fresh();
+        $this->assertNull($fresh->address);
+        $this->assertEquals('Dubai', $fresh->city);
+        $this->assertNull($fresh->postcode);
+        $this->assertEquals('United Arab Emirates', $fresh->country);
+        $this->assertNull($fresh->latitude);
+    }
+
+    public function test_entirely_empty_project_location_produces_no_suggestion(): void
+    {
+        $org = $this->makeOrg();
+        $user = $this->makeUser($org);
+        $project = $this->makeProject($org, $user);
+        $contract = $this->makeContract($project, $user);
+        $analysis = $this->makeAnalysis($project, $contract, [
+            'status' => 'confirmed',
+            'confirmed_data_json' => $this->confirmedV2([
+                'contract_overview' => ['project_location' => [
+                    'address_line' => null, 'city' => null, 'region' => null, 'postal_code' => null, 'country' => null,
+                ]],
+            ]),
+        ]);
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson("/api/projects/{$project->id}/contracts/{$contract->id}/analyses/{$analysis->id}/project-suggestions");
+
+        $this->assertNull(collect($response->json('suggestions'))->firstWhere('key', 'project_location'));
+    }
 }

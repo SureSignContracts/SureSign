@@ -30,7 +30,11 @@ status badge.
 - Start Date and Completion Date
 - Retention %
 - Project Location — Address, City, State/Region, Postcode/ZIP, Country
-- Geographic coordinates (Latitude/Longitude)
+  (can also be filled in from a confirmed Contract during
+  [Contract-Assisted Project Setup](creating-a-project.md#applying-confirmed-contract-details-to-your-project)
+  — either way, it remains fully editable here afterwards)
+- Geographic coordinates (Latitude/Longitude) — set manually; SureSign does
+  not yet convert a text address into coordinates automatically
 
 **Project Type** (the type of work — New Build, Refurbishment, etc.) is set
 at creation and is not yet editable in-app.

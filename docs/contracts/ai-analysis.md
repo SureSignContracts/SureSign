@@ -4,7 +4,15 @@
 
 AI analysis reads an uploaded contract document and extracts a structured
 summary: key terms, payment rules, parties, key dates, programme milestones,
-and other information, for you to review and confirm.
+the project/site location, and other information, for you to review and
+confirm.
+
+Where a project/site location is stated, SureSign keeps it distinct from
+every party's own registered office or correspondence address — an
+Employer's, Contractor's, or consultant's own address is never used as the
+project's location. If the Contract gives only a partial location (for
+example a city with no street address), that partial information is kept
+as-is rather than a missing part being guessed.
 
 !!! important "AI results are suggestions"
     AI analysis produces extracted information for a person to check. It does

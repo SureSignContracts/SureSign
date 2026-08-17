@@ -96,6 +96,9 @@ each one:
 - **Your Role on this Project** — only offered when it isn't already set,
   and only when SureSign can match your organisation's name to a party
   named in the confirmed Contract (see below).
+- **Project Location** — shown as one combined suggestion (address, city,
+  region, postcode, country together), not five separate ones. See below
+  for how this is extracted and what happens once you apply it.
 
 Nothing here is applied automatically. Each row shows **Current Project**
 alongside **From confirmed Contract**; you tick only the ones you want, then
@@ -119,6 +122,31 @@ Contract's type alone. A specialist contractor's organisation can be the
 Main Contractor on one project and a Subcontractor on another; uploading a
 Subcontract never changes an already-set Project Role, and a role
 suggestion is never shown once you've already set one manually.
+
+**Project Location** is where the contracted works/site are physically
+located — SureSign is careful to distinguish this from the Employer's,
+Contractor's, or any consultant's own registered office or correspondence
+address, and never uses one of those in its place. If a Contract only gives
+a partial location (for example just a city and country, with no street
+address), SureSign shows and applies exactly that partial information
+rather than guessing the missing parts. If your Project's existing location
+already matches the confirmed Contract, it's shown as already matching; if
+it differs, applying it replaces the whole location with what's shown
+(never a partial mix of old and new), so what you see before applying is
+exactly what you get afterwards.
+
+Applying Project Location updates your Project's address fields only
+(Address, City, State/Region, Postcode, Country). SureSign does not yet
+turn a text address into map coordinates automatically, so applying it
+does not set a new map position. **If your Project's address actually
+changes** and it already had a map pin, that pin is removed at the same
+time — SureSign will not leave an old pin pointing at a site your Project
+no longer names. (If the applied location already matched your Project,
+nothing changes and any existing pin is left exactly as it was.) To show
+the Project on the [Project Map](../dashboard/overview.md) again, set its
+Latitude/Longitude yourself via
+[Project Settings](project-settings.md#what-you-can-change) — a future
+update will do this automatically once SureSign supports it.
 
 This step only ever changes your Project's own summary fields. It never
 changes the Contract itself, never re-confirms or re-analyses it, and never
