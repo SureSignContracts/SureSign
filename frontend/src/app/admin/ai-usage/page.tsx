@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
@@ -94,6 +94,7 @@ interface DetailRow {
   document_char_count: number | null;
   estimated_cost: number | null;
   failure_category: string | null;
+  error_message: string | null;
   duration_ms: number | null;
   completed_at: string | null;
   created_at: string;
@@ -143,6 +144,11 @@ export default function AdminAiUsagePage() {
   const [perPage, setPerPage] = useState(25);
   const [workflow, setWorkflow] = useState('');
   const [status, setStatus] = useState('');
+  // Which failed row's failure_category/error_message detail is expanded —
+  // keyed the same way as the row itself (workflow-id) since ids aren't
+  // unique across the two workflow tables. Only failed rows are
+  // expandable; there's nothing extra to show for any other status.
+  const [expandedRowKey, setExpandedRowKey] = useState<string | null>(null);
 
   const filters = { workflow: workflow || undefined, status: status || undefined };
 
@@ -303,6 +309,7 @@ export default function AdminAiUsagePage() {
           <option value="failed">Failed</option>
           <option value="cancelled">Cancelled</option>
         </Select>
+        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Click a Failed row to view its failure category and error message.</p>
       </div>
 
       {/* ── Detail table ── */}
@@ -330,24 +337,49 @@ export default function AdminAiUsagePage() {
               ) : rows.length === 0 ? (
                 <tr><td colSpan={8}><EmptyState icon={Brain} title="No AI executions found" description="No analyses match the current filters." /></td></tr>
               ) : (
-                rows.map(row => (
-                  <tr key={`${row.workflow}-${row.id}`} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td className="px-4 py-3" style={{ color: 'var(--text-secondary)' }}>{row.organization_name ?? '—'}</td>
-                    <td className="px-4 py-3" style={{ color: 'var(--text-secondary)' }}>{row.workflow ?? '—'}</td>
-                    <td className="px-4 py-3"><Badge status={row.status} /></td>
-                    <td className="px-4 py-3" style={{ color: 'var(--text-secondary)' }}>{row.model ?? '—'}</td>
-                    <td className="px-4 py-3 text-right tabular-nums" style={{ color: 'var(--text-muted)' }}>{row.document_char_count ?? '—'}</td>
-                    <td className="px-4 py-3 text-right tabular-nums" style={{ color: 'var(--text-muted)' }}>{formatCost(row.estimated_cost)}</td>
-                    <td className="px-4 py-3" style={{ color: 'var(--text-muted)' }}>
-                      {row.simulations.length === 0 ? '—' : row.simulations.map(s => (
-                        <span key={s.candidate_policy_key} className="mr-2 inline-block">
-                          {s.candidate_policy_key}: {s.simulation_status === 'calculated' ? s.hypothetical_credits : s.simulation_status}
-                        </span>
-                      ))}
-                    </td>
-                    <td className="px-4 py-3 tabular-nums" style={{ color: 'var(--text-muted)' }}>{formatDate(row.completed_at ?? row.created_at)}</td>
-                  </tr>
-                ))
+                rows.map(row => {
+                  const rowKey = `${row.workflow}-${row.id}`;
+                  const isFailed = row.status === 'failed';
+                  const isExpanded = expandedRowKey === rowKey;
+                  return (
+                    <Fragment key={rowKey}>
+                      <tr
+                        style={{ borderBottom: isExpanded ? 'none' : '1px solid var(--border)', cursor: isFailed ? 'pointer' : 'default' }}
+                        onClick={isFailed ? () => setExpandedRowKey(isExpanded ? null : rowKey) : undefined}
+                        title={isFailed ? 'Click to view failure detail' : undefined}
+                      >
+                        <td className="px-4 py-3" style={{ color: 'var(--text-secondary)' }}>{row.organization_name ?? '—'}</td>
+                        <td className="px-4 py-3" style={{ color: 'var(--text-secondary)' }}>{row.workflow ?? '—'}</td>
+                        <td className="px-4 py-3"><Badge status={row.status} /></td>
+                        <td className="px-4 py-3" style={{ color: 'var(--text-secondary)' }}>{row.model ?? '—'}</td>
+                        <td className="px-4 py-3 text-right tabular-nums" style={{ color: 'var(--text-muted)' }}>{row.document_char_count ?? '—'}</td>
+                        <td className="px-4 py-3 text-right tabular-nums" style={{ color: 'var(--text-muted)' }}>{formatCost(row.estimated_cost)}</td>
+                        <td className="px-4 py-3" style={{ color: 'var(--text-muted)' }}>
+                          {row.simulations.length === 0 ? '—' : row.simulations.map(s => (
+                            <span key={s.candidate_policy_key} className="mr-2 inline-block">
+                              {s.candidate_policy_key}: {s.simulation_status === 'calculated' ? s.hypothetical_credits : s.simulation_status}
+                            </span>
+                          ))}
+                        </td>
+                        <td className="px-4 py-3 tabular-nums" style={{ color: 'var(--text-muted)' }}>{formatDate(row.completed_at ?? row.created_at)}</td>
+                      </tr>
+                      {isExpanded && (
+                        <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td colSpan={8} className="px-4 py-3" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+                            <p className="text-xs mb-1">
+                              <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>Failure category: </span>
+                              <span style={{ color: 'var(--text-muted)' }}>{row.failure_category ?? '—'}</span>
+                            </p>
+                            <p className="text-xs whitespace-pre-wrap break-words" style={{ color: 'var(--text-muted)' }}>
+                              <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>Error message: </span>
+                              {row.error_message ?? '—'}
+                            </p>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })
               )}
             </tbody>
           </table>
