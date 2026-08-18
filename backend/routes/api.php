@@ -355,14 +355,19 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
     Route::get('/consultations/{appointment}', [ConsultationController::class, 'show']);
     Route::post('/consultations/{appointment}/cancel', [ConsultationController::class, 'cancel']);
 
-    // Cross-project reports
+    // Cross-project reports — organization.reports. Feature Availability,
+    // Phase C: every route here is GET (read-only) — no report-generation
+    // mutation/action endpoint exists to gate. Left entirely ungated; see
+    // feature-availability.md's Phase C section.
     Route::get('/reports/summary', [ReportController::class, 'summary']);
     Route::get('/reports/commercial-summary', [ReportController::class, 'commercialSummary']);
     Route::get('/reports/commercial-summary-report', [ReportController::class, 'commercialSummaryReport']);
     Route::get('/reports/commercial-summary-report/export/pdf', [ReportController::class, 'exportCommercialSummaryPdf']);
     Route::get('/reports/commercial-summary-report/export/excel', [ReportController::class, 'exportCommercialSummaryExcel']);
 
-    // Global Commercial — organisation-wide commercial monitoring/triage (read-only)
+    // Global Commercial — organisation-wide commercial monitoring/triage
+    // (read-only). organization.commercial: no mutation endpoint exists to
+    // gate — Feature Availability, Phase C.
     Route::get('/commercial/overview', [CommercialOverviewController::class, 'overview']);
 
     // Billing — organisation-facing Subscription & Billing data (read-only —
@@ -426,6 +431,8 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
     });
 
     // Site Admin — organisation-wide RFI/Site Instruction/Site Diary/Meeting/EOT monitoring (read-only)
+    // organization.site_admin: no mutation endpoint exists to gate —
+    // Feature Availability, Phase C.
     Route::get('/site-administration/overview', [SiteAdministrationController::class, 'overview']);
 
     // Site settings (public read — all authenticated users)
@@ -445,83 +452,114 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
     Route::apiResource('projects', ProjectController::class);
 
     // Contracts (nested under projects)
-    Route::apiResource('projects.contracts', ContractController::class)->shallow();
+    // Feature Availability, Phase C — split so only update/destroy are
+    // gated by project.contracts; index/show/store stay ungated (store is
+    // deliberately NOT gated here: it's shared with the Contract-Assisted
+    // Project Setup wizard, an ungated page — see
+    // internal-docs/super-admin/feature-availability.md's Phase C section).
+    Route::apiResource('projects.contracts', ContractController::class)->shallow()->only(['index', 'show', 'store']);
+    Route::apiResource('projects.contracts', ContractController::class)->shallow()->only(['update', 'destroy'])->middleware('feature.available:project.contracts');
 
-    // Commercial
-    Route::apiResource('contracts.payment-applications', PaymentApplicationController::class)->shallow();
-    Route::apiResource('contracts.variations', VariationController::class)->shallow();
-    Route::post('variations/{variation}/generate-pdf', [VariationController::class, 'generatePdf']);
+    // Commercial — Feature Availability, Phase C: index/show ungated,
+    // store/update/destroy gated by project.commercial (confirmed
+    // exclusive to commercial/page.tsx — see feature-availability.md).
+    Route::apiResource('contracts.payment-applications', PaymentApplicationController::class)->shallow()->only(['index', 'show']);
+    Route::apiResource('contracts.payment-applications', PaymentApplicationController::class)->shallow()->only(['store', 'update', 'destroy'])->middleware('feature.available:project.commercial');
+    // Variations — Feature Availability, Phase C: index/show ungated,
+    // store/update/destroy gated by project.variations. Confirmed
+    // exclusive to variations/page.tsx.
+    Route::apiResource('contracts.variations', VariationController::class)->shallow()->only(['index', 'show']);
+    Route::apiResource('contracts.variations', VariationController::class)->shallow()->only(['store', 'update', 'destroy'])->middleware('feature.available:project.variations');
+    Route::post('variations/{variation}/generate-pdf', [VariationController::class, 'generatePdf'])->middleware('feature.available:project.variations');
     // Variation approval state machine
-    Route::post('variations/{variation}/submit',    [VariationController::class, 'submit']);
-    Route::post('variations/{variation}/instruct',  [VariationController::class, 'instruct']);
-    Route::post('variations/{variation}/quote',     [VariationController::class, 'quote']);
-    Route::post('variations/{variation}/assess',    [VariationController::class, 'assess']);
-    Route::post('variations/{variation}/approve',   [VariationController::class, 'approve']);
-    Route::post('variations/{variation}/reject',    [VariationController::class, 'reject']);
-    Route::post('variations/{variation}/resubmit',  [VariationController::class, 'resubmit']);
+    Route::post('variations/{variation}/submit',    [VariationController::class, 'submit'])->middleware('feature.available:project.variations');
+    Route::post('variations/{variation}/instruct',  [VariationController::class, 'instruct'])->middleware('feature.available:project.variations');
+    Route::post('variations/{variation}/quote',     [VariationController::class, 'quote'])->middleware('feature.available:project.variations');
+    Route::post('variations/{variation}/assess',    [VariationController::class, 'assess'])->middleware('feature.available:project.variations');
+    Route::post('variations/{variation}/approve',   [VariationController::class, 'approve'])->middleware('feature.available:project.variations');
+    Route::post('variations/{variation}/reject',    [VariationController::class, 'reject'])->middleware('feature.available:project.variations');
+    Route::post('variations/{variation}/resubmit',  [VariationController::class, 'resubmit'])->middleware('feature.available:project.variations');
 
-    // Final Account (contract-scoped)
+    // Final Account (contract-scoped) — part of project.commercial (owned
+    // by FinalAccountTab.tsx, rendered inside commercial/page.tsx).
     Route::get('contracts/{contract}/final-account',  [FinalAccountController::class, 'showForContract']);
-    Route::post('contracts/{contract}/final-account', [FinalAccountController::class, 'storeForContract']);
+    Route::post('contracts/{contract}/final-account', [FinalAccountController::class, 'storeForContract'])->middleware('feature.available:project.commercial');
 
     // Final Account (trade-package-scoped) — uses project-scoped prefix defined below
     // POST /projects/{project}/trade-packages/{tradePackage}/final-account
     // GET  /projects/{project}/trade-packages/{tradePackage}/final-account
 
-    // Programme milestones
+    // Programme milestones — gated by project.programme. The
+    // trade-package-scoped variant below (in the projects/{project} prefix
+    // group) is deliberately NOT gated here — it's owned by the Trade
+    // Package workspace, a separate, ungated page.
     Route::get('contracts/{contract}/programme', [ProgrammeMilestoneController::class, 'index']);
-    Route::post('contracts/{contract}/programme', [ProgrammeMilestoneController::class, 'store']);
-    Route::post('contracts/{contract}/programme/seed-from-analysis', [ProgrammeMilestoneController::class, 'seedFromAnalysis']);
-    Route::put('programme/{milestone}', [ProgrammeMilestoneController::class, 'update']);
-    Route::delete('programme/{milestone}', [ProgrammeMilestoneController::class, 'destroy']);
+    Route::post('contracts/{contract}/programme', [ProgrammeMilestoneController::class, 'store'])->middleware('feature.available:project.programme');
+    Route::post('contracts/{contract}/programme/seed-from-analysis', [ProgrammeMilestoneController::class, 'seedFromAnalysis'])->middleware('feature.available:project.programme');
+    Route::put('programme/{milestone}', [ProgrammeMilestoneController::class, 'update'])->middleware('feature.available:project.programme');
+    Route::delete('programme/{milestone}', [ProgrammeMilestoneController::class, 'destroy'])->middleware('feature.available:project.programme');
 
-    // Payment application workflow actions
-    Route::post('/payment-applications/{paymentApplication}/submit',              [PaymentApplicationController::class, 'submit']);
-    Route::post('/payment-applications/{paymentApplication}/certify',             [PaymentApplicationController::class, 'certify']);
-    Route::post('/payment-applications/{paymentApplication}/mark-paid',           [PaymentApplicationController::class, 'markPaid']);
-    Route::post('/payment-applications/{paymentApplication}/cancel',              [PaymentApplicationController::class, 'cancel']);
-    Route::post('/payment-applications/{paymentApplication}/withdraw',            [PaymentApplicationController::class, 'withdraw']);
-    Route::post('/payment-applications/{paymentApplication}/generate-pdf',        [PaymentApplicationController::class, 'generatePdf']);
-    Route::post('/payment-applications/{paymentApplication}/generate-certificate',[PaymentApplicationController::class, 'generateCertificate']);
-    Route::post('/payment-applications/{paymentApplication}/pay-less-notice',     [PaymentApplicationController::class, 'createPayLessNotice']);
-    Route::post('/payment-applications/{paymentApplication}/payment-notice',      [PaymentApplicationController::class, 'createPaymentNotice']);
+    // Payment application workflow actions — gated by project.commercial
+    // (confirmed exclusive to commercial/page.tsx's FinalAccountTab/main
+    // tabs). Reads (previous-values, eligible-variations) stay ungated.
+    Route::post('/payment-applications/{paymentApplication}/submit',              [PaymentApplicationController::class, 'submit'])->middleware('feature.available:project.commercial');
+    Route::post('/payment-applications/{paymentApplication}/certify',             [PaymentApplicationController::class, 'certify'])->middleware('feature.available:project.commercial');
+    Route::post('/payment-applications/{paymentApplication}/mark-paid',           [PaymentApplicationController::class, 'markPaid'])->middleware('feature.available:project.commercial');
+    Route::post('/payment-applications/{paymentApplication}/cancel',              [PaymentApplicationController::class, 'cancel'])->middleware('feature.available:project.commercial');
+    Route::post('/payment-applications/{paymentApplication}/withdraw',            [PaymentApplicationController::class, 'withdraw'])->middleware('feature.available:project.commercial');
+    Route::post('/payment-applications/{paymentApplication}/generate-pdf',        [PaymentApplicationController::class, 'generatePdf'])->middleware('feature.available:project.commercial');
+    Route::post('/payment-applications/{paymentApplication}/generate-certificate',[PaymentApplicationController::class, 'generateCertificate'])->middleware('feature.available:project.commercial');
+    Route::post('/payment-applications/{paymentApplication}/pay-less-notice',     [PaymentApplicationController::class, 'createPayLessNotice'])->middleware('feature.available:project.commercial');
+    Route::post('/payment-applications/{paymentApplication}/payment-notice',      [PaymentApplicationController::class, 'createPaymentNotice'])->middleware('feature.available:project.commercial');
     Route::get('/payment-applications/{paymentApplication}/previous-values',       [PaymentApplicationController::class, 'previousValues']);
-    Route::post('/payment-applications/{paymentApplication}/breakdown',            [PaymentApplicationController::class, 'updateBreakdown']);
-    Route::post('/payment-applications/{paymentApplication}/generate-excel',       [PaymentApplicationController::class, 'generateExcel']);
+    Route::post('/payment-applications/{paymentApplication}/breakdown',            [PaymentApplicationController::class, 'updateBreakdown'])->middleware('feature.available:project.commercial');
+    Route::post('/payment-applications/{paymentApplication}/generate-excel',       [PaymentApplicationController::class, 'generateExcel'])->middleware('feature.available:project.commercial');
     Route::get('/payment-applications/{paymentApplication}/eligible-variations',   [PaymentApplicationController::class, 'eligibleVariations']);
-    Route::post('/payment-applications/{paymentApplication}/sync-variations',      [PaymentApplicationController::class, 'syncLinkedVariations']);
-    Route::delete('/payment-applications/{paymentApplication}',                   [PaymentApplicationController::class, 'destroy']);
+    Route::post('/payment-applications/{paymentApplication}/sync-variations',      [PaymentApplicationController::class, 'syncLinkedVariations'])->middleware('feature.available:project.commercial');
+    // Redundant with the apiResource's own destroy route above (same URI/verb,
+    // registered later so unreachable in practice) — left as pre-existing,
+    // gated defensively at zero cost; not a Phase C change to route logic.
+    Route::delete('/payment-applications/{paymentApplication}',                   [PaymentApplicationController::class, 'destroy'])->middleware('feature.available:project.commercial');
 
-    // Payment notices (standalone)
+    // Payment notices (standalone) — no confirmed frontend caller for
+    // destroy exists today; left ungated per the conservative default
+    // (no evidence of exclusive ownership to gate against).
     Route::get('/payment-notices/{paymentNotice}', [PaymentNoticeController::class, 'show']);
     Route::delete('/payment-notices/{paymentNotice}', [PaymentNoticeController::class, 'destroy']);
 
-    // Retention releases (standalone)
-    Route::delete('/retention-releases/{retentionRelease}', [RetentionReleaseController::class, 'destroy']);
+    // Retention releases (standalone) — confirmed exclusive to
+    // commercial/page.tsx.
+    Route::delete('/retention-releases/{retentionRelease}', [RetentionReleaseController::class, 'destroy'])->middleware('feature.available:project.commercial');
 
-    // Final Accounts
+    // Final Accounts — part of project.commercial (FinalAccountTab.tsx).
     Route::get('/final-accounts/{finalAccount}',                    [FinalAccountController::class, 'show']);
-    Route::put('/final-accounts/{finalAccount}',                    [FinalAccountController::class, 'update']);
+    Route::put('/final-accounts/{finalAccount}',                    [FinalAccountController::class, 'update'])->middleware('feature.available:project.commercial');
     Route::get('/final-accounts/{finalAccount}/totals',             [FinalAccountController::class, 'totals']);
-    Route::post('/final-accounts/{finalAccount}/submit',            [FinalAccountController::class, 'submit']);
-    Route::post('/final-accounts/{finalAccount}/start-review',      [FinalAccountController::class, 'startReview']);
-    Route::post('/final-accounts/{finalAccount}/revise',            [FinalAccountController::class, 'revise']);
-    Route::post('/final-accounts/{finalAccount}/agree',             [FinalAccountController::class, 'agree']);
-    Route::post('/final-accounts/{finalAccount}/sign',              [FinalAccountController::class, 'sign']);
-    Route::post('/final-accounts/{finalAccount}/issue-certificate', [FinalAccountController::class, 'issueFinalCertificate']);
-    Route::post('/final-accounts/{finalAccount}/close',             [FinalAccountController::class, 'close']);
-    Route::post('/final-accounts/{finalAccount}/generate-statement',   [FinalAccountController::class, 'generateStatement']);
-    Route::post('/final-accounts/{finalAccount}/generate-certificate', [FinalAccountController::class, 'generateCertificate']);
-    Route::post('/final-accounts/{finalAccount}/items',             [FinalAccountController::class, 'storeItem']);
-    Route::put('/final-accounts/{finalAccount}/items/{item}',       [FinalAccountController::class, 'updateItem']);
-    Route::delete('/final-accounts/{finalAccount}/items/{item}',    [FinalAccountController::class, 'destroyItem']);
+    Route::post('/final-accounts/{finalAccount}/submit',            [FinalAccountController::class, 'submit'])->middleware('feature.available:project.commercial');
+    Route::post('/final-accounts/{finalAccount}/start-review',      [FinalAccountController::class, 'startReview'])->middleware('feature.available:project.commercial');
+    Route::post('/final-accounts/{finalAccount}/revise',            [FinalAccountController::class, 'revise'])->middleware('feature.available:project.commercial');
+    Route::post('/final-accounts/{finalAccount}/agree',             [FinalAccountController::class, 'agree'])->middleware('feature.available:project.commercial');
+    Route::post('/final-accounts/{finalAccount}/sign',              [FinalAccountController::class, 'sign'])->middleware('feature.available:project.commercial');
+    Route::post('/final-accounts/{finalAccount}/issue-certificate', [FinalAccountController::class, 'issueFinalCertificate'])->middleware('feature.available:project.commercial');
+    Route::post('/final-accounts/{finalAccount}/close',             [FinalAccountController::class, 'close'])->middleware('feature.available:project.commercial');
+    Route::post('/final-accounts/{finalAccount}/generate-statement',   [FinalAccountController::class, 'generateStatement'])->middleware('feature.available:project.commercial');
+    Route::post('/final-accounts/{finalAccount}/generate-certificate', [FinalAccountController::class, 'generateCertificate'])->middleware('feature.available:project.commercial');
+    Route::post('/final-accounts/{finalAccount}/items',             [FinalAccountController::class, 'storeItem'])->middleware('feature.available:project.commercial');
+    Route::put('/final-accounts/{finalAccount}/items/{item}',       [FinalAccountController::class, 'updateItem'])->middleware('feature.available:project.commercial');
+    Route::delete('/final-accounts/{finalAccount}/items/{item}',    [FinalAccountController::class, 'destroyItem'])->middleware('feature.available:project.commercial');
 
     // Site Administration
-    Route::apiResource('projects.rfis', RfiController::class)->shallow();
+    // RFIs — gated by project.rfis. store is ALSO reachable from a Drawings
+    // hotspot-link create flow (NewRfiModal) — deliberately still gated
+    // here: the entity being created is an RFI, owned by project.rfis,
+    // regardless of which page's UI triggered the creation (same reasoning
+    // as the locked EOT ownership decision below).
+    Route::apiResource('projects.rfis', RfiController::class)->shallow()->only(['index', 'show']);
+    Route::apiResource('projects.rfis', RfiController::class)->shallow()->only(['store', 'update', 'destroy'])->middleware('feature.available:project.rfis');
     // Evidence attachments (Phase 0) — flat/shallow, matching show/update/destroy above.
     Route::get('/rfis/{rfi}/attachments',    [RfiController::class, 'attachments']);
-    Route::post('/rfis/{rfi}/attachments',   [RfiController::class, 'uploadAttachment']);
-    Route::delete('/rfis/{rfi}/attachments/{fileUpload}', [RfiController::class, 'deleteAttachment']);
+    Route::post('/rfis/{rfi}/attachments',   [RfiController::class, 'uploadAttachment'])->middleware('feature.available:project.rfis');
+    Route::delete('/rfis/{rfi}/attachments/{fileUpload}', [RfiController::class, 'deleteAttachment'])->middleware('feature.available:project.rfis');
 
     // Project sub-resources
     Route::prefix('projects/{project}')->group(function () {
@@ -552,56 +590,84 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
         Route::put('/trade-packages/{tradePackage}', [TradePackageController::class, 'updateForProject']);
         Route::get('/payment-notices', [PaymentNoticeController::class, 'index']);
         Route::get('/retention-releases', [RetentionReleaseController::class, 'index']);
-        Route::post('/retention-releases', [RetentionReleaseController::class, 'store']);
+        Route::post('/retention-releases', [RetentionReleaseController::class, 'store'])->middleware('feature.available:project.commercial');
         Route::get('/variations', [VariationController::class, 'indexByProject']);
         Route::get('/final-accounts', [FinalAccountController::class, 'indexByProject']);
             Route::get('/programme', [ProgrammeMilestoneController::class, 'indexByProject']);
-        Route::apiResource('site-diaries', SiteDiaryController::class)->shallow();
-        Route::apiResource('meetings', MeetingMinutesController::class)->shallow();
-        Route::apiResource('eot-requests', EotRequestController::class)->shallow();
-        Route::post('/eot-requests/{eotRequest}/decide', [EotRequestController::class, 'decide']);
-        Route::post('/eot-requests/{eotRequest}/generate-decision-notice', [EotRequestController::class, 'generateDecisionNotice']);
-        Route::apiResource('delay-events', DelayEventController::class)->shallow();
-        Route::post('/delay-events/{delayEvent}/generate-notice', [DelayEventController::class, 'generateNotice']);
-        Route::apiResource('loss-and-expense-claims', LossAndExpenseClaimController::class)->shallow();
-        Route::post('/loss-and-expense-claims/{lossAndExpenseClaim}/decide', [LossAndExpenseClaimController::class, 'decide']);
+        // Site Reports — gated by project.site_reports.
+        Route::apiResource('site-diaries', SiteDiaryController::class)->shallow()->only(['index', 'show']);
+        Route::apiResource('site-diaries', SiteDiaryController::class)->shallow()->only(['store', 'update', 'destroy'])->middleware('feature.available:project.site_reports');
+        // Meetings — gated by project.meetings.
+        Route::apiResource('meetings', MeetingMinutesController::class)->shallow()->only(['index', 'show']);
+        Route::apiResource('meetings', MeetingMinutesController::class)->shallow()->only(['store', 'update', 'destroy'])->middleware('feature.available:project.meetings');
+        // EOT Requests — Feature Availability, Phase C locked ownership
+        // decision: owned operationally by project.delay_eot, NOT
+        // project.notices, even though POST /projects/{project}/eot-requests
+        // is also called from the Notices page's own EOT creation tab (see
+        // notices/page.tsx). Gating it here (and only here) means: if
+        // project.delay_eot is Maintenance, EOT mutation is blocked
+        // regardless of entry point (Notices or Delay & EOT) — the entity
+        // is owned by Delay & EOT; if project.notices alone is Maintenance,
+        // this route is NOT affected (Notices' own middleware key is never
+        // attached to it) — see feature-availability.md's Phase C section.
+        Route::apiResource('eot-requests', EotRequestController::class)->shallow()->only(['index', 'show']);
+        Route::apiResource('eot-requests', EotRequestController::class)->shallow()->only(['store', 'update', 'destroy'])->middleware('feature.available:project.delay_eot');
+        Route::post('/eot-requests/{eotRequest}/decide', [EotRequestController::class, 'decide'])->middleware('feature.available:project.delay_eot');
+        Route::post('/eot-requests/{eotRequest}/generate-decision-notice', [EotRequestController::class, 'generateDecisionNotice'])->middleware('feature.available:project.delay_eot');
+        // Delay Events — gated by project.delay_eot.
+        Route::apiResource('delay-events', DelayEventController::class)->shallow()->only(['index', 'show']);
+        Route::apiResource('delay-events', DelayEventController::class)->shallow()->only(['store', 'update', 'destroy'])->middleware('feature.available:project.delay_eot');
+        Route::post('/delay-events/{delayEvent}/generate-notice', [DelayEventController::class, 'generateNotice'])->middleware('feature.available:project.delay_eot');
+        // Loss & Expense Claims — gated by project.delay_eot (same module,
+        // LossAndExpenseTab.tsx lives inside the Delay & EOT page).
+        Route::apiResource('loss-and-expense-claims', LossAndExpenseClaimController::class)->shallow()->only(['index', 'show']);
+        Route::apiResource('loss-and-expense-claims', LossAndExpenseClaimController::class)->shallow()->only(['store', 'update', 'destroy'])->middleware('feature.available:project.delay_eot');
+        Route::post('/loss-and-expense-claims/{lossAndExpenseClaim}/decide', [LossAndExpenseClaimController::class, 'decide'])->middleware('feature.available:project.delay_eot');
+        // Risks — gated by project.risks. store is ALSO reachable from the
+        // Trade Package workspace's own trade-package-scoped create route
+        // (a DIFFERENT URI, /trade-packages/{tradePackage}/risks, registered
+        // above and deliberately left ungated) — no conflict.
         Route::get('/risks', [RiskController::class, 'indexForProject']);
-        Route::post('/risks', [RiskController::class, 'storeForProject']);
-        Route::put('/risks/{risk}', [RiskController::class, 'update']);
-        Route::delete('/risks/{risk}', [RiskController::class, 'destroy']);
+        Route::post('/risks', [RiskController::class, 'storeForProject'])->middleware('feature.available:project.risks');
+        Route::put('/risks/{risk}', [RiskController::class, 'update'])->middleware('feature.available:project.risks');
+        Route::delete('/risks/{risk}', [RiskController::class, 'destroy'])->middleware('feature.available:project.risks');
+        // Delivery Documents — gated by project.delivery_documents. Same
+        // trade-package-scoped-route caveat as Risks above.
         Route::get('/delivery-documents', [DeliveryDocumentController::class, 'indexForProject']);
-        Route::post('/delivery-documents', [DeliveryDocumentController::class, 'storeForProject']);
-        Route::put('/delivery-documents/{deliveryDocument}', [DeliveryDocumentController::class, 'update']);
-        Route::delete('/delivery-documents/{deliveryDocument}', [DeliveryDocumentController::class, 'destroy']);
+        Route::post('/delivery-documents', [DeliveryDocumentController::class, 'storeForProject'])->middleware('feature.available:project.delivery_documents');
+        Route::put('/delivery-documents/{deliveryDocument}', [DeliveryDocumentController::class, 'update'])->middleware('feature.available:project.delivery_documents');
+        Route::delete('/delivery-documents/{deliveryDocument}', [DeliveryDocumentController::class, 'destroy'])->middleware('feature.available:project.delivery_documents');
 
         // Drawing Register — eligible-documents lookup registered before the
         // apiResource below so this literal path is matched first, not
         // swallowed by the {drawing} wildcard binding (same precedent as
         // Global Documents above).
         Route::get('/drawings/eligible-documents', [DrawingController::class, 'eligibleDocuments']);
-        Route::apiResource('drawings', DrawingController::class)->shallow();
+        // Drawings — gated by project.drawings.
+        Route::apiResource('drawings', DrawingController::class)->shallow()->only(['index', 'show']);
+        Route::apiResource('drawings', DrawingController::class)->shallow()->only(['store', 'update', 'destroy'])->middleware('feature.available:project.drawings');
 
         // Drawing Revision history (Phase 4) — explicit nested routes,
         // matching this codebase's existing convention for sub-resources
         // (e.g. adjudication-deadlines) rather than a chained apiResource.
         Route::get('/drawings/{drawing}/eligible-revision-documents', [DrawingController::class, 'eligibleRevisionDocuments']);
         Route::get('/drawings/{drawing}/revisions', [DrawingRevisionController::class, 'index']);
-        Route::post('/drawings/{drawing}/revisions', [DrawingRevisionController::class, 'store']);
+        Route::post('/drawings/{drawing}/revisions', [DrawingRevisionController::class, 'store'])->middleware('feature.available:project.drawings');
         Route::get('/drawings/{drawing}/revisions/{revision}', [DrawingRevisionController::class, 'show']);
-        Route::put('/drawings/{drawing}/revisions/{revision}', [DrawingRevisionController::class, 'update']);
+        Route::put('/drawings/{drawing}/revisions/{revision}', [DrawingRevisionController::class, 'update'])->middleware('feature.available:project.drawings');
 
         // Drawing Hotspot authoring (Phase 6A) — current-revision-only, see
         // DrawingHotspotController's own docblock. index() remains available
         // for historical revisions (read-only).
         Route::get('/drawings/{drawing}/revisions/{revision}/hotspots', [DrawingHotspotController::class, 'index']);
-        Route::post('/drawings/{drawing}/revisions/{revision}/hotspots', [DrawingHotspotController::class, 'store']);
-        Route::put('/drawings/{drawing}/revisions/{revision}/hotspots/{hotspot}', [DrawingHotspotController::class, 'update']);
-        Route::delete('/drawings/{drawing}/revisions/{revision}/hotspots/{hotspot}', [DrawingHotspotController::class, 'destroy']);
+        Route::post('/drawings/{drawing}/revisions/{revision}/hotspots', [DrawingHotspotController::class, 'store'])->middleware('feature.available:project.drawings');
+        Route::put('/drawings/{drawing}/revisions/{revision}/hotspots/{hotspot}', [DrawingHotspotController::class, 'update'])->middleware('feature.available:project.drawings');
+        Route::delete('/drawings/{drawing}/revisions/{revision}/hotspots/{hotspot}', [DrawingHotspotController::class, 'destroy'])->middleware('feature.available:project.drawings');
 
         // Drawing Hotspot <-> construction record linking (Phase 6B).
         Route::get('/drawings/{drawing}/revisions/{revision}/hotspots/{hotspot}/links', [DrawingHotspotLinkController::class, 'index']);
-        Route::post('/drawings/{drawing}/revisions/{revision}/hotspots/{hotspot}/links', [DrawingHotspotLinkController::class, 'store']);
-        Route::delete('/drawings/{drawing}/revisions/{revision}/hotspots/{hotspot}/links/{link}', [DrawingHotspotLinkController::class, 'destroy']);
+        Route::post('/drawings/{drawing}/revisions/{revision}/hotspots/{hotspot}/links', [DrawingHotspotLinkController::class, 'store'])->middleware('feature.available:project.drawings');
+        Route::delete('/drawings/{drawing}/revisions/{revision}/hotspots/{hotspot}/links/{link}', [DrawingHotspotLinkController::class, 'destroy'])->middleware('feature.available:project.drawings');
 
         // Record-centric drawing-link endpoints (Phase 6B Part U/Y) —
         // registered before the eligible-documents-style literal routes
@@ -609,56 +675,84 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
         Route::get('/drawing-linkable-records', [DrawingRecordLinksController::class, 'linkableRecords']);
         Route::get('/drawing-locations', [DrawingRecordLinksController::class, 'forRecord']);
 
-        Route::apiResource('pay-less-notices', PayLessNoticeController::class)->shallow();
+        // Notices — Pay-less Notices and Site Instructions are both
+        // exclusively owned/created by notices/page.tsx; gated by
+        // project.notices. (EOT requests, also surfaced on this page, are
+        // deliberately gated by project.delay_eot instead — see above.)
+        Route::apiResource('pay-less-notices', PayLessNoticeController::class)->shallow()->only(['index', 'show']);
+        Route::apiResource('pay-less-notices', PayLessNoticeController::class)->shallow()->only(['store', 'update', 'destroy'])->middleware('feature.available:project.notices');
 
-        Route::apiResource('site-instructions', SiteInstructionController::class)->shallow();
+        Route::apiResource('site-instructions', SiteInstructionController::class)->shallow()->only(['index', 'show']);
+        Route::apiResource('site-instructions', SiteInstructionController::class)->shallow()->only(['store', 'update', 'destroy'])->middleware('feature.available:project.notices');
 
-        // Snagging
-        Route::apiResource('snagging', SnagController::class)->shallow();
+        // Snagging — gated by project.snagging. store is ALSO reachable
+        // from a Drawings hotspot-link create flow — deliberately still
+        // gated here, same reasoning as RFIs above (entity ownership, not
+        // entry point, decides the gate).
+        Route::apiResource('snagging', SnagController::class)->shallow()->only(['index', 'show']);
+        Route::apiResource('snagging', SnagController::class)->shallow()->only(['store', 'update', 'destroy'])->middleware('feature.available:project.snagging');
         // Evidence attachments (Phase 0)
         Route::get('/snagging/{snagging}/attachments',    [SnagController::class, 'attachments']);
-        Route::post('/snagging/{snagging}/attachments',   [SnagController::class, 'uploadAttachment']);
-        Route::delete('/snagging/{snagging}/attachments/{fileUpload}', [SnagController::class, 'deleteAttachment']);
+        Route::post('/snagging/{snagging}/attachments',   [SnagController::class, 'uploadAttachment'])->middleware('feature.available:project.snagging');
+        Route::delete('/snagging/{snagging}/attachments/{fileUpload}', [SnagController::class, 'deleteAttachment'])->middleware('feature.available:project.snagging');
 
-        // QA Reports
-        Route::apiResource('qa-reports', QaReportController::class)->shallow();
+        // QA Reports — gated by project.qa. Same Drawings hotspot-link
+        // create-entry-point caveat as Snagging/RFIs above.
+        Route::apiResource('qa-reports', QaReportController::class)->shallow()->only(['index', 'show']);
+        Route::apiResource('qa-reports', QaReportController::class)->shallow()->only(['store', 'update', 'destroy'])->middleware('feature.available:project.qa');
         // Evidence attachments (Phase 0)
         Route::get('/qa-reports/{qaReport}/attachments',    [QaReportController::class, 'attachments']);
-        Route::post('/qa-reports/{qaReport}/attachments',   [QaReportController::class, 'uploadAttachment']);
-        Route::delete('/qa-reports/{qaReport}/attachments/{fileUpload}', [QaReportController::class, 'deleteAttachment']);
+        Route::post('/qa-reports/{qaReport}/attachments',   [QaReportController::class, 'uploadAttachment'])->middleware('feature.available:project.qa');
+        Route::delete('/qa-reports/{qaReport}/attachments/{fileUpload}', [QaReportController::class, 'deleteAttachment'])->middleware('feature.available:project.qa');
 
-        // Closeout
+        // Closeout — gated by project.closeout.
         Route::get('/closeout',              [CloseoutController::class, 'show']);
-        Route::put('/closeout',              [CloseoutController::class, 'update']);
-        Route::post('/closeout/items',       [CloseoutController::class, 'addItem']);
-        Route::put('/closeout/items/{item}', [CloseoutController::class, 'updateItem']);
+        Route::put('/closeout',              [CloseoutController::class, 'update'])->middleware('feature.available:project.closeout');
+        Route::post('/closeout/items',       [CloseoutController::class, 'addItem'])->middleware('feature.available:project.closeout');
+        Route::put('/closeout/items/{item}', [CloseoutController::class, 'updateItem'])->middleware('feature.available:project.closeout');
 
-        // Adjudication
+        // Adjudication — gated by project.adjudication.
         Route::get('/adjudication-cases',                                        [AdjudicationCaseController::class, 'index']);
-        Route::post('/adjudication-cases',                                       [AdjudicationCaseController::class, 'store']);
+        Route::post('/adjudication-cases',                                       [AdjudicationCaseController::class, 'store'])->middleware('feature.available:project.adjudication');
         Route::get('/adjudication-cases/{adjudicationCase}',                     [AdjudicationCaseController::class, 'show']);
-        Route::put('/adjudication-cases/{adjudicationCase}',                     [AdjudicationCaseController::class, 'update']);
-        Route::delete('/adjudication-cases/{adjudicationCase}',                  [AdjudicationCaseController::class, 'destroy']);
-        Route::post('/adjudication-cases/{adjudicationCase}/advance-step',       [AdjudicationCaseController::class, 'advanceStep']);
-        Route::post('/adjudication-cases/{adjudicationCase}/update-status',      [AdjudicationCaseController::class, 'updateStatus']);
-        Route::post('/adjudication-cases/{adjudicationCase}/archive',            [AdjudicationCaseController::class, 'archive']);
+        Route::put('/adjudication-cases/{adjudicationCase}',                     [AdjudicationCaseController::class, 'update'])->middleware('feature.available:project.adjudication');
+        Route::delete('/adjudication-cases/{adjudicationCase}',                  [AdjudicationCaseController::class, 'destroy'])->middleware('feature.available:project.adjudication');
+        Route::post('/adjudication-cases/{adjudicationCase}/advance-step',       [AdjudicationCaseController::class, 'advanceStep'])->middleware('feature.available:project.adjudication');
+        Route::post('/adjudication-cases/{adjudicationCase}/update-status',      [AdjudicationCaseController::class, 'updateStatus'])->middleware('feature.available:project.adjudication');
+        Route::post('/adjudication-cases/{adjudicationCase}/archive',            [AdjudicationCaseController::class, 'archive'])->middleware('feature.available:project.adjudication');
         Route::get('/adjudication-cases/{adjudicationCase}/documents',           [AdjudicationDocumentController::class, 'index']);
-        Route::post('/adjudication-cases/{adjudicationCase}/documents',          [AdjudicationDocumentController::class, 'store']);
-        Route::delete('/adjudication-documents/{adjudicationDocument}',          [AdjudicationDocumentController::class, 'destroy']);
+        Route::post('/adjudication-cases/{adjudicationCase}/documents',          [AdjudicationDocumentController::class, 'store'])->middleware('feature.available:project.adjudication');
+        Route::delete('/adjudication-documents/{adjudicationDocument}',          [AdjudicationDocumentController::class, 'destroy'])->middleware('feature.available:project.adjudication');
         Route::get('/adjudication-cases/{adjudicationCase}/deadlines',           [AdjudicationDeadlineController::class, 'index']);
-        Route::post('/adjudication-cases/{adjudicationCase}/deadlines',          [AdjudicationDeadlineController::class, 'store']);
-        Route::put('/adjudication-deadlines/{adjudicationDeadline}',             [AdjudicationDeadlineController::class, 'update']);
-        Route::post('/adjudication-deadlines/{adjudicationDeadline}/complete',   [AdjudicationDeadlineController::class, 'markComplete']);
-        Route::delete('/adjudication-deadlines/{adjudicationDeadline}',          [AdjudicationDeadlineController::class, 'destroy']);
+        Route::post('/adjudication-cases/{adjudicationCase}/deadlines',          [AdjudicationDeadlineController::class, 'store'])->middleware('feature.available:project.adjudication');
+        Route::put('/adjudication-deadlines/{adjudicationDeadline}',             [AdjudicationDeadlineController::class, 'update'])->middleware('feature.available:project.adjudication');
+        Route::post('/adjudication-deadlines/{adjudicationDeadline}/complete',   [AdjudicationDeadlineController::class, 'markComplete'])->middleware('feature.available:project.adjudication');
+        Route::delete('/adjudication-deadlines/{adjudicationDeadline}',          [AdjudicationDeadlineController::class, 'destroy'])->middleware('feature.available:project.adjudication');
     });
 
     // Global Documents — organisation-wide document search (read-only)
     // Registered before the apiResource below so this literal path is
     // matched first, not swallowed by the {document} wildcard binding.
+    // organization.documents: no mutation endpoint exists to gate here —
+    // Feature Availability, Phase C.
     Route::get('/documents/portfolio', [OrganisationDocumentController::class, 'index']);
 
-    // Documents (generated)
-    Route::apiResource('projects.documents', DocumentController::class)->shallow();
+    // Documents (generated) — Feature Availability, Phase C closeout
+    // correction: store/update/destroy have no CURRENT frontend caller, but
+    // DocumentController::authorizeProject() confirms an ordinary
+    // org-matching Client can reach all three directly (same authorize()
+    // shape as every other module controller), and each operates on the
+    // `documents` table's own project-scoped rows — genuinely owned by
+    // project.documents, not shared with any other module's own
+    // file/attachment table (`file_uploads`, used by RFIs/QA/Snagging/
+    // Drawings/Adjudication/Delivery Documents, is a separate table
+    // entirely). "No frontend caller today" is not a reason to leave a
+    // customer-reachable, module-owned mutation ungated — gated below.
+    // download/preview remain deliberately NOT gated — generic, shared
+    // across every module that attaches documents; project.documents
+    // Maintenance must not break document viewing elsewhere.
+    Route::apiResource('projects.documents', DocumentController::class)->shallow()->only(['index', 'show']);
+    Route::apiResource('projects.documents', DocumentController::class)->shallow()->only(['store', 'update', 'destroy'])->middleware('feature.available:project.documents');
     Route::get('/documents/{document}/download', [DocumentController::class, 'download']);
     Route::get('/documents/{document}/preview',  [DocumentController::class, 'previewDocument']);
 
@@ -669,7 +763,15 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
     // Project file management (folder-based uploads)
     Route::get('/projects/{project}/folders', [ProjectController::class, 'folders']);
     Route::get('/projects/{project}/files', [DocumentController::class, 'indexFiles']);
-    Route::post('/projects/{project}/files', [DocumentController::class, 'uploadFile']);
+    // Gated by project.documents — the Documents module's own explorer
+    // upload action (ProjectDocumentsExplorer.tsx), confirmed not shared
+    // with any other module's own upload flow.
+    Route::post('/projects/{project}/files', [DocumentController::class, 'uploadFile'])->middleware('feature.available:project.documents');
+    // Deliberately NOT gated (Feature Availability, Phase C, Step 4) —
+    // generic file download/preview shared across every module that
+    // attaches documents (Contracts, Drawings, Delivery Documents,
+    // Adjudication, evidence attachments, GeneratePackageModal, etc. — see
+    // feature-availability.md's Phase C section for the full caller list).
     Route::get('/file-uploads/{fileUpload}/download', [DocumentController::class, 'downloadFile']);
     Route::get('/file-uploads/{fileUpload}/preview',  [DocumentController::class, 'previewFile']);
     Route::delete('/file-uploads/{fileUpload}', [DocumentController::class, 'destroyFile']);
@@ -721,9 +823,9 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
     Route::get('/contracts/{contract}/ai-analyses',    [AiController::class, 'listAnalyses']);
     Route::get('/projects/{project}/ai-analyses',      [AiController::class, 'listForProject']);
     Route::get('/projects/{project}/calendar-events',  [CalendarController::class, 'events']);
-    Route::post('/contracts/{contract}/attach-file',   [ContractController::class, 'attachFile']);
-    Route::post('/contracts/{contract}/archive',       [ContractController::class, 'archive']);
-    Route::post('/contracts/{contract}/restore',       [ContractController::class, 'restore']);
+    Route::post('/contracts/{contract}/attach-file',   [ContractController::class, 'attachFile'])->middleware('feature.available:project.contracts');
+    Route::post('/contracts/{contract}/archive',       [ContractController::class, 'archive'])->middleware('feature.available:project.contracts');
+    Route::post('/contracts/{contract}/restore',       [ContractController::class, 'restore'])->middleware('feature.available:project.contracts');
 
     // Phase E — Contract-Assisted Project Setup: Project-summary suggestions
     // derived from an already-confirmed Contract analysis. See
@@ -763,6 +865,14 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
     // Throttled on top of the normal auth:sanctum rate limit — a compromised
     // or careless Super Admin session shouldn't be able to mass-ban/mass-reset
     // faster than a human clicking through the Users page ever would.
+    //
+    // organization.team (Feature Availability, Phase C): the /app/team
+    // page's own "Send Invite" action posts here (users/invite), but this
+    // entire route group already requires role:Super Admin — a genuine
+    // Client/Admin customer can never reach it regardless of Feature
+    // Availability (and Super Admin bypasses Feature Availability anyway).
+    // Gating it would be a pure no-op, so it's deliberately left ungated —
+    // see feature-availability.md's Phase C section.
     Route::middleware(['role:Super Admin', 'throttle:30,1'])->group(function () {
         Route::post('users/invite', [UserController::class, 'invite']);
         Route::post('users/bulk-invite', [UserController::class, 'bulkInvite']);

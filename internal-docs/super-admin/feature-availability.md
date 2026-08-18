@@ -1,9 +1,137 @@
 # SureSign Feature Availability
 
-**Status: Phase A (backend foundation) and Phase B (Super Admin management
-UI + customer-facing availability experience) both complete. `EnsureFeatureIsAvailable`
-exists and is independently tested but is STILL NOT attached to any
-production module API route — real backend enforcement remains Phase C.**
+**Status: Phase A (backend foundation), Phase B (Super Admin management UI
++ customer-facing availability experience), and Phase C (selective backend
+module enforcement) are all complete. `EnsureFeatureIsAvailable` IS now
+attached to 124 real production module mutation routes — see the Phase C
+section below for the exact inventory and the reads-stay-ungated policy
+that shaped it.**
+
+## Phase C — selective backend module enforcement
+
+Attaches `feature.available:{key}` directly to genuinely module-exclusive
+CUSTOMER MUTATION routes only (`POST`/`PUT`/`PATCH`/`DELETE`) — reads stay
+ungated by default (Phase C's locked V1 policy). **127 routes gated across
+all 17 of the 17 Project features** (`project.contracts` through
+`project.documents`) — `project.commercial` also covers `PaymentApplicationController`
+and `FinalAccountController` action endpoints, since `FinalAccountTab.tsx`
+lives inside `commercial/page.tsx`. Method breakdown: 72 `POST`, 26
+`PUT`/`PUT|PATCH`, 29 `DELETE`, **0 `GET`, 0 `HEAD`** — mechanically
+verified via `route:list --json`, not asserted from memory.
+
+**Split-resource pattern**: where a route was a single
+`Route::apiResource(...)->shallow()` registration (mixing reads and
+writes), it was split into two registrations — `->only(['index','show'])`
+ungated, `->only(['store','update','destroy'])->middleware(...)` gated —
+rather than wrapping the whole resource or duplicating status logic in the
+controller. This changed no controller code, no validation, no
+authorization logic, and no response shape — `Active` behaves exactly as
+before Phase C (verified: existing Batch3/Batch4/Drawing/PaymentApplication
+regression suites still pass — see Verification below).
+
+### The locked EOT ownership decision, proven end-to-end
+
+`POST/PUT/DELETE /projects/{project}/eot-requests[...]` is gated by
+**`project.delay_eot` only** — never `project.notices`, even though the
+Notices page's own EOT tab calls the identical create endpoint. This means:
+a customer creating an EOT request is blocked when Delay & EOT is in
+Maintenance, **regardless of whether they used the Delay & EOT page or the
+Notices page to do it** — the entity being mutated is what determines
+ownership, not which page's UI triggered the request (the same reasoning
+was applied to `project.rfis`/`project.qa`/`project.snagging`, whose
+`store` routes are also reachable from a Drawings hotspot-link creation
+flow). Conversely, `project.notices` alone being in Maintenance never
+blocks EOT mutation — confirmed both by an automated regression test and a
+real dev HTTP smoke test (see below).
+
+### Generic/shared routes — confirmed and deliberately ungated
+
+- `GET /file-uploads/{fileUpload}/download` / `/preview` and
+  `GET /documents/{document}/download` / `/preview` — used across
+  Contracts, Drawings, Delivery Documents, Adjudication, every evidence-
+  attachment module, `GeneratePackageModal`, and the admin Documents
+  explorer. Never gated — remain fully shared regardless of
+  `project.documents`'s status.
+- Trade-package-scoped routes (`/projects/{project}/trade-packages/{tp}/{programme,risks,delivery-documents,payment-applications,final-account,delay-events,eot-requests,loss-and-expense-claims}`)
+  belong to the separate, ungated Trade Package workspace
+  (`/app/projects/[id]/subcontracts/[packageId]`) — confirmed these are
+  genuinely different routes from each gated project-level feature's own
+  create endpoint, so gating the project-level route never affects the
+  Trade Package workspace.
+- `organization.commercial`, `organization.site_admin`, `organization.documents`,
+  `organization.reports` are all genuinely read-only today — confirmed by
+  searching every corresponding frontend page for a mutation call. No
+  middleware was invented just to claim enforcement exists.
+- `organization.team`'s only nominal mutation (`POST /users/invite`) is
+  already `role:Super Admin` ONLY at the route layer — unreachable by any
+  Client/Admin customer regardless of Feature Availability (and Super
+  Admin bypasses Feature Availability anyway), so gating it would be a
+  pure no-op. Left ungated, documented inline in `routes/api.php`.
+- `ai.assistant` has no operational backend route at all (confirmed:
+  `/ai/conversations`/`/ai/summarize`/`/ai/draft-document` aren't even
+  registered in the current `routes/api.php`) — nothing to gate, no route
+  was invented.
+- **Closeout correction**: `POST/PUT/DELETE` on the `projects.documents`
+  apiResource (`App\Models\Document`, distinct from the `file_uploads`
+  table every other module's attachments use) was initially left ungated
+  in Phase C's first pass, reasoning "no confirmed frontend caller
+  exists" — that reasoning was wrong and has been corrected. Verified
+  directly against `DocumentController`: `store()`/`update()`/`destroy()`
+  all use the same `authorizeProject()` shape as every other module
+  controller (org-matching Client access, no extra role restriction), and
+  each mutates the project-scoped `documents` table exclusively — not
+  shared with any other module's own file/attachment table. "No frontend
+  caller today" was never a reason to leave a customer-reachable,
+  module-owned mutation ungated (a Client could still call it directly);
+  now gated by `project.documents` — `index`/`show` remain ungated, as do
+  `download`/`preview` above.
+
+### Bypass, unchanged from Phase A
+
+Super Admin and Admin continue to bypass every gated route exactly as
+`FeatureAvailabilityService::isAvailableToUser()` already implemented in
+Phase A — Phase C added no new bypass logic, only new routes for the
+existing bypass to apply to. Management remains Super-Admin-only,
+unchanged.
+
+### Tests added
+
+`tests/Feature/FeatureAvailabilityEnforcementTest.php` (20 tests, including
+3 added at the closeout checkpoint for the corrected `projects.documents`
+gating) — shared-route regression (Overview/Calendar/Dashboard reads
+unaffected by Programme/Reports Maintenance), the EOT ownership proof
+(both directions), Documents module-write-vs-generic-read (both the
+explorer upload action and the `Document` resource's own
+store/update/destroy), representative role/tenant behaviour (Client
+blocked, Admin/Super Admin bypass, unauthenticated still 401s, wrong-tenant
+still 403s when Active), data-integrity (no record created on a blocked
+Variation/Risk/Programme/Document mutation), the `organization.team` no-op
+finding, and zero AI-credit-table writes. Combined with Phase A/B's 37:
+**57 total, 144 assertions, all passing.**
+Existing module regression suites (Batch3/Batch4 Programme/Variations/
+Notices/EOT/RFIs/Meetings/Site Reports/Adjudication/Payment Applications/
+Final Accounts, Drawing Hotspot/Revision/Register, Organisation Document
+Search) re-run clean — the only 3 failures across that full sweep were
+independently confirmed (via `git stash`) to be pre-existing, unrelated to
+Phase C: two are the already-documented root-owned `storage/framework/testing/disks`
+permission artifact, one is an environment-dependent Excel-failure-injection
+test that also fails on a clean Phase-B checkout.
+
+### Real dev HTTP smoke test
+
+Performed via genuine HTTP requests (temporary Sanctum tokens for a real
+Super Admin and a real Client user against real Project 1/Contract 4 — no
+fabricated data): Programme Maintenance blocked a Client's milestone
+creation (503) while Project Overview/Calendar stayed reachable (200) and
+Super Admin's identical request succeeded (201, then cleaned up); Notices
+Maintenance blocked pay-less-notice creation (503) while the shared
+EOT-requests endpoint remained reachable (422 validation, not 503) with
+`project.delay_eot` Active; flipping to `project.delay_eot` Maintenance
+then blocked that same EOT endpoint (503) while EOT/Notices reads stayed
+available (200); Documents Maintenance blocked the explorer upload (503)
+while a real, authorized file download stayed reachable (200). Every
+override was restored to Active and `feature_availabilities` confirmed
+back to 0 rows; temporary tokens deleted.
 
 ## Phase B — Super Admin UI + customer-facing experience
 
