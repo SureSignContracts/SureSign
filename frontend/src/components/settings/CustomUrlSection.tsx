@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Globe, ExternalLink, Trash2, Check } from 'lucide-react';
 import api from '@/lib/api';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 

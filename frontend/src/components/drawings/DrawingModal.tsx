@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { X, Eye, FileText, Upload } from 'lucide-react';
 import api from '@/lib/api';
 import { formatDateTime } from '@/lib/dateTime';

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { CreditCard, ShieldAlert, History, Gauge, Plus, X, OctagonMinus } from 'lucide-react';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge, Tone } from '@/components/ui/Badge';

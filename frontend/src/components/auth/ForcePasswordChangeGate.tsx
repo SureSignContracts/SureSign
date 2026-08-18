@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import api from '@/lib/api';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 
 // Rendered instead of the normal app shell whenever the logged-in user's

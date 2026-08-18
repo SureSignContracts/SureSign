@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckSquare, Download, FileText, Square, X } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import api from '@/lib/api';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';

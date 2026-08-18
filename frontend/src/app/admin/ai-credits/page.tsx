@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import api from '@/lib/api';
 import PlatformPageHero from '@/components/admin/PlatformPageHero';
 import { Wallet, Coins, Lock, PiggyBank, Building2, Brain, ShieldCheck, ShieldAlert, HelpCircle, ShieldOff, ShieldQuestion, X } from 'lucide-react';

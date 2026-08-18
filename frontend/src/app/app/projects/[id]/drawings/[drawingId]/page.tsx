@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { ArrowLeft, Download, FileWarning, History, MapPin, X } from 'lucide-react';
 import api from '@/lib/api';
 import { getErrorMessage } from '@/lib/getErrorMessage';

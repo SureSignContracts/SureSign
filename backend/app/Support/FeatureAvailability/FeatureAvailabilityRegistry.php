@@ -253,7 +253,7 @@ final class FeatureAvailabilityRegistry
             'category' => self::CATEGORY_ORGANIZATION,
             'frontend_routes' => ['/app/team'],
             'maintenance_supported' => true,
-            'coming_soon_supported' => false,
+            'coming_soon_supported' => true,
         ],
 
         // ─── Platform / AI ───────────────────────────────────────────────

@@ -260,8 +260,12 @@ class FeatureAvailabilityEnforcementTest extends TestCase
      * in Phase C. The Coming Soon code path itself (middleware returning
      * `feature_coming_soon`) is already covered against a throwaway route
      * in FeatureAvailabilityTest's middleware-foundation group (Phase A/B).
-     * This test instead documents the finding precisely: none of the 124
+     * This test instead documents the finding precisely: none of the
      * routes gated in Phase C sit on a `coming_soon_supported` feature.
+     * `organization.team` was later also enabled for Coming Soon — its one
+     * nominal mutation (`POST /users/invite`) remains `role:Super Admin`
+     * ONLY at the route layer regardless (see routes/api.php), so this
+     * finding still holds for it too.
      */
     public function test_no_gated_v1_mutation_route_currently_supports_coming_soon(): void
     {
@@ -270,9 +274,11 @@ class FeatureAvailabilityEnforcementTest extends TestCase
             fn (array $entry) => $entry['coming_soon_supported']
         );
 
-        // organization.reports and ai.assistant are the only two — neither
-        // has a gated mutation route (confirmed in Steps 7/8).
-        $this->assertEqualsCanonicalizing(['organization.reports', 'ai.assistant'], array_keys($comingSoonCapable));
+        // organization.reports, organization.team, and ai.assistant — none
+        // has a gated mutation route (confirmed in Steps 7/8, and for
+        // organization.team, in the routes/api.php comment above its
+        // Super-Admin-only invite route).
+        $this->assertEqualsCanonicalizing(['organization.reports', 'organization.team', 'ai.assistant'], array_keys($comingSoonCapable));
     }
 
     public function test_admin_bypasses_a_gated_mutation_route(): void

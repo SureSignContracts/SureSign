@@ -8,7 +8,7 @@ import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { effectiveTodayYmd } from '@/lib/dateTime';
 import { MessageSquare, Plus, Search, X } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PromptActionButton from '@/components/prompts/PromptActionButton';
 import PageTourButton from '@/components/tours/PageTourButton';

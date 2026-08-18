@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link2, CheckCircle2, XCircle, AlertTriangle, RefreshCw, Unplug, PlugZap, Activity } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import api from '@/lib/api';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import { useAuthStore } from '@/store/authStore';

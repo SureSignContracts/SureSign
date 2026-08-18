@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import { Plus, X, Trash2, Check, Ban, ExternalLink } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import Select from '@/components/ui/Select';
 import { getErrorMessage, assertDeleteSucceeded, type ContractOption, type TradePackageOption } from './page';
 import { INPUT_STYLE } from './DelayEventsTab';

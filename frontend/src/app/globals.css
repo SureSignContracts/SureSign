@@ -910,6 +910,55 @@ select:focus-visible, [tabindex]:focus-visible {
   animation: ss-notification-panel-out 0.18s cubic-bezier(0.4, 0, 1, 1) forwards;
 }
 
+@keyframes ss-feature-state-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ss-feature-state-copy-in {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes ss-feature-state-details-in {
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes ss-feature-state-signal {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.78); }
+}
+
+@keyframes ss-feature-badge-in {
+  from { opacity: 0; transform: translateX(4px); }
+  to { opacity: 0.6; transform: translateX(0); }
+}
+
+.ss-feature-state > div {
+  animation: ss-feature-state-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.ss-feature-state-copy {
+  animation: ss-feature-state-copy-in 0.6s 0.08s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.ss-feature-state-details {
+  animation: ss-feature-state-details-in 0.6s 0.16s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.ss-feature-state-signal {
+  animation: ss-feature-state-signal 2.2s ease-in-out infinite;
+}
+
+.ss-feature-badge {
+  animation: ss-feature-badge-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ss-feature-nav-label:has(.ss-feature-badge) .ss-feature-nav-title {
+  transform: translateY(0.375rem);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ss-animate-in, .ss-workspace-page-in, .ss-workspace-hero-in,
   .ss-workspace-left-in, .ss-workspace-right-in,
@@ -931,6 +980,9 @@ select:focus-visible, [tabindex]:focus-visible {
   .ss-consultancy-left-in, .ss-consultancy-right-in,
   .ss-consultancy-reveal, .ss-consultancy-list-in,
   .ss-consultancy-card-in,
+  .ss-feature-state > div, .ss-feature-state-copy,
+  .ss-feature-state-details, .ss-feature-state-signal,
+  .ss-feature-badge,
   .ss-authenticated-entrance > aside,
   .ss-authenticated-entrance > aside + div,
   .ss-authenticated-entrance > aside + main,
@@ -1190,6 +1242,102 @@ select:focus-visible, [tabindex]:focus-visible {
 .ss-admin-content select:focus {
   border-color: color-mix(in srgb, var(--gold) 55%, var(--border)) !important;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 12%, transparent);
+}
+
+/* SureSign toast material -------------------------------------------------
+   goey-toast owns ALL sizing/padding/display/shape here — every attempt to
+   change those (icon/title/content dimensions, wrapper background, header
+   display, title padding) fought the library's own internal geometry (a
+   hardcoded compact-pill height, a fixed-shape SVG blob path, its own
+   vertical-alignment behaviour) and kept reintroducing new visual bugs one
+   override at a time. This is colour/typography only now — nothing here
+   changes a size, padding, or display value, so every toast renders exactly
+   as goey-toast's own defaults produce it. */
+.gooey-wrapper {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  color: #f7faf8;
+}
+
+.gooey-wrapper .gooey-blobSvg {
+  filter:
+    drop-shadow(0 16px 30px rgba(24, 33, 29, 0.22))
+    drop-shadow(0 3px 8px rgba(24, 33, 29, 0.16));
+}
+
+.gooey-wrapper .gooey-title {
+  color: #f7faf8;
+}
+
+.gooey-wrapper .gooey-titleSuccess,
+.gooey-wrapper[data-theme="dark"] .gooey-titleSuccess {
+  color: #9ee5b5;
+}
+
+.gooey-wrapper .gooey-titleError,
+.gooey-wrapper[data-theme="dark"] .gooey-titleError {
+  color: #fca5a5;
+}
+
+.gooey-wrapper .gooey-titleWarning,
+.gooey-wrapper[data-theme="dark"] .gooey-titleWarning {
+  color: #fcd879;
+}
+
+.gooey-wrapper .gooey-titleInfo,
+.gooey-wrapper[data-theme="dark"] .gooey-titleInfo {
+  color: #b9d8ff;
+}
+
+.gooey-wrapper .gooey-titleDefault,
+.gooey-wrapper .gooey-titleLoading,
+.gooey-wrapper[data-theme="dark"] .gooey-titleDefault,
+.gooey-wrapper[data-theme="dark"] .gooey-titleLoading {
+  color: #f7faf8;
+}
+
+.gooey-wrapper .gooey-timestamp,
+.gooey-wrapper[data-theme="dark"] .gooey-timestamp {
+  color: rgba(247, 250, 248, 0.46);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.gooey-wrapper .gooey-description,
+.gooey-wrapper[data-theme="dark"] .gooey-description {
+  color: rgba(247, 250, 248, 0.68);
+}
+
+.gooey-wrapper .gooey-progressWrapper,
+.gooey-wrapper[data-theme="dark"] .gooey-progressWrapper {
+  height: 2px;
+  margin-top: 0.65rem;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.gooey-wrapper .gooey-progressSuccess { background: #9ee5b5; }
+.gooey-wrapper .gooey-progressError { background: #fca5a5; }
+.gooey-wrapper .gooey-progressWarning { background: #fcd879; }
+.gooey-wrapper .gooey-progressInfo { background: #b9d8ff; }
+.gooey-wrapper .gooey-progressDefault { background: rgba(247, 250, 248, 0.68); }
+
+.gooey-wrapper .gooey-actionButton {
+  border: 1px solid rgba(158, 229, 181, 0.28);
+  border-radius: 0.55rem;
+  background: #9ee5b5;
+  color: #18211d;
+  font-size: 0.62rem;
+  font-weight: 650;
+}
+
+.gooey-wrapper .gooey-actionButton:hover {
+  background: #b3edc5;
+}
+
+.gooey-wrapper .gooey-closeButton {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  background: #24312b !important;
+  color: rgba(255, 255, 255, 0.72) !important;
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.18) !important;
 }
 
 @media (max-width: 640px) {

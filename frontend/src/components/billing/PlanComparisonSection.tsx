@@ -12,7 +12,7 @@ import { getErrorMessage } from '@/lib/getErrorMessage';
 import PlanChangeConfirmDialog from '@/components/billing/PlanChangeConfirmDialog';
 import PendingCheckoutConflictDialog from '@/components/billing/PendingCheckoutConflictDialog';
 import BillingRedirectOverlay from '@/components/billing/BillingRedirectOverlay';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 
 type Interval = 'monthly' | 'annual';
 

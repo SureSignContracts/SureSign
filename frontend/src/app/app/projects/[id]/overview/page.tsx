@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { effectiveTodayYmd, parseDateOnly } from '@/lib/dateTime';

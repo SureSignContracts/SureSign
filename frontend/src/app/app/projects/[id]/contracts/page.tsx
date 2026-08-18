@@ -27,7 +27,7 @@ import DocumentPreviewModal, { PreviewTarget } from '@/components/documents/Docu
 import GeneratePackageModal from '@/components/documents/GeneratePackageModal';
 import GenerateTradePackageFolderModal from '@/components/documents/GenerateTradePackageFolderModal';
 import SubcontractAiOnboardingModal from '@/components/subcontracts/SubcontractAiOnboardingModal';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PromptActionButton from '@/components/prompts/PromptActionButton';
 import { useAiAnalysisStore } from '@/store/aiAnalysisStore';

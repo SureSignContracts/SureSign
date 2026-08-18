@@ -7,7 +7,7 @@ import Button from '@/components/ui/Button';
 import { useCreatePortalSession, PORTAL_RETURN_FLAG_KEY } from '@/hooks/useBilling';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import BillingRedirectOverlay from '@/components/billing/BillingRedirectOverlay';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 
 /**
  * Opens Stripe's restricted Customer Portal (Slice E2) — payment methods,

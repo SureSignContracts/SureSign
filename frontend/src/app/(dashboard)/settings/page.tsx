@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Settings, Save, Check, Upload, Palette, Building2, KeyRound, ScrollText, Lock, BookOpen, Globe, Eye } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/lib/api';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import PasswordStrengthChecker, { checkPassword, isPasswordValid } from '@/components/ui/PasswordStrengthChecker';
 import TimezoneSelect from '@/components/shared/TimezoneSelect';
 import { SUPPORTED_CURRENCIES, currencyLabel } from '@/lib/currency';

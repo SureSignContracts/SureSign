@@ -11,7 +11,7 @@ import { useCancelPlanChange } from '@/hooks/useBilling';
 import type { PlanChangeSummary } from '@/hooks/useBilling';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import { planChangeStateLabel, planChangeStateTone, planChangeTypeLabel } from '@/lib/billingStatus';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 
 /**
  * Never implies the target plan is already active — the organisation's

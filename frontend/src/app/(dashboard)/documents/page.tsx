@@ -11,7 +11,7 @@ import {
   Table2, FolderTree, Folder, FolderKanban,
 } from 'lucide-react';
 import api from '@/lib/api';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import DocumentPreviewModal, { type PreviewTarget } from '@/components/documents/DocumentPreviewModal';
 import EmptyState from '@/components/ui/EmptyState';
 import Select from '@/components/ui/Select';

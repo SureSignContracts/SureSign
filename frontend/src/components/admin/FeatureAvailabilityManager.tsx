@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { X, Wrench, Sparkles, CheckCircle2, Pencil } from 'lucide-react';
 import api from '@/lib/api';
 import Select from '@/components/ui/Select';

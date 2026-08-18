@@ -14,7 +14,7 @@ import {
   CalendarDays, Plus, Sparkles, X, ChevronDown, Check,
   AlertTriangle, Clock, BarChart2, List, Info,
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PageTourButton from '@/components/tours/PageTourButton';
 import { ProjectModuleHeader } from '@/components/projects/ProjectModuleHeader';

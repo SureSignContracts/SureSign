@@ -6,7 +6,7 @@ import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { effectiveTodayYmd } from '@/lib/dateTime';
 import { Plus, X, Trash2 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import Select from '@/components/ui/Select';
 import { getErrorMessage, INPUT_STYLE, CATEGORY_LABELS, StatusBadge, Field } from '@/components/deliveryDocuments/deliveryDocumentShared';
 
