@@ -1,8 +1,95 @@
 # SureSign Feature Availability
 
-**Status: Phase A (backend foundation) complete. No customer-facing UI
-exists yet (Phase B). No production module route has the enforcement
-middleware attached yet (Phase C).**
+**Status: Phase A (backend foundation) and Phase B (Super Admin management
+UI + customer-facing availability experience) both complete. `EnsureFeatureIsAvailable`
+exists and is independently tested but is STILL NOT attached to any
+production module API route — real backend enforcement remains Phase C.**
+
+## Phase B — Super Admin UI + customer-facing experience
+
+Built entirely on the Phase A contract with zero backend changes:
+
+- **Frontend types** (`frontend/src/types/featureAvailability.ts`) mirror
+  the backend response shapes exactly — no second client-side feature
+  catalogue; the backend registry (via `GET /admin/feature-availability`)
+  remains authoritative.
+- **`useFeatureAvailability()`** (`frontend/src/hooks/useFeatureAvailability.ts`)
+  — the one canonical frontend read path, mirroring `useSiteSettings.ts`'s
+  fetch-once/cache/fail-safe shape exactly. A missing key, a malformed
+  entry, or a request failure all resolve Active; never scatter
+  `features[key]?.status === ...` across pages.
+- **`FeatureUnavailableState`** (`frontend/src/components/feature-availability/`)
+  — the shared Maintenance/Coming Soon customer state, built entirely from
+  existing primitives (no new design system): restrained copy, no fake
+  progress/percentages/dates, `available_at` rendered only when present via
+  the existing `formatDateTime()`/effective-timezone convention.
+- **`FeatureAvailabilityGate`** — wraps a page; Active renders normally for
+  everyone; Maintenance/Coming Soon renders `FeatureUnavailableState` for a
+  Client, or normal content plus a restrained internal warning banner for
+  Super Admin/Admin (an ACCESS bypass only, read from the same
+  `user.roles` frontend state every other presentation-only role check in
+  this codebase already uses — grants no management permission; only the
+  Super-Admin-only backend admin API can ever change availability).
+- **`FeatureStatusBadge`** — a compact nav-item indicator (renders nothing
+  for Active), wired into `ProjectSidebar`/`AppSidebar` via a new, entirely
+  separate `featureKey` field on each nav item — never conflated with
+  `pageKey`/`hidden_pages`. Unavailable items stay visible and clickable;
+  nothing is ever hidden by this system.
+- **`FeatureAvailabilityManager`** — the Super Admin management screen,
+  mounted as a new "Feature Availability" tab on the existing
+  `/admin/suresign` settings page (filtered out of both the tab bar and
+  the content render for non-Super-Admin, matching the backend's own
+  Super-Admin-ONLY authorization for both `GET`/`PUT`). Status options are
+  restricted per-feature in the UI itself (`maintenance_supported`/
+  `coming_soon_supported`), not just relying on backend validation. Every
+  transition shows an explicit confirmation ("You are about to make
+  Programme unavailable to customer users.") and requires a reason (≥10
+  chars) + confirmation checkbox, mirroring `ManageAiCreditsRequest`/
+  `UpdateAiCreditOperatingModeRequest`'s exact shape. A successful save
+  invalidates both the management query and the customer-facing
+  `['feature-availability']` query — no hard refresh needed.
+- **23 pages gated** — exactly the Phase A V1 registry (17 project modules,
+  5 organisation modules, `ai.assistant`), each wrapped with the smallest
+  possible change: the existing default-exported page component was
+  renamed (no longer exported) and a new default-exported wrapper renders
+  `FeatureAvailabilityGate` around it. No business logic was touched in any
+  of the 23 files. `project.overview`, `organization.dashboard`,
+  `organization.projects`, `project.calendar`, and
+  `organization.consultations` remain entirely ungated, per the approved
+  V1 exclusions.
+- **Verified with a real, controlled dev-database smoke test** (Super
+  Admin/Admin/Client Sanctum tokens, real HTTP requests against the running
+  dev backend — not just automated tests): `ai.assistant` Active→Coming
+  Soon and `project.programme` Active→Maintenance, confirmed via the real
+  customer status endpoint, confirmed unrelated endpoints (Project
+  Overview, Dashboard) stayed reachable, confirmed the audit trail, then
+  restored both to Active and confirmed `feature_availabilities` returned
+  to 0 rows. Temporary smoke-test API tokens were deleted afterward.
+- **Real bug found and fixed during this walkthrough** (a genuine
+  Phase A defect, only surfaced by a live, repeated, cross-request
+  walkthrough — never by the automated test suite): `allOverridesSafe()`'s
+  cached array stored `available_at` as a raw `Carbon` instance. The
+  `database` cache store serializes this with PHP's native `serialize()`;
+  unserializing it on a later request intermittently threw "The script
+  tried to call a method on an incomplete object" whenever that
+  particular PHP-FPM worker hadn't yet autoloaded the `Carbon` class —
+  worker-dependent, so the very first request after a write (still a
+  cache miss, computed fresh) always looked correct, while subsequent
+  cache-hit reads could silently fail. `allOverridesSafe()`'s own
+  fail-safe `catch` swallowed this and resolved Active instead of the
+  real Maintenance/Coming Soon state — safe in the "never fail toward
+  unavailable" sense, but wrong for genuine customer-facing accuracy, and
+  would have silently defeated Phase C's future middleware too. Invisible
+  to `FeatureAvailabilityTest.php` because `phpunit.xml` forces
+  `CACHE_STORE=array` (pure in-memory, no serialization pass ever
+  happens). **Fixed** by storing `available_at` as an ISO 8601 string in
+  the cached array instead of a `Carbon` instance (the uncached
+  `fullRegistryWithState()`/Super Admin management path was never
+  affected — it reads real Eloquent models directly). A new regression
+  test, `test_cached_entry_survives_a_real_serialize_round_trip`, exercises
+  a genuine `serialize()`/`unserialize()` round trip directly so this
+  class of bug can't silently return. Re-verified stable across 5+
+  repeated cache-hit reads after the fix, via real HTTP requests.
 
 ## Purpose
 
@@ -256,6 +343,9 @@ before any middleware is attached to that specific endpoint).
   `project.notices`'s own UI — a future enforcement phase must resolve
   which key (if either) actually gates that specific write endpoint before
   attaching middleware to it.
-- Phase B (Super Admin management UI, customer-facing Maintenance/Coming
-  Soon states, sidebar status badges) and Phase C (route-ownership
-  enforcement rollout) are both still to come.
+- Phase B is complete (Super Admin management UI, customer-facing
+  Maintenance/Coming Soon states, sidebar status badges, 23 pages gated).
+  **Phase C (backend route-ownership enforcement rollout — actually
+  attaching `feature.available` to real module API routes) has not
+  started.** `EnsureFeatureIsAvailable` remains built, independently
+  tested, and unattached to any production route.

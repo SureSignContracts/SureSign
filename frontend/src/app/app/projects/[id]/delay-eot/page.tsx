@@ -1,4 +1,5 @@
 'use client';
+import FeatureAvailabilityGate from '@/components/feature-availability/FeatureAvailabilityGate';
 
 import { useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
@@ -77,7 +78,7 @@ export function sourceLabel(row: { contract?: ContractOption | null; trade_packa
 
 type DelayEotTab = 'delay-events' | 'eot' | 'loss-and-expense';
 
-export default function DelayEotPage() {
+function DelayEotPage() {
   const { id: projectId } = useParams<{ id: string }>();
   const id = projectId!;
   const { canManageDelayEvents, canManageEotRequests, canManageLossAndExpenseClaims } = useProjectPermissions();
@@ -176,5 +177,15 @@ export default function DelayEotPage() {
         <LossAndExpenseTab projectId={id} contracts={contracts} tradePackages={tradePackages} canWrite={canManageLossAndExpenseClaims} />
       )}
     </div>
+  );
+}
+
+export default function GatedDelayEotPage() {
+  const params = useParams<{ id: string }>();
+  const id = params?.id as string;
+  return (
+    <FeatureAvailabilityGate featureKey="project.delay_eot" title="Delay & EOT" backHref={`/app/projects/${id}/overview`} backLabel="Back to Project Overview">
+      <DelayEotPage />
+    </FeatureAvailabilityGate>
   );
 }

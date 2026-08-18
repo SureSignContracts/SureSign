@@ -1,4 +1,5 @@
 'use client';
+import FeatureAvailabilityGate from '@/components/feature-availability/FeatureAvailabilityGate';
 
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
@@ -130,7 +131,7 @@ function SiteDiaryModal({ projectId, diary, readOnly, onClose }: { projectId: st
   );
 }
 
-export default function ProjectSiteReportsPage() {
+function ProjectSiteReportsPage() {
   const { id } = useParams<{ id: string }>();
   const { canManageSiteReports: canWrite } = useProjectPermissions();
   const [search, setSearch] = useState('');
@@ -293,5 +294,15 @@ export default function ProjectSiteReportsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function GatedProjectSiteReportsPage() {
+  const params = useParams<{ id: string }>();
+  const id = params?.id as string;
+  return (
+    <FeatureAvailabilityGate featureKey="project.site_reports" title="Site Reports" backHref={`/app/projects/${id}/overview`} backLabel="Back to Project Overview">
+      <ProjectSiteReportsPage />
+    </FeatureAvailabilityGate>
   );
 }

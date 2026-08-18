@@ -1,4 +1,5 @@
 'use client';
+import FeatureAvailabilityGate from '@/components/feature-availability/FeatureAvailabilityGate';
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -33,7 +34,7 @@ type Risk = {
 
 type FilterSev = 'all' | 'critical' | 'high' | 'medium' | 'low';
 
-export default function RiskRegisterPage() {
+function RiskRegisterPage() {
   const { id: projectId } = useParams<{ id: string }>();
   const router = useRouter();
   const qc = useQueryClient();
@@ -352,5 +353,15 @@ function CreateRiskModal({ projectId, invalidateKey, onClose }: {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function GatedRiskRegisterPage() {
+  const params = useParams<{ id: string }>();
+  const id = params?.id as string;
+  return (
+    <FeatureAvailabilityGate featureKey="project.risks" title="Risk Register" backHref={`/app/projects/${id}/overview`} backLabel="Back to Project Overview">
+      <RiskRegisterPage />
+    </FeatureAvailabilityGate>
   );
 }

@@ -1,4 +1,5 @@
 'use client';
+import FeatureAvailabilityGate from '@/components/feature-availability/FeatureAvailabilityGate';
 
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
@@ -82,7 +83,7 @@ function AddItemModal({ projectId, onClose }: { projectId: string; onClose: () =
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
-export default function ProjectCloseoutPage() {
+function ProjectCloseoutPage() {
   const { id } = useParams<{ id: string }>();
   const qc = useQueryClient();
   const [showAddModal, setShowAddModal] = useState(false);
@@ -290,5 +291,15 @@ export default function ProjectCloseoutPage() {
         </button>
       </div>
     </div>
+  );
+}
+
+export default function GatedProjectCloseoutPage() {
+  const params = useParams<{ id: string }>();
+  const id = params?.id as string;
+  return (
+    <FeatureAvailabilityGate featureKey="project.closeout" title="Closeout" backHref={`/app/projects/${id}/overview`} backLabel="Back to Project Overview">
+      <ProjectCloseoutPage />
+    </FeatureAvailabilityGate>
   );
 }

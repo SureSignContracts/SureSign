@@ -1,4 +1,5 @@
 'use client';
+import FeatureAvailabilityGate from '@/components/feature-availability/FeatureAvailabilityGate';
 
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -309,7 +310,7 @@ function DocumentExplorer({ rows, onPreview, onDownload, onOpenSource }: {
   );
 }
 
-export default function DocumentsPage() {
+function DocumentsPage() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -649,5 +650,13 @@ export default function DocumentsPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function GatedDocumentsPage() {
+  return (
+    <FeatureAvailabilityGate featureKey="organization.documents" title="Documents" backHref="/app" backLabel="Back to Dashboard">
+      <DocumentsPage />
+    </FeatureAvailabilityGate>
   );
 }

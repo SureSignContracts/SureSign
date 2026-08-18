@@ -1,4 +1,5 @@
 'use client';
+import FeatureAvailabilityGate from '@/components/feature-availability/FeatureAvailabilityGate';
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -302,7 +303,7 @@ function nextDeadlineBadge(deadlines: any[]) {
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
-export default function ProjectAdjudicationPage() {
+function ProjectAdjudicationPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const qc = useQueryClient();
@@ -541,5 +542,15 @@ export default function ProjectAdjudicationPage() {
         })}
       </div>
     </div>
+  );
+}
+
+export default function GatedProjectAdjudicationPage() {
+  const params = useParams<{ id: string }>();
+  const id = params?.id as string;
+  return (
+    <FeatureAvailabilityGate featureKey="project.adjudication" title="Adjudication" backHref={`/app/projects/${id}/overview`} backLabel="Back to Project Overview">
+      <ProjectAdjudicationPage />
+    </FeatureAvailabilityGate>
   );
 }

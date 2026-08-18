@@ -126,6 +126,40 @@ class FeatureAvailabilityTest extends TestCase
         $this->assertFalse(FeatureAvailabilityRegistry::supportsStatus('project.drawings', FeatureAvailabilityStatus::COMING_SOON));
     }
 
+    /**
+     * Regression guard for a real bug found during the Phase B live
+     * walkthrough: the cached override array must survive a genuine
+     * PHP serialize()/unserialize() round trip (what the database cache
+     * store actually does) without producing an "incomplete object" —
+     * which happens if `available_at` is cached as a raw `Carbon`
+     * instance rather than a plain string. The test suite forces
+     * CACHE_STORE=array (see phpunit.xml), which never serializes at
+     * all, so this class of bug is otherwise invisible to the automated
+     * suite entirely — this test exercises the real serialization path
+     * directly rather than relying on the test cache driver.
+     */
+    public function test_cached_entry_survives_a_real_serialize_round_trip(): void
+    {
+        FeatureAvailability::create([
+            'feature_key' => 'project.programme',
+            'status' => 'maintenance',
+            'available_at' => now()->addDay(),
+        ]);
+
+        $service = app(FeatureAvailabilityService::class);
+        $entry = $service->entryFor('project.programme');
+
+        // The real bug: serializing an array containing a Carbon instance
+        // and unserializing it in a context where Carbon isn't yet
+        // autoloaded throws "incomplete object". Simulating the unserialize
+        // side of that exactly as the database cache driver would.
+        $roundTripped = unserialize(serialize($entry));
+
+        $this->assertSame('maintenance', $roundTripped['status']);
+        $this->assertIsString($roundTripped['available_at']);
+        $this->assertNotInstanceOf(\Illuminate\Support\Carbon::class, $roundTripped['available_at']);
+    }
+
     // ── B. Customer status API ──────────────────────────────────────────
 
     public function test_customer_receives_non_active_overrides(): void

@@ -1,4 +1,5 @@
 'use client';
+import FeatureAvailabilityGate from '@/components/feature-availability/FeatureAvailabilityGate';
 
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
@@ -111,7 +112,7 @@ function RfiResponseModal({ rfi, projectId, onClose }: { rfi: any; projectId: st
   );
 }
 
-export default function ProjectRfisPage() {
+function ProjectRfisPage() {
   const { id } = useParams<{ id: string }>();
   const { canManageRfis: canWrite } = useProjectPermissions();
   const [search, setSearch] = useState('');
@@ -298,5 +299,15 @@ export default function ProjectRfisPage() {
         <RfiResponseModal rfi={respondRfi} projectId={id!} onClose={() => setRespondRfi(null)} />
       )}
     </div>
+  );
+}
+
+export default function GatedProjectRfisPage() {
+  const params = useParams<{ id: string }>();
+  const id = params?.id as string;
+  return (
+    <FeatureAvailabilityGate featureKey="project.rfis" title="RFIs" backHref={`/app/projects/${id}/overview`} backLabel="Back to Project Overview">
+      <ProjectRfisPage />
+    </FeatureAvailabilityGate>
   );
 }

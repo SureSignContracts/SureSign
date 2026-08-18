@@ -1,4 +1,5 @@
 'use client';
+import FeatureAvailabilityGate from '@/components/feature-availability/FeatureAvailabilityGate';
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -93,7 +94,7 @@ const DEADLINE_STYLE: Record<DeadlineItem['status'], { bg: string; text: string;
   upcoming:   { bg: 'rgba(90,86,82,0.3)',    text: '#9a9490', label: 'Upcoming' },
 };
 
-export default function CommercialPage() {
+function CommercialPage() {
   const formatCurrency = useCurrencyFormatter();
   const router = useRouter();
   const [showUpcoming, setShowUpcoming] = useState(false);
@@ -585,5 +586,13 @@ function ProjectPositionSection({
         </table>
       </div>
     </section>
+  );
+}
+
+export default function GatedCommercialPage() {
+  return (
+    <FeatureAvailabilityGate featureKey="organization.commercial" title="Commercial" backHref="/app" backLabel="Back to Dashboard">
+      <CommercialPage />
+    </FeatureAvailabilityGate>
   );
 }

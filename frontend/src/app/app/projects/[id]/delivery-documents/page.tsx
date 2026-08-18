@@ -1,4 +1,5 @@
 'use client';
+import FeatureAvailabilityGate from '@/components/feature-availability/FeatureAvailabilityGate';
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -31,7 +32,7 @@ type DeliveryDoc = {
 
 type FilterStatus = 'all' | 'required' | 'pending' | 'submitted' | 'under_review' | 'approved' | 'rejected' | 'expired' | 'superseded';
 
-export default function DeliveryDocumentsPage() {
+function DeliveryDocumentsPage() {
   const { id: projectId } = useParams<{ id: string }>();
   const router = useRouter();
   const qc = useQueryClient();
@@ -330,5 +331,15 @@ function CreateDeliveryDocumentModal({ projectId, invalidateKey, onClose }: {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function GatedDeliveryDocumentsPage() {
+  const params = useParams<{ id: string }>();
+  const id = params?.id as string;
+  return (
+    <FeatureAvailabilityGate featureKey="project.delivery_documents" title="Delivery Documents" backHref={`/app/projects/${id}/overview`} backLabel="Back to Project Overview">
+      <DeliveryDocumentsPage />
+    </FeatureAvailabilityGate>
   );
 }

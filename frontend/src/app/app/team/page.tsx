@@ -1,4 +1,5 @@
 'use client';
+import FeatureAvailabilityGate from '@/components/feature-availability/FeatureAvailabilityGate';
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -19,7 +20,7 @@ const roleBadge: Record<string, { bg: string; text: string }> = {
   'Read-only User':      { bg: 'rgba(90,86,82,0.2)',    text: '#9a9490' },
 };
 
-export default function AppTeamPage() {
+function AppTeamPage() {
   const [search, setSearch] = useState('');
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -219,5 +220,13 @@ export default function AppTeamPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function GatedAppTeamPage() {
+  return (
+    <FeatureAvailabilityGate featureKey="organization.team" title="Team" backHref="/app" backLabel="Back to Dashboard">
+      <AppTeamPage />
+    </FeatureAvailabilityGate>
   );
 }

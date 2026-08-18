@@ -39,7 +39,10 @@ class FeatureAvailabilityController extends Controller
                 $features[$key] = [
                     'status' => $entry['status'],
                     'message' => $entry['message'],
-                    'available_at' => $entry['available_at']?->toIso8601String(),
+                    // Already an ISO 8601 string (or null) — see
+                    // FeatureAvailabilityService::allOverridesSafe()'s
+                    // docblock for why this is never a Carbon instance.
+                    'available_at' => $entry['available_at'],
                 ];
             }
         } catch (\Throwable) {

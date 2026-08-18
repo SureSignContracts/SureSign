@@ -1,4 +1,5 @@
 'use client';
+import FeatureAvailabilityGate from '@/components/feature-availability/FeatureAvailabilityGate';
 
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
@@ -225,7 +226,7 @@ function SiteInstructionModal({ projectId, instruction, readOnly, onClose }: { p
   );
 }
 
-export default function ProjectNoticesPage() {
+function ProjectNoticesPage() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
   // EOT is reviewed (Batch 3), Pay Less Notices reviewed (Batch 4) — each
@@ -402,5 +403,15 @@ export default function ProjectNoticesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function GatedProjectNoticesPage() {
+  const params = useParams<{ id: string }>();
+  const id = params?.id as string;
+  return (
+    <FeatureAvailabilityGate featureKey="project.notices" title="Notices" backHref={`/app/projects/${id}/overview`} backLabel="Back to Project Overview">
+      <ProjectNoticesPage />
+    </FeatureAvailabilityGate>
   );
 }

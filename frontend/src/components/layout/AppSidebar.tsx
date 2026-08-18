@@ -20,6 +20,7 @@ import {
 import { APP_VERSION_LABEL } from '@/config/app-version';
 import { buildSupportHref } from '@/lib/supportContext';
 import { useAutoHideScrollbar } from '@/hooks/useAutoHideScrollbar';
+import FeatureStatusBadge from '@/components/feature-availability/FeatureStatusBadge';
 
 const COLLAPSED_KEY = 'suresign_app_sidebar_collapsed';
 
@@ -34,18 +35,18 @@ const NAV_GROUPS = [
     label: 'Workspace',
     items: [
       { href: '/app/projects',   label: 'Projects',     icon: FolderKanban, tour: 'sidebar-projects'   },
-      { href: '/app/commercial', label: 'Commercial',   icon: DollarSign,   tour: 'sidebar-commercial' },
-      { href: '/app/site',       label: 'Site Admin',   icon: HardHat       },
-      { href: '/app/documents',  label: 'Documents',    icon: FileText,     tour: 'sidebar-documents'  },
+      { href: '/app/commercial', label: 'Commercial',   icon: DollarSign,   tour: 'sidebar-commercial', featureKey: 'organization.commercial' },
+      { href: '/app/site',       label: 'Site Admin',   icon: HardHat,      featureKey: 'organization.site_admin' },
+      { href: '/app/documents',  label: 'Documents',    icon: FileText,     tour: 'sidebar-documents',  featureKey: 'organization.documents' },
     ],
   },
   {
     label: 'Tools',
     items: [
-      { href: '/app/reports', label: 'Reports',      icon: BarChart2   },
-      { href: '/app/ai',      label: 'AI Assistant', icon: Brain       },
+      { href: '/app/reports', label: 'Reports',      icon: BarChart2, featureKey: 'organization.reports' },
+      { href: '/app/ai',      label: 'AI Assistant', icon: Brain,     featureKey: 'ai.assistant' },
       { href: '/app/consultations', label: 'Consultancy', icon: HeartHandshake },
-      { href: '/app/team',    label: 'Team',         icon: Users       },
+      { href: '/app/team',    label: 'Team',         icon: Users,     featureKey: 'organization.team' },
       { href: '/app/help',    label: 'Help',         icon: HelpCircle, tour: 'sidebar-help' },
     ],
   },
@@ -178,6 +179,7 @@ function NavItem({
   collapsed,
   exact,
   tour,
+  featureKey,
 }: {
   href: string;
   label: string;
@@ -186,6 +188,7 @@ function NavItem({
   collapsed: boolean;
   exact?: boolean;
   tour?: string;
+  featureKey?: string;
 }) {
   const linkRef = useRef<HTMLAnchorElement>(null);
   const [hovered, setHovered] = useState(false);
@@ -243,6 +246,7 @@ function NavItem({
         className={cn('flex-shrink-0 transition-all duration-150', !active && 'group-hover:scale-110')}
       />
       <span className="truncate">{label}</span>
+      {featureKey && <FeatureStatusBadge featureKey={featureKey} />}
       {!active && (
         <ChevronRight
           size={11}
@@ -884,6 +888,7 @@ export default function AppSidebar({
                   active={isActive(item.href, (item as any).exact)}
                   collapsed={showCollapsed}
                   tour={(item as any).tour}
+                  featureKey={(item as any).featureKey}
                 />
               ))}
             </div>

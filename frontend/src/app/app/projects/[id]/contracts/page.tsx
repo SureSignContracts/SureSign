@@ -1,4 +1,5 @@
 'use client';
+import FeatureAvailabilityGate from '@/components/feature-availability/FeatureAvailabilityGate';
 
 import { useRef, useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
@@ -1825,7 +1826,7 @@ function TpStatusBadge({ status }: { status?: string | null }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function ProjectContractsPage() {
+function ProjectContractsPage() {
   const formatCurrency = useCurrencyFormatter();
   const { id } = useParams<{ id: string }>();
   // Contracts + Trade Packages are both reviewed for Batch 2 — Client has
@@ -2522,5 +2523,15 @@ export default function ProjectContractsPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function GatedProjectContractsPage() {
+  const params = useParams<{ id: string }>();
+  const id = params?.id as string;
+  return (
+    <FeatureAvailabilityGate featureKey="project.contracts" title="Contracts" backHref={`/app/projects/${id}/overview`} backLabel="Back to Project Overview">
+      <ProjectContractsPage />
+    </FeatureAvailabilityGate>
   );
 }

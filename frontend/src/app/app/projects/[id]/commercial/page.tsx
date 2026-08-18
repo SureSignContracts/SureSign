@@ -1,4 +1,5 @@
 'use client';
+import FeatureAvailabilityGate from '@/components/feature-availability/FeatureAvailabilityGate';
 
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -2140,7 +2141,7 @@ function RetentionTab({ contracts, paymentApps, retentionReleases, formatCurrenc
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function ProjectCommercialPage() {
+function ProjectCommercialPage() {
   const formatCurrency = useCurrencyFormatter();
   const { id: projectId } = useParams<{ id: string }>();
   const id = projectId!;
@@ -2322,5 +2323,15 @@ export default function ProjectCommercialPage() {
       {plnTarget      && <PayLessNoticeModal pa={plnTarget} projectId={id!} onClose={() => setPlnTarget(null)} />}
       {deleteTarget   && <DeleteConfirmModal pa={deleteTarget} projectId={id!} onClose={() => setDeleteTarget(null)} />}
     </div>
+  );
+}
+
+export default function GatedProjectCommercialPage() {
+  const params = useParams<{ id: string }>();
+  const id = params?.id as string;
+  return (
+    <FeatureAvailabilityGate featureKey="project.commercial" title="Commercial" backHref={`/app/projects/${id}/overview`} backLabel="Back to Project Overview">
+      <ProjectCommercialPage />
+    </FeatureAvailabilityGate>
   );
 }

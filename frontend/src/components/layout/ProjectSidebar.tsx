@@ -7,6 +7,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { cn } from '@/lib/utils';
 import { useAutoHideScrollbar } from '@/hooks/useAutoHideScrollbar';
+import FeatureStatusBadge from '@/components/feature-availability/FeatureStatusBadge';
 import {
   LayoutDashboard, FileText, DollarSign, MessageSquare, GitBranch,
   ClipboardList, Users2, Bell, CheckSquare, FolderOpen, Package, Archive,
@@ -31,6 +32,13 @@ interface NavItem {
   label: string;
   icon: React.ElementType;
   pageKey?: string;
+  /**
+   * SureSign Feature Availability's registry key — completely separate
+   * from `pageKey`/`hidden_pages` (a binary nav-visibility toggle) and
+   * from entitlements. Renders a small status badge via
+   * FeatureStatusBadge; never affects whether this item is shown at all.
+   */
+  featureKey?: string;
 }
 
 interface NavGroup {
@@ -50,46 +58,46 @@ const groups = (id: string): NavGroup[] => [
     label: 'Contract',
     icon: Briefcase,
     items: [
-      { href: `/app/projects/${id}/contracts`,  label: 'Contracts',     icon: FileText },
-      { href: `/app/projects/${id}/commercial`, label: 'Commercial',    icon: DollarSign },
-      { href: `/app/projects/${id}/variations`, label: 'Variations',    icon: GitBranch },
-      { href: `/app/projects/${id}/notices`,    label: 'Notices',       icon: Bell },
-      { href: `/app/projects/${id}/programme`,  label: 'Programme',     icon: BarChart2 },
-      { href: `/app/projects/${id}/delay-eot`,  label: 'Delay & EOT',   icon: Clock },
-      { href: `/app/projects/${id}/risks`,      label: 'Risk Register', icon: ShieldAlert },
+      { href: `/app/projects/${id}/contracts`,  label: 'Contracts',     icon: FileText,     featureKey: 'project.contracts' },
+      { href: `/app/projects/${id}/commercial`, label: 'Commercial',    icon: DollarSign,    featureKey: 'project.commercial' },
+      { href: `/app/projects/${id}/variations`, label: 'Variations',    icon: GitBranch,     featureKey: 'project.variations' },
+      { href: `/app/projects/${id}/notices`,    label: 'Notices',       icon: Bell,          featureKey: 'project.notices' },
+      { href: `/app/projects/${id}/programme`,  label: 'Programme',     icon: BarChart2,     featureKey: 'project.programme' },
+      { href: `/app/projects/${id}/delay-eot`,  label: 'Delay & EOT',   icon: Clock,         featureKey: 'project.delay_eot' },
+      { href: `/app/projects/${id}/risks`,      label: 'Risk Register', icon: ShieldAlert,   featureKey: 'project.risks' },
     ],
   },
   {
     label: 'Communications',
     icon: MessageSquare,
     items: [
-      { href: `/app/projects/${id}/rfis`,     label: 'RFIs',     icon: MessageSquare },
-      { href: `/app/projects/${id}/meetings`, label: 'Meetings', icon: Users2 },
+      { href: `/app/projects/${id}/rfis`,     label: 'RFIs',     icon: MessageSquare, featureKey: 'project.rfis' },
+      { href: `/app/projects/${id}/meetings`, label: 'Meetings', icon: Users2,        featureKey: 'project.meetings' },
     ],
   },
   {
     label: 'Delivery',
     icon: HardHat,
     items: [
-      { href: `/app/projects/${id}/qa`,                    label: 'QA Reports',         icon: CheckSquare },
-      { href: `/app/projects/${id}/snagging`,              label: 'Snagging',           icon: Package },
-      { href: `/app/projects/${id}/site-reports`,          label: 'Site Reports',       icon: ClipboardList },
-      { href: `/app/projects/${id}/delivery-documents`,    label: 'Delivery Documents', icon: FileStack },
-      { href: `/app/projects/${id}/drawings`,              label: 'Drawings',           icon: Ruler },
-      { href: `/app/projects/${id}/closeout`,              label: 'Closeout',           icon: Archive },
+      { href: `/app/projects/${id}/qa`,                    label: 'QA Reports',         icon: CheckSquare,   featureKey: 'project.qa' },
+      { href: `/app/projects/${id}/snagging`,              label: 'Snagging',           icon: Package,       featureKey: 'project.snagging' },
+      { href: `/app/projects/${id}/site-reports`,          label: 'Site Reports',       icon: ClipboardList, featureKey: 'project.site_reports' },
+      { href: `/app/projects/${id}/delivery-documents`,    label: 'Delivery Documents', icon: FileStack,     featureKey: 'project.delivery_documents' },
+      { href: `/app/projects/${id}/drawings`,              label: 'Drawings',           icon: Ruler,         featureKey: 'project.drawings' },
+      { href: `/app/projects/${id}/closeout`,              label: 'Closeout',           icon: Archive,       featureKey: 'project.closeout' },
     ],
   },
   {
     label: 'Disputes',
     icon: Scale,
     items: [
-      { href: `/app/projects/${id}/adjudication`, label: 'Adjudication', icon: Scale, pageKey: 'adjudication' },
+      { href: `/app/projects/${id}/adjudication`, label: 'Adjudication', icon: Scale, pageKey: 'adjudication', featureKey: 'project.adjudication' },
     ],
   },
 ];
 
 const utility = (id: string): NavItem[] => [
-  { href: `/app/projects/${id}/documents`, label: 'Documents', icon: FolderOpen },
+  { href: `/app/projects/${id}/documents`, label: 'Documents', icon: FolderOpen, featureKey: 'project.documents' },
   { href: `/app/projects/${id}/calendar`,  label: 'Calendar',  icon: CalendarDays },
 ];
 
@@ -114,7 +122,7 @@ function isActive(pathname: string, href: string) {
 
 // ── Top-level nav link (matches AppSidebar NavItem style) ──────────────────
 
-function NavLink({ href, label, icon: Icon, pathname }: NavItem & { pathname: string }) {
+function NavLink({ href, label, icon: Icon, pathname, featureKey }: NavItem & { pathname: string }) {
   const active = isActive(pathname, href);
   return (
     <Link
@@ -133,6 +141,7 @@ function NavLink({ href, label, icon: Icon, pathname }: NavItem & { pathname: st
     >
       <Icon size={16} className={cn('flex-shrink-0 transition-all duration-150', !active && 'group-hover:scale-110')} />
       <span className="truncate">{label}</span>
+      {featureKey && <FeatureStatusBadge featureKey={featureKey} />}
       {!active && (
         <ChevronRight
           size={11}
@@ -145,7 +154,7 @@ function NavLink({ href, label, icon: Icon, pathname }: NavItem & { pathname: st
 
 // ── Child nav link inside branch ───────────────────────────────────────────
 
-function ChildNavLink({ href, label, icon: Icon, pathname }: NavItem & { pathname: string }) {
+function ChildNavLink({ href, label, icon: Icon, pathname, featureKey }: NavItem & { pathname: string }) {
   const active = isActive(pathname, href);
   return (
     <Link
@@ -164,6 +173,7 @@ function ChildNavLink({ href, label, icon: Icon, pathname }: NavItem & { pathnam
     >
       <Icon size={13} className={cn('flex-shrink-0 transition-all duration-150', !active && 'group-hover:scale-110')} />
       <span className="truncate">{label}</span>
+      {featureKey && <FeatureStatusBadge featureKey={featureKey} />}
     </Link>
   );
 }

@@ -1,4 +1,5 @@
 'use client';
+import FeatureAvailabilityGate from '@/components/feature-availability/FeatureAvailabilityGate';
 
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
@@ -989,7 +990,7 @@ function SeedButton({ projectId, contracts }: { projectId: string; contracts: Co
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function ProjectProgrammePage() {
+function ProjectProgrammePage() {
   const { id } = useParams<{ id: string }>();
   const { canManageProgramme: canWrite } = useProjectPermissions();
   const [showModal, setShowModal] = useState(false);
@@ -1276,5 +1277,15 @@ export default function ProjectProgrammePage() {
         <MilestoneModal milestone={editMilestone} projectId={id!} onClose={() => setEditMilestone(null)} />
       )}
     </div>
+  );
+}
+
+export default function GatedProjectProgrammePage() {
+  const params = useParams<{ id: string }>();
+  const id = params?.id as string;
+  return (
+    <FeatureAvailabilityGate featureKey="project.programme" title="Programme" backHref={`/app/projects/${id}/overview`} backLabel="Back to Project Overview">
+      <ProjectProgrammePage />
+    </FeatureAvailabilityGate>
   );
 }

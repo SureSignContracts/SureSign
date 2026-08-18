@@ -61,7 +61,10 @@ class FeatureAvailabilityService
     }
 
     /**
-     * @return array{status: string, message: ?string, available_at: ?\Illuminate\Support\Carbon}
+     * @return array{status: string, message: ?string, available_at: ?string}
+     *   `available_at`, when present, is an ISO 8601 string — see
+     *   allOverridesSafe()'s docblock for why this is deliberately a string
+     *   and never a `Carbon` instance.
      */
     public function entryFor(string $featureKey): array
     {
@@ -94,10 +97,11 @@ class FeatureAvailabilityService
     }
 
     /**
-     * @return array<string, array{status: string, message: ?string, available_at: ?\Illuminate\Support\Carbon}>
+     * @return array<string, array{status: string, message: ?string, available_at: ?string}>
      *   Only NON-active overrides for registered keys — a missing key means
      *   Active, by design (mirrors the customer status API's own sparse
-     *   payload contract).
+     *   payload contract). `available_at`, when present, is an ISO 8601
+     *   string — see allOverridesSafe()'s docblock.
      */
     public function allEffective(): array
     {
@@ -193,11 +197,25 @@ class FeatureAvailabilityService
     }
 
     /**
-     * @return array<string, array{status: string, message: ?string, available_at: ?\Illuminate\Support\Carbon}>
+     * @return array<string, array{status: string, message: ?string, available_at: ?string}>
      *   Keyed by feature_key, for every row currently in the table
      *   (regardless of its status) — fails safe to an empty array (i.e.
      *   every feature resolves Active) if the underlying lookup throws.
      *   Never allows a broken DB/cache to disable the platform.
+     *
+     *   `available_at` is deliberately stored here as an ISO 8601 STRING,
+     *   never a `Carbon` instance — a real bug found during the Phase B
+     *   walkthrough: the database cache store serializes this array with
+     *   PHP's native serialize(), and unserializing a cached `Carbon`
+     *   object on a later request can throw "incomplete object" when that
+     *   PHP-FPM worker hasn't autoloaded the Carbon class yet at that point
+     *   in its lifecycle — intermittent (worker-dependent), and previously
+     *   masked by this method's own fail-safe catch (silently resolving
+     *   Active instead of the real Maintenance/Coming Soon state). Storing
+     *   a plain string sidesteps unserialize()'s class-autoloading
+     *   requirement entirely. `fullRegistryWithState()` below is
+     *   unaffected — it reads real Eloquent models directly, never through
+     *   this cache.
      */
     private function allOverridesSafe(): array
     {
@@ -211,7 +229,7 @@ class FeatureAvailabilityService
                         $result[$row->feature_key] = [
                             'status' => FeatureAvailabilityStatus::normalize($row->status),
                             'message' => $row->message,
-                            'available_at' => $row->available_at,
+                            'available_at' => $row->available_at?->toIso8601String(),
                         ];
                     }
 

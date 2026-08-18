@@ -1,4 +1,5 @@
 'use client';
+import FeatureAvailabilityGate from '@/components/feature-availability/FeatureAvailabilityGate';
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -61,7 +62,7 @@ function CurrentRevisionCell({ currentRevision }: { currentRevision: DrawingReco
   );
 }
 
-export default function ProjectDrawingsPage() {
+function ProjectDrawingsPage() {
   const { id: projectId } = useParams<{ id: string }>();
   const router = useRouter();
   const qc = useQueryClient();
@@ -390,5 +391,15 @@ export default function ProjectDrawingsPage() {
         </>
       )}
     </div>
+  );
+}
+
+export default function GatedProjectDrawingsPage() {
+  const params = useParams<{ id: string }>();
+  const id = params?.id as string;
+  return (
+    <FeatureAvailabilityGate featureKey="project.drawings" title="Drawings" backHref={`/app/projects/${id}/overview`} backLabel="Back to Project Overview">
+      <ProjectDrawingsPage />
+    </FeatureAvailabilityGate>
   );
 }

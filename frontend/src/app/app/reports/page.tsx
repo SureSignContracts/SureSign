@@ -1,4 +1,5 @@
 'use client';
+import FeatureAvailabilityGate from '@/components/feature-availability/FeatureAvailabilityGate';
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -299,7 +300,7 @@ function StatTile({ label, value, color }: { label: string; value: string; color
   );
 }
 
-export default function AppReportsPage() {
+function AppReportsPage() {
   const formatCurrency = useCurrencyFormatter();
   const [expanded, setExpanded] = useState<string | null>(null);
   const { data, isLoading } = useQuery({
@@ -420,5 +421,13 @@ export default function AppReportsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function GatedAppReportsPage() {
+  return (
+    <FeatureAvailabilityGate featureKey="organization.reports" title="Reports" backHref="/app" backLabel="Back to Dashboard">
+      <AppReportsPage />
+    </FeatureAvailabilityGate>
   );
 }

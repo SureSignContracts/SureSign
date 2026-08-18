@@ -1,4 +1,5 @@
 'use client';
+import FeatureAvailabilityGate from '@/components/feature-availability/FeatureAvailabilityGate';
 
 import { useState, Fragment } from 'react';
 import { useParams } from 'next/navigation';
@@ -857,7 +858,7 @@ function ProgrammeImpactBanner({ variations }: { variations: any[] }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function ProjectVariationsPage() {
+function ProjectVariationsPage() {
   const formatCurrency = useCurrencyFormatter();
   const { id } = useParams<{ id: string }>();
   const { canManageVariations: canWrite } = useProjectPermissions();
@@ -1077,5 +1078,15 @@ export default function ProjectVariationsPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function GatedProjectVariationsPage() {
+  const params = useParams<{ id: string }>();
+  const id = params?.id as string;
+  return (
+    <FeatureAvailabilityGate featureKey="project.variations" title="Variations" backHref={`/app/projects/${id}/overview`} backLabel="Back to Project Overview">
+      <ProjectVariationsPage />
+    </FeatureAvailabilityGate>
   );
 }

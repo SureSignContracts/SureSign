@@ -1,4 +1,5 @@
 'use client';
+import FeatureAvailabilityGate from '@/components/feature-availability/FeatureAvailabilityGate';
 
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
@@ -442,7 +443,7 @@ function MeetingDetailModal({
   );
 }
 
-export default function ProjectMeetingsPage() {
+function ProjectMeetingsPage() {
   const { id } = useParams<{ id: string }>();
   const { canManageMeetings: canWrite } = useProjectPermissions();
   const [search, setSearch] = useState('');
@@ -581,5 +582,15 @@ export default function ProjectMeetingsPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function GatedProjectMeetingsPage() {
+  const params = useParams<{ id: string }>();
+  const id = params?.id as string;
+  return (
+    <FeatureAvailabilityGate featureKey="project.meetings" title="Meetings" backHref={`/app/projects/${id}/overview`} backLabel="Back to Project Overview">
+      <ProjectMeetingsPage />
+    </FeatureAvailabilityGate>
   );
 }

@@ -6,10 +6,11 @@ import api from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import {
   Gem, Check, Save, RefreshCw, FileText, Mail, ImageIcon,
-  X, Upload, Palette, Globe, FileUp, Download, Send, Eye, EyeOff,
+  X, Upload, Palette, Globe, FileUp, Download, Send, Eye, EyeOff, Wrench,
 } from 'lucide-react';
 import Select from '@/components/ui/Select';
 import PlatformPageHero from '@/components/admin/PlatformPageHero';
+import FeatureAvailabilityManager from '@/components/admin/FeatureAvailabilityManager';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface PlatformSettings {
@@ -56,10 +57,15 @@ const DATE_FORMATS = [
 ];
 
 const TABS = [
-  { id: 'branding',  label: 'Branding',          icon: Palette,  color: '#b99566' },
-  { id: 'document',  label: 'Document Settings',  icon: FileText, color: '#3b82f6' },
-  { id: 'email',     label: 'Email Settings',     icon: Mail,     color: '#8b5cf6' },
-  { id: 'site',      label: 'Site Settings',      icon: Globe,    color: '#10b981' },
+  { id: 'branding',  label: 'Branding',          icon: Palette,  color: '#b99566', superAdminOnly: false },
+  { id: 'document',  label: 'Document Settings',  icon: FileText, color: '#3b82f6', superAdminOnly: false },
+  { id: 'email',     label: 'Email Settings',     icon: Mail,     color: '#8b5cf6', superAdminOnly: false },
+  { id: 'site',      label: 'Site Settings',      icon: Globe,    color: '#10b981', superAdminOnly: false },
+  // Super Admin ONLY — matches the Feature Availability management API's
+  // own `role:Super Admin` authorization exactly (Admin is deliberately
+  // excluded, unlike every other tab here). Filtered out of the rendered
+  // tab bar below when the current user isn't Super Admin.
+  { id: 'feature-availability', label: 'Feature Availability', icon: Wrench, color: '#eab308', superAdminOnly: true },
 ] as const;
 
 type TabId = typeof TABS[number]['id'];
@@ -411,7 +417,7 @@ export default function AdminSureSignPage() {
 
       {/* ── Tab bar ── */}
       <div className="flex gap-1 p-1 rounded-xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
-        {TABS.map(tab => {
+        {TABS.filter(tab => !tab.superAdminOnly || isSuperAdmin).map(tab => {
           const Icon = tab.icon;
           const active = activeTab === tab.id;
           return (
@@ -907,6 +913,17 @@ export default function AdminSureSignPage() {
             <SaveBtn onClick={() => siteMutation.mutate(siteForm)} pending={siteMutation.isPending} saved={savedTab === 'site'} />
           </div>
         </div>
+      )}
+
+      {/* Feature Availability — Super Admin ONLY. Matches the backend
+          management API's own `role:Super Admin` authorization; Admin never
+          sees this tab button (filtered above) or its content (guarded here
+          too, in case of a stale localStorage tab selection from a prior
+          session with a different role). */}
+      {activeTab === 'feature-availability' && (
+        isSuperAdmin
+          ? <FeatureAvailabilityManager />
+          : <p className="text-sm" style={{ color: 'var(--text-muted)' }}>You don&apos;t have permission to view this section.</p>
       )}
 
     </div>

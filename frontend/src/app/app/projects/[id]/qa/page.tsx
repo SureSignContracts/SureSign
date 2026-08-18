@@ -1,4 +1,5 @@
 'use client';
+import FeatureAvailabilityGate from '@/components/feature-availability/FeatureAvailabilityGate';
 
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
@@ -28,7 +29,7 @@ const STATUSES = ['draft', 'open', 'failed', 'passed', 'closed'];
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
-export default function ProjectQaPage() {
+function ProjectQaPage() {
   const { id } = useParams<{ id: string }>();
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
@@ -221,5 +222,15 @@ export default function ProjectQaPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function GatedProjectQaPage() {
+  const params = useParams<{ id: string }>();
+  const id = params?.id as string;
+  return (
+    <FeatureAvailabilityGate featureKey="project.qa" title="QA Reports" backHref={`/app/projects/${id}/overview`} backLabel="Back to Project Overview">
+      <ProjectQaPage />
+    </FeatureAvailabilityGate>
   );
 }

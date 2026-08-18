@@ -1,4 +1,5 @@
 'use client';
+import FeatureAvailabilityGate from '@/components/feature-availability/FeatureAvailabilityGate';
 
 import { useState, useRef, useEffect } from 'react';
 import { Brain, Send, Sparkles, FileSearch, PenLine, MessageSquareText, ShieldAlert, LockKeyhole } from 'lucide-react';
@@ -20,7 +21,7 @@ const suggestions = [
   { label: 'RFI response', prompt: 'Help me write an RFI response for a design query', icon: MessageSquareText },
 ] as const;
 
-export default function AiPage() {
+function AiPage() {
   const { user } = useAuthStore();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -198,5 +199,13 @@ export default function AiPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function GatedAiPage() {
+  return (
+    <FeatureAvailabilityGate featureKey="ai.assistant" title="AI Assistant" backHref="/app" backLabel="Back to Dashboard">
+      <AiPage />
+    </FeatureAvailabilityGate>
   );
 }

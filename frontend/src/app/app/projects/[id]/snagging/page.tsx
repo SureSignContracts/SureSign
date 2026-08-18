@@ -1,4 +1,5 @@
 'use client';
+import FeatureAvailabilityGate from '@/components/feature-availability/FeatureAvailabilityGate';
 
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
@@ -45,7 +46,7 @@ const PRIORITY_LABELS: Record<string, string> = {
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
-export default function ProjectSnaggingPage() {
+function ProjectSnaggingPage() {
   const { id } = useParams<{ id: string }>();
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
@@ -224,5 +225,15 @@ export default function ProjectSnaggingPage() {
         })}
       </div>
     </div>
+  );
+}
+
+export default function GatedProjectSnaggingPage() {
+  const params = useParams<{ id: string }>();
+  const id = params?.id as string;
+  return (
+    <FeatureAvailabilityGate featureKey="project.snagging" title="Snagging" backHref={`/app/projects/${id}/overview`} backLabel="Back to Project Overview">
+      <ProjectSnaggingPage />
+    </FeatureAvailabilityGate>
   );
 }

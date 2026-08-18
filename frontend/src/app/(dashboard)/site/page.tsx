@@ -1,4 +1,5 @@
 'use client';
+import FeatureAvailabilityGate from '@/components/feature-availability/FeatureAvailabilityGate';
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -54,7 +55,7 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   draft:             { bg: 'rgba(90,86,82,0.3)',    text: '#9a9490' },
 };
 
-export default function SiteAdminPage() {
+function SiteAdminPage() {
   const router = useRouter();
   const [activeModule, setActiveModule] = useState<ModuleKey>('rfis');
   const [search, setSearch] = useState('');
@@ -209,5 +210,13 @@ export default function SiteAdminPage() {
       )}
       </section>
     </div>
+  );
+}
+
+export default function GatedSiteAdminPage() {
+  return (
+    <FeatureAvailabilityGate featureKey="organization.site_admin" title="Site Admin" backHref="/app" backLabel="Back to Dashboard">
+      <SiteAdminPage />
+    </FeatureAvailabilityGate>
   );
 }
