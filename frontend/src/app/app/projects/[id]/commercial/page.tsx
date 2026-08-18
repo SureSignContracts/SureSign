@@ -16,7 +16,7 @@ import {
   FileCheck, Banknote, Eye, RotateCcw,
 } from 'lucide-react';
 import { FinalAccountTab } from './FinalAccountTab';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PageTourButton from '@/components/tours/PageTourButton';
 import { ProjectModuleHeader, ProjectModuleMetric } from '@/components/projects/ProjectModuleHeader';

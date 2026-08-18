@@ -21,7 +21,7 @@ import {
   Building2, CalendarDays, Receipt, Layers, FileStack,
   ListChecks, AlertTriangle, Sparkles, Clock, Plus, Trash2, ShieldCheck,
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import PageTourButton from '@/components/tours/PageTourButton';
 import Modal from '@/components/ui/Modal';

@@ -12,7 +12,7 @@ import {
   Plus, Trash2, ToggleLeft, ToggleRight,
   AlertCircle, AlertTriangle, Loader2, Link2, Link2Off, RotateCcw,
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import Link from 'next/link';
 import Select from '@/components/ui/Select';
 

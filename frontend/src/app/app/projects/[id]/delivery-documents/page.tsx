@@ -8,7 +8,7 @@ import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { effectiveTodayYmd } from '@/lib/dateTime';
 import { Plus, X, Trash2, FileStack, CheckCircle2, ShieldAlert } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { getErrorMessage, INPUT_STYLE, CATEGORY_LABELS, StatusBadge, Field } from '@/components/deliveryDocuments/deliveryDocumentShared';
 import PageTourButton from '@/components/tours/PageTourButton';
 import Button from '@/components/ui/Button';

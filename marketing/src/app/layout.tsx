@@ -14,7 +14,10 @@ export const metadata: Metadata = {
   description:
     'Automated contract analysis, trade packages, payment applications, statutory notices, programme, risk, and documentation in one connected platform for construction contract administration.',
   icons: {
-    icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }],
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: 'any' },
+    ],
   },
   openGraph: {
     title: 'SureSign | Construction Contract Administration, Connected',

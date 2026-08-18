@@ -11,7 +11,7 @@ import { getErrorMessage } from '@/lib/getErrorMessage';
 import TimezoneSelect from '@/components/shared/TimezoneSelect';
 import { useAuthStore } from '@/store/authStore';
 import { Users2, Plus, Search, Calendar, Clock, X } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PageTourButton from '@/components/tours/PageTourButton';
 import { ProjectModuleHeader } from '@/components/projects/ProjectModuleHeader';

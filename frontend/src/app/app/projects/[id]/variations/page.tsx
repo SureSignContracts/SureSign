@@ -14,7 +14,7 @@ import {
   AlertTriangle, Info, Clock, CheckCircle, XCircle, Send, Wrench,
   FileText, Eye, RotateCcw,
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PromptActionButton from '@/components/prompts/PromptActionButton';
 import PageTourButton from '@/components/tours/PageTourButton';

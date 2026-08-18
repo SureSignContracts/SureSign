@@ -245,8 +245,14 @@ function NavItem({
         size={17}
         className={cn('flex-shrink-0 transition-all duration-150', !active && 'group-hover:scale-110')}
       />
-      <span className="truncate">{label}</span>
-      {featureKey && <FeatureStatusBadge featureKey={featureKey} />}
+      <span className="ss-feature-nav-label relative min-w-0 flex-1">
+        {featureKey && (
+          <span className="absolute bottom-[calc(50%+2px)] left-0">
+            <FeatureStatusBadge featureKey={featureKey} />
+          </span>
+        )}
+        <span className="ss-feature-nav-title block truncate leading-tight">{label}</span>
+      </span>
       {!active && (
         <ChevronRight
           size={11}

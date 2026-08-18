@@ -14,7 +14,7 @@ import { useUnreadCount, useNotifications, type SuresignNotification } from '@/h
 import { useAuthStore } from '@/store/authStore';
 import { formatDate } from '@/lib/utils';
 import { isToday as isTodayInTimezone, formatDateTime } from '@/lib/dateTime';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import { SidebarCountBadge } from '@/components/ui/Badge';
 

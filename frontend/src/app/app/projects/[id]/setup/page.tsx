@@ -50,7 +50,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import {
   Sparkles, Upload, FileText, CheckCircle, AlertTriangle, ArrowRight,
   Loader2, XCircle, ArrowLeft,

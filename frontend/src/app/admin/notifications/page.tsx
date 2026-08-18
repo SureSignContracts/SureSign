@@ -8,7 +8,7 @@ import {
   ExternalLink, AlertCircle, Clock, Info,
 } from 'lucide-react';
 import api from '@/lib/api';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import PaginationBar from '@/components/ui/PaginationBar';
 import { type SuresignNotification, type NotificationFilter } from '@/hooks/useNotifications';
 import { formatDateTime } from '@/lib/dateTime';

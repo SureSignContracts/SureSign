@@ -7,7 +7,7 @@ import {
   ArrowLeft, HeartHandshake, Video, Calendar, Clock, UserRound,
   Globe2, FileText, Target, Layers3, CheckCircle,
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import api from '@/lib/api';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import { Badge } from '@/components/ui/Badge';

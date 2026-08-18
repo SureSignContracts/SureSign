@@ -13,7 +13,7 @@ import {
   User, Zap,
 } from 'lucide-react';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import PromptActionButton from '@/components/prompts/PromptActionButton';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';

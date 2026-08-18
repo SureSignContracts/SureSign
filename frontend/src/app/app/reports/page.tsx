@@ -4,7 +4,7 @@ import FeatureAvailabilityGate from '@/components/feature-availability/FeatureAv
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { BarChart2, TrendingUp, DollarSign, FileText, AlertCircle, Download, ChevronDown, ChevronUp, FileDown, FileSpreadsheet, Loader2 } from 'lucide-react';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import Button from '@/components/ui/Button';

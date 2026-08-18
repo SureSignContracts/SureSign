@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import {
   ArrowLeft, Clock, CheckCircle2, XCircle, Ban, CalendarClock, UserCog, Trash2, AlertTriangle,
 } from 'lucide-react';

@@ -15,7 +15,7 @@ import { subscriptionStatusLabel, subscriptionStatusTone, billingIntervalSuffix 
 import CancelSubscriptionConfirmDialog from '@/components/billing/CancelSubscriptionConfirmDialog';
 import CancelPendingCheckoutConfirmDialog from '@/components/billing/CancelPendingCheckoutConfirmDialog';
 import BillingRedirectOverlay from '@/components/billing/BillingRedirectOverlay';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   if (value === null || value === undefined || value === '') return null;

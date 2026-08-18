@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { X, Plus, Pencil, Eye, ExternalLink, CheckCircle2 } from 'lucide-react';
 import api from '@/lib/api';
 import { formatDateOnly } from '@/lib/dateTime';

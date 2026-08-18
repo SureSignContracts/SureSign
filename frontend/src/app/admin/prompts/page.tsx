@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import PromptContextModal from '@/components/prompts/PromptContextModal';
 import PaginationBar from '@/components/ui/PaginationBar';
 import Select from '@/components/ui/Select';

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { useAuthStore } from '@/store/authStore';
 import { getTour } from './registry';
 import { isTourCompleted, markTourCompleted, resetTourCompletion } from './storage';

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { formatDate } from '@/lib/utils';
 import { FileText, Search } from 'lucide-react';
 import PaginationBar from '@/components/ui/PaginationBar';

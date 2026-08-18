@@ -8,7 +8,7 @@ import {
   ArrowLeft, HeartHandshake, Check, Sunrise, Sun, Sunset, CalendarDays,
   UserRound, FileText, ShieldCheck, Clock, CheckCircle,
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import api from '@/lib/api';
 import { normalizeApiError } from '@/lib/normalizeApiError';
 import { useAuthStore } from '@/store/authStore';

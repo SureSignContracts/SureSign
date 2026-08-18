@@ -9,7 +9,7 @@ import { formatDate } from '@/lib/utils';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import OrganisationUrlBrandingSection from '@/components/admin/OrganisationUrlBrandingSection';
 import OrganisationDomainsSection from '@/components/admin/OrganisationDomainsSection';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import Select from '@/components/ui/Select';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import {

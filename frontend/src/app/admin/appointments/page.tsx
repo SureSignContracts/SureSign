@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useQuery as useTypesQuery } from '@tanstack/react-query';
 import { CalendarClock, Search, Plus, X, Settings2, AlertTriangle, UserRound, ChevronRight } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import Button from '@/components/ui/Button';

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import api from '@/lib/api';
 import { effectiveTodayYmd } from '@/lib/dateTime';
 import { getErrorMessage } from '@/lib/getErrorMessage';

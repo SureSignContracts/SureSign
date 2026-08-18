@@ -13,7 +13,7 @@ import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { formatDateTime } from '@/lib/dateTime';
 import { useAuthStore } from '@/store/authStore';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import PaginationBar from '@/components/ui/PaginationBar';
 import Toggle from '@/components/ui/Toggle';
 import Select from '@/components/ui/Select';

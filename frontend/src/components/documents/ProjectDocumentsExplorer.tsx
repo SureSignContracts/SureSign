@@ -20,7 +20,7 @@ import {
   X,
 } from 'lucide-react';
 import DocumentPreviewModal, { type PreviewTarget } from '@/components/documents/DocumentPreviewModal';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';

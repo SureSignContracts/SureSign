@@ -8,7 +8,7 @@ import { formatDate } from '@/lib/utils';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import { Plus, X, Trash2, ChevronDown, FileCheck, AlertTriangle, Lock, Download, FileOutput } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import Select from '@/components/ui/Select';
 
 // ─── Types ───────────────────────────────────────────────────────────────────

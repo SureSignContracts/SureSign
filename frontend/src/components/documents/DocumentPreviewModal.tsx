@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Download, ExternalLink, X } from 'lucide-react';
 import api from '@/lib/api';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import Button from '@/components/ui/Button';
 
 export type PreviewTarget = {

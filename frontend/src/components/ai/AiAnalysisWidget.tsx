@@ -1,126 +1,136 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle, XCircle, Sparkles, Minus } from 'lucide-react';
 import { useAiAnalysisStore } from '@/store/aiAnalysisStore';
 import api from '@/lib/api';
+import toast, { gooeyToast } from '@/lib/toast';
 
+/**
+ * Purely a side-effect component now — renders nothing itself;
+ * <GooeyToaster/> (mounted in providers.tsx, which persists across route
+ * changes exactly like this component does — both live in the app shell,
+ * app/app/layout.tsx) renders the actual UI. Previously this rendered its
+ * own hand-built floating card; now it drives a real toast instead:
+ *
+ * - While the analysis is still running and the panel is minimized
+ *   (the user navigated away from the Contracts page mid-analysis), a
+ *   single toast is created and then UPDATED IN PLACE on every poll tick
+ *   with the analysis's own progress_percent/progress_stage/
+ *   progress_message — never re-created, so it doesn't re-morph on every
+ *   4s tick.
+ * - On reaching a terminal status, that tracking toast is dismissed and
+ *   replaced with a fresh, properly branded success/error toast (an
+ *   in-place `.update()` can't change fillColor/borderColor once a toast
+ *   exists, so the terminal state needs a real new toast to get its own
+ *   accent colour) with a "Review"/"View details" action button back to
+ *   the Contracts page.
+ * - Dismissing the toast (its own close button) clears the store too, so
+ *   a stale tracking id is never reused.
+ */
 export default function AiAnalysisWidget() {
-  const { isMinimized, status, contractTitle, projectId, analysisId, updateStatus, clear } = useAiAnalysisStore();
+  const { isMinimized, status, contractTitle, projectId, analysisId, updateStatus } = useAiAnalysisStore();
   const router = useRouter();
+  const trackingToastId = useRef<string | number | null>(null);
 
-  // When minimized and still processing, poll independently so widget stays accurate
+  function goToContract() {
+    if (projectId) router.push(`/app/projects/${projectId}/contracts`);
+    useAiAnalysisStore.getState().restore();
+  }
+
+  function dismissTracking() {
+    if (trackingToastId.current !== null) {
+      gooeyToast.dismiss(trackingToastId.current);
+      trackingToastId.current = null;
+    }
+  }
+
+  // Poll independently while minimized + still running (same 4s cadence as
+  // before), now also reading the progress fields this analysis already
+  // records (see AnalyseContractWithAiJob) to keep the tracking toast's
+  // description current instead of only its terminal status.
   useEffect(() => {
     if (!isMinimized || !analysisId) return;
     if (status !== 'pending' && status !== 'processing') return;
 
-    const interval = setInterval(async () => {
+    let cancelled = false;
+
+    const tick = async () => {
       try {
         const res = await api.get(`/ai/analyses/${analysisId}`);
         const a = res.data?.data;
-        if (a?.status && a.status !== status) {
+        if (cancelled || !a) return;
+
+        if (a.status !== status) {
           updateStatus(a.status, a.status === 'completed' ? a : null);
+          return; // the status-transition effect below handles the toast change
+        }
+
+        if (trackingToastId.current !== null) {
+          const description = a.progress_message
+            ? (typeof a.progress_percent === 'number' ? `${a.progress_percent}% — ${a.progress_message}` : a.progress_message)
+            : (contractTitle || 'Contract');
+          gooeyToast.update(trackingToastId.current, { description });
         }
       } catch {
-        // Silent — user can return to contracts page to retry
+        // Silent — user can return to Contracts to retry
       }
-    }, 4000);
+    };
 
-    return () => clearInterval(interval);
-  }, [isMinimized, analysisId, status, updateStatus]);
+    tick();
+    const interval = setInterval(tick, 4000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [isMinimized, analysisId, status, contractTitle, updateStatus]);
 
-  if (!isMinimized || !status || status === 'cancelled') return null;
-
-  const isProcessing = status === 'pending' || status === 'processing';
-  const isComplete   = status === 'completed' || status === 'confirmed';
-  const isFailed     = status === 'failed';
-
-  function handleClick() {
-    if (projectId) {
-      router.push(`/app/projects/${projectId}/contracts`);
+  // Create the tracking toast the moment the panel is minimized while
+  // still running; replace it with a fresh success/error toast on
+  // completion; dismiss entirely once restored/cleared.
+  useEffect(() => {
+    if (!isMinimized || !status || status === 'cancelled') {
+      dismissTracking();
+      return;
     }
-    useAiAnalysisStore.getState().restore();
-  }
 
-  function handleDismiss(e: React.MouseEvent) {
-    e.stopPropagation();
-    clear();
-  }
+    const isProcessing = status === 'pending' || status === 'processing';
 
-  return (
-    <div
-      className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl px-4 py-3 cursor-pointer hover:-translate-y-0.5 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-pop)] transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
-      style={{
-        backgroundColor: 'var(--bg-surface)',
-        border: `1.5px solid ${isComplete ? 'rgba(74,222,128,0.4)' : isFailed ? 'rgba(248,113,113,0.4)' : 'var(--gold-30)'}`,
-        minWidth: 220,
-      }}
-      onClick={handleClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => e.key === 'Enter' && handleClick()}
-    >
-      {/* Circular indicator */}
-      <div className="relative flex-shrink-0 w-9 h-9">
-        {isProcessing && (
-          <>
-            {/* Track */}
-            <svg className="absolute inset-0 w-9 h-9" viewBox="0 0 36 36">
-              <circle cx="18" cy="18" r="15" fill="none" strokeWidth="2.5" stroke="var(--border)" />
-            </svg>
-            {/* Spinning arc */}
-            <svg className="absolute inset-0 w-9 h-9 animate-spin" viewBox="0 0 36 36" style={{ animationDuration: '1.4s' }}>
-              <circle
-                cx="18" cy="18" r="15" fill="none" strokeWidth="2.5"
-                stroke="var(--gold)"
-                strokeDasharray="28 66"
-                strokeLinecap="round"
-                strokeDashoffset="0"
-              />
-            </svg>
-            <Sparkles
-              size={13}
-              className="absolute inset-0 m-auto"
-              style={{ color: 'var(--gold)' }}
-            />
-          </>
-        )}
-        {isComplete && (
-          <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(74,222,128,0.15)' }}>
-            <CheckCircle size={20} style={{ color: '#4ade80' }} />
-          </div>
-        )}
-        {isFailed && (
-          <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(248,113,113,0.15)' }}>
-            <XCircle size={20} style={{ color: '#f87171' }} />
-          </div>
-        )}
-      </div>
+    if (isProcessing) {
+      if (trackingToastId.current === null) {
+        trackingToastId.current = toast('Analysing contract…', {
+          description: contractTitle || 'Contract',
+          duration: Infinity, // stays up for as long as the analysis runs
+          action: { label: 'View', onClick: goToContract },
+          onDismiss: () => {
+            trackingToastId.current = null;
+            useAiAnalysisStore.getState().clear();
+          },
+        });
+      }
+      return;
+    }
 
-      {/* Text */}
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold leading-tight" style={{ color: 'var(--text-primary)' }}>
-          {isProcessing ? 'Analysing contract…' : isComplete ? 'Analysis complete' : 'Analysis failed'}
-        </p>
-        <p className="text-[11px] mt-0.5 truncate leading-tight" style={{ color: 'var(--text-muted)', maxWidth: 140 }}>
-          {contractTitle || 'Contract'}
-        </p>
-        {(isComplete || isFailed) && (
-          <p className="text-[10px] mt-1 font-medium" style={{ color: isComplete ? '#4ade80' : '#f87171' }}>
-            {isComplete ? 'Click to review →' : 'Click to view details →'}
-          </p>
-        )}
-      </div>
+    // Terminal state — a fresh toast, not an update, so it gets its own
+    // properly branded border colour.
+    dismissTracking();
+    if (status === 'completed' || status === 'confirmed') {
+      toast.success('Analysis complete', {
+        description: contractTitle || 'Contract',
+        action: { label: 'Review', onClick: goToContract },
+      });
+    } else if (status === 'failed') {
+      toast.error('Analysis failed', {
+        description: contractTitle || 'Contract',
+        action: { label: 'View details', onClick: goToContract },
+      });
+    }
+    // goToContract/dismissTracking intentionally excluded — they close over
+    // projectId/contractTitle from the same render this effect belongs to,
+    // and re-running on every render would tear down/recreate the toast.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMinimized, status]);
 
-      {/* Dismiss (×) */}
-      <button
-        onClick={handleDismiss}
-        className="flex-shrink-0 p-1 rounded-lg transition-colors hover:bg-[var(--bg-hover)]"
-        title="Dismiss"
-      >
-        <Minus size={12} style={{ color: 'var(--text-muted)' }} />
-      </button>
-    </div>
-  );
+  // Belt-and-braces: dismiss the tracking toast if this component itself
+  // ever unmounts (e.g. logout) so it never lingers with a dead handler.
+  useEffect(() => () => dismissTracking(), []);
+
+  return null;
 }

@@ -6,11 +6,12 @@ import api from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import {
   Gem, Check, Save, RefreshCw, FileText, Mail, ImageIcon,
-  X, Upload, Palette, Globe, FileUp, Download, Send, Eye, EyeOff, Wrench,
+  X, Upload, Palette, Globe, FileUp, Download, Send, Eye, EyeOff, Wrench, Bell,
 } from 'lucide-react';
 import Select from '@/components/ui/Select';
 import PlatformPageHero from '@/components/admin/PlatformPageHero';
 import FeatureAvailabilityManager from '@/components/admin/FeatureAvailabilityManager';
+import ToastPreviewPanel from '@/components/admin/ToastPreviewPanel';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface PlatformSettings {
@@ -66,6 +67,10 @@ const TABS = [
   // excluded, unlike every other tab here). Filtered out of the rendered
   // tab bar below when the current user isn't Super Admin.
   { id: 'feature-availability', label: 'Feature Availability', icon: Wrench, color: '#eab308', superAdminOnly: true },
+  // Client-side only test bench for every toast variant/option — no backend
+  // endpoint, nothing persisted. Super Admin only, same reasoning as
+  // Feature Availability above (an internal tool, not a customer surface).
+  { id: 'toast-preview', label: 'Toast Preview', icon: Bell, color: '#9ee5b5', superAdminOnly: true },
 ] as const;
 
 type TabId = typeof TABS[number]['id'];
@@ -923,6 +928,12 @@ export default function AdminSureSignPage() {
       {activeTab === 'feature-availability' && (
         isSuperAdmin
           ? <FeatureAvailabilityManager />
+          : <p className="text-sm" style={{ color: 'var(--text-muted)' }}>You don&apos;t have permission to view this section.</p>
+      )}
+
+      {activeTab === 'toast-preview' && (
+        isSuperAdmin
+          ? <ToastPreviewPanel />
           : <p className="text-sm" style={{ color: 'var(--text-muted)' }}>You don&apos;t have permission to view this section.</p>
       )}
 

@@ -19,7 +19,7 @@ import {
   RefreshCw, BookOpen, Layers,
 } from 'lucide-react';
 import api from '@/lib/api';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { useAuthStore } from '@/store/authStore';
 import Combobox from '@/components/ui/Combobox';
 

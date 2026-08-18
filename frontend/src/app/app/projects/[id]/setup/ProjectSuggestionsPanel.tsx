@@ -17,7 +17,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import { CheckCircle, Loader2, AlertTriangle, ArrowLeft } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { getErrorMessage } from '@/lib/getErrorMessage';

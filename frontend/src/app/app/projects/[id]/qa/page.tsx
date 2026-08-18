@@ -4,7 +4,7 @@ import FeatureAvailabilityGate from '@/components/feature-availability/FeatureAv
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import toast from 'react-hot-toast';
+import toast from '@/lib/toast';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { CheckSquare, Plus, Search } from 'lucide-react';
