@@ -9,9 +9,11 @@ on) belongs to one project.
 
 ## Who can use it
 
-- Administrator accounts can create and manage projects.
-- **Client** users can view projects belonging to their own organisation that
-  they have been given access to.
+Any authenticated user in your organisation — Client, Admin, and Super
+Admin accounts alike — can view, create, and edit projects belonging to
+their own organisation. Project creation and editing is not restricted to
+Administrator accounts — see [Client](../roles/client.md) for the small
+number of things that genuinely are Admin/Super Admin only.
 
 ## Where to find it
 

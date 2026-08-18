@@ -7,7 +7,8 @@ to close-out.
 
 ## Who can use it
 
-Super Admin and Admin create and manage snags. Client users can view them.
+Any authenticated user with access to the project — including the Client
+role, not just Admin/Super Admin — can create and manage snags.
 
 ## Where to find it
 

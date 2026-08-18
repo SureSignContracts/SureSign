@@ -7,7 +7,8 @@ payment application.
 
 ## Who can use it
 
-Super Admin and Admin.
+Any authenticated user with access to the project — including the Client
+role, not just Admin/Super Admin.
 
 ## Where to find it
 

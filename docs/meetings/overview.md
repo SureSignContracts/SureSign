@@ -7,7 +7,8 @@ Meetings can be date-only, or scheduled with a specific start and end time.
 
 ## Who can use it
 
-Super Admin and Admin create and edit meetings. Client users can view them.
+Any authenticated user with access to the project — including the Client
+role, not just Admin/Super Admin — can create and edit meetings.
 
 ## Where to find it
 

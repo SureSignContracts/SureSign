@@ -11,17 +11,22 @@ dates.
 
 ## Role required
 
-Super Admin or Admin.
+Any authenticated user in your organisation — Client accounts can create a
+project too, not just Admin/Super Admin. See
+[Creating a Project](../projects/creating-a-project.md).
 
 ## Steps
 
 1. Go to **Projects** → **New Project**.
 2. Enter the Project Name (required) and, optionally, a Project Number/Code.
-3. Choose Contract Type and Type of Work.
-4. Enter Contract Value and Status.
-5. Enter Start Date and Completion Date.
-6. Add a Description.
-7. Select **Create Project**.
+3. Optionally choose a Project Type and Your organisation's role on this
+   project.
+4. Select **Create Project**.
+
+Contract Type, Contract Value, Status, dates, and Description are
+deliberately left for later — add them from **Edit Project** on the new
+project's Overview page whenever you're ready. See
+[Creating a Project](../projects/creating-a-project.md) for the full detail.
 
 ## Expected result
 

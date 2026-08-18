@@ -15,12 +15,8 @@ The left-hand sidebar is organised into:
 - **Tools** — [Reports](../reports/overview.md), AI Assistant, Team, Help.
 
 The sidebar footer has a profile menu with **Settings**, a light/dark theme
-toggle, and **Sign out**.
-
-!!! note "No notification bell in the tenant workspace"
-    The notification bell is not currently shown in the tenant workspace. If
-    you are a Client user, check a project's **Overview** activity feed
-    instead — see [Activity History](../notifications/activity-history.md).
+toggle, and **Sign out**. The top bar shows the notification bell — see
+[Notification Bell](../notifications/notification-bell.md).
 
 !!! note "AI Assistant"
     The **AI Assistant** chat page is not yet available. SureSign's real AI

@@ -3,17 +3,14 @@
 | Area | Client | Administrator |
 |---|---|---|
 | Scope | Own organisation only | Broader administrative access |
-| View projects, contracts, RFIs, variations, payment applications, documents, reports | Yes (own organisation, mostly read-only in the interface) | Yes |
-| Create/edit/delete operational records | Generally hidden in the interface | Yes |
-| Use AI contract/subcontract analysis | Not exposed in the interface | Yes |
-| Notification bell | Not currently shown | Yes |
-| Manage users and platform/organisation settings | No | Yes |
+| View projects, contracts, RFIs, variations, payment applications, documents, reports | Yes (own organisation) | Yes |
+| Create/edit/delete operational records | Yes (own organisation) | Yes |
+| Use AI contract/subcontract analysis | Yes (own organisation, if AI features are enabled) | Yes |
+| Notification bell | Yes | Yes |
+| Invite/manage other users, platform/organisation administration | No | Yes |
 
-!!! note
-    "Generally hidden in the interface" for Client accounts means the buttons
-    and forms are not shown to you — see [Client](client.md) for the important
-    caveat that this is an interface-level restriction rather than every
-    individual action being blocked.
+See [Client](client.md) for the full detail on what a Client account can do,
+and the small number of things that genuinely are Admin/Super Admin only.
 
 Administrative capabilities are not broken down further here, since they
 relate to platform administration rather than day-to-day project use. If you

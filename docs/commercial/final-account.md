@@ -8,7 +8,8 @@ variations, loss and expense, retention, and what remains due.
 
 ## Who can use it
 
-Super Admin and Admin progress a Final Account. Client users can view it.
+Any authenticated user with access to the project — including the Client
+role, not just Admin/Super Admin — can progress a Final Account.
 
 ## Where to find it
 

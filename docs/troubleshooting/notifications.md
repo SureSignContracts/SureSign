@@ -2,9 +2,10 @@
 
 ## I don't see a notification bell
 
-The bell is currently only shown to Super Admin and Admin users, in the admin
-panel. Client users do not see it in the current interface — check a project's
-Overview activity feed instead.
+The bell is shown to every account (Client, Admin, and Super Admin alike) in
+the tenant workspace's top bar. If you genuinely don't see it, check a
+project's Overview activity feed instead and contact support if the bell
+still doesn't appear after signing out and back in.
 
 ## I expected an email but did not receive one
 

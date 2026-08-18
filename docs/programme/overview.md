@@ -7,7 +7,8 @@ forecast, and actual — for each contract.
 
 ## Who can use it
 
-Super Admin and Admin manage milestones. Client users can view them.
+Any authenticated user with access to the project — including the Client
+role, not just Admin/Super Admin — can manage milestones.
 
 ## Where to find it
 

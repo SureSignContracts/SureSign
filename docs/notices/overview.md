@@ -11,8 +11,8 @@ project's [Delay and Extension of Time](../delay-and-eot/overview.md) page.
 
 ## Who can use it
 
-Super Admin and Admin create, issue and manage notices. Client users can
-view them.
+Any authenticated user with access to the project — including the Client
+role, not just Admin/Super Admin — can create, issue, and manage notices.
 
 ## Where to find it
 

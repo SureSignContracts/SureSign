@@ -6,7 +6,8 @@ Site Reports (site diaries) record daily activity on site.
 
 ## Who can use it
 
-Super Admin and Admin create site reports. Client users can view them.
+Any authenticated user with access to the project — including the Client
+role, not just Admin/Super Admin — can create site reports.
 
 ## Where to find it
 

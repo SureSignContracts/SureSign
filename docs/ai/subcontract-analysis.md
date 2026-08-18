@@ -8,7 +8,8 @@ structured information (terms, dates, obligations) for review.
 
 ## Who can use it
 
-Super Admin and Admin, and only if AI features are enabled for your
+Anyone with access to the trade package (including the Client role, not just
+Admin/Super Admin), and only if AI features are enabled for your
 organisation.
 
 ## Where to find it

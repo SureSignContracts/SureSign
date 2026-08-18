@@ -17,24 +17,22 @@ elsewhere.
 
 ## What Client accounts can do
 
-In the interface, Client accounts typically see a **read-only view** of most
-operational modules: contracts, RFIs, variations, payment applications,
-documents, and reports. Create, edit, and delete controls are hidden for most
-records.
+Client accounts are full day-to-day operational users, not read-only
+observers. A Client can create, edit, and progress records across
+essentially every project module for their own organisation: projects,
+contracts, trade packages, commercial records (payment applications, payment
+notices, pay less notices, retention, final accounts), variations, RFIs,
+meetings, QA reports, snagging, site reports, delivery documents, closeout,
+notices, delay events, EOT requests, the risk register, adjudication cases,
+and documents (upload, edit, and delete). AI contract and subcontract
+analysis are also available to Client accounts, not just Admin/Super Admin.
 
-!!! note
-    This is enforced by what the interface shows you, not by every possible
-    action being individually blocked. In practice, Client users should expect
-    to view records, add comments or supporting information where a form is
-    explicitly presented to them, and rely on their organisation's
-    administrator to create and progress formal records such as contracts,
-    variations, and payment applications.
+The notification bell is also shown to Client accounts, the same as any other
+role — see [Notification Bell](../notifications/notification-bell.md).
 
 ## What Client accounts cannot see or do
 
 - Cannot access platform administration screens.
-- Cannot see the **notification bell** in the current interface — check a
-  project's Overview activity feed instead.
 - Cannot invite or manage other users.
 
 ## What happens if a Client tries to open something they cannot access

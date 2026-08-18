@@ -55,6 +55,11 @@ has a document attached.
   finished. Selecting it takes you back to the contract.
 - You can dismiss the indicator without losing the result — the analysis is
   saved and can be reopened from the contract's analysis history.
+- If you stay on the analysis screen, a staged progress bar shows what's
+  actually happening — preparing the document, extracting its content,
+  reviewing it, then structuring the results — along with a percentage, so a
+  long analysis doesn't look stuck. A short completion animation plays once
+  it reaches 100%.
 
 ## Limits you may encounter
 

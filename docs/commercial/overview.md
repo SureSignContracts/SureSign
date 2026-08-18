@@ -9,8 +9,9 @@ package.
 
 ## Who can use it
 
-Super Admin and Admin can create and progress commercial records. Client users
-can view commercial records for their own organisation's projects.
+Any authenticated user with access to the project — including the Client
+role, not just Admin/Super Admin — can create and progress commercial
+records for their own organisation's projects.
 
 ## Where to find it
 

@@ -9,8 +9,8 @@ separate from (but connected to) the project's main contract.
 
 ## Who can use it
 
-Super Admin and Admin can create and manage trade packages. Client users can
-view trade packages belonging to their own organisation's projects.
+Any authenticated user with access to the project — including the Client
+role, not just Admin/Super Admin — can create and manage trade packages.
 
 ## Where to find it
 

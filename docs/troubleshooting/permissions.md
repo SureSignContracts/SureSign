@@ -9,17 +9,18 @@ access, contact your organisation's administrator.
 
 ## I can view a record but cannot see any Create/Edit/Delete buttons
 
-You are most likely signed in as a **Client** user. Client accounts generally
-see a read-only view of operational records in the current interface. See
-[Client](../roles/client.md) for what Client accounts can and cannot do. If you
-believe you need write access, ask your organisation's administrator to review
-your account.
+Client accounts can create and progress most operational records (projects,
+contracts, RFIs, commercial records, and more) — this is not restricted to
+Admin/Super Admin accounts. See [Client](../roles/client.md) for the small
+number of things that genuinely are Admin/Super Admin only (inviting or
+managing other users, platform administration screens). If you still can't
+find the action you expect, contact your organisation's administrator.
 
 ## I don't see the notification bell
 
-The notification bell is not currently shown in the tenant workspace. If you
-are a Client user, this is expected — check a project's Overview activity feed
-instead.
+The notification bell is shown to every account (Client, Admin, and Super
+Admin alike) in the tenant workspace's top bar. If you genuinely don't see
+it, contact your organisation's administrator.
 
 ## Related
 

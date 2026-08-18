@@ -6,7 +6,8 @@ Get a file into SureSign, and later find, view, and download it.
 
 ## Role required
 
-Administrator accounts to upload/delete. Client users can view and download.
+Any authenticated user with access to the project — Client accounts can
+upload and delete documents too, not just Admin/Super Admin.
 
 ## Steps
 

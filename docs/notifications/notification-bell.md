@@ -2,8 +2,9 @@
 
 ## Where to find it
 
-The bell icon is shown to administrator accounts. It is not currently shown in
-the tenant workspace.
+The bell icon is shown in the tenant workspace's top bar to every
+authenticated user — Client, Admin, and Super Admin accounts alike — as well
+as in the separate administrator panel.
 
 ## What you will see
 

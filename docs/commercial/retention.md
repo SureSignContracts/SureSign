@@ -10,8 +10,8 @@ Making Good Defects (Half 2).
 
 ## Who can use it
 
-Super Admin and Admin can release retention. Client users can view retention
-figures.
+Any authenticated user with access to the project — including the Client
+role, not just Admin/Super Admin — can release retention.
 
 ## Where to find it
 

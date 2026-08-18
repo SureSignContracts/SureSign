@@ -8,8 +8,9 @@ enforcement.
 
 ## Who can use it
 
-Super Admin and Admin create and progress adjudication cases. Client users can
-view them. This module can be hidden entirely for your organisation by a Super
+Any authenticated user with access to the project — including the Client
+role, not just Admin/Super Admin — can create and progress adjudication
+cases. This module can be hidden entirely for your organisation by a Super
 Admin — if you do not see **Adjudication** in your project sidebar, it has been
 switched off, not removed.
 

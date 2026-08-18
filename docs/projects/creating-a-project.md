@@ -2,7 +2,8 @@
 
 ## Who can do this
 
-Administrator accounts.
+Any authenticated user in your organisation, including the Client role —
+project creation is not restricted to Admin/Super Admin accounts.
 
 ## Where to find it
 
@@ -59,6 +60,11 @@ here you can:
   at any time afterwards from the project's **Contracts** page, or return to
   Project Setup later using **Set up from Contract** on the project's
   **Overview** page.
+
+While an analysis runs in Setup, a staged progress bar shows what's actually
+happening (preparing, extracting, reviewing, structuring) with a percentage,
+the same as analysing a Contract from the Contracts page directly — see
+[AI Analysis](../contracts/ai-analysis.md).
 
 Uploading requires choosing a **Contract Type** (Main Contract, Subcontract,
 Consultant Appointment, or Supplier Agreement) — this is never guessed from

@@ -24,6 +24,13 @@ short walkthrough at a time, grouped by area (Getting Started, Projects and
 Contracts, Trade Packages, Commercial, Project Administration, and Documents
 and Compliance).
 
+The very first time you reach your workspace, a short welcome ("Everything
+starts with the contract" → "Your work stays connected" → "Ready when you
+are") appears before anything else, giving you the choice to start the
+guided tour immediately or close it and explore on your own. It only ever
+appears once per account and never interrupts signing in, a required
+password change, or your organisation's first-time setup.
+
 - Select **Start** on any tour to begin it. If the tour covers a different
   page than the one you're on, SureSign takes you there automatically before
   starting.

@@ -13,8 +13,8 @@
 
 Open an existing site report and select **Edit**. The same form opens
 pre-filled with its details; make your changes and select **Save Changes**.
-
-Client users see a read-only version of this form and cannot save changes.
+Client accounts can create, edit, and save site reports the same as
+Admin/Super Admin.
 
 ## Related
 

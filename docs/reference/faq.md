@@ -35,8 +35,10 @@ If you issue after that calculated deadline, the calendar and dashboards will
 show it as overdue relative to that date.
 
 **Why can I view but not edit a record?**
-Most likely you are signed in as a Client user, and the interface shows a
-read-only view of that module. See [Client](../roles/client.md).
+Client accounts have full create/edit access to operational modules — this is
+usually a workflow-state lock instead (for example a record that has already
+been certified, issued, or closed). See [Client](../roles/client.md) and the
+module's own documentation for what locks a record at each status.
 
 **Is SureSign Consultancy an AI feature?**
 No. Consultancy connects you with a real construction professional for a

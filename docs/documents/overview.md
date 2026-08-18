@@ -9,8 +9,9 @@ variation orders).
 
 ## Who can use it
 
-Administrator accounts upload, preview, and delete documents. Client users can
-view and download them.
+Any authenticated user with access to the project — Client, Admin, and Super
+Admin accounts alike — can upload, preview, download, and delete documents.
+This is not restricted to Administrator accounts.
 
 ## Where to find it
 

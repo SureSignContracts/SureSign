@@ -6,7 +6,8 @@ Quality assurance inspection records for a project.
 
 ## Who can use it
 
-Super Admin and Admin create and manage QA reports. Client users can view them.
+Any authenticated user with access to the project — including the Client
+role, not just Admin/Super Admin — can create and manage QA reports.
 
 ## Where to find it
 

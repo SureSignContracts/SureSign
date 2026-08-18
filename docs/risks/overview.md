@@ -7,7 +7,8 @@ likelihood and impact, mitigation, and an owner.
 
 ## Who can use it
 
-Super Admin and Admin create and manage risks. Client users can view them.
+Any authenticated user with access to the project — including the Client
+role, not just Admin/Super Admin — can create and manage risks.
 
 ## Where to find it
 

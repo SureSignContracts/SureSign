@@ -2,7 +2,8 @@
 
 ## Who can do this
 
-Super Admin and Admin users.
+Any authenticated user with access to the project — including the Client
+role, not just Admin/Super Admin.
 
 ## Where to find it
 

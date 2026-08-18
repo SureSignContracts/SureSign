@@ -8,11 +8,9 @@ can send email notifications for certain commercial events — including
 reminders ahead of key payment deadlines — if your organisation's
 administrator has enabled them.
 
-!!! important "The notification bell is not shown to every account"
-    In the current interface, the notification bell icon is only shown to
-    administrator accounts. If you are a Client user, you will not see a bell
-    icon anywhere in the tenant workspace. Check a project's **Overview**
-    activity feed for what has happened recently on that project instead.
+The notification bell icon is shown to every account — Client, Admin, and
+Super Admin alike — in the tenant workspace's top bar, alongside a project's
+**Overview** activity feed for what has happened recently on that project.
 
 ## In this section
 
