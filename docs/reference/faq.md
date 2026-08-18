@@ -102,6 +102,16 @@ You will see a message telling you the rate limit has been exceeded and to try
 again later, or that an analysis is already in progress if you try to start a
 second one on the same record.
 
+**Why does a module show a "Maintenance" or "Coming soon" badge?**
+SureSign can place an individual module into Maintenance (temporarily
+unavailable while an issue is being fixed) or Coming Soon (not yet released)
+without taking down the rest of the platform. The module still appears in
+navigation with a small status badge, and opening it shows a short
+explanation instead of its usual content — your existing project information
+is not affected either way. Everything else in SureSign continues to work
+normally. This is different from a full site outage, which would show a
+generic maintenance page instead of the normal application.
+
 ## Related
 
 - [Glossary](glossary.md)

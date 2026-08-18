@@ -39,7 +39,8 @@ export function DeliveryDocumentsTab({ projectId, tradePackageId, canWrite }: { 
   const [confirmTarget, setConfirmTarget] = useState<DeliveryDoc | null>(null);
 
   const deleteMutation = useMutation({
-    mutationFn: (doc: DeliveryDoc) => api.delete(`/delivery-documents/${doc.id}`),
+    // Project-scoped route — see delivery-documents/page.tsx's identical fix.
+    mutationFn: (doc: DeliveryDoc) => api.delete(`/projects/${projectId}/delivery-documents/${doc.id}`),
     onSuccess: () => {
       toast.success('Delivery document deleted');
       qc.invalidateQueries({ queryKey: listQueryKey });
@@ -185,7 +186,7 @@ function DeliveryDocumentModal({ projectId, tradePackageId, doc, invalidateKey, 
         expiry_date: form.expiry_date || null,
       };
       return isEdit
-        ? api.put(`/delivery-documents/${doc!.id}`, payload)
+        ? api.put(`/projects/${projectId}/delivery-documents/${doc!.id}`, payload)
         : api.post(`/projects/${projectId}/trade-packages/${tradePackageId}/delivery-documents`, payload);
     },
     onSuccess: () => {

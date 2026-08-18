@@ -37,7 +37,11 @@ export function RisksTab({ projectId, tradePackageId, canWrite }: { projectId: s
   const [confirmTarget, setConfirmTarget] = useState<Risk | null>(null);
 
   const deleteMutation = useMutation({
-    mutationFn: (risk: Risk) => api.delete(`/risks/${risk.id}`),
+    // Route is project-scoped — matches the registered
+    // DELETE /projects/{project}/risks/{risk} (a bare /risks/{id} was
+    // never a registered route and would 404; found during Feature
+    // Availability Phase C's route audit).
+    mutationFn: (risk: Risk) => api.delete(`/projects/${projectId}/risks/${risk.id}`),
     onSuccess: () => {
       toast.success('Risk deleted');
       qc.invalidateQueries({ queryKey: listQueryKey });
@@ -164,7 +168,7 @@ function RiskModal({ projectId, tradePackageId, risk, invalidateKey, onClose }: 
     mutationFn: () => {
       const payload = { ...form, probability: form.probability || null, review_date: form.review_date || null };
       return isEdit
-        ? api.put(`/risks/${risk!.id}`, payload)
+        ? api.put(`/projects/${projectId}/risks/${risk!.id}`, payload)
         : api.post(`/projects/${projectId}/trade-packages/${tradePackageId}/risks`, payload);
     },
     onSuccess: () => {

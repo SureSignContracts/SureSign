@@ -48,7 +48,11 @@ function DeliveryDocumentsPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (doc: DeliveryDoc) => api.delete(`/delivery-documents/${doc.id}`),
+    // Route is project-scoped — matches the registered
+    // DELETE /projects/{project}/delivery-documents/{deliveryDocument}
+    // (a bare /delivery-documents/{id} was never a registered route and
+    // would 404; found during Feature Availability Phase C's route audit).
+    mutationFn: (doc: DeliveryDoc) => api.delete(`/projects/${projectId}/delivery-documents/${doc.id}`),
     onSuccess: () => {
       toast.success('Delivery document deleted');
       qc.invalidateQueries({ queryKey: listQueryKey });
