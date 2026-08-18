@@ -26,6 +26,10 @@ class ContractAiAnalysis extends Model
         'project_id',
         'file_upload_id',
         'status',
+        'progress_percent',
+        'progress_stage',
+        'progress_message',
+        'progress_updated_at',
         'provider',
         'model',
         'workflow',
@@ -69,6 +73,8 @@ class ContractAiAnalysis extends Model
         'queue_attempt'       => 'integer',
         'is_final_attempt'    => 'boolean',
         'credit_reservation_amount' => 'float',
+        'progress_percent' => 'integer',
+        'progress_updated_at' => 'datetime',
     ];
 
     public function contract()    { return $this->belongsTo(Contract::class); }

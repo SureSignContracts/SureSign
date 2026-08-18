@@ -131,6 +131,8 @@ class CommunicationsPlatformBatch4Test extends TestCase
             $body = $request->data();
             return str_contains($body['htmlContent'], 'Reset Password')
                 && str_contains($body['htmlContent'], 'https://app.example.com/reset-password?token=abc')
+                && str_contains($body['htmlContent'], '>Contact us</a>')
+                && str_contains($body['htmlContent'], 'https://suresigncontracts.app/contact')
                 && str_contains($body['textContent'], 'Reset it here: https://app.example.com/reset-password?token=abc');
         });
     }

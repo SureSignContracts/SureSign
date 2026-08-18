@@ -58,6 +58,16 @@ class AiTelemetryIntegrityGuard
         // every other field in this list.
         'credit_reservation_amount',
         'shadow_enforcement_result',
+        // progress_percent/progress_stage/progress_message/progress_updated_at
+        // are deliberately NOT in this list — they're live in-flight UI state
+        // (what a pending/processing row should currently show a user), not
+        // a fact about a completed provider execution. They stay mutable
+        // even on a terminal row on purpose: e.g. the failure catch block in
+        // AnalyseContractWithAiJob/AnalyseTradePackageWithAiJob still writes
+        // progress_stage/progress_message ('failed') in the very same
+        // update() that sets status to 'failed' for the first time — normal,
+        // not a violation — and nothing else should ever need to touch them
+        // again after that.
     ];
 
     /**

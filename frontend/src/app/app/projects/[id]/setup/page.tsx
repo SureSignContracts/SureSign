@@ -46,7 +46,7 @@
  * the Phase E panel) — never written by anything in this file.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
@@ -162,11 +162,22 @@ export default function ProjectSetupPage() {
   // Locked clarification: polling is enabled ONLY while status is genuinely
   // pending/processing — never for completed/confirmed/failed/cancelled.
   // useAiAnalysisPolling itself is unchanged from Phase C.
+  //
+  // onResolved and onProgress do the exact same thing (cache the latest
+  // record) — sharing one function rather than two copies means a future
+  // change to this can't accidentally update only one of them. onResolved
+  // fires once, exactly when a terminal status is reached; onProgress fires
+  // on every poll tick including that same terminal one, so this cache
+  // write already happens whether or not onResolved also runs it.
+  const cacheLatestAnalysis = (a: AiAnalysisRecord) => {
+    qc.setQueryData(['contract-ai-analysis', focalContract?.id ?? null], a);
+  };
   useAiAnalysisPolling(
     analysis?.id ?? null,
     analysis?.status === 'pending' || analysis?.status === 'processing',
-    (a) => { qc.setQueryData(['contract-ai-analysis', focalContract?.id ?? null], a); },
+    cacheLatestAnalysis,
     () => { refetchAnalysis(); },
+    cacheLatestAnalysis,
   );
 
   // ── Upload form (Add another Contract / zero-Contract path) ────────────
@@ -383,18 +394,24 @@ function EntryPanel({
 
   if (mode === 'choice') {
     return (
-      <div className="ss-setup-panel-in rounded-2xl p-6" style={CARD_STYLE}>
-        <h2 className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>This project already has a Contract</h2>
-        <p className="text-sm mb-5" style={{ color: 'var(--text-secondary)' }}>
-          Analyse one of the existing Contracts, or add another one.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Button variant="secondary" onClick={onChooseSelect} className="flex-1 justify-center">
-            Analyze an existing Contract
-          </Button>
-          <Button variant="secondary" onClick={onChooseUpload} className="flex-1 justify-center">
-            Add another Contract
-          </Button>
+      <div className="ss-setup-panel-in overflow-hidden rounded-2xl bg-white shadow-[0_18px_55px_rgba(24,33,29,0.10)]">
+        <div className="grid lg:grid-cols-[0.86fr_1.14fr]">
+          <section className="relative overflow-hidden bg-[#18211d] p-8 text-white sm:p-10">
+            <div className="absolute -right-16 -top-20 h-52 w-52 rounded-full border border-[#9ee5b5]/10" />
+            <p className="relative text-[11px] font-semibold uppercase tracking-[0.18em] text-[#9ee5b5]">Contract setup</p>
+            <h2 className="relative mt-5 max-w-sm text-3xl font-semibold leading-tight tracking-[-0.04em]">Continue from the agreement already on file.</h2>
+            <p className="relative mt-4 max-w-sm text-sm leading-6 text-[#b9c5bf]">Choose the record SureSign should analyse, or add a separate agreement without replacing anything.</p>
+          </section>
+          <div className="grid gap-3 p-6 sm:p-8">
+            <button onClick={onChooseSelect} className="group flex min-h-32 items-center justify-between rounded-xl bg-[#f2f2f2] p-5 text-left transition-[transform,background-color] duration-200 hover:-translate-y-0.5 hover:bg-[#e8eee9] active:translate-y-px">
+              <div><span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#43845d]">Recommended</span><p className="mt-2 font-semibold text-[#18211d]">Analyse an existing contract</p><p className="mt-1 text-sm text-[#68726d]">Select from {contracts.length} contract{contracts.length === 1 ? '' : 's'} already attached.</p></div>
+              <ArrowRight className="shrink-0 transition-transform group-hover:translate-x-1" size={18} />
+            </button>
+            <button onClick={onChooseUpload} className="group flex min-h-28 items-center justify-between rounded-xl px-5 text-left ring-1 ring-inset ring-black/10 transition-[transform,background-color] duration-200 hover:-translate-y-0.5 hover:bg-[#fafafa] active:translate-y-px">
+              <div><p className="font-semibold text-[#18211d]">Add another contract</p><p className="mt-1 text-sm text-[#68726d]">Upload a different governing agreement.</p></div>
+              <Upload size={18} className="shrink-0 text-[#43845d]" />
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -631,28 +648,11 @@ function ContractStatusPanel({
       )}
 
       {(status === 'pending' || status === 'processing') && (
-        <StatusBlock
-          icon={<Loader2 size={20} className="animate-spin" style={{ color: 'var(--gold)' }} />}
-          title="SureSign is analysing your contract"
-          body="Your Project and Contract are already saved. You can continue working while the analysis runs. SureSign will notify you when it&rsquo;s ready."
-          actions={
-            <>
-              <Button onClick={onContinue}>Continue to Project</Button>
-              <Button variant="ghost" onClick={onCancelAnalysis} disabled={cancelPending}>
-                {cancelPending ? 'Cancelling…' : 'Cancel Analysis'}
-              </Button>
-            </>
-          }
-        />
+        <AnalysisProgress analysis={analysis!} onContinue={onContinue} onCancel={onCancelAnalysis} cancelPending={cancelPending} />
       )}
 
       {status === 'completed' && (
-        <StatusBlock
-          icon={<CheckCircle size={20} style={{ color: '#4ade80' }} />}
-          title="Contract analysis is ready to review"
-          body="Review the extracted details before they&rsquo;re saved to the Contract."
-          actions={<Button onClick={onReview}>Review Analysis</Button>}
-        />
+        <AnalysisComplete contract={contract} analysis={analysis!} onReview={onReview} onContinue={onContinue} />
       )}
 
       {status === 'confirmed' && (
@@ -701,6 +701,124 @@ function ContractStatusPanel({
           }
         />
       )}
+    </div>
+  );
+}
+
+const ANALYSIS_STAGES = [
+  ['queued', 'Queued'], ['preparing', 'Prepare file'], ['extracting', 'Read contract'],
+  ['reviewing', 'Review terms'], ['structuring', 'Structure findings'],
+] as const;
+
+// The real backend percent for each stage — used only to compute a safe
+// "creep ceiling" below, never displayed directly.
+const STAGE_PERCENT: Record<string, number> = {
+  queued: 5, preparing: 15, extracting: 38, reviewing: 58, structuring: 86, completed: 100,
+};
+const STAGE_ORDER = ['queued', 'preparing', 'extracting', 'reviewing', 'structuring', 'completed'];
+
+/** 2 points short of the next real stage's own percent — never allowed to reach or overshoot a real signal. */
+function creepCapFor(stage: string | null | undefined): number {
+  const idx = stage ? STAGE_ORDER.indexOf(stage) : -1;
+  if (idx < 0 || idx >= STAGE_ORDER.length - 1) return 98;
+  return Math.max(0, STAGE_PERCENT[STAGE_ORDER[idx + 1]] - 2);
+}
+
+function AnalysisProgress({ analysis, onContinue, onCancel, cancelPending }: { analysis: AiAnalysisRecord; onContinue: () => void; onCancel: () => void; cancelPending: boolean }) {
+  const basePercent = Math.max(0, Math.min(100, analysis.progress_percent ?? (analysis.status === 'processing' ? 15 : 5)));
+  const stage = analysis.progress_stage ?? null;
+
+  // Cosmetic-only "creep" — the real backend percent can sit genuinely
+  // unchanged for a long time (e.g. "Review terms" is a real 30-90s+
+  // Claude API call with no intermediate signal), which reads as frozen/
+  // broken to a customer even though real work is happening. This never
+  // invents progress past the next real milestone (capped 2 points short
+  // of it) and snaps straight to the real value the instant the backend
+  // reports one — it's purely visual motion between real signals, never a
+  // substitute for progress_percent itself.
+  //
+  // `now` is only ever set from inside an effect (the ticking interval) —
+  // never a direct Date.now() call during render (the purity rule this
+  // codebase already enforces elsewhere). The anchor is adjusted directly
+  // during render instead of in its own effect — React's documented
+  // "store information from a previous render" pattern, not a
+  // set-state-in-effect — reusing `now` (already fetched, possibly up to
+  // ~1s stale) rather than a fresh, impure Date.now() call here too; a
+  // second of imprecision is irrelevant for a purely cosmetic creep.
+  const stageKey = `${stage ?? ''}:${basePercent}`;
+  const [now, setNow] = useState<number | null>(null);
+  const [anchor, setAnchor] = useState<{ key: string; at: number } | null>(null);
+  if (now !== null && anchor?.key !== stageKey) {
+    setAnchor({ key: stageKey, at: now });
+  }
+
+  useEffect(() => {
+    if (analysis.status !== 'processing') return;
+    const tick = () => setNow(Date.now());
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [analysis.status]);
+
+  const cap = creepCapFor(stage);
+  const elapsedSeconds = anchor && now && anchor.key === stageKey ? Math.max(0, (now - anchor.at) / 1000) : 0;
+  const tau = 30; // seconds — how quickly the creep eases toward the cap
+  const creepProgress = basePercent < cap ? 1 - Math.exp(-elapsedSeconds / tau) : 0;
+  const percent = Math.round(basePercent + (cap - basePercent) * creepProgress);
+
+  const foundIndex = ANALYSIS_STAGES.findIndex(([key]) => key === analysis.progress_stage);
+  const activeIndex = foundIndex < 0 ? 0 : foundIndex;
+  return (
+    <div className="overflow-hidden rounded-xl bg-[#18211d] text-white">
+      <div className="grid gap-8 p-7 sm:p-9 lg:grid-cols-[1fr_0.72fr]">
+        <div>
+          <div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#9ee5b5] text-[#18211d]"><Loader2 size={18} className="animate-spin" /></span><div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#9ee5b5]">Live contract review</p><h2 className="mt-1 text-xl font-semibold">{analysis.progress_message ?? 'Preparing your analysis'}</h2></div></div>
+          <p className="mt-5 max-w-xl text-sm leading-6 text-[#b9c5bf]">Your records are saved. This progress comes directly from the analysis worker and refreshes automatically.</p>
+          <div className="mt-7" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
+            <div className="mb-2 flex items-end justify-between"><span className="text-xs text-[#b9c5bf]">Stage {activeIndex + 1} of {ANALYSIS_STAGES.length}</span><span className="text-2xl font-semibold text-[#9ee5b5]">{percent}%</span></div>
+            <div className="h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-[#9ee5b5] transition-[width] duration-700 ease-out" style={{ width: `${percent}%` }} /></div>
+          </div>
+        </div>
+        <div className="grid content-center gap-2">
+          {ANALYSIS_STAGES.map(([key, label], index) => { const done = index < activeIndex; const active = index === activeIndex; return <div key={key} className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${active ? 'bg-white/10 text-white' : 'text-[#8d9993]'}`}><span className={`h-2 w-2 rounded-full ${done || active ? 'bg-[#9ee5b5]' : 'bg-white/15'}`} />{label}{done && <CheckCircle size={13} className="ml-auto text-[#9ee5b5]" />}</div>; })}
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 px-7 py-4 sm:px-9"><span className="text-xs text-[#8d9993]">You can leave this page—analysis will continue.</span><div className="flex gap-2"><button onClick={onCancel} disabled={cancelPending} className="rounded-lg px-4 py-2 text-sm text-[#b9c5bf] transition-colors hover:bg-white/5 hover:text-white">{cancelPending ? 'Cancelling…' : 'Cancel analysis'}</button><button onClick={onContinue} className="rounded-lg bg-[var(--gold)] px-4 py-2 text-sm font-semibold text-[var(--accent-fg)] transition-transform hover:-translate-y-0.5 active:translate-y-px">Continue to project <ArrowRight size={14} className="ml-1 inline" /></button></div></div>
+    </div>
+  );
+}
+
+function AnalysisComplete({ contract, analysis, onReview, onContinue }: { contract: ContractSummary; analysis: AiAnalysisRecord; onReview: () => void; onContinue: () => void }) {
+  return (
+    <div className="ss-analysis-complete-in relative overflow-hidden rounded-xl bg-[#18211d] text-white">
+      <div className="absolute inset-x-0 top-0 h-1 bg-white/10"><span className="ss-analysis-complete-bar block h-full bg-[#9ee5b5]" /></div>
+      <div className="pointer-events-none absolute -right-24 -top-32 h-80 w-80 rounded-full border border-[#9ee5b5]/10" />
+      <div className="pointer-events-none absolute -right-8 -top-16 h-48 w-48 rounded-full border border-[#9ee5b5]/10" />
+
+      <div className="grid gap-8 p-7 pt-9 sm:p-9 sm:pt-10 lg:grid-cols-[1fr_0.7fr]">
+        <div className="ss-analysis-complete-copy">
+          <div className="flex items-center gap-3">
+            <span className="ss-analysis-check flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#9ee5b5] text-[#18211d]"><CheckCircle size={21} /></span>
+            <div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#9ee5b5]">Analysis complete</p><h2 className="mt-1 text-2xl font-semibold tracking-[-0.025em]">Your contract record is ready.</h2></div>
+          </div>
+          <p className="mt-5 max-w-xl text-sm leading-6 text-[#b9c5bf]">SureSign has finished reading <span className="font-semibold text-white">{contract.title}</span>. Review the extracted terms before anything is confirmed against the contract.</p>
+          <div className="mt-7 flex flex-wrap gap-x-7 gap-y-3 border-t border-white/10 pt-5">
+            <div><p className="text-xl font-semibold text-[#9ee5b5]">5/5</p><p className="mt-0.5 text-xs text-[#8d9993]">stages completed</p></div>
+            <div><p className="text-xl font-semibold">100%</p><p className="mt-0.5 text-xs text-[#8d9993]">analysis processed</p></div>
+            <div><p className="text-xl font-semibold">Saved</p><p className="mt-0.5 text-xs text-[#8d9993]">ready when you return</p></div>
+          </div>
+        </div>
+
+        <aside className="ss-analysis-complete-next relative rounded-xl bg-white/[0.07] p-5 ring-1 ring-inset ring-white/10">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9ee5b5]">Next step</span>
+          <h3 className="mt-3 text-lg font-semibold">Check the extracted record</h3>
+          <p className="mt-2 text-sm leading-6 text-[#b9c5bf]">Verify dates, payment terms, obligations and risks before saving.</p>
+          <button onClick={onReview} className="mt-6 flex w-full items-center justify-between rounded-lg bg-[var(--gold)] px-4 py-3 text-sm font-semibold text-[var(--accent-fg)] transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-px">Review analysis <ArrowRight size={15} /></button>
+          <button onClick={onContinue} className="mt-2 w-full rounded-lg px-4 py-2.5 text-sm text-[#b9c5bf] transition-colors hover:bg-white/5 hover:text-white">Continue to project</button>
+        </aside>
+      </div>
+
+      <div className="flex items-center gap-2 border-t border-white/10 px-7 py-4 text-xs text-[#8d9993] sm:px-9"><CheckCircle size={13} className="text-[#9ee5b5]" />Analysis #{analysis.id} completed successfully. Nothing is applied until you confirm it.</div>
     </div>
   );
 }

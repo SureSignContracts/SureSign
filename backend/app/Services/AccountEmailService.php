@@ -100,6 +100,6 @@ class AccountEmailService
         $supportEmail = SuresignSetting::instance()->support_email;
         $htmlParts[] = EmailComponents::supportBlock($supportEmail);
         $textLines[] = '';
-        $textLines[] = $supportEmail ? "Questions? Contact us at {$supportEmail}." : 'Questions? Please get in touch with us.';
+        $textLines[] = 'Questions about your account? Contact us: https://suresigncontracts.app/contact';
     }
 }

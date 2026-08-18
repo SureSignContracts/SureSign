@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import CollapsedMapAttribution from '@/components/maps/CollapsedMapAttribution';
 
 /**
  * Single-project site map — Project Overview's "Site Location" section.
@@ -53,16 +54,17 @@ export default function SiteLocationMap({ latitude, longitude }: { latitude: num
       zoom={SITE_ZOOM}
       style={{ height: '100%', width: '100%', borderRadius: 'inherit' }}
       scrollWheelZoom={false}
+      attributionControl={false}
     >
       <RecenterOnChange lat={latitude} lng={longitude} />
       {/* OpenStreetMap tiles — no API key. Only normal tile-coordinate
           requests leave the browser; no project data is sent to the tile
-          provider. */}
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+          provider. Required attribution is rendered via
+          CollapsedMapAttribution below, not this TileLayer's own
+          `attribution` prop (Leaflet's default control is disabled above). */}
+      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
       <Marker position={[latitude, longitude]} icon={SITE_ICON} />
+      <CollapsedMapAttribution />
     </MapContainer>
   );
 }

@@ -88,6 +88,10 @@ class TradePackageAiController extends Controller
             'project_id'       => $tradePackage->project_id,
             'file_upload_id'   => $fileUpload->id,
             'status'           => 'pending',
+            'progress_percent' => 5,
+            'progress_stage'   => 'queued',
+            'progress_message' => 'Waiting for an analysis worker',
+            'progress_updated_at' => now(),
             'provider'         => $settings->ai_provider ?? 'anthropic',
             'model'            => $settings->ai_model ?? config('ai.anthropic.model'),
             'workflow'         => AiWorkflow::TRADE_PACKAGE_ANALYSIS,
@@ -244,7 +248,13 @@ class TradePackageAiController extends Controller
 
         $wasFree = $analysis->status === 'pending';
 
-        $analysis->update(['status' => 'cancelled', 'cancelled_at' => now()]);
+        $analysis->update([
+            'status' => 'cancelled',
+            'cancelled_at' => now(),
+            'progress_stage' => 'cancelled',
+            'progress_message' => 'Analysis cancelled',
+            'progress_updated_at' => now(),
+        ]);
 
         ActivityLog::record(
             'trade_package_ai_analysis.cancelled',

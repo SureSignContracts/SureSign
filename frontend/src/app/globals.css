@@ -320,6 +320,41 @@ select:focus-visible, [tabindex]:focus-visible {
   to   { opacity: 1; transform: none; }
 }
 
+@keyframes ss-analysis-complete-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.992); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes ss-analysis-complete-bar {
+  from { width: 58%; }
+  to { width: 100%; }
+}
+
+@keyframes ss-analysis-check-in {
+  0% { opacity: 0; transform: scale(0.72) rotate(-8deg); }
+  65% { opacity: 1; transform: scale(1.06) rotate(0); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.ss-analysis-complete-in {
+  animation: ss-analysis-complete-in 0.52s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.ss-analysis-complete-bar {
+  animation: ss-analysis-complete-bar 0.9s 0.08s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.ss-analysis-check {
+  animation: ss-analysis-check-in 0.55s 0.18s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.ss-analysis-complete-copy,
+.ss-analysis-complete-next {
+  animation: ss-setup-reveal-in 0.52s 0.14s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.ss-analysis-complete-next { animation-delay: 0.24s; }
+
 .ss-setup-workspace-in {
   opacity: 0;
   animation: ss-setup-workspace-in 0.62s 80ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
@@ -889,6 +924,9 @@ select:focus-visible, [tabindex]:focus-visible {
   .ss-setup-sidebar-in, .ss-setup-workspace-in, .ss-setup-header-in,
   .ss-setup-panel-in, .ss-setup-panel-left, .ss-setup-panel-right,
   .ss-setup-reveal, .ss-setup-detail, .ss-setup-file-ready,
+  .ss-analysis-complete-in, .ss-analysis-complete-bar,
+  .ss-analysis-check, .ss-analysis-complete-copy,
+  .ss-analysis-complete-next,
   .ss-consultancy-page-in, .ss-consultancy-hero-in,
   .ss-consultancy-left-in, .ss-consultancy-right-in,
   .ss-consultancy-reveal, .ss-consultancy-list-in,
@@ -900,6 +938,10 @@ select:focus-visible, [tabindex]:focus-visible {
   .ss-authenticated-entrance > .flex > aside + div {
     opacity: 1;
     animation: none;
+  }
+
+  .ss-analysis-complete-bar {
+    width: 100%;
   }
 
   .ss-showcase-slide {

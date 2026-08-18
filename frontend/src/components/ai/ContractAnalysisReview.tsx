@@ -11,6 +11,7 @@ import { useAiAnalysisStore } from '@/store/aiAnalysisStore';
 import { useAiAnalysisPolling } from '@/hooks/useAiAnalysisPolling';
 import SharedSection from '@/components/ai/Section';
 import SharedAnalysisLoadingDisplay from '@/components/ai/AnalysisLoadingDisplay';
+import FullscreenDialogPortal from '@/components/ui/FullscreenDialogPortal';
 
 /**
  * Phase C — Contract AI Foundation.
@@ -262,18 +263,18 @@ export default function ContractAnalysisReview({ contract, projectId, onClose, i
   if (store.isMinimized) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
+    <FullscreenDialogPortal>
       <div
-        className="w-full max-w-3xl rounded-2xl ss-animate-in shadow-[var(--shadow-pop)] flex flex-col"
-        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', maxHeight: '92vh' }}
+        className="flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-[#f2f2f2] shadow-[0_32px_90px_rgba(0,0,0,0.32)] ss-animate-in"
+        style={{ maxHeight: '92dvh' }}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-5 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
+        <div className="flex flex-shrink-0 items-center justify-between bg-[#18211d] px-6 py-5 text-white">
           <div className="flex items-center gap-2">
-            <Sparkles size={16} style={{ color: 'var(--gold)' }} />
-            <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>AI Contract Review</h2>
-            <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}>
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#9ee5b5] text-[#18211d]"><Sparkles size={16} /></span>
+            <div className="ml-1"><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9ee5b5]">Contract intelligence</p><h2 className="text-base font-semibold">Review the extracted record</h2></div>
+            <span className="ml-2 max-w-48 truncate rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium text-[#d9e1dd]">
               {contract.title}
             </span>
           </div>
@@ -281,8 +282,7 @@ export default function ContractAnalysisReview({ contract, projectId, onClose, i
             <button
               onClick={() => store.minimize()}
               title="Minimise (analysis continues in the background)"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs transition-colors hover:bg-[var(--bg-hover)]"
-              style={{ color: 'var(--text-muted)' }}
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-[#b9c5bf] transition-colors hover:bg-white/10 hover:text-white"
             >
               <Minus size={13} />
               Minimise
@@ -290,8 +290,8 @@ export default function ContractAnalysisReview({ contract, projectId, onClose, i
             {/* Hide the silent-close X while analysing — Minimise (above) or Cancel (footer)
                 are the only safe actions, so closing can't abandon a billing job. */}
             {!(startMutation.isPending || polling) && (
-              <button onClick={() => { store.clear(); onClose(); }} className="p-1.5 rounded-lg hover:bg-[var(--bg-hover)]">
-                <X size={16} style={{ color: 'var(--text-muted)' }} />
+              <button onClick={() => { store.clear(); onClose(); }} className="rounded-lg p-1.5 text-[#b9c5bf] hover:bg-white/10 hover:text-white">
+                <X size={16} />
               </button>
             )}
           </div>
@@ -299,8 +299,7 @@ export default function ContractAnalysisReview({ contract, projectId, onClose, i
 
         {/* Disclaimer */}
         <div
-          className="mx-5 mt-4 flex items-start gap-2 rounded-lg px-3 py-2.5 text-xs flex-shrink-0"
-          style={{ backgroundColor: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.2)', color: '#ca8a04' }}
+          className="mx-5 mt-4 flex flex-shrink-0 items-start gap-2 rounded-lg bg-[#fff8df] px-3 py-2.5 text-xs text-[#805f00]"
         >
           <AlertTriangle size={13} className="mt-0.5 flex-shrink-0" />
           AI-generated suggestions must be reviewed before use. Do not rely on this output for legal or commercial decisions without independent verification.
@@ -899,6 +898,6 @@ export default function ContractAnalysisReview({ contract, projectId, onClose, i
           )}
         </div>
       </div>
-    </div>
+    </FullscreenDialogPortal>
   );
 }

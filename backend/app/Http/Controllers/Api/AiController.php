@@ -108,6 +108,10 @@ class AiController extends Controller
             'project_id'      => $contract->project_id,
             'file_upload_id'  => $fileUpload->id,
             'status'          => 'pending',
+            'progress_percent' => 5,
+            'progress_stage' => 'queued',
+            'progress_message' => 'Waiting for an analysis worker',
+            'progress_updated_at' => now(),
             'provider'        => $settings->ai_provider ?? 'anthropic',
             'model'           => $settings->ai_model ?? config('ai.anthropic.model'),
             'workflow'        => AiWorkflow::CONTRACT_ANALYSIS,
@@ -257,7 +261,12 @@ class AiController extends Controller
         // Once 'processing', the API call is in flight and Anthropic will bill for it.
         $wasFree = $analysis->status === 'pending';
 
-        $analysis->update(['status' => 'cancelled']);
+        $analysis->update([
+            'status' => 'cancelled',
+            'progress_stage' => 'cancelled',
+            'progress_message' => 'Analysis cancelled',
+            'progress_updated_at' => now(),
+        ]);
 
         ActivityLog::record(
             'ai_analysis.cancelled',

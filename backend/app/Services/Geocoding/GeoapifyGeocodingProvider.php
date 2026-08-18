@@ -64,6 +64,16 @@ class GeoapifyGeocodingProvider implements GeocodingProviderInterface
             $response = Http::timeout(10)->get($baseUrl . self::ENDPOINT, [
                 'text'   => $text,
                 'limit'  => 3,
+                // Live-verified against a real Geoapify API key/live smoke
+                // test (Part 39): omitting `format` returns a GeoJSON
+                // FeatureCollection (`type`/`features[].properties.*`), NOT
+                // the flat `{"results":[...]}` shape this class (and the
+                // documentation initially checked) assumed — Geoapify's
+                // true default response format is GeoJSON, not flat JSON,
+                // despite "json" being one of the documented `format`
+                // values. Explicit here so the parsing below can rely on
+                // `results`/`rank`/`result_type` exactly as documented.
+                'format' => 'json',
                 'apiKey' => $apiKey,
             ]);
         } catch (ConnectionException $e) {

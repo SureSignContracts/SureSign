@@ -29,6 +29,7 @@ class EmailComponents
 {
     private const ACCENT = '#9ee5b5';
     private const INK    = '#18211d';
+    private const CONTACT_URL = 'https://suresigncontracts.app/contact';
 
     /**
      * @param  string  $variant  'primary' | 'secondary'
@@ -135,11 +136,26 @@ HTML;
 
     public static function supportBlock(?string $supportEmail): string
     {
-        $text = $supportEmail
-            ? "Questions? Contact us at {$supportEmail}."
-            : 'Questions? Please get in touch with us.';
+        $url = e(self::CONTACT_URL);
 
-        return '<p style="margin:24px 0 0;padding-top:18px;border-top:1px solid #e3e9e5;font-family:Arial,sans-serif;font-size:12px;line-height:1.6;color:#748078;">' . e($text) . '</p>';
+        // Deliberately compact and outlined: this is a supporting action,
+        // not a second primary CTA competing with Reset Password / Verify.
+        return <<<HTML
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 0;border-top:1px solid #e3e9e5;">
+  <tr>
+    <td style="padding-top:18px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#748078;">
+      <span style="display:inline-block;margin:0 10px 8px 0;vertical-align:middle;">Questions about your account?</span>
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="display:inline-table;vertical-align:middle;margin:0 0 8px;">
+        <tr>
+          <td align="center" bgcolor="#ffffff" style="border:1px solid #cfd8d2;border-radius:8px;">
+            <a href="{$url}" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:8px 13px;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;line-height:1;color:#18211d;text-decoration:none;white-space:nowrap;">Contact us</a>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+HTML;
     }
 
     // ─────────────────────────────────────────────────────────────────────

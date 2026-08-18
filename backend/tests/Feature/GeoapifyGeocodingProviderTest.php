@@ -54,7 +54,12 @@ class GeoapifyGeocodingProviderTest extends TestCase
         Http::assertSent(function ($request) {
             return str_starts_with($request->url(), 'https://api.geoapify.com/v1/geocode/search')
                 && $request['text'] === '25 Riverside Road, Manchester, M3 4AB, United Kingdom'
-                && (int) $request['limit'] === 3;
+                && (int) $request['limit'] === 3
+                // Live-verified via a real smoke test (Part 39): omitting
+                // this returns a GeoJSON FeatureCollection, not the flat
+                // `results` shape this class parses — regression-guards
+                // the real fix that live test caught.
+                && $request['format'] === 'json';
         });
     }
 

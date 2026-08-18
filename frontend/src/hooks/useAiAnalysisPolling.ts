@@ -42,6 +42,7 @@ export function useAiAnalysisPolling(
   enabled: boolean,
   onResolved: (analysis: AiAnalysisRecord) => void,
   onError?: () => void,
+  onProgress?: (analysis: AiAnalysisRecord) => void,
 ): void {
   useEffect(() => {
     if (!enabled || !analysisId) return;
@@ -49,6 +50,7 @@ export function useAiAnalysisPolling(
       try {
         const res = await api.get(`/ai/analyses/${analysisId}`);
         const a = res.data?.data;
+        if (a) onProgress?.(a);
         if (a?.status === 'completed' || a?.status === 'failed') {
           onResolved(a);
         }

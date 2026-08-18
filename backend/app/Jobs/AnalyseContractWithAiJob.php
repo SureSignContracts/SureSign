@@ -64,6 +64,10 @@ class AnalyseContractWithAiJob implements ShouldQueue
 
         $analysis->update([
             'status'           => 'processing',
+            'progress_percent' => 15,
+            'progress_stage'   => 'preparing',
+            'progress_message' => 'Preparing the contract file',
+            'progress_updated_at' => now(),
             'started_at'       => now(),
             'queue_attempt'    => $attempt,
             'is_final_attempt' => $attempt >= $this->tries,
@@ -82,6 +86,12 @@ class AnalyseContractWithAiJob implements ShouldQueue
             // ContractAnalysisService::extractAndRecordDocumentMetrics()) so
             // analyse() itself never re-extracts the same document twice.
             $prepared = $service->extractAndRecordDocumentMetrics($analysis, $fileUpload);
+            $analysis->update([
+                'progress_percent' => 38,
+                'progress_stage' => 'extracting',
+                'progress_message' => 'Contract text extracted and checked',
+                'progress_updated_at' => now(),
+            ]);
             $shadow = $credits->reserveFor(
                 AiWorkflow::CONTRACT_ANALYSIS,
                 ContractAiAnalysis::class,
@@ -104,6 +114,13 @@ class AnalyseContractWithAiJob implements ShouldQueue
                 );
             }
 
+            $analysis->update([
+                'progress_percent' => 58,
+                'progress_stage' => 'reviewing',
+                'progress_message' => 'Reviewing terms, dates and obligations',
+                'progress_updated_at' => now(),
+            ]);
+
             $result       = $service->analyse($analysis, $fileUpload, $prepared);
 
             // If the user cancelled while the Claude call was in flight, honour the
@@ -115,6 +132,13 @@ class AnalyseContractWithAiJob implements ShouldQueue
                 $credits->releaseFor(AiWorkflow::CONTRACT_ANALYSIS, ContractAiAnalysis::class, $analysis->id, 'Analysis cancelled during processing');
                 return;
             }
+
+            $analysis->update([
+                'progress_percent' => 86,
+                'progress_stage' => 'structuring',
+                'progress_message' => 'Structuring findings for your review',
+                'progress_updated_at' => now(),
+            ]);
 
             $data         = $result['data'];
             $tokensInput  = $result['tokens_input'];
@@ -132,6 +156,10 @@ class AnalyseContractWithAiJob implements ShouldQueue
             // provider-call path and the cache-hit path), so this update never recomputes it.
             $analysis->update([
                 'status'            => 'completed',
+                'progress_percent'  => 100,
+                'progress_stage'    => 'completed',
+                'progress_message'  => 'Analysis ready for review',
+                'progress_updated_at' => now(),
                 'raw_response_json' => $data,
                 'summary'           => $summary,
                 'tokens_input'      => $tokensInput,
@@ -227,6 +255,15 @@ class AnalyseContractWithAiJob implements ShouldQueue
 
             $analysis->update([
                 'status'           => 'failed',
+                // progress_percent is deliberately left as-is here, not reset
+                // to 0/null — it's the last stage the analysis actually
+                // reached before failing (e.g. 58% = failed during the
+                // provider call itself), which is more informative than
+                // erasing it. No current UI renders progress alongside a
+                // terminal status, so this can't be misread as "58% done".
+                'progress_stage'   => 'failed',
+                'progress_message' => 'Analysis could not be completed',
+                'progress_updated_at' => now(),
                 'error_message'    => $safeMessage,
                 'failure_category' => AiFailureClassifier::classify($e),
                 'completed_at'     => $completedAt,
@@ -299,6 +336,11 @@ class AnalyseContractWithAiJob implements ShouldQueue
 
         $analysis->update([
             'status'           => 'failed',
+            // progress_percent deliberately left as-is — see the catch
+            // block above in handle() for the full rationale.
+            'progress_stage'   => 'failed',
+            'progress_message' => 'Analysis could not be completed',
+            'progress_updated_at' => now(),
             'error_message'    => 'The AI analysis could not be completed.',
             'failure_category' => AiFailureClassifier::classify($exception),
             'completed_at'     => $completedAt,

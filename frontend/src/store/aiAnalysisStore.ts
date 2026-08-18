@@ -7,6 +7,10 @@ export interface AiAnalysisRecord {
   contract_id: number;
   project_id: number;
   status: AiAnalysisStatus;
+  progress_percent?: number | null;
+  progress_stage?: string | null;
+  progress_message?: string | null;
+  progress_updated_at?: string | null;
   summary: string | null;
   started_at: string | null;
   completed_at: string | null;

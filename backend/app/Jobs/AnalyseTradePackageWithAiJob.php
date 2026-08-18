@@ -58,6 +58,10 @@ class AnalyseTradePackageWithAiJob implements ShouldQueue
 
         $analysis->update([
             'status'           => 'processing',
+            'progress_percent' => 15,
+            'progress_stage'   => 'preparing',
+            'progress_message' => 'Preparing the subcontract file',
+            'progress_updated_at' => now(),
             'started_at'       => now(),
             'queue_attempt'    => $attempt,
             'is_final_attempt' => $attempt >= $this->tries,
@@ -74,6 +78,12 @@ class AnalyseTradePackageWithAiJob implements ShouldQueue
             // Phase G4C.3BC — see AnalyseContractWithAiJob for the full rationale;
             // identical wiring for this workflow.
             $prepared = $service->extractAndRecordDocumentMetrics($analysis, $fileUpload);
+            $analysis->update([
+                'progress_percent' => 38,
+                'progress_stage' => 'extracting',
+                'progress_message' => 'Subcontract text extracted and checked',
+                'progress_updated_at' => now(),
+            ]);
             $shadow = $credits->reserveFor(
                 AiWorkflow::TRADE_PACKAGE_ANALYSIS,
                 TradePackageAiAnalysis::class,
@@ -91,6 +101,13 @@ class AnalyseTradePackageWithAiJob implements ShouldQueue
                 );
             }
 
+            $analysis->update([
+                'progress_percent' => 58,
+                'progress_stage' => 'reviewing',
+                'progress_message' => 'Reviewing terms, dates and obligations',
+                'progress_updated_at' => now(),
+            ]);
+
             $result = $service->analyse($analysis, $fileUpload, $prepared);
 
             // If the user cancelled while the Claude call was in flight, honour the
@@ -102,6 +119,13 @@ class AnalyseTradePackageWithAiJob implements ShouldQueue
                 $credits->releaseFor(AiWorkflow::TRADE_PACKAGE_ANALYSIS, TradePackageAiAnalysis::class, $analysis->id, 'Analysis cancelled during processing');
                 return;
             }
+
+            $analysis->update([
+                'progress_percent' => 86,
+                'progress_stage' => 'structuring',
+                'progress_message' => 'Structuring findings for your review',
+                'progress_updated_at' => now(),
+            ]);
 
             $data         = $result['data'];
             $tokensInput  = $result['tokens_input'];
@@ -116,6 +140,10 @@ class AnalyseTradePackageWithAiJob implements ShouldQueue
             // TradePackageAnalysisService::analyse() is the single authoritative writer.
             $analysis->update([
                 'status'            => 'completed',
+                'progress_percent'  => 100,
+                'progress_stage'    => 'completed',
+                'progress_message'  => 'Analysis ready for review',
+                'progress_updated_at' => now(),
                 'raw_response_json' => $data,
                 'summary'           => $summary,
                 'tokens_input'      => $tokensInput,
@@ -202,6 +230,16 @@ class AnalyseTradePackageWithAiJob implements ShouldQueue
 
             $analysis->update([
                 'status'           => 'failed',
+                // progress_percent is deliberately left as-is here, not reset
+                // to 0/null — it's the last stage the analysis actually
+                // reached before failing (e.g. 58% = failed during the
+                // provider call itself), which is more informative than
+                // erasing it. No current UI renders progress alongside a
+                // terminal status, so this can't be misread as "58% done" —
+                // see AnalyseContractWithAiJob's identical comment.
+                'progress_stage'   => 'failed',
+                'progress_message' => 'Analysis could not be completed',
+                'progress_updated_at' => now(),
                 'error_message'    => $safeMessage,
                 'failure_category' => AiFailureClassifier::classify($e),
                 'completed_at'     => $completedAt,
@@ -265,6 +303,11 @@ class AnalyseTradePackageWithAiJob implements ShouldQueue
 
         $analysis->update([
             'status'           => 'failed',
+            // progress_percent deliberately left as-is — see
+            // AnalyseContractWithAiJob's identical catch-block comment.
+            'progress_stage'   => 'failed',
+            'progress_message' => 'Analysis could not be completed',
+            'progress_updated_at' => now(),
             'error_message'    => 'The AI analysis could not be completed.',
             'failure_category' => AiFailureClassifier::classify($exception),
             'completed_at'     => $completedAt,

@@ -4,6 +4,7 @@ import { useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, ZoomControl, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import CollapsedMapAttribution from '@/components/maps/CollapsedMapAttribution';
 import { ArrowRight, ExternalLink, AlertTriangle, Clock, MapPin } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -95,18 +96,20 @@ export default function ProjectMapClient({ projects }: { projects: ProjectMapMar
       style={{ height: '100%', width: '100%', borderRadius: 'inherit' }}
       scrollWheelZoom={false}
       zoomControl={false}
+      attributionControl={false}
       className="ss-project-map-canvas"
     >
       <SyncMapView bounds={bounds} projects={projects} />
       <ZoomControl position="bottomright" />
-      {/* OpenStreetMap tiles — no API key, standard required attribution
-          preserved below. Only normal tile-coordinate requests (z/x/y) leave
-          the browser; no project name/id/tenant data is ever sent to the
-          tile provider. */}
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+      {/* OpenStreetMap tiles — no API key. Only normal tile-coordinate
+          requests (z/x/y) leave the browser; no project name/id/tenant data
+          is ever sent to the tile provider. Required attribution is
+          rendered via CollapsedMapAttribution below, not this TileLayer's
+          own `attribution` prop (Leaflet's default control is disabled
+          above), positioned bottom-left so it never collides with the
+          ZoomControl at bottom-right. */}
+      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+      <CollapsedMapAttribution />
       {projects.map(project => (
         <Marker key={project.id} position={[project.latitude, project.longitude]} icon={markerIcons.get(project.id)!}>
           <Popup className="ss-project-map-popup" minWidth={250} maxWidth={290}>

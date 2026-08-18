@@ -310,7 +310,17 @@ export default function ProjectSuggestionsPanel({
             <ArrowLeft size={13} /> Back
           </button>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" onClick={onClose}>Continue Without Applying</Button>
+            {/* "Without Applying" only makes sense when there's actually
+                something actionable being skipped. Never shown when
+                there's nothing left to apply (actionable.length === 0 —
+                true both right after a full apply AND on a fresh mount
+                where everything already matched from the start) or once
+                an apply attempt has actually happened this session
+                (appliedSummary !== null) — in both cases this button is
+                just "close/continue," never a warning. */}
+            <Button variant="ghost" onClick={onClose}>
+              {actionable.length === 0 || appliedSummary !== null ? 'Continue to Project' : 'Continue Without Applying'}
+            </Button>
             {actionable.length > 0 && (
               <Button
                 onClick={() => applyMutation.mutate()}
