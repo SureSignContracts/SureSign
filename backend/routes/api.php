@@ -38,6 +38,8 @@ use App\Http\Controllers\Api\SiteInstructionController;
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\ProjectActivityController;
 use App\Http\Controllers\Api\SuresignSettingController;
+use App\Http\Controllers\Api\FeatureAvailabilityController;
+use App\Http\Controllers\Api\FeatureAvailabilityAdminController;
 use App\Http\Controllers\Api\DocumentTemplateController;
 use App\Http\Controllers\Api\TradePackageController;
 use App\Http\Controllers\Api\TradePackagePackageGenerationController;
@@ -428,6 +430,13 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
 
     // Site settings (public read — all authenticated users)
     Route::get('/settings', [SuresignSettingController::class, 'publicShow']);
+
+    // Feature Availability — customer-facing effective status (public read
+    // — all authenticated users, matching /settings above). Phase A: the
+    // enforcement middleware exists (see bootstrap/app.php's
+    // 'feature.available' alias) but is not yet attached to any module
+    // route — this endpoint only reports state for the future Phase B UI.
+    Route::get('/feature-availability', [FeatureAvailabilityController::class, 'status']);
 
     // Projects
     // Registered before the apiResource below so this literal path is
@@ -868,6 +877,20 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
         Route::post('/organizations/{organization}/adjust-debit', [AiCreditsGrantController::class, 'adjustDebit']);
         Route::post('/organizations/{organization}/expire', [AiCreditsGrantController::class, 'expire']);
         Route::put('/operating-mode', [AiCreditsGrantController::class, 'updateOperatingMode']);
+    });
+
+    // Feature Availability management — deliberately 'role:Super Admin'
+    // ONLY for BOTH the read and the write endpoint (unlike the read/write
+    // split used elsewhere in this file, e.g. ai-credits/ai-telemetry
+    // above) — an explicit Phase A instruction. Admin retains its separate,
+    // unrelated ability to bypass a Maintenance/Coming Soon state as an
+    // ordinary user (see FeatureAvailabilityService::isAvailableToUser());
+    // that bypass grants no visibility into or control over this
+    // management surface. See FeatureAvailabilityAdminController's own
+    // docblock.
+    Route::middleware(['role:Super Admin', 'throttle:30,1'])->prefix('admin/feature-availability')->group(function () {
+        Route::get('/', [FeatureAvailabilityAdminController::class, 'index']);
+        Route::put('/{feature_key}', [FeatureAvailabilityAdminController::class, 'update']);
     });
 
     // Google Integration Foundation (Stage 4A) — platform-level, not

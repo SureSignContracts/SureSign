@@ -21,6 +21,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'password.current'  => \App\Http\Middleware\EnsurePasswordIsCurrent::class,
             'track.usage'       => \App\Http\Middleware\TrackApplicationUsage::class,
             'billing.enabled'   => \App\Http\Middleware\EnsureBillingIsEnabled::class,
+            // Feature Availability, Phase A — registered here but NOT yet
+            // attached to any production module route. See
+            // App\Http\Middleware\EnsureFeatureIsAvailable's own docblock.
+            'feature.available' => \App\Http\Middleware\EnsureFeatureIsAvailable::class,
         ]);
 
         // Organisation URL Branding, Phase 5 (Stage 2A) — must be GLOBAL
