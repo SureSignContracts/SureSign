@@ -9,7 +9,7 @@ export function ConnectedPlatform() {
         <div className="mx-auto max-w-[46ch] text-center">
           <div className="text-sm font-medium uppercase tracking-wide text-text-muted">Connected Platform</div>
           <h2 className="mt-4 text-4xl font-medium tracking-tighter text-text-primary md:text-6xl">
-            This isn&apos;t eight modules. It&apos;s one workflow.
+            This isn&apos;t nine modules. It&apos;s one workflow.
           </h2>
           <p className="mt-6 text-text-secondary">
             Every module reads from and writes to the same confirmed contract data,

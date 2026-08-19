@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     template: '%s | SureSign',
   },
   description:
-    'Automated contract analysis, trade packages, payment applications, statutory notices, programme, risk, and documentation in one connected platform for construction contract administration.',
+    'Automated contract analysis, trade packages, payment applications, statutory notices, programme, risk, drawings, and documentation in one connected platform for construction contract administration.',
   icons: {
     icon: [
       { url: '/favicon.svg', type: 'image/svg+xml' },
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'SureSign | Construction Contract Administration, Connected',
     description:
-      'One connected platform for construction contract administration: automated contract analysis, trade packages, payment applications, statutory notices, programme, risk, and documentation.',
+      'One connected platform for construction contract administration: automated contract analysis, trade packages, payment applications, statutory notices, programme, risk, drawings, and documentation.',
     url: 'https://suresigncontracts.app',
     siteName: 'SureSign',
     locale: 'en_GB',

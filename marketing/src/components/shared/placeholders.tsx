@@ -8,7 +8,11 @@
  * Colours are hardcoded to light values throughout, not the --bg-base/
  * --text-* theme tokens — these represent real product screenshots, which
  * don't invert when the marketing site's own theme toggle flips to dark
- * (a real screenshot dropped in later won't either).
+ * (a real screenshot dropped in later won't either). Primary emphasis
+ * (progress fills, active states, unread markers, completed steps) uses the
+ * app's forest/mint accent (`#18211d` / `#397154` / `#9ee5b5`) instead of
+ * flat black, matching the in-app rebrand — everything else stays the same
+ * neutral grey the real light-mode app itself still uses.
  */
 
 function Row({ cols }: { cols: string[] }) {
@@ -55,9 +59,11 @@ export function AiAnalysisReview() {
         {rows.map(([label, status]) => (
           <div key={label} className="flex items-center justify-between rounded-lg border border-[#e4e4e4] px-4 py-2.5 text-sm">
             <span className="text-[#0a0a0a]">{label}</span>
-            <span className={status === 'Confirmed' ? 'text-[#525252]' : 'font-medium text-[#0a0a0a]'}>
-              {status}
-            </span>
+            {status === 'Confirmed' ? (
+              <span className="rounded-full bg-[#eaf6ee] px-2.5 py-0.5 text-xs font-medium text-[#397154]">Confirmed</span>
+            ) : (
+              <span className="rounded-full bg-[#fdf1e7] px-2.5 py-0.5 text-xs font-medium text-[#b45f19]">Review</span>
+            )}
           </div>
         ))}
       </div>
@@ -110,13 +116,13 @@ export function ContractExtractionPreview() {
         <span className="font-mono text-xs text-[#525252]">52%</span>
       </div>
       <div className="mt-3 h-1 overflow-hidden rounded-full bg-[#e5e5e5]">
-        <div className="h-full w-[52%] rounded-full bg-[#171717]" />
+        <div className="h-full w-[52%] rounded-full bg-[#397154]" />
       </div>
       <div className="mt-4 space-y-2">
         {rows.map(([label, status]) => (
           <div key={label} className="flex items-center justify-between rounded-lg border border-[#e4e4e4] px-4 py-2.5 text-sm">
             <span className="text-[#0a0a0a]">{label}</span>
-            <span className={status === 'Extracting' ? 'font-medium text-[#0a0a0a]' : 'text-[#737373]'}>{status}</span>
+            <span className={status === 'Extracting' ? 'font-medium text-[#397154]' : 'text-[#737373]'}>{status}</span>
           </div>
         ))}
       </div>
@@ -171,13 +177,16 @@ export function DashboardPreview() {
   return (
     <div className="flex bg-white text-sm">
       <div className="hidden w-40 shrink-0 border-r border-[#e4e4e4] bg-[#f4f4f4] p-4 sm:block">
-        <div className="mb-4 text-xs font-medium tracking-tight text-[#0a0a0a]">SureSign</div>
+        <div className="mb-4 flex items-center gap-1.5 text-xs font-medium tracking-tight text-[#0a0a0a]">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#397154]" />
+          SureSign
+        </div>
         <div className="space-y-0.5">
           {SIDEBAR_ITEMS.map((item, i) => (
             <div
               key={item}
               className={`rounded-md px-2.5 py-1.5 text-xs ${
-                i === 0 ? 'bg-white font-medium text-[#0a0a0a]' : 'text-[#8a8a8a]'
+                i === 0 ? 'bg-white font-medium text-[#18211d]' : 'text-[#8a8a8a]'
               }`}
             >
               {item}
@@ -206,7 +215,11 @@ export function DashboardPreview() {
             <div className="text-xs font-medium text-[#0a0a0a]">Payment Applications</div>
             <div className="mt-4 flex h-20 items-end gap-2.5">
               {bars.map((h, i) => (
-                <div key={i} className="flex-1 rounded-t bg-[#d4d4d4]" style={{ height: `${h}%` }} />
+                <div
+                  key={i}
+                  className={`flex-1 rounded-t ${h === 100 ? 'bg-[#397154]' : 'bg-[#d4d4d4]'}`}
+                  style={{ height: `${h}%` }}
+                />
               ))}
             </div>
           </div>
@@ -285,7 +298,7 @@ export function NotificationsFeed() {
     <div className="divide-y divide-[#e4e4e4] bg-white">
       {notes.map((note) => (
         <div key={note.title} className="flex items-start gap-3 px-5 py-4 text-sm">
-          <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${note.unread ? 'bg-[#0a0a0a]' : 'bg-[#d4d4d4]'}`} />
+          <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${note.unread ? 'bg-[#397154]' : 'bg-[#d4d4d4]'}`} />
           <div>
             <div className="font-medium text-[#0a0a0a]">{note.title}</div>
             <div className="mt-0.5 text-[#8a8a8a]">{note.detail}</div>
@@ -298,23 +311,115 @@ export function NotificationsFeed() {
 
 export function ProgrammeTimeline() {
   const milestones = [
-    { label: 'Groundworks complete', date: 'Mar' },
-    { label: 'Frame erected', date: 'Jun' },
-    { label: 'Watertight', date: 'Sep' },
-    { label: 'Practical completion', date: 'Dec' },
+    { label: 'Groundworks complete', date: 'Mar', done: true },
+    { label: 'Frame erected', date: 'Jun', done: true },
+    { label: 'Watertight', date: 'Sep', done: false },
+    { label: 'Practical completion', date: 'Dec', done: false },
   ];
   return (
     <div className="bg-white p-5">
       <div className="flex items-end justify-between gap-2">
         {milestones.map((m) => (
           <div key={m.label} className="flex flex-1 flex-col items-center gap-2">
-            <div className="h-1.5 w-full rounded-full bg-[#e4e4e4]" />
-            <span className="h-2 w-2 rounded-full border-2 border-[#0a0a0a] bg-white" />
+            <div className={`h-1.5 w-full rounded-full ${m.done ? 'bg-[#397154]' : 'bg-[#e4e4e4]'}`} />
+            <span className={`h-2 w-2 rounded-full border-2 ${m.done ? 'border-[#397154] bg-[#397154]' : 'border-[#18211d] bg-white'}`} />
             <span className="text-center text-[11px] text-[#8a8a8a]">{m.date}</span>
           </div>
         ))}
       </div>
       <div className="mt-3 text-xs text-[#525252]">{milestones[0].label} → {milestones[milestones.length - 1].label}</div>
+    </div>
+  );
+}
+
+const DRAWING_ROWS: Array<{ number: string; title: string; discipline: string; status: string; rev: string }> = [
+  { number: 'A-101', title: 'Ground Floor Plan', discipline: 'Architectural', status: 'For Construction', rev: 'C' },
+  { number: 'S-204', title: 'Frame Layout — Level 2', discipline: 'Structural', status: 'For Review', rev: 'B' },
+  { number: 'M-310', title: 'Plant Room Layout', discipline: 'Mechanical', status: 'For Information', rev: 'A' },
+];
+
+/** Mirrors DRAWING_STATUS_COLORS in frontend/src/components/drawings/drawingConstants.ts. */
+const DRAWING_STATUS_TINTS: Record<string, { bg: string; text: string }> = {
+  'For Construction': { bg: '#eaf6ee', text: '#397154' },
+  'For Review': { bg: '#fdf6e3', text: '#a3821a' },
+  'For Information': { bg: '#eaf1fb', text: '#3a68b0' },
+};
+
+/** Drawing Register — the live list of uploaded drawings, one row per sheet. */
+export function DrawingRegisterList() {
+  return (
+    <div className="divide-y divide-[#e4e4e4] bg-white">
+      {DRAWING_ROWS.map((d) => {
+        const tint = DRAWING_STATUS_TINTS[d.status];
+        return (
+          <div key={d.number} className="flex items-center justify-between gap-3 px-5 py-3.5 text-sm">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs text-[#8a8a8a]">{d.number}</span>
+                <span className="text-[#0a0a0a]">{d.title}</span>
+              </div>
+              <div className="mt-1 text-xs text-[#8a8a8a]">{d.discipline} · Rev {d.rev}</div>
+            </div>
+            <span
+              className="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium"
+              style={{ backgroundColor: tint.bg, color: tint.text }}
+            >
+              {d.status}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+const HOTSPOTS: Array<{ x: number; y: number; label: string; tone: string }> = [
+  { x: 28, y: 34, label: 'RFI-014', tone: '#397154' },
+  { x: 62, y: 58, label: 'Snag-092', tone: '#b45f19' },
+  { x: 78, y: 24, label: 'QA-031', tone: '#3a68b0' },
+];
+
+/**
+ * Drawing viewer with hotspot-linked records — pins dropped on the sheet
+ * that open the RFI/Snag/QA Report/Variation attached at that exact
+ * location (see backend/app/Support/Drawings/DrawingLinkableType.php).
+ */
+export function DrawingHotspotViewer() {
+  return (
+    <div className="bg-white">
+      <div className="flex items-center justify-between border-b border-[#e4e4e4] px-5 py-3 text-xs">
+        <span className="font-mono text-[#0a0a0a]">A-101 · Ground Floor Plan</span>
+        <span className="rounded-full bg-[#eaf6ee] px-2.5 py-0.5 font-medium text-[#397154]">Rev C · For Construction</span>
+      </div>
+      <div
+        className="relative h-56"
+        style={{
+          backgroundColor: '#fafafa',
+          backgroundImage:
+            'linear-gradient(rgba(24,33,29,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(24,33,29,0.06) 1px, transparent 1px)',
+          backgroundSize: '24px 24px',
+        }}
+      >
+        {HOTSPOTS.map((h) => (
+          <div key={h.label} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${h.x}%`, top: `${h.y}%` }}>
+            <span
+              className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold text-white shadow-[var(--shadow-card)] ring-2 ring-white"
+              style={{ backgroundColor: h.tone }}
+            >
+              •
+            </span>
+            <span
+              className="absolute left-1/2 top-6 -translate-x-1/2 whitespace-nowrap rounded-full border border-[#e4e4e4] bg-white px-2 py-0.5 text-[10px] font-medium shadow-[var(--shadow-card)]"
+              style={{ color: h.tone }}
+            >
+              {h.label}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="border-t border-[#e4e4e4] px-5 py-2.5 text-xs text-[#8a8a8a]">
+        3 records linked directly to this sheet
+      </div>
     </div>
   );
 }
@@ -327,7 +432,7 @@ export function StatutoryChainScreen() {
         {stages.map((stage, i) => (
           <div key={stage} className="flex gap-3">
             <div className="flex flex-col items-center">
-              <span className="mt-[5px] h-2.5 w-2.5 shrink-0 rounded-full bg-[#0a0a0a]" />
+              <span className="mt-[5px] h-2.5 w-2.5 shrink-0 rounded-full bg-[#18211d]" />
               {i < stages.length - 1 && <span className="w-px flex-1 bg-[#d4d4d4]" style={{ minHeight: '1.5rem' }} />}
             </div>
             <span className={`text-sm text-[#0a0a0a] ${i < stages.length - 1 ? 'pb-6' : ''}`}>{stage}</span>

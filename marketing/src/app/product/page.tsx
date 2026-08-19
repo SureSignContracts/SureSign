@@ -7,6 +7,7 @@ import { ProjectWorkspace } from '@/components/sections/ProjectWorkspace';
 import { TradePackages } from '@/components/sections/TradePackages';
 import { CommercialWorkflow } from '@/components/sections/CommercialWorkflow';
 import { ProgrammeAndRisk } from '@/components/sections/ProgrammeAndRisk';
+import { Drawings } from '@/components/sections/Drawings';
 import { DeliveryDocs } from '@/components/sections/DeliveryDocs';
 import { Notifications } from '@/components/sections/Notifications';
 import { BookDemoCta } from '@/components/sections/BookDemoCta';
@@ -14,7 +15,7 @@ import { BookDemoCta } from '@/components/sections/BookDemoCta';
 export const metadata: Metadata = {
   title: 'Product Workflows',
   description:
-    'Explore SureSign contract intelligence, project workspaces, trade packages, commercial administration, programme, risk, documents and notifications.',
+    'Explore SureSign contract intelligence, project workspaces, trade packages, commercial administration, programme, risk, drawings, documents and notifications.',
   alternates: { canonical: '/product' },
   openGraph: {
     title: 'SureSign Product Workflows',
@@ -56,6 +57,7 @@ export default function ProductPage() {
         <TradePackages />
         <CommercialWorkflow />
         <ProgrammeAndRisk />
+        <Drawings />
         <DeliveryDocs />
         <Notifications />
         <BookDemoCta />

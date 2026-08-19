@@ -50,7 +50,7 @@ const JSON_LD = {
       applicationCategory: 'BusinessApplication',
       operatingSystem: 'Web',
       description:
-        'Construction contract administration platform with automated contract analysis, trade packages, payment applications, statutory notices, programme, and risk in one connected workflow.',
+        'Construction contract administration platform with automated contract analysis, trade packages, payment applications, statutory notices, programme, risk, and drawings in one connected workflow.',
     },
   ],
 };

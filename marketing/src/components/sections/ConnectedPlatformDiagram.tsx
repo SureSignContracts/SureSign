@@ -8,6 +8,7 @@ const MODULES = [
   'Trade Packages',
   'Commercial',
   'Documents',
+  'Drawings',
   'Programme',
   'Risks',
   'Notifications',
@@ -15,9 +16,14 @@ const MODULES = [
   'Final Accounts',
 ];
 
-const SIZE = 800;
+// SIZE/RADIUS were sized for 8 evenly-spaced nodes; adding Drawings as a
+// ninth tightened the gap between neighbouring circles at the old RADIUS.
+// Both bumped up together (SIZE keeps a comfortable margin around
+// RADIUS + NODE_R so the outer glow and nodes never clip the viewBox) so
+// nine nodes get the same breathing room eight used to have.
+const SIZE = 900;
 const CENTER = SIZE / 2;
-const RADIUS = 310;
+const RADIUS = 340;
 const NODE_R = 60;
 const CENTER_R = 84;
 
@@ -97,7 +103,7 @@ export function ConnectedPlatformDiagram() {
       viewBox={`0 0 ${SIZE} ${SIZE}`}
       className="mx-auto h-auto w-full max-w-[800px]"
       role="img"
-      aria-label="Diagram showing the Contract at the centre of the platform, connected to Trade Packages, Commercial, Documents, Programme, Risks, Notifications, Calendar, and Final Accounts."
+      aria-label="Diagram showing the Contract at the centre of the platform, connected to Trade Packages, Commercial, Documents, Drawings, Programme, Risks, Notifications, Calendar, and Final Accounts."
     >
       <defs>
         <radialGradient id="platform-glow" cx="50%" cy="50%" r="50%">

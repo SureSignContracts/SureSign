@@ -3,7 +3,7 @@ import { Container } from '@/components/shared/Container';
 const FEATURED = ['Contracts', 'Commercial'];
 const FOLDERS = [
   'Subcontracts', 'Payment Applications', 'Variations',
-  'Notices', 'RFIs', 'Meetings', 'QA Reports', 'Site Reports', 'Adjudication', 'General',
+  'Notices', 'RFIs', 'Drawings', 'Meetings', 'QA Reports', 'Site Reports', 'General',
 ];
 
 export function ProjectWorkspace() {

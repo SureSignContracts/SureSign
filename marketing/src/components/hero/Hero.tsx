@@ -1,8 +1,8 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { LayoutGrid, Clock, Network } from 'lucide-react';
 import { Container } from '@/components/shared/Container';
 import { MockupFrame } from '@/components/shared/MockupFrame';
-import { DashboardPreview } from '@/components/shared/placeholders';
 import { HeroReveal } from '@/components/hero/HeroReveal';
 import { HeroBlueprint } from '@/components/hero/HeroBlueprint';
 import { HeroChip } from '@/components/hero/HeroChip';
@@ -65,8 +65,36 @@ export function Hero() {
             <HeroChip icon={Clock} label="Always up to date" className="-right-8 top-[8%] lg:-right-16" />
             <HeroChip icon={Network} label="Connected by design" className="-right-8 top-[62%] lg:-right-16" />
 
-            <MockupFrame elevated>
-              <DashboardPreview />
+            {/* tilt={false} — a real screenshot visibly blurs under the
+                placeholder frame's static 3D rotate (browser has to resample
+                the bitmap at an angle); the CSS-drawn mockups elsewhere don't
+                have that problem, so only this real <Image> opts out. */}
+            <MockupFrame elevated tilt={false}>
+              {/*
+               * unoptimized — the source is already a compressed, correctly
+               * sized (1860w) webp screenshot. Next's default srcset still
+               * spans every configured deviceSize up to 3840w regardless of
+               * the `sizes` hint (that hint only tells the BROWSER which
+               * entry to pick, it doesn't stop Next generating the larger
+               * ones), so a high-DPI/large-viewport visitor was being served
+               * a variant upscaled from 1860px to as much as 3840px and
+               * re-encoded — genuinely blurry, not a rendering illusion.
+               * `quality` doesn't help here either: this Next version's
+               * default `images.qualities` allow-list is [75] only, so the
+               * quality={90} this used to have was silently rejected and
+               * fell back to 75 (confirmed via the served HTML's own
+               * srcset, every entry `q=75`). Serving the real bytes directly
+               * avoids both problems.
+               */}
+              <Image
+                src="/dashboard.webp"
+                alt="SureSign project dashboard showing overdue and due-soon items and a live project map"
+                width={1860}
+                height={958}
+                priority
+                unoptimized
+                className="h-auto w-full"
+              />
             </MockupFrame>
           </div>
         </HeroReveal>
