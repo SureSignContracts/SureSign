@@ -7,11 +7,11 @@ import { Save } from 'lucide-react';
 import Toggle from '@/components/ui/Toggle';
 import Button from '@/components/ui/Button';
 import { Card, CardBody } from '@/components/ui/Card';
+import toast from '@/lib/toast';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 export default function AdminSettingsPage() {
   const qc = useQueryClient();
-  const [generalSaved, setGeneralSaved] = useState(false);
-  const [flagsSaved, setFlagsSaved] = useState(false);
 
   // ── General + feature flags state ──
   const [platformName, setPlatformName]   = useState<string | null>(null);
@@ -25,7 +25,6 @@ export default function AdminSettingsPage() {
   // ── Notifications state ──
   const [notificationEvents, setNotificationEvents] = useState<string[]>([]);
   const [notifSeeded, setNotifSeeded]               = useState(false);
-  const [notifSaved, setNotifSaved]                 = useState(false);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['admin-settings'],
@@ -61,18 +60,18 @@ export default function AdminSettingsPage() {
     mutationFn: (payload: any) => api.put('/admin/settings', payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-settings'] });
-      setGeneralSaved(true);
-      setTimeout(() => setGeneralSaved(false), 2500);
+      toast.success('General settings saved.');
     },
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to save general settings.')),
   });
 
   const flagsMutation = useMutation({
     mutationFn: (payload: any) => api.put('/admin/settings', payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-settings'] });
-      setFlagsSaved(true);
-      setTimeout(() => setFlagsSaved(false), 2500);
+      toast.success('Feature flags saved.');
     },
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to save feature flags.')),
   });
 
   const notifMutation = useMutation({
@@ -80,9 +79,9 @@ export default function AdminSettingsPage() {
       api.put('/admin/suresign-settings/notifications', payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-suresign-settings'] });
-      setNotifSaved(true);
-      setTimeout(() => setNotifSaved(false), 2500);
+      toast.success('Notification settings saved.');
     },
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to save notification settings.')),
   });
 
   const NOTIFICATION_EVENTS: { key: string; label: string }[] = [
@@ -188,7 +187,7 @@ export default function AdminSettingsPage() {
             size="lg"
           >
             <Save size={15} />
-            {generalSaved ? 'Saved!' : generalMutation.isPending ? 'Saving…' : 'Save General Settings'}
+            {generalMutation.isPending ? 'Saving…' : 'Save General Settings'}
           </Button>
         </div>
       </section>
@@ -235,7 +234,7 @@ export default function AdminSettingsPage() {
             size="lg"
           >
             <Save size={15} />
-            {flagsSaved ? 'Saved!' : flagsMutation.isPending ? 'Saving…' : 'Save Feature Flags'}
+            {flagsMutation.isPending ? 'Saving…' : 'Save Feature Flags'}
           </Button>
         </div>
       </section>
@@ -274,7 +273,7 @@ export default function AdminSettingsPage() {
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
             >
               <Save size={12} />
-              {notifSaved ? 'Saved!' : notifMutation.isPending ? 'Saving…' : 'Save Notification Settings'}
+              {notifMutation.isPending ? 'Saving…' : 'Save Notification Settings'}
             </button>
           </div>
         </CardBody>

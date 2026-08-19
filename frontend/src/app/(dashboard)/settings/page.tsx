@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, Save, Check, Upload, Palette, Building2, KeyRound, ScrollText, Lock, BookOpen, Globe, Eye } from 'lucide-react';
+import { Settings, Save, Upload, Palette, Building2, KeyRound, ScrollText, Lock, BookOpen, Globe, Eye } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/lib/api';
 import toast from '@/lib/toast';
@@ -135,7 +135,6 @@ function ImageUploader({
 
 export default function SettingsPage() {
   const [tab, setTab] = useState<Tab>('branding');
-  const [saved, setSaved] = useState(false);
   const qc = useQueryClient();
 
   const { data: b, isLoading } = useQuery<BrandingData>({
@@ -202,9 +201,9 @@ export default function SettingsPage() {
       };
       document.documentElement.style.setProperty('--accent-fg', isLight(p.primary_color) ? '#0a0a0a' : '#ffffff');
       qc.invalidateQueries({ queryKey: ['branding'] });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
+      toast.success('Branding saved.');
     },
+    onError: (err: any) => toast.error(getErrorMessage(err, 'Failed to save branding.')),
   });
 
   const infoMutation = useMutation({
@@ -229,9 +228,9 @@ export default function SettingsPage() {
       // user who inherits it — refresh this session's own cached copy too,
       // so it's reflected here without requiring a re-login.
       useAuthStore.getState().fetchUser();
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
+      toast.success('Company information saved.');
     },
+    onError: (err: any) => toast.error(getErrorMessage(err, 'Failed to save company information.')),
   });
 
   const handleSave = () => {
@@ -253,7 +252,6 @@ export default function SettingsPage() {
   const { user, fetchUser } = useAuthStore();
   const [useOrgTimezone, setUseOrgTimezone] = useState(true);
   const [ownTimezone, setOwnTimezone] = useState('Europe/London');
-  const [tzSaved, setTzSaved] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -265,15 +263,14 @@ export default function SettingsPage() {
     mutationFn: (timezone: string | null) => api.put('/auth/timezone', { timezone }),
     onSuccess: async () => {
       await fetchUser();
-      setTzSaved(true);
-      setTimeout(() => setTzSaved(false), 2500);
+      toast.success('Timezone saved.');
     },
+    onError: (err: any) => toast.error(getErrorMessage(err, 'Failed to save timezone.')),
   });
 
   // ── Change Password ──
   const [pwForm, setPwForm] = useState({ current: '', password: '', confirm: '' });
   const [pwErrors, setPwErrors] = useState<{ current?: string; password?: string; confirm?: string }>({});
-  const [pwDone, setPwDone] = useState(false);
 
   const pwRules = checkPassword(pwForm.password);
   const pwValid = pwForm.password
@@ -289,8 +286,6 @@ export default function SettingsPage() {
     onSuccess: () => {
       setPwForm({ current: '', password: '', confirm: '' });
       setPwErrors({});
-      setPwDone(true);
-      setTimeout(() => setPwDone(false), 3000);
       toast.success('Password updated successfully.');
     },
     onError: (err: any) => {
@@ -341,7 +336,7 @@ export default function SettingsPage() {
       <nav className="ss-animate-in rounded-2xl bg-[var(--bg-surface)] p-2 shadow-[0_12px_32px_rgba(24,33,29,0.07)] lg:sticky lg:top-6" style={{ animationDelay: '60ms' }} aria-label="Settings sections">
         <p className="px-3 pb-2 pt-3 text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--text-secondary)' }}>Settings directory</p>
         {tabs.map(t => (
-          <button key={t.id} onClick={() => { setTab(t.id); setSaved(false); }}
+          <button key={t.id} onClick={() => setTab(t.id)}
             className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-all duration-200 active:scale-[0.98]"
             style={tab === t.id
               ? { backgroundColor: '#18211d', color: '#ffffff' }
@@ -569,8 +564,8 @@ export default function SettingsPage() {
                 className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-opacity disabled:opacity-60"
                 style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
               >
-                {tzSaved ? <Check size={15} /> : <Globe size={15} />}
-                {tzSaved ? 'Saved!' : timezoneMutation.isPending ? 'Saving…' : 'Save Timezone'}
+                <Globe size={15} />
+                {timezoneMutation.isPending ? 'Saving…' : 'Save Timezone'}
               </button>
             </div>
           </div>
@@ -637,8 +632,8 @@ export default function SettingsPage() {
                 className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-opacity disabled:opacity-50"
                 style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
               >
-                {pwDone ? <Check size={15} /> : <KeyRound size={15} />}
-                {pwDone ? 'Password Updated!' : pwMutation.isPending ? 'Updating…' : 'Update Password'}
+                <KeyRound size={15} />
+                {pwMutation.isPending ? 'Updating…' : 'Update Password'}
               </button>
             </div>
           </div>
@@ -652,8 +647,8 @@ export default function SettingsPage() {
               className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 active:scale-[0.97] disabled:opacity-60"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
             >
-              {saved ? <Check size={15} /> : <Save size={15} />}
-              {saved ? 'Saved!' : isPending ? 'Saving…' : 'Save Changes'}
+              <Save size={15} />
+              {isPending ? 'Saving…' : 'Save Changes'}
             </button>
           </div>
         )}

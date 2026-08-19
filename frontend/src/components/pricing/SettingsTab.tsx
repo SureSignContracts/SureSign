@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
+import toast from '@/lib/toast';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 import Button from '@/components/ui/Button';
 import { Card, CardBody } from '@/components/ui/Card';
 import Toggle from '@/components/ui/Toggle';
@@ -25,7 +27,6 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 export default function SettingsTab() {
   const qc = useQueryClient();
   const [form, setForm] = useState<Partial<PricingSettings> | null>(null);
-  const [saved, setSaved] = useState(false);
   const [newItemText, setNewItemText] = useState('');
 
   const { data, isLoading } = useQuery({
@@ -46,9 +47,9 @@ export default function SettingsTab() {
     mutationFn: (payload: Partial<PricingSettings>) => api.put('/admin/pricing/settings', payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-pricing-settings'] });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
+      toast.success('Pricing settings saved.');
     },
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to save pricing settings.')),
   });
 
   const invalidateItems = () => qc.invalidateQueries({ queryKey: ['admin-pricing-included-items'] });
@@ -206,7 +207,7 @@ export default function SettingsTab() {
 
       <div className="flex justify-end">
         <Button size="lg" onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}>
-          <Save size={15} /> {saved ? 'Saved!' : saveMutation.isPending ? 'Saving…' : 'Save Settings'}
+          <Save size={15} /> {saveMutation.isPending ? 'Saving…' : 'Save Settings'}
         </Button>
       </div>
     </div>

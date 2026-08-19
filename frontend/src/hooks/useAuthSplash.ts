@@ -7,7 +7,18 @@ import {
   subscribePostLoginEntrance,
 } from '@/lib/authStorage';
 
-const MIN_SPLASH_MS = 800;
+// Long enough for SureSignLoader's real one-time reveal to actually finish
+// on screen — entrance + the mark drawing itself in piece by piece +
+// crossfade + settle-pop + a themed decoration popping in comes to
+// roughly 2.9-3.1s (New Year's extra firework bursts run a bit past that,
+// into what would otherwise be the idle loop — an acceptable trade-off
+// rather than holding every login for the single longest theme). Tuned
+// specifically to this animation, not an arbitrary constant — if the
+// reveal's own timeline durations change materially, revisit this too.
+// Deliberately login-only (see `playEntrance`'s docblock below) — every
+// other read (an already-authenticated reload, ordinary navigation)
+// skips this wait entirely and shows the real app the moment it's ready.
+const MIN_SPLASH_MS = 3000;
 const ENTRANCE_ANIMATION_MS = 1100;
 
 // How long the loader NODE stays mounted after `showSplash` itself has
@@ -25,10 +36,14 @@ export const LOADER_EXIT_MS = 220;
  * both have to clear before the splash is dismissed:
  *
  * 1. A minimum on-screen duration (MIN_SPLASH_MS) after a freshly completed
- *    login, so the branded handoff has room to register before the workspace
- *    enters. Existing sessions skip that artificial wait. The browser-only
- *    marker is read with useSyncExternalStore so server rendering cannot
- *    freeze a false value into the hydrated layout.
+ *    login — long enough for the branded loader to actually finish playing
+ *    its reveal, rather than the app potentially becoming ready mid-draw
+ *    and cutting it off. Existing sessions/ordinary navigation skip that
+ *    wait entirely and show the real app the instant it's ready — this is
+ *    a "let a fresh login enjoy the moment" grace period, not a general
+ *    loading-screen delay. The browser-only marker is read with
+ *    useSyncExternalStore so server rendering cannot freeze a false value
+ *    into the hydrated layout.
  * 2. `isReady`, supplied by the caller — this hook has no opinion on what
  *    "ready" means for a given layout (auth rehydration, token/user
  *    presence, an organisation-branding fetch, or nothing at all beyond

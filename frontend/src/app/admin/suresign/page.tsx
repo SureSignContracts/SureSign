@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
+import toast from '@/lib/toast';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 import {
   Gem, Check, Save, RefreshCw, FileText, Mail, ImageIcon,
   X, Upload, Palette, Globe, FileUp, Download, Send, Eye, EyeOff, Wrench, Bell,
@@ -127,15 +129,15 @@ function SubLabel({ children }: { children: React.ReactNode }) {
 }
 
 // ─── Save button ──────────────────────────────────────────────────────────────
-function SaveBtn({ onClick, pending, saved }: { onClick: () => void; pending: boolean; saved: boolean }) {
+function SaveBtn({ onClick, pending }: { onClick: () => void; pending: boolean }) {
   return (
     <button
       onClick={onClick} disabled={pending}
       className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-60 active:scale-[0.98]"
       style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
     >
-      {pending ? <RefreshCw size={14} className="animate-spin" /> : saved ? <Check size={14} /> : <Save size={14} />}
-      {saved ? 'Saved!' : pending ? 'Saving\u2026' : 'Save Settings'}
+      {pending ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+      {pending ? 'Saving\u2026' : 'Save Settings'}
     </button>
   );
 }
@@ -232,7 +234,6 @@ export default function AdminSureSignPage() {
     setActiveTab(tab);
     localStorage.setItem('suresign_settings_tab', tab);
   };
-  const [savedTab, setSavedTab] = useState<TabId | null>(null);
   const [uploading, setUploading] = useState<Record<string, boolean>>({});
   const [showBrevoKey, setShowBrevoKey] = useState(false);
   const emailBodyRef = useRef<HTMLTextAreaElement>(null);
@@ -305,15 +306,11 @@ export default function AdminSureSignPage() {
     setSiteForm(p => ({ ...p, currency: code, currency_symbol: found?.symbol ?? '' }));
   };
 
-  const markSaved = (tab: TabId) => {
-    setSavedTab(tab);
-    setTimeout(() => setSavedTab(null), 2500);
-  };
-
   // ── Mutations ─────────────────────────────────────────────────────────────
   const emailMutation = useMutation({
     mutationFn: (payload: typeof emailForm) => api.put('/admin/suresign-settings/email', payload),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-suresign-settings'] }); markSaved('email'); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-suresign-settings'] }); toast.success('Email settings saved.'); },
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to save email settings.')),
   });
 
   const siteMutation = useMutation({
@@ -321,8 +318,9 @@ export default function AdminSureSignPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-suresign-settings'] });
       qc.invalidateQueries({ queryKey: ['site-settings'] });
-      markSaved('site');
+      toast.success('Site settings saved.');
     },
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to save site settings.')),
   });
 
   const brandingMutation = useMutation({
@@ -334,12 +332,13 @@ export default function AdminSureSignPage() {
       // login, next hard reload) picks up the change rather than serving
       // its 5-minute staleTime cache.
       qc.invalidateQueries({ queryKey: ['guest-settings', 'loader-accent-style'] });
-      markSaved('branding');
+      toast.success('Branding settings saved.');
     },
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to save branding settings.')),
   });
 
   // ── File upload helper ────────────────────────────────────────────────────
-  const uploadFile = async (field: string, endpoint: string, paramName: string, file: File, tab: TabId) => {
+  const uploadFile = async (field: string, endpoint: string, paramName: string, file: File) => {
     setUploading(p => ({ ...p, [field]: true }));
     try {
       const fd = new FormData();
@@ -347,20 +346,24 @@ export default function AdminSureSignPage() {
       await api.post(endpoint, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       qc.invalidateQueries({ queryKey: ['admin-suresign-settings'] });
       qc.invalidateQueries({ queryKey: ['site-settings'] });
-      markSaved(tab);
+      toast.success('File uploaded.');
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Failed to upload file.'));
     } finally {
       setUploading(p => ({ ...p, [field]: false }));
     }
   };
 
   // ── File remove helper ────────────────────────────────────────────────────
-  const removeFile = async (endpoint: string, tab: TabId) => {
+  const removeFile = async (endpoint: string) => {
     try {
       await api.delete(endpoint);
       qc.invalidateQueries({ queryKey: ['admin-suresign-settings'] });
-      markSaved(tab);
       qc.invalidateQueries({ queryKey: ['site-settings'] });
-    } catch { /* silently ignore — local state already cleared */ }
+      toast.success('File removed.');
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Failed to remove file.'));
+    }
   };
 
   // ── Test PDF ──────────────────────────────────────────────────────────────
@@ -488,8 +491,8 @@ export default function AdminSureSignPage() {
             accept="image/png,image/svg+xml,image/jpeg,image/webp"
             currentUrl={data?.logo_url ?? null}
             uploading={!!uploading.logo}
-            onUpload={f => uploadFile('logo', '/admin/suresign-settings/logo', 'logo', f, 'branding')}
-            onRemove={() => removeFile('/admin/suresign-settings/logo', 'branding')}
+            onUpload={f => uploadFile('logo', '/admin/suresign-settings/logo', 'logo', f)}
+            onRemove={() => removeFile('/admin/suresign-settings/logo')}
           />
           <UploadTile
             label="Site favicon"
@@ -497,8 +500,8 @@ export default function AdminSureSignPage() {
             accept="image/png,image/svg+xml,image/x-icon,.ico"
             currentUrl={data?.favicon_url ?? null}
             uploading={!!uploading.favicon}
-            onUpload={f => uploadFile('favicon', '/admin/suresign-settings/favicon', 'favicon', f, 'branding')}
-            onRemove={() => removeFile('/admin/suresign-settings/favicon', 'branding')}
+            onUpload={f => uploadFile('favicon', '/admin/suresign-settings/favicon', 'favicon', f)}
+            onRemove={() => removeFile('/admin/suresign-settings/favicon')}
           />
 
           <Divider />
@@ -512,7 +515,7 @@ export default function AdminSureSignPage() {
               options={ACCENT_STYLE_OPTIONS}
               hint="How the SureSign mark draws itself in on the branded loading screen shown while the app is signing you in. Try each one first in the Preview tab below — switch it back to 'Black & white' or 'Mint' once a seasonal moment has passed."
             />
-            <SaveBtn onClick={() => brandingMutation.mutate(brandingForm)} pending={brandingMutation.isPending} saved={savedTab === 'branding'} />
+            <SaveBtn onClick={() => brandingMutation.mutate(brandingForm)} pending={brandingMutation.isPending} />
           </div>
         </div>
       )}
@@ -530,8 +533,8 @@ export default function AdminSureSignPage() {
                   accept="image/png,image/jpeg,image/webp"
                   currentUrl={data?.letterhead_header_url ?? null}
                   uploading={!!uploading.lthdHeader}
-                  onUpload={f => uploadFile('lthdHeader', '/admin/suresign-settings/letterhead-header', 'header', f, 'document')}
-                  onRemove={() => removeFile('/admin/suresign-settings/letterhead-header', 'document')}
+                  onUpload={f => uploadFile('lthdHeader', '/admin/suresign-settings/letterhead-header', 'header', f)}
+                  onRemove={() => removeFile('/admin/suresign-settings/letterhead-header')}
                 />
                 <UploadTile
                   label="Footer Image"
@@ -539,8 +542,8 @@ export default function AdminSureSignPage() {
                   accept="image/png,image/jpeg,image/webp"
                   currentUrl={data?.letterhead_footer_url ?? null}
                   uploading={!!uploading.lthdFooter}
-                  onUpload={f => uploadFile('lthdFooter', '/admin/suresign-settings/letterhead-footer', 'footer', f, 'document')}
-                  onRemove={() => removeFile('/admin/suresign-settings/letterhead-footer', 'document')}
+                  onUpload={f => uploadFile('lthdFooter', '/admin/suresign-settings/letterhead-footer', 'footer', f)}
+                  onRemove={() => removeFile('/admin/suresign-settings/letterhead-footer')}
                 />
               </div>
             </div>
@@ -562,8 +565,8 @@ export default function AdminSureSignPage() {
                 currentUrl={data?.letterhead_pdf_url ?? null}
                 uploading={!!uploading.lthdPdf}
                 isPdf
-                onUpload={f => uploadFile('lthdPdf', '/admin/suresign-settings/letterhead-pdf', 'pdf', f, 'document')}
-                onRemove={() => removeFile('/admin/suresign-settings/letterhead-pdf', 'document')}
+                onUpload={f => uploadFile('lthdPdf', '/admin/suresign-settings/letterhead-pdf', 'pdf', f)}
+                onRemove={() => removeFile('/admin/suresign-settings/letterhead-pdf')}
               />
             </div>
 
@@ -572,11 +575,6 @@ export default function AdminSureSignPage() {
               Include company name, address, registration number and contact details in the letterhead artwork.
             </div>
 
-            {savedTab === 'document' && (
-              <p className="flex items-center gap-1.5 text-xs" style={{ color: '#10b981' }}>
-                <Check size={12} /> Document settings saved.
-              </p>
-            )}
           </div>
 
           {/* Generate Test PDF */}
@@ -618,8 +616,8 @@ export default function AdminSureSignPage() {
                   accept="image/png,image/jpeg,image/webp"
                   currentUrl={data?.email_header_url ?? null}
                   uploading={!!uploading.emailHeader}
-                  onUpload={f => uploadFile('emailHeader', '/admin/suresign-settings/email-header', 'header', f, 'email')}
-                  onRemove={() => removeFile('/admin/suresign-settings/email-header', 'email')}
+                  onUpload={f => uploadFile('emailHeader', '/admin/suresign-settings/email-header', 'header', f)}
+                  onRemove={() => removeFile('/admin/suresign-settings/email-header')}
                 />
                 <UploadTile
                   label="Footer Image"
@@ -627,8 +625,8 @@ export default function AdminSureSignPage() {
                   accept="image/png,image/jpeg,image/webp"
                   currentUrl={data?.email_footer_url ?? null}
                   uploading={!!uploading.emailFooter}
-                  onUpload={f => uploadFile('emailFooter', '/admin/suresign-settings/email-footer', 'footer', f, 'email')}
-                  onRemove={() => removeFile('/admin/suresign-settings/email-footer', 'email')}
+                  onUpload={f => uploadFile('emailFooter', '/admin/suresign-settings/email-footer', 'footer', f)}
+                  onRemove={() => removeFile('/admin/suresign-settings/email-footer')}
                 />
               </div>
             </div>
@@ -742,7 +740,7 @@ export default function AdminSureSignPage() {
             </div>
 
             <div className="flex justify-end pt-1">
-              <SaveBtn onClick={() => emailMutation.mutate(emailForm)} pending={emailMutation.isPending} saved={savedTab === 'email'} />
+              <SaveBtn onClick={() => emailMutation.mutate(emailForm)} pending={emailMutation.isPending} />
             </div>
           </div>
 
@@ -950,7 +948,7 @@ export default function AdminSureSignPage() {
           </div>
 
           <div className="flex justify-end pt-1">
-            <SaveBtn onClick={() => siteMutation.mutate(siteForm)} pending={siteMutation.isPending} saved={savedTab === 'site'} />
+            <SaveBtn onClick={() => siteMutation.mutate(siteForm)} pending={siteMutation.isPending} />
           </div>
         </div>
       )}

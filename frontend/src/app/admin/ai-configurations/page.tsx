@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
+import toast from '@/lib/toast';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 import { Save, Sparkles, Eye, EyeOff } from 'lucide-react';
 import Toggle from '@/components/ui/Toggle';
 import Button from '@/components/ui/Button';
@@ -26,7 +28,6 @@ export default function AdminAiConfigPage() {
   const [aiEffort, setAiEffort]             = useState<string | null>(null);
   const [anthropicKey, setAnthropicKey]     = useState('');
   const [showAiKey, setShowAiKey]           = useState(false);
-  const [aiSaved, setAiSaved]               = useState(false);
 
   const { data: suresignData } = useQuery({
     queryKey: ['admin-suresign-settings'],
@@ -47,9 +48,9 @@ export default function AdminAiConfigPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-suresign-settings'] });
       setAnthropicKey('');
-      setAiSaved(true);
-      setTimeout(() => setAiSaved(false), 2500);
+      toast.success('AI settings saved.');
     },
+    onError: (e) => toast.error(getErrorMessage(e, 'Failed to save AI settings.')),
   });
 
   const currentAiEnabled      = aiEnabled ?? !!(suresignData as any)?.ai_enabled;
@@ -221,7 +222,7 @@ export default function AdminAiConfigPage() {
               size="sm"
             >
               <Save size={12} />
-              {aiSaved ? 'Saved!' : aiMutation.isPending ? 'Saving…' : 'Save AI Settings'}
+              {aiMutation.isPending ? 'Saving…' : 'Save AI Settings'}
             </Button>
           </div>
         </CardBody>
