@@ -1219,6 +1219,7 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
             Route::put('/suresign-settings',                         [SuresignSettingController::class, 'update']);
             Route::put('/suresign-settings/email',                   [SuresignSettingController::class, 'updateEmail']);
             Route::put('/suresign-settings/site',                    [SuresignSettingController::class, 'updateSite']);
+            Route::put('/suresign-settings/branding',                [SuresignSettingController::class, 'updateBranding']);
             Route::post('/suresign-settings/logo',                   [SuresignSettingController::class, 'uploadLogo']);
             Route::post('/suresign-settings/favicon',                [SuresignSettingController::class, 'uploadFavicon']);
             Route::post('/suresign-settings/letterhead-header',      [SuresignSettingController::class, 'uploadLetterheadHeader']);

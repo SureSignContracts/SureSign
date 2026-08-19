@@ -10,7 +10,7 @@ import SureSignLoader from '@/components/ui/SureSignLoader';
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, token, _hasHydrated } = useAuthStore();
-  const { showSplash, playEntrance } = useAuthSplash(_hasHydrated && !!token && !!user);
+  const { showLoaderNode, loaderExiting, playEntrance } = useAuthSplash(_hasHydrated && !!token && !!user);
 
   useEffect(() => {
     if (_hasHydrated && !token) {
@@ -18,8 +18,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [_hasHydrated, token, router]);
 
-  if (showSplash) {
-    return <SureSignLoader />;
+  if (showLoaderNode) {
+    return <SureSignLoader exiting={loaderExiting} />;
   }
 
   return (

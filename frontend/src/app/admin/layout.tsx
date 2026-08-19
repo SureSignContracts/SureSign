@@ -17,7 +17,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [navOpen, setNavOpen] = useState(false);
 
   const isSystemUser = user?.roles?.includes('Super Admin') || user?.roles?.includes('Admin');
-  const { showSplash, playEntrance } = useAuthSplash(_hasHydrated && !!token && !!user);
+  const { showLoaderNode, loaderExiting, playEntrance } = useAuthSplash(_hasHydrated && !!token && !!user);
 
   useEffect(() => {
     if (_hasHydrated) {
@@ -29,13 +29,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, [_hasHydrated, token, isSystemUser, router]);
 
-  if (showSplash) {
-    return <SureSignLoader />;
+  if (showLoaderNode) {
+    return <SureSignLoader exiting={loaderExiting} />;
   }
 
-  // `user` is guaranteed non-null here since showSplash is false only once
-  // useAuthSplash's isReady (which includes !!user) has been true — this
-  // check is TypeScript narrowing, not new runtime behaviour.
+  // `user` is guaranteed non-null here since showLoaderNode is false only
+  // once useAuthSplash's isReady (which includes !!user) has been true —
+  // this check is TypeScript narrowing, not new runtime behaviour.
   if (!user || !isSystemUser) {
     return null;
   }

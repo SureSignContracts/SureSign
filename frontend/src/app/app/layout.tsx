@@ -136,14 +136,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // query never runs at all (disabled above) — brandingFetched would never
   // become true, so it's excluded from the readiness condition in that
   // case; the WorkspaceAccessGate is shown instead, not the normal shell.
-  const { showSplash, playEntrance } = useAuthSplash(
+  const { showLoaderNode, loaderExiting, playEntrance } = useAuthSplash(
     _hasHydrated && !!token && !!user && !!workspaceCtx && (workspaceBlocking || brandingFetched)
   );
-  // `user`/`workspaceCtx` are guaranteed non-null here since showSplash is
-  // false only once isReady (which includes both) has been true —
+  // `user`/`workspaceCtx` are guaranteed non-null here since showLoaderNode
+  // is false only once isReady (which includes both) has been true —
   // TypeScript narrowing, not new runtime behaviour.
-  if (showSplash || !user || !workspaceCtx) {
-    return <SureSignLoader />;
+  if (showLoaderNode || !user || !workspaceCtx) {
+    return <SureSignLoader exiting={loaderExiting} />;
   }
 
   if (workspaceBlocking) {

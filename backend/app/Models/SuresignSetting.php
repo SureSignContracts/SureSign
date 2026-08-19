@@ -21,6 +21,7 @@ class SuresignSetting extends Model
         'anthropic_api_key',
         'logo_path',
         'favicon_path',
+        'loader_accent_style',
         'letterhead_header_path',
         'letterhead_footer_path',
         'letterhead_pdf_path',

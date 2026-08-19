@@ -11,7 +11,10 @@ import {
 import Select from '@/components/ui/Select';
 import PlatformPageHero from '@/components/admin/PlatformPageHero';
 import FeatureAvailabilityManager from '@/components/admin/FeatureAvailabilityManager';
-import ToastPreviewPanel from '@/components/admin/ToastPreviewPanel';
+import PreviewPanel from '@/components/admin/PreviewPanel';
+import { ACCENT_STYLES, ACCENT_STYLE_LABELS, type AccentStyle } from '@/components/ui/SureSignLoader';
+
+const ACCENT_STYLE_OPTIONS = ACCENT_STYLES.map(value => ({ value, label: ACCENT_STYLE_LABELS[value] }));
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface PlatformSettings {
@@ -35,6 +38,7 @@ interface PlatformSettings {
   date_format:            string;
   timezone:               string;
   hidden_pages:           string[];
+  loader_accent_style:    AccentStyle;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -67,10 +71,12 @@ const TABS = [
   // excluded, unlike every other tab here). Filtered out of the rendered
   // tab bar below when the current user isn't Super Admin.
   { id: 'feature-availability', label: 'Feature Availability', icon: Wrench, color: '#eab308', superAdminOnly: true },
-  // Client-side only test bench for every toast variant/option — no backend
-  // endpoint, nothing persisted. Super Admin only, same reasoning as
-  // Feature Availability above (an internal tool, not a customer surface).
-  { id: 'toast-preview', label: 'Toast Preview', icon: Bell, color: '#9ee5b5', superAdminOnly: true },
+  // Client-side only, general test bench (loader, toasts, whatever's next)
+  // — no backend endpoint, nothing persisted. Super Admin only, same
+  // reasoning as Feature Availability above (an internal tool, not a
+  // customer surface). Keep adding new manual tests as sections inside
+  // PreviewPanel rather than a new tab per feature.
+  { id: 'preview', label: 'Preview', icon: Bell, color: '#9ee5b5', superAdminOnly: true },
 ] as const;
 
 type TabId = typeof TABS[number]['id'];
@@ -257,6 +263,7 @@ export default function AdminSureSignPage() {
         brevo_api_key: '', has_brevo_key: false,
         currency: 'GBP', currency_symbol: '\u00a3', date_format: 'DD/MM/YYYY', timezone: 'Europe/London',
         hidden_pages: [],
+        loader_accent_style: 'monochrome',
       })),
     staleTime: 5 * 60 * 1000,
   });
@@ -268,6 +275,9 @@ export default function AdminSureSignPage() {
   });
   const [siteForm, setSiteForm] = useState({
     currency: 'GBP', currency_symbol: '\u00a3', date_format: 'DD/MM/YYYY', timezone: 'Europe/London',    hidden_pages: [] as string[],  });
+  const [brandingForm, setBrandingForm] = useState<{ loader_accent_style: AccentStyle }>({
+    loader_accent_style: 'monochrome',
+  });
 
   useEffect(() => {
     if (!data) return;
@@ -285,6 +295,9 @@ export default function AdminSureSignPage() {
       currency_symbol: data.currency_symbol ?? '\u00a3',
       date_format:     data.date_format     ?? 'DD/MM/YYYY',
       timezone:        data.timezone        ?? 'Europe/London',      hidden_pages:    data.hidden_pages    ?? [],    });
+    setBrandingForm({
+      loader_accent_style: data.loader_accent_style ?? 'monochrome',
+    });
   }, [data]);
 
   const handleCurrencyChange = (code: string) => {
@@ -309,6 +322,19 @@ export default function AdminSureSignPage() {
       qc.invalidateQueries({ queryKey: ['admin-suresign-settings'] });
       qc.invalidateQueries({ queryKey: ['site-settings'] });
       markSaved('site');
+    },
+  });
+
+  const brandingMutation = useMutation({
+    mutationFn: (payload: typeof brandingForm) => api.put('/admin/suresign-settings/branding', payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-suresign-settings'] });
+      // The global loader (SureSignLoader) reads this same value from
+      // /guest-settings — invalidate its query too so a fresh mount (next
+      // login, next hard reload) picks up the change rather than serving
+      // its 5-minute staleTime cache.
+      qc.invalidateQueries({ queryKey: ['guest-settings', 'loader-accent-style'] });
+      markSaved('branding');
     },
   });
 
@@ -474,11 +500,20 @@ export default function AdminSureSignPage() {
             onUpload={f => uploadFile('favicon', '/admin/suresign-settings/favicon', 'favicon', f, 'branding')}
             onRemove={() => removeFile('/admin/suresign-settings/favicon', 'branding')}
           />
-          {savedTab === 'branding' && (
-            <p className="flex items-center gap-1.5 text-xs" style={{ color: '#10b981' }}>
-              <Check size={12} /> Branding saved successfully.
-            </p>
-          )}
+
+          <Divider />
+
+          <div className="space-y-3">
+            <SubLabel>Global loading screen</SubLabel>
+            <SelectField
+              label="Accent"
+              value={brandingForm.loader_accent_style}
+              onChange={v => setBrandingForm({ loader_accent_style: v as AccentStyle })}
+              options={ACCENT_STYLE_OPTIONS}
+              hint="How the SureSign mark draws itself in on the branded loading screen shown while the app is signing you in. Try each one first in the Preview tab below — switch it back to 'Black & white' or 'Mint' once a seasonal moment has passed."
+            />
+            <SaveBtn onClick={() => brandingMutation.mutate(brandingForm)} pending={brandingMutation.isPending} saved={savedTab === 'branding'} />
+          </div>
         </div>
       )}
 
@@ -931,9 +966,9 @@ export default function AdminSureSignPage() {
           : <p className="text-sm" style={{ color: 'var(--text-muted)' }}>You don&apos;t have permission to view this section.</p>
       )}
 
-      {activeTab === 'toast-preview' && (
+      {activeTab === 'preview' && (
         isSuperAdmin
-          ? <ToastPreviewPanel />
+          ? <PreviewPanel />
           : <p className="text-sm" style={{ color: 'var(--text-muted)' }}>You don&apos;t have permission to view this section.</p>
       )}
 

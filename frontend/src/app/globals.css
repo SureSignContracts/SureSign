@@ -910,6 +910,71 @@ select:focus-visible, [tabindex]:focus-visible {
   animation: ss-notification-panel-out 0.18s cubic-bezier(0.4, 0, 1, 1) forwards;
 }
 
+/* Admin notification register: the shell establishes first, then the working
+   controls and records follow. Motion stays short so filtering remains quick. */
+@keyframes ss-notifications-page-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes ss-notifications-hero-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.99); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes ss-notifications-content-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes ss-notifications-row-in {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes ss-notifications-modal-overlay-in {
+  from { opacity: 0; backdrop-filter: blur(0); }
+  to { opacity: 1; backdrop-filter: blur(6px); }
+}
+
+@keyframes ss-notifications-modal-panel-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
+.ss-notifications-page {
+  animation: ss-notifications-page-in 0.25s ease-out both;
+}
+
+.ss-notifications-hero {
+  animation: ss-notifications-hero-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.ss-notifications-content {
+  animation: ss-notifications-content-in 0.48s 0.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.ss-notifications-register {
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.ss-notifications-register:hover {
+  box-shadow: 0 16px 42px rgba(24, 33, 29, 0.09);
+}
+
+.ss-notifications-row {
+  opacity: 0;
+  animation: ss-notifications-row-in 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.ss-notifications-modal-overlay {
+  animation: ss-notifications-modal-overlay-in 0.2s ease-out both;
+}
+
+.ss-notifications-modal-panel {
+  animation: ss-notifications-modal-panel-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 @keyframes ss-feature-state-in {
   from { opacity: 0; transform: translateY(14px); }
   to { opacity: 1; transform: translateY(0); }
@@ -964,6 +1029,9 @@ select:focus-visible, [tabindex]:focus-visible {
   .ss-workspace-left-in, .ss-workspace-right-in,
   .ss-menu-pop-in, .ss-notification-panel-in,
   .ss-notification-panel-out, .ss-showcase-fragment, .ss-showcase-progress,
+  .ss-notifications-page, .ss-notifications-hero,
+  .ss-notifications-content, .ss-notifications-row,
+  .ss-notifications-modal-overlay, .ss-notifications-modal-panel,
   .ss-project-progress,
   .ss-access-shell, .ss-access-panel-left, .ss-access-panel-right,
   .ss-access-reveal, .ss-access-form, .ss-access-status,

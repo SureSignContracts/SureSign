@@ -22,9 +22,14 @@ class SuresignSettingController extends Controller
         $settings = SuresignSetting::instance();
         return response()->json([
             'data' => [
-                'platform_name' => $settings->platform_name ?: config('app.name', 'SureSign'),
-                'support_email' => $settings->support_email ?: '',
-                'favicon_url'   => $settings->favicon_url,
+                'platform_name'        => $settings->platform_name ?: config('app.name', 'SureSign'),
+                'support_email'        => $settings->support_email ?: '',
+                'favicon_url'          => $settings->favicon_url,
+                // Read by SureSignLoader (the global branded loading screen)
+                // before/during auth resolution — this genuinely-public,
+                // no-auth endpoint is the only one available to it at that
+                // point, unlike /settings below (authenticated).
+                'loader_accent_style'  => $settings->loader_accent_style ?: 'monochrome',
             ],
         ]);
     }
@@ -133,8 +138,18 @@ class SuresignSettingController extends Controller
 
     public function updateBranding(Request $request)
     {
-        // Currently branding is upload-only; placeholder for future text fields.
-        return response()->json(['message' => 'Branding saved.']);
+        $validated = $request->validate([
+            // Keep in sync with ACCENT_STYLES in
+            // frontend/src/components/ui/SureSignLoader.tsx — that array is
+            // the actual source of truth for which styles the loader can
+            // render at all; this validation just guards the DB write.
+            'loader_accent_style' => 'nullable|string|in:monochrome,mint,christmas,halloween,new_year,valentines,easter',
+        ]);
+
+        $settings = SuresignSetting::instance();
+        $settings->update($validated);
+
+        return response()->json(['data' => $settings->fresh()->toArray(), 'message' => 'Branding saved.']);
     }
 
     // ─── PUT /admin/suresign-settings/document ────────────────────────────────
