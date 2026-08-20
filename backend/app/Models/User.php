@@ -20,6 +20,7 @@ class User extends Authenticatable
         'address', 'city', 'province', 'postal_code', 'country', 'timezone',
         'is_active', 'last_login_at', 'email_verified_at',
         'banned_at', 'banned_reason', 'must_change_password', 'tours_reset_at',
+        'notification_sound_enabled',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -36,6 +37,7 @@ class User extends Authenticatable
     protected $attributes = [
         'is_active'            => true,
         'must_change_password' => false,
+        'notification_sound_enabled' => true,
     ];
 
     protected function casts(): array
@@ -48,6 +50,7 @@ class User extends Authenticatable
             'banned_at'             => 'datetime',
             'must_change_password'  => 'boolean',
             'tours_reset_at'        => 'datetime',
+            'notification_sound_enabled' => 'boolean',
         ];
     }
 

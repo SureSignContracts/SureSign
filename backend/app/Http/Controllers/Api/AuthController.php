@@ -159,6 +159,24 @@ class AuthController extends Controller
         return response()->json($this->userResource($user->fresh('organization.branding')));
     }
 
+    /**
+     * Self-service Notification Sound preference — same pattern as
+     * updateTimezone() above (the authenticated user acting on their own
+     * account only; `auth:sanctum` + `$request->user()` already scope this
+     * to the caller's own row, so one user can never alter another's).
+     */
+    public function updateNotificationSound(Request $request)
+    {
+        $validated = $request->validate([
+            'enabled' => 'required|boolean',
+        ]);
+
+        $user = $request->user();
+        $user->update(['notification_sound_enabled' => $validated['enabled']]);
+
+        return response()->json($this->userResource($user->fresh('organization.branding')));
+    }
+
     // Used only for the admin-forced "must change password" flow — the user
     // is already authenticated via a valid token, so no current_password is
     // required, but the must_change_password flag (settable only by a Super
@@ -312,6 +330,12 @@ class AuthController extends Controller
             'banned_at'            => $user->banned_at,
             'must_change_password' => $user->must_change_password,
             'tours_reset_at'       => $user->tours_reset_at,
+            // Notification Sound System — user-level only, defaults true at
+            // the DB/model level (see the 2026_09_06_000002 migration and
+            // User::$attributes). Exposed here so the frontend reads it from
+            // the same auth/me + login response it already fetches, with no
+            // second request needed.
+            'notification_sound_enabled' => $user->notification_sound_enabled,
             // `timezone` is the raw override (null = inheriting the
             // organisation's timezone). `effective_timezone` is what
             // actually applies right now, per TimezoneResolver's

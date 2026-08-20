@@ -57,6 +57,10 @@ interface User {
   banned_at?: string | null;
   must_change_password?: boolean;
   tours_reset_at?: string | null;
+  // Notification Sound System — per-user preference, defaults true at the
+  // backend (see AuthController::userResource()). Exposed on the same
+  // auth/me + login response the store already fetches — no second request.
+  notification_sound_enabled?: boolean;
 }
 
 interface AuthState {

@@ -13,6 +13,7 @@ import ForcePasswordChangeGate from '@/components/auth/ForcePasswordChangeGate';
 import WhatsNewLauncher from '@/components/product-updates/WhatsNewLauncher';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { getAdminPageLabel } from '@/lib/pageTitle';
+import { useNewNotificationWatcher } from '@/hooks/useNewNotificationWatcher';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -28,6 +29,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // /admin/suresign owns its own title (tab-driven local state) —
   // getAdminPageLabel returns `undefined` for it, which skips this hook.
   useDocumentTitle(getAdminPageLabel(pathname));
+
+  // Notification Sound System — the shell-level lifecycle owner (see the
+  // matching call in app/app/layout.tsx for the full rationale). Admin has
+  // no equivalent "notification-less" nested route today (NotificationBell
+  // always renders once this layout reaches its main return), so this
+  // mainly keeps the architecture consistent between both shells rather
+  // than fixing a gap here. `onNew` intentionally unwired until an approved
+  // audio asset lands.
+  useNewNotificationWatcher({ enabled: !!token && !!user && !!isSystemUser });
 
   useEffect(() => {
     if (_hasHydrated) {

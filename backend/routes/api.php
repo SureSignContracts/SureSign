@@ -281,6 +281,7 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
         Route::get('/workspace-context', [AuthController::class, 'workspaceContext'])->name('auth.workspace-context');
         Route::put('/password', [AuthController::class, 'updatePassword'])->middleware('throttle:password-change');
         Route::put('/timezone', [AuthController::class, 'updateTimezone']);
+        Route::put('/notification-sound', [AuthController::class, 'updateNotificationSound']);
         Route::put('/force-password-change', [AuthController::class, 'forcePasswordChange'])->middleware('throttle:force-password-change')->name('auth.force-password-change');
         Route::post('/email/verification-notification', [AuthController::class, 'sendEmailVerification'])->middleware('throttle:email-verification-resend');
     });

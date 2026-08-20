@@ -22,6 +22,7 @@ import { fetchWorkspaceContext, type WorkspaceContextResult } from '@/lib/worksp
 import { isCurrentHostPlatform, currentHostname } from '@/lib/hostContext';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { getAppPageLabel } from '@/lib/pageTitle';
+import { useNewNotificationWatcher } from '@/hooks/useNewNotificationWatcher';
 
 const BLOCKING_WORKSPACE_STATES = new Set([
   'wrong_workspace',
@@ -110,6 +111,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     isProjectRouteForTitle ? undefined : getAppPageLabel(pathname),
     { organization: branding?.company_name || user?.organization?.name }
   );
+
+  // Notification Sound System — the shell-level lifecycle owner. Mounted
+  // unconditionally here (not inside NotificationBell, which this layout
+  // only renders on non-project-detail pages further down) specifically so
+  // notification polling keeps running — and the new-notification baseline
+  // keeps advancing — while the user is inside Project Workspace, where no
+  // NotificationBell is rendered at all. Reuses the same guard the branding
+  // query above already applies (workspace context resolved, not blocked)
+  // so this never fires an authenticated request before that's settled.
+  // `onNew` is intentionally not wired yet — actual sound playback awaits
+  // an approved audio asset (see CLAUDE.md's "Notification Sound System"
+  // section); this call alone already fixes the Project Workspace polling
+  // gap and keeps the baseline warm for when playback is added.
+  useNewNotificationWatcher({ enabled: !!token && !!workspaceCtx && !workspaceBlocking });
 
   // System users (Admin/Super Admin) don't belong in /app — send them to /admin
   // Exception: project detail pages are shared, so allow access there.

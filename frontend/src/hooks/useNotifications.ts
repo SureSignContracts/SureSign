@@ -43,7 +43,7 @@ export type NotificationFilter =
   | 'commercial' | 'contract' | 'payment' | 'variation' | 'risk' | 'deliverable'
   | 'programme' | 'compliance' | 'notice' | 'retention' | 'communication' | 'general';
 
-export function useNotifications(filter?: NotificationFilter, type?: string) {
+export function useNotifications(filter?: NotificationFilter, type?: string, options?: { enabled?: boolean }) {
   const { data, isLoading, error, refetch } = useQuery<NotificationsResponse>({
     queryKey: ['notifications', filter, type],
     queryFn: async () => {
@@ -54,6 +54,13 @@ export function useNotifications(filter?: NotificationFilter, type?: string) {
       return response.data;
     },
     refetchInterval: 60000,
+    // Defaults to true — every existing caller (NotificationBell) omits
+    // this and is unaffected. Callers that need to gate the fetch on
+    // readiness (e.g. the shell-level new-notification watcher, which must
+    // not fire before auth/workspace context resolves) pass `enabled: false`
+    // until then. React Query shares one underlying query per queryKey, so
+    // this and NotificationBell's own call never cause a duplicate request.
+    enabled: options?.enabled ?? true,
   });
 
   return {

@@ -17,6 +17,7 @@ import { useAuthStore } from '@/store/authStore';
 import CustomUrlSection from '@/components/settings/CustomUrlSection';
 import BrandingPreviewPanel from '@/components/settings/BrandingPreviewPanel';
 import Select from '@/components/ui/Select';
+import Toggle from '@/components/ui/Toggle';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 
 type Tab = 'branding' | 'preview' | 'information' | 'preferences' | 'password';
@@ -270,6 +271,18 @@ export default function SettingsPage() {
       toast.success('Timezone saved.');
     },
     onError: (err: any) => toast.error(getErrorMessage(err, 'Failed to save timezone.')),
+  });
+
+  // ── My Preferences (Notification Sound) ──
+  // Defaults to true only until the real value loads (matches the backend's
+  // own default) — never renders a false "off" flash before `user` resolves.
+  const notificationSoundEnabled = user?.notification_sound_enabled ?? true;
+  const notificationSoundMutation = useMutation({
+    mutationFn: (enabled: boolean) => api.put('/auth/notification-sound', { enabled }),
+    onSuccess: async () => {
+      await fetchUser();
+    },
+    onError: (err: any) => toast.error(getErrorMessage(err, 'Failed to save notification sound preference.')),
   });
 
   // ── Change Password ──
@@ -574,6 +587,27 @@ export default function SettingsPage() {
                 <Globe size={15} />
                 {timezoneMutation.isPending ? 'Saving…' : 'Save Timezone'}
               </button>
+            </div>
+
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem' }}>
+              <p className="text-xs font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>Notifications</p>
+              <div className="flex items-start justify-between gap-4">
+                <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
+                  Notification sounds
+                  <span className="block text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                    Play a sound when new SureSign notifications arrive while the app is open.
+                  </span>
+                </span>
+                <Toggle
+                  checked={notificationSoundEnabled}
+                  onChange={(value) => notificationSoundMutation.mutate(value)}
+                  disabled={notificationSoundMutation.isPending}
+                />
+              </div>
+              {/* Test Sound intentionally omitted — actual playback awaits
+                  an approved audio asset (see CLAUDE.md's "Notification
+                  Sound System" section). This toggle already persists a
+                  real, working preference regardless. */}
             </div>
           </div>
         ) : tab === 'password' ? (
