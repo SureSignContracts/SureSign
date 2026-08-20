@@ -585,6 +585,7 @@ export default function SettingsPage() {
               </label>
               <input
                 type="password"
+                autoComplete="current-password"
                 value={pwForm.current}
                 onChange={e => { setPwForm(f => ({ ...f, current: e.target.value })); setPwErrors(p => ({ ...p, current: undefined })); }}
                 placeholder="Enter your current password"
@@ -601,12 +602,16 @@ export default function SettingsPage() {
                 </label>
                 <input
                   type="password"
+                  autoComplete="new-password"
                   value={pwForm.password}
                   onChange={e => { setPwForm(f => ({ ...f, password: e.target.value })); setPwErrors(p => ({ ...p, password: undefined })); }}
-                  placeholder="Min 8 chars, mixed case, number, symbol"
+                  placeholder="Use at least 15 characters"
                   className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
                   style={{ backgroundColor: 'var(--bg-elevated)', border: `1px solid ${pwErrors.password ? '#ef4444' : 'var(--border)'}`, color: 'var(--text-primary)' }}
                 />
+                <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                  Use at least 15 characters. Longer passphrases are more secure.
+                </p>
                 {pwErrors.password && <p className="mt-1 text-xs" style={{ color: '#ef4444' }}>{pwErrors.password}</p>}
                 <PasswordStrengthChecker password={pwForm.password} />
               </div>
@@ -617,6 +622,7 @@ export default function SettingsPage() {
                 </label>
                 <input
                   type="password"
+                  autoComplete="new-password"
                   value={pwForm.confirm}
                   onChange={e => { setPwForm(f => ({ ...f, confirm: e.target.value })); setPwErrors(p => ({ ...p, confirm: undefined })); }}
                   placeholder="Repeat new password"

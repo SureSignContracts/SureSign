@@ -233,16 +233,16 @@ class AuthRateLimitingTest extends TestCase
             $this->postJson('/api/auth/reset-password', [
                 'token' => 'not-a-real-token',
                 'email' => 'reset@example.com',
-                'password' => 'NewPassw0rd!',
-                'password_confirmation' => 'NewPassw0rd!',
+                'password' => 'NewPassw0rd12345!',
+                'password_confirmation' => 'NewPassw0rd12345!',
             ])->assertStatus(422);
         }
 
         $this->postJson('/api/auth/reset-password', [
             'token' => 'not-a-real-token',
             'email' => 'reset@example.com',
-            'password' => 'NewPassw0rd!',
-            'password_confirmation' => 'NewPassw0rd!',
+            'password' => 'NewPassw0rd12345!',
+            'password_confirmation' => 'NewPassw0rd12345!',
         ])->assertStatus(429);
     }
 
@@ -254,12 +254,12 @@ class AuthRateLimitingTest extends TestCase
         $response = $this->postJson('/api/auth/reset-password', [
             'token' => $token,
             'email' => 'legitreset@example.com',
-            'password' => 'NewPassw0rd!',
-            'password_confirmation' => 'NewPassw0rd!',
+            'password' => 'NewPassw0rd12345!',
+            'password_confirmation' => 'NewPassw0rd12345!',
         ]);
 
         $response->assertStatus(200);
-        $this->assertTrue(Hash::check('NewPassw0rd!', $user->fresh()->password));
+        $this->assertTrue(Hash::check('NewPassw0rd12345!', $user->fresh()->password));
     }
 
     // ── Email verification resend ──────────────────────────────────────

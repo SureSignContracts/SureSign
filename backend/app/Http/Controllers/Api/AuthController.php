@@ -3,16 +3,19 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\AuditLog;
 use App\Models\User;
+use App\Rules\DiffersFromCurrentPassword;
 use App\Services\CurrencyService;
 use App\Services\EmailVerificationService;
 use App\Services\Organizations\AuthenticatedWorkspaceContextService;
 use App\Services\TimezoneResolver;
+use App\Support\Auth\PasswordSecurityNotifier;
+use App\Support\Auth\SureSignPasswordPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password as PasswordBroker;
-use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
@@ -104,16 +107,17 @@ class AuthController extends Controller
 
     public function updatePassword(Request $request)
     {
+        $user = $request->user();
+
         $request->validate([
             'current_password' => 'required|current_password',
-            'password'         => [
-                'required',
-                'confirmed',
-                Password::min(8)->mixedCase()->numbers()->symbols(),
-            ],
+            'password'         => array_merge(
+                ['required', 'confirmed'],
+                SureSignPasswordPolicy::rules(),
+                [new DiffersFromCurrentPassword($user)],
+            ),
         ]);
 
-        $user = $request->user();
         $currentTokenId = $user->currentAccessToken()?->id;
 
         $user->update(['password' => Hash::make($request->password)]);
@@ -125,6 +129,13 @@ class AuthController extends Controller
         // current_password moments ago). Mirrors the same choice made for
         // forcePasswordChange() below.
         self::revokeOtherTokens($user, $currentTokenId);
+
+        // Non-essential, safe-by-construction (ActivityLog::record() never
+        // throws) and never allowed to make an already-successful password
+        // write look like a failure — see PasswordSecurityNotifier's own
+        // docblock for the identical guarantee on the email side.
+        ActivityLog::record('user.password_changed', "{$user->email} changed their own password", $user, $user);
+        PasswordSecurityNotifier::notifyChanged($user);
 
         return response()->json(['message' => 'Password updated.']);
     }
@@ -162,11 +173,11 @@ class AuthController extends Controller
         }
 
         $request->validate([
-            'password' => [
-                'required',
-                'confirmed',
-                Password::min(8)->mixedCase()->numbers()->symbols(),
-            ],
+            'password' => array_merge(
+                ['required', 'confirmed'],
+                SureSignPasswordPolicy::rules(),
+                [new DiffersFromCurrentPassword($user)],
+            ),
         ]);
 
         $currentTokenId = $user->currentAccessToken()?->id;
@@ -183,6 +194,12 @@ class AuthController extends Controller
         // same token afterward and expects to land in the app, not be
         // logged out.
         self::revokeOtherTokens($user, $currentTokenId);
+
+        ActivityLog::record('user.password_changed', "{$user->email} changed their own password", $user, $user);
+        // Still the account holder choosing their own replacement password
+        // — the same "your password was changed" notification as the
+        // ordinary Settings flow, not a distinct "forced" wording.
+        PasswordSecurityNotifier::notifyChanged($user);
 
         return response()->json(['message' => 'Password updated.', 'user' => $this->userResource($user->fresh())]);
     }
@@ -215,7 +232,7 @@ class AuthController extends Controller
         $request->validate([
             'token'    => 'required|string',
             'email'    => 'required|email',
-            'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
+            'password' => array_merge(['required', 'confirmed'], SureSignPasswordPolicy::rules()),
         ]);
 
         $status = PasswordBroker::reset(
@@ -225,6 +242,16 @@ class AuthController extends Controller
                     'password'             => Hash::make($password),
                     'must_change_password' => false,
                 ]);
+
+                // There is no trusted "current authenticated device" during
+                // password recovery (unlike updatePassword()/
+                // forcePasswordChange(), where the user just proved control
+                // of one specific session) — revoke every existing token,
+                // full stop.
+                $user->tokens()->delete();
+
+                ActivityLog::record('user.password_reset', "{$user->email} reset their password via the Forgot Password flow", $user, $user);
+                PasswordSecurityNotifier::notifyReset($user);
             }
         );
 

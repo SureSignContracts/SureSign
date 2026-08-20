@@ -6,8 +6,8 @@ use App\Exceptions\InvitationAlreadyAcceptedException;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\InvitationService;
+use App\Support\Auth\SureSignPasswordPolicy;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rules\Password;
 
 /**
  * Invitation & First-Time Account Setup phase — the public, signed-URL
@@ -60,7 +60,7 @@ class InvitationController extends Controller
         }
 
         $validated = $request->validate([
-            'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
+            'password' => array_merge(['required', 'confirmed'], SureSignPasswordPolicy::rules()),
         ]);
 
         try {

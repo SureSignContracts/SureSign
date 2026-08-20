@@ -79,7 +79,7 @@ class TokenRevocationTest extends TestCase
 
         $adminToken = $this->loginAndGetToken('admin1@example.com');
         $this->requestAs($adminToken)
-            ->postJson("/api/users/{$user->id}/set-password", ['password' => 'NewPassw0rd!'])
+            ->postJson("/api/users/{$user->id}/set-password", ['password' => 'NewPassw0rd12345!'])
             ->assertStatus(200);
 
         $this->assertSame(0, $user->fresh()->tokens()->count());
@@ -92,7 +92,7 @@ class TokenRevocationTest extends TestCase
         $adminToken = $this->loginAndGetToken('admin2@example.com');
 
         $this->requestAs($adminToken)
-            ->postJson("/api/users/{$user->id}/set-password", ['password' => 'NewPassw0rd!'])
+            ->postJson("/api/users/{$user->id}/set-password", ['password' => 'NewPassw0rd12345!'])
             ->assertStatus(200);
 
         $this->assertTrue($user->fresh()->must_change_password);
@@ -105,7 +105,7 @@ class TokenRevocationTest extends TestCase
         $adminToken = $this->loginAndGetToken('admin3@example.com');
 
         $this->requestAs($adminToken)
-            ->postJson("/api/users/{$user->id}/set-password", ['password' => 'NewPassw0rd!'])
+            ->postJson("/api/users/{$user->id}/set-password", ['password' => 'NewPassw0rd12345!'])
             ->assertStatus(200);
 
         $this->postJson('/api/auth/login', ['email' => 'reset-me3@example.com', 'password' => 'OldPassw0rd!'])
@@ -119,10 +119,10 @@ class TokenRevocationTest extends TestCase
         $adminToken = $this->loginAndGetToken('admin4@example.com');
 
         $this->requestAs($adminToken)
-            ->postJson("/api/users/{$user->id}/set-password", ['password' => 'TempPassw0rd!'])
+            ->postJson("/api/users/{$user->id}/set-password", ['password' => 'TempPassw0rd12345!'])
             ->assertStatus(200);
 
-        $this->postJson('/api/auth/login', ['email' => 'reset-me4@example.com', 'password' => 'TempPassw0rd!'])
+        $this->postJson('/api/auth/login', ['email' => 'reset-me4@example.com', 'password' => 'TempPassw0rd12345!'])
             ->assertStatus(200)
             ->assertJsonPath('user.must_change_password', true);
     }
@@ -152,10 +152,10 @@ class TokenRevocationTest extends TestCase
         $adminToken = $this->loginAndGetToken('admin6@example.com');
 
         $this->requestAs($adminToken)
-            ->postJson("/api/users/{$user->id}/set-password", ['password' => 'TempPassw0rd!'])
+            ->postJson("/api/users/{$user->id}/set-password", ['password' => 'TempPassw0rd12345!'])
             ->assertStatus(200);
 
-        $tempToken = $this->loginAndGetToken('temp-session@example.com', 'TempPassw0rd!');
+        $tempToken = $this->loginAndGetToken('temp-session@example.com', 'TempPassw0rd12345!');
 
         $this->requestAs($tempToken)->getJson('/api/auth/me')->assertStatus(200);
         $this->requestAs($tempToken)->postJson('/api/auth/logout')->assertStatus(200);
@@ -168,10 +168,10 @@ class TokenRevocationTest extends TestCase
         $adminToken = $this->loginAndGetToken('admin7@example.com');
 
         $this->requestAs($adminToken)
-            ->postJson("/api/users/{$user->id}/set-password", ['password' => 'TempPassw0rd!'])
+            ->postJson("/api/users/{$user->id}/set-password", ['password' => 'TempPassw0rd12345!'])
             ->assertStatus(200);
 
-        $tempToken = $this->loginAndGetToken('temp-session2@example.com', 'TempPassw0rd!');
+        $tempToken = $this->loginAndGetToken('temp-session2@example.com', 'TempPassw0rd12345!');
 
         $this->requestAs($tempToken)->getJson('/api/dashboard')
             ->assertStatus(403)
@@ -190,10 +190,10 @@ class TokenRevocationTest extends TestCase
         $adminToken = $this->loginAndGetToken('admin8@example.com');
 
         $this->requestAs($adminToken)
-            ->postJson("/api/users/{$user->id}/set-password", ['password' => 'TempPassw0rd!'])
+            ->postJson("/api/users/{$user->id}/set-password", ['password' => 'TempPassw0rd12345!'])
             ->assertStatus(200);
 
-        $tempToken = $this->loginAndGetToken('complete-forced@example.com', 'TempPassw0rd!');
+        $tempToken = $this->loginAndGetToken('complete-forced@example.com', 'TempPassw0rd12345!');
 
         $this->requestAs($tempToken)
             ->putJson('/api/auth/force-password-change', [
@@ -212,10 +212,10 @@ class TokenRevocationTest extends TestCase
         $adminToken = $this->loginAndGetToken('admin9@example.com');
 
         $this->requestAs($adminToken)
-            ->postJson("/api/users/{$user->id}/set-password", ['password' => 'TempPassw0rd!'])
+            ->postJson("/api/users/{$user->id}/set-password", ['password' => 'TempPassw0rd12345!'])
             ->assertStatus(200);
 
-        $tempToken = $this->loginAndGetToken('complete-forced2@example.com', 'TempPassw0rd!');
+        $tempToken = $this->loginAndGetToken('complete-forced2@example.com', 'TempPassw0rd12345!');
 
         $this->requestAs($tempToken)
             ->putJson('/api/auth/force-password-change', [
@@ -238,12 +238,12 @@ class TokenRevocationTest extends TestCase
         $adminToken = $this->loginAndGetToken('admin10@example.com');
 
         $this->requestAs($adminToken)
-            ->postJson("/api/users/{$user->id}/set-password", ['password' => 'TempPassw0rd!'])
+            ->postJson("/api/users/{$user->id}/set-password", ['password' => 'TempPassw0rd12345!'])
             ->assertStatus(200);
 
         // Two separate devices both log in with the temporary password.
-        $sessionA = $this->loginAndGetToken('complete-forced3@example.com', 'TempPassw0rd!');
-        $sessionB = $this->loginAndGetToken('complete-forced3@example.com', 'TempPassw0rd!');
+        $sessionA = $this->loginAndGetToken('complete-forced3@example.com', 'TempPassw0rd12345!');
+        $sessionB = $this->loginAndGetToken('complete-forced3@example.com', 'TempPassw0rd12345!');
         $this->assertSame(2, $user->fresh()->tokens()->count());
 
         // Session A completes the forced change.

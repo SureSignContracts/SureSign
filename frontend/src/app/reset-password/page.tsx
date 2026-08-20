@@ -107,7 +107,7 @@ function ResetPasswordForm() {
                 </button>
               </div>
               <p className="text-xs" style={{ color: '#a3a3a3' }}>
-                At least 8 characters, with upper and lowercase letters, a number, and a symbol.
+                Use at least 15 characters. Longer passphrases are more secure.
               </p>
             </div>
 

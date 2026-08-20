@@ -65,8 +65,8 @@ class PasswordChangeRateLimitingTest extends TestCase
         for ($i = 0; $i < 5; $i++) {
             $this->requestAs($token)->putJson('/api/auth/password', [
                 'current_password' => 'wrong-password',
-                'password' => 'NewPassw0rd!',
-                'password_confirmation' => 'NewPassw0rd!',
+                'password' => 'NewPassw0rd12345!',
+                'password_confirmation' => 'NewPassw0rd12345!',
             ])->assertStatus(422); // current_password validation failure, not a 429
         }
     }
@@ -79,15 +79,15 @@ class PasswordChangeRateLimitingTest extends TestCase
         for ($i = 0; $i < 5; $i++) {
             $this->requestAs($token)->putJson('/api/auth/password', [
                 'current_password' => 'wrong-password',
-                'password' => 'NewPassw0rd!',
-                'password_confirmation' => 'NewPassw0rd!',
+                'password' => 'NewPassw0rd12345!',
+                'password_confirmation' => 'NewPassw0rd12345!',
             ])->assertStatus(422);
         }
 
         $this->requestAs($token)->putJson('/api/auth/password', [
             'current_password' => 'wrong-password',
-            'password' => 'NewPassw0rd!',
-            'password_confirmation' => 'NewPassw0rd!',
+            'password' => 'NewPassw0rd12345!',
+            'password_confirmation' => 'NewPassw0rd12345!',
         ])
             ->assertStatus(429)
             ->assertJson(['message' => 'Too many attempts. Please try again later.'])
@@ -104,21 +104,21 @@ class PasswordChangeRateLimitingTest extends TestCase
         for ($i = 0; $i < 5; $i++) {
             $this->requestAs($tokenA)->putJson('/api/auth/password', [
                 'current_password' => 'wrong-password',
-                'password' => 'NewPassw0rd!',
-                'password_confirmation' => 'NewPassw0rd!',
+                'password' => 'NewPassw0rd12345!',
+                'password_confirmation' => 'NewPassw0rd12345!',
             ])->assertStatus(422);
         }
         $this->requestAs($tokenA)->putJson('/api/auth/password', [
             'current_password' => 'wrong-password',
-            'password' => 'NewPassw0rd!',
-            'password_confirmation' => 'NewPassw0rd!',
+            'password' => 'NewPassw0rd12345!',
+            'password_confirmation' => 'NewPassw0rd12345!',
         ])->assertStatus(429);
 
         // User B's bucket is untouched by user A's exhausted one.
         $this->requestAs($tokenB)->putJson('/api/auth/password', [
             'current_password' => 'CorrectPassw0rd!',
-            'password' => 'NewPassw0rd!',
-            'password_confirmation' => 'NewPassw0rd!',
+            'password' => 'NewPassw0rd12345!',
+            'password_confirmation' => 'NewPassw0rd12345!',
         ])->assertStatus(200);
     }
 
@@ -130,15 +130,15 @@ class PasswordChangeRateLimitingTest extends TestCase
         // A couple of failed attempts, still under the threshold...
         $this->requestAs($token)->putJson('/api/auth/password', [
             'current_password' => 'wrong-password',
-            'password' => 'NewPassw0rd!',
-            'password_confirmation' => 'NewPassw0rd!',
+            'password' => 'NewPassw0rd12345!',
+            'password_confirmation' => 'NewPassw0rd12345!',
         ])->assertStatus(422);
 
         // ...then a legitimate, correct change still succeeds.
         $this->requestAs($token)->putJson('/api/auth/password', [
             'current_password' => 'CorrectPassw0rd!',
-            'password' => 'NewPassw0rd!',
-            'password_confirmation' => 'NewPassw0rd!',
+            'password' => 'NewPassw0rd12345!',
+            'password_confirmation' => 'NewPassw0rd12345!',
         ])->assertStatus(200);
     }
 }

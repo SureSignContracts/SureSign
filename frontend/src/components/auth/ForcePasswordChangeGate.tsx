@@ -98,7 +98,7 @@ export default function ForcePasswordChangeGate() {
             />
           </div>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            At least 8 characters, with upper &amp; lower case, a number and a symbol.
+            Use at least 15 characters. Longer passphrases are more secure.
           </p>
           <button
             type="submit"

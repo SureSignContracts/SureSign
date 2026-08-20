@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\Appointment;
 use App\Observers\ConsultancyAppointmentObserver;
+use App\Support\Auth\SureSignPasswordPolicy;
 use App\Support\Billing\BillingConfigGuard;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -44,6 +45,13 @@ class AppServiceProvider extends ServiceProvider
         // in AppointmentWorkflowService or any other Appointments engine
         // class — see ConsultancyAppointmentObserver's own docblock.
         Appointment::observe(ConsultancyAppointmentObserver::class);
+
+        // Unified Password Security Hardening — the ONE place
+        // Password::defaults() is configured (min(15)->uncompromised()).
+        // Every password-write workflow resolves its policy through
+        // SureSignPasswordPolicy::rules(), which includes Password::defaults()
+        // — never a per-controller Password::min(...) call again.
+        SureSignPasswordPolicy::configureDefaults();
 
         $this->configureRateLimiters();
     }

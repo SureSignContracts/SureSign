@@ -6,16 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\Organization;
 use App\Models\User;
+use App\Rules\DiffersFromCurrentPassword;
 use App\Services\Entitlements\SubscriptionAccessPolicy;
 use App\Services\InvitationService;
 use App\Services\Intelligence\SubscriptionIntelligenceService;
+use App\Support\Auth\PasswordSecurityNotifier;
+use App\Support\Auth\SureSignPasswordPolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator as ValidatorFacade;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
 use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
@@ -474,7 +476,16 @@ class UserController extends Controller
         $user = User::findOrFail($id);
 
         $validated = $request->validate([
-            'password'       => ['required', Password::min(8)->mixedCase()->numbers()->symbols()],
+            // Consistency with every other password-write path in this
+            // codebase: rejecting a value identical to the account's
+            // current password applies here too — there's no established
+            // reason an admin-set password should be exempt from a check
+            // every other flow enforces.
+            'password'       => array_merge(
+                ['required'],
+                SureSignPasswordPolicy::rules(),
+                [new DiffersFromCurrentPassword($user)],
+            ),
             'require_change' => 'sometimes|boolean',
         ]);
 
@@ -489,6 +500,8 @@ class UserController extends Controller
         // exact scenario ("this account may be compromised") where leaving
         // the old session alive would be the worst possible outcome.
         $user->tokens()->delete();
+
+        PasswordSecurityNotifier::notifyAdminChanged($user);
 
         ActivityLog::record(
             'user.password_set',
@@ -533,30 +546,19 @@ class UserController extends Controller
      * organisation of any Super Admin able to manage it.
      */
     /**
-     * Every server-generated temp password (invite(), and previously a
-     * divergent inline generator here) goes through this one helper, so
-     * there is a single source of truth for what "policy-compliant" means —
-     * the same Password::min(8)->mixedCase()->numbers()->symbols() rule
-     * enforced on admin/self-service password changes elsewhere in this
-     * codebase. The old inline generator (Str::random, no symbols) could
-     * produce a password that would fail that very rule if resubmitted.
+     * Unified Password Security Hardening — replaced this method's own
+     * inline generator (guaranteed character-category slots + a
+     * non-cryptographic `shuffle()`, both leftovers from the old
+     * composition-rule policy this phase removes) with
+     * `SureSignPasswordPolicy::generateTemporarySecret()`, the one
+     * authoritative generator for every internal temp-secret need in this
+     * codebase. See that method's own docblock for why this value is
+     * deliberately NOT run through the same HIBP-checking policy real
+     * user-chosen passwords use.
      */
     private function generateTempPassword(): string
     {
-        $upper   = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-        $lower   = 'abcdefghijkmnopqrstuvwxyz';
-        $digits  = '23456789';
-        $symbols = '!@#$%';
-
-        $pick = fn (string $chars) => $chars[random_int(0, strlen($chars) - 1)];
-
-        $required = [$pick($upper), $pick($upper), $pick($lower), $pick($lower), $pick($digits), $pick($digits), $pick($symbols)];
-        $filler   = array_map(fn () => $pick($upper . $lower . $digits), range(1, 3));
-
-        $chars = array_merge($required, $filler);
-        shuffle($chars);
-
-        return implode('', $chars);
+        return SureSignPasswordPolicy::generateTemporarySecret();
     }
 
     private function isLastActiveSuperAdmin(User $user): bool

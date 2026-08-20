@@ -2,6 +2,7 @@
 
 namespace Tests;
 
+use Illuminate\Contracts\Validation\UncompromisedVerifier;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
@@ -43,6 +44,33 @@ abstract class TestCase extends BaseTestCase
             config('database.default'),
             config('database.connections.sqlite.database')
         );
+
+        $this->fakeUncompromisedPasswordVerifier();
+    }
+
+    /**
+     * Unified Password Security Hardening — `Password::defaults()`
+     * (App\Support\Auth\SureSignPasswordPolicy::configureDefaults())
+     * includes `uncompromised()`, so EVERY test in this suite that submits
+     * a password would otherwise make a real network call to the HIBP API.
+     * Bound once, here, for the whole suite — a fake that treats any
+     * password containing the literal marker `COMPROMISED-TEST-MARKER` as
+     * breached and everything else as clean, so ordinary tests need no
+     * special setup, and a test that specifically wants "compromised
+     * password rejected" opts in just by using that marker in its test
+     * value. Dedicated tests for the REAL `NotPwnedVerifier`'s fail-open
+     * behaviour on a provider outage construct it directly with
+     * `Http::fake()` instead of relying on this binding — see
+     * SureSignPasswordPolicyTest.
+     */
+    private function fakeUncompromisedPasswordVerifier(): void
+    {
+        $this->app->bind(UncompromisedVerifier::class, fn () => new class implements UncompromisedVerifier {
+            public function verify($data)
+            {
+                return !str_contains((string) ($data['value'] ?? ''), 'COMPROMISED-TEST-MARKER');
+            }
+        });
     }
 
     private function abortUnlessSafeTestEnvironment(string $stage, mixed $connection, mixed $database): void

@@ -268,15 +268,15 @@ class InvitationFlowTest extends TestCase
         $urls = $this->signedInvitationUrls($user);
 
         $response = $this->postJson($urls['path'] . '?' . http_build_query($urls['query']), [
-            'password' => 'MyNewPass1!',
-            'password_confirmation' => 'MyNewPass1!',
+            'password' => 'MyNewPassphrase1!',
+            'password_confirmation' => 'MyNewPassphrase1!',
         ]);
 
         $response->assertStatus(200);
         $fresh = $user->fresh();
         $this->assertNotNull($fresh->email_verified_at);
         $this->assertFalse($fresh->must_change_password);
-        $this->assertTrue(Hash::check('MyNewPass1!', $fresh->password));
+        $this->assertTrue(Hash::check('MyNewPassphrase1!', $fresh->password));
     }
 
     public function test_password_confirmation_mismatch_rejected(): void
@@ -285,7 +285,7 @@ class InvitationFlowTest extends TestCase
         $urls = $this->signedInvitationUrls($user);
 
         $response = $this->postJson($urls['path'] . '?' . http_build_query($urls['query']), [
-            'password' => 'MyNewPass1!',
+            'password' => 'MyNewPassphrase1!',
             'password_confirmation' => 'Different1!',
         ]);
 
@@ -311,18 +311,18 @@ class InvitationFlowTest extends TestCase
         $urls = $this->signedInvitationUrls($user);
 
         $this->postJson($urls['path'] . '?' . http_build_query($urls['query']), [
-            'password' => 'MyNewPass1!',
-            'password_confirmation' => 'MyNewPass1!',
+            'password' => 'MyNewPassphrase1!',
+            'password_confirmation' => 'MyNewPassphrase1!',
         ])->assertStatus(200);
 
         $response = $this->postJson($urls['path'] . '?' . http_build_query($urls['query']), [
-            'password' => 'AnotherPass1!',
-            'password_confirmation' => 'AnotherPass1!',
+            'password' => 'AnotherPassphrase1!',
+            'password_confirmation' => 'AnotherPassphrase1!',
         ]);
 
         $response->assertStatus(409)->assertJsonPath('code', 'invitation_already_accepted');
         // The first chosen password must still be the one that works.
-        $this->assertTrue(Hash::check('MyNewPass1!', $user->fresh()->password));
+        $this->assertTrue(Hash::check('MyNewPassphrase1!', $user->fresh()->password));
     }
 
     public function test_already_accepted_invitation_shown_as_already_accepted_on_view(): void
@@ -370,13 +370,13 @@ class InvitationFlowTest extends TestCase
         $urls = $this->signedInvitationUrls($user);
 
         $this->postJson($urls['path'] . '?' . http_build_query($urls['query']), [
-            'password' => 'MyNewPass1!',
-            'password_confirmation' => 'MyNewPass1!',
+            'password' => 'MyNewPassphrase1!',
+            'password_confirmation' => 'MyNewPassphrase1!',
         ])->assertStatus(200);
 
         $this->postJson('/api/auth/login', [
             'email' => $user->email,
-            'password' => 'MyNewPass1!',
+            'password' => 'MyNewPassphrase1!',
         ])->assertStatus(200)->assertJsonStructure(['token', 'user']);
     }
 }

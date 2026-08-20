@@ -11,10 +11,10 @@ use App\Models\Organization;
 use App\Services\Admin\OrganizationSubscriptionAdminService;
 use App\Services\FileSecurityService;
 use App\Services\TimezoneResolver;
+use App\Support\Auth\SureSignPasswordPolicy;
 use App\Support\Organizations\BrandingCacheInvalidator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rules\Password;
 
 class OrganizationController extends Controller
 {
@@ -33,7 +33,7 @@ class OrganizationController extends Controller
             'last_name'   => 'required|string|max:100',
             'email'       => 'required|email|max:255|unique:users,email,' . $user->id,
             'phone'       => 'nullable|string|max:50',
-            'password'    => ['nullable', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
+            'password'    => array_merge(['nullable', 'confirmed'], SureSignPasswordPolicy::rules()),
             'address'     => 'nullable|string|max:500',
             'city'        => 'nullable|string|max:100',
             'province'    => 'nullable|string|max:100',

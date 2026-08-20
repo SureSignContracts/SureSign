@@ -95,6 +95,99 @@ class AccountEmailService
         );
     }
 
+    /**
+     * Unified Password Security Hardening — sent after a successful
+     * AUTHENTICATED, self-chosen password change (Settings → Change
+     * Password, and the admin-forced must-change flow — both are the
+     * account holder themselves choosing their own replacement password,
+     * so they share this one notification). This is a SECURITY
+     * NOTIFICATION, not an approval gate — the password has already
+     * changed by the time this is ever sent; nothing here can undo or
+     * confirm it. Never contains the current, new, or any password value.
+     */
+    public function sendPasswordChanged(string $email, ?string $name, string $occurredAtDisplay): bool
+    {
+        return $this->sendSecurityNotification(
+            $email,
+            $name,
+            'Your SureSign password was changed',
+            "Your SureSign password was changed on {$occurredAtDisplay}.",
+        );
+    }
+
+    /**
+     * Sent after a successful Forgot Password → Reset Password completion
+     * — deliberately a DIFFERENT method/subject from `sendPasswordReset()`
+     * above, which sends the pre-reset reset LINK. Conflating the two
+     * would misdescribe which event actually happened to the recipient.
+     */
+    public function sendPasswordResetSecurityNotification(string $email, ?string $name, string $occurredAtDisplay): bool
+    {
+        return $this->sendSecurityNotification(
+            $email,
+            $name,
+            'Your SureSign password was reset',
+            "Your SureSign password was reset on {$occurredAtDisplay}.",
+        );
+    }
+
+    /**
+     * Sent when a Super Admin/Admin explicitly sets another user's
+     * password (`UserController::setPassword()`). Deliberately does not
+     * name the administrator — this notifies the affected account holder
+     * of what happened to THEIR credential, not who performed the action;
+     * that detail already lives in `ActivityLog`, a separate, appropriately
+     * access-controlled surface.
+     */
+    public function sendPasswordChangedByAdmin(string $email, ?string $name, string $occurredAtDisplay): bool
+    {
+        return $this->sendSecurityNotification(
+            $email,
+            $name,
+            'Your SureSign password was changed by an administrator',
+            "Your SureSign password was changed by an administrator on {$occurredAtDisplay}.",
+        );
+    }
+
+    private function sendSecurityNotification(string $email, ?string $name, string $subject, string $eventLine): bool
+    {
+        $greeting = $name ? "Hi {$name}," : 'Hi there,';
+        $forgotPasswordUrl = rtrim(env('FRONTEND_URL', 'http://localhost:3000'), '/') . '/forgot-password';
+
+        $htmlParts = [
+            EmailComponents::paragraph($greeting),
+            EmailComponents::paragraph($eventLine),
+            EmailComponents::paragraph('If you made this change, no action is required.'),
+            EmailComponents::statusCallout(
+                "If you didn't make this change, secure your account immediately by resetting your password.",
+                'info',
+            ),
+            EmailComponents::button('Reset Your Password', $forgotPasswordUrl, 'secondary'),
+        ];
+        $textLines = [
+            $greeting,
+            '',
+            $eventLine,
+            '',
+            'If you made this change, no action is required.',
+            '',
+            "If you didn't make this change, secure your account immediately: {$forgotPasswordUrl}",
+        ];
+
+        $this->appendSupport($htmlParts, $textLines);
+
+        return EmailNotificationService::sendDirect(
+            $email,
+            $subject,
+            implode("\n", $textLines),
+            [],
+            null,
+            'Account',
+            implode("\n", $htmlParts),
+            true,
+        );
+    }
+
     private function appendSupport(array &$htmlParts, array &$textLines): void
     {
         $supportEmail = SuresignSetting::instance()->support_email;
