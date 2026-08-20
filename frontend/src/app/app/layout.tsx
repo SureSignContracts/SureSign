@@ -7,6 +7,7 @@ import { useAuthSplash } from '@/hooks/useAuthSplash';
 import { useQuery } from '@tanstack/react-query';
 import AppSidebar from '@/components/layout/AppSidebar';
 import MobileTopBar from '@/components/layout/MobileTopBar';
+import WorkspaceTransition from '@/components/layout/WorkspaceTransition';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import SureSignLoader from '@/components/ui/SureSignLoader';
 import AiAnalysisWidget from '@/components/ai/AiAnalysisWidget';
@@ -229,7 +230,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             nested in) taller than h-screen, so the document scrolls
             instead of just this element's own overflow-y-auto region. */}
         <main className="flex-1 min-h-0 overflow-y-auto">
-          {children}
+          <WorkspaceTransition>{children}</WorkspaceTransition>
         </main>
       </div>
       {/* Global — persists across all app pages so analysis progress stays visible

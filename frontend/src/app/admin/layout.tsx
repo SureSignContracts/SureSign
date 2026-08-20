@@ -6,6 +6,7 @@ import { Menu } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useAuthSplash } from '@/hooks/useAuthSplash';
 import AdminSidebar from '@/components/layout/AdminSidebar';
+import WorkspaceTransition from '@/components/layout/WorkspaceTransition';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import SureSignLoader from '@/components/ui/SureSignLoader';
 import ForcePasswordChangeGate from '@/components/auth/ForcePasswordChangeGate';
@@ -77,7 +78,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             without needing to shrink — which is why this only showed up
             on pages with enough stacked content to exceed one viewport. */}
         <main className="ss-admin-content flex-1 min-h-0 overflow-y-auto">
-          {children}
+          <WorkspaceTransition>{children}</WorkspaceTransition>
         </main>
       </div>
       <WhatsNewLauncher />

@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import ProjectSidebar from '@/components/layout/ProjectSidebar';
 import MobileTopBar from '@/components/layout/MobileTopBar';
+import WorkspaceTransition from '@/components/layout/WorkspaceTransition';
 import PendingTourLauncher from '@/components/tours/PendingTourLauncher';
 
 export default function ProjectLayout({ children }: { children: React.ReactNode }) {
@@ -55,7 +56,7 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
           fallbackInitial={(project?.name || 'P').charAt(0).toUpperCase()}
         />
         <main className="flex-1 overflow-y-auto">
-          {children}
+          <WorkspaceTransition>{children}</WorkspaceTransition>
         </main>
       </div>
       <PendingTourLauncher />

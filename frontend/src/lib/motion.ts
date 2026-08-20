@@ -30,3 +30,25 @@ export const CARD_HOVER = `transition-all duration-300 ${EASE} hover:-translate-
 
 /** Standard fast interaction feedback for buttons/pills/rows (press + hover, no shadow change). */
 export const INTERACTIVE = `transition-all duration-200 ${EASE} active:scale-[0.97]`;
+
+/**
+ * GSAP-specific vocabulary (GSAP Motion Polish phase). The constants above
+ * are CSS-only and predate GSAP's use anywhere but the SureSignLoader mark
+ * assembly — these cover the handful of values shared by that loader and
+ * the workspace content transition (`WorkspaceTransition.tsx`), the second
+ * real GSAP call site introduced in this phase. Kept in this same file
+ * rather than a second `gsapMotion.ts` — one shared motion vocabulary file,
+ * not two competing ones.
+ */
+
+/** True once, read synchronously — never re-evaluated mid-animation (a user toggling the OS
+ * setting mid-timeline is not a case any of these call sites need to react to live). */
+export const prefersReducedMotion = (): boolean =>
+  typeof window !== 'undefined' &&
+  !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+/** A restrained entrance for content that just became visible after a route/tab change — see
+ * `WorkspaceTransition`. Deliberately short and opacity-led (no y-shift) so it never fights a
+ * page's own richer internal entrance (`.ss-animate-in` / `.ss-workspace-page-in` staggers). */
+export const WORKSPACE_TRANSITION_DURATION = 0.16;
+export const GSAP_EASE_OUT = 'power1.out';
