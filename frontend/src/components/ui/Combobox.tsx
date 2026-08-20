@@ -201,6 +201,17 @@ export default function Combobox({
               aria-expanded={open}
               aria-controls={listboxId}
               aria-activedescendant={filtered[activeIndex] ? `${listboxId}-option-${activeIndex}` : undefined}
+              // This is a search box, never a real form field the browser
+              // should remember/autofill — without this, Chrome's address/
+              // profile-autofill heuristics can match a placeholder like
+              // "Search countries..." and pop its own suggestion UI
+              // (a saved country + "Manage addresses...") directly on top
+              // of this dropdown's own results, which reads as a jarring,
+              // unrelated highlight layered over the real list.
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
               className="w-full bg-transparent py-2.5 text-sm outline-none"
               style={{ color: 'var(--text-primary)' }}
             />
