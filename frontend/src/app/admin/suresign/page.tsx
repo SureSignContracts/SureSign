@@ -9,6 +9,7 @@ import { getErrorMessage } from '@/lib/getErrorMessage';
 import {
   Gem, Check, Save, RefreshCw, FileText, Mail, ImageIcon,
   X, Upload, Palette, Globe, FileUp, Download, Send, Eye, EyeOff, Wrench, Bell,
+  Play,
 } from 'lucide-react';
 import Select from '@/components/ui/Select';
 import PlatformPageHero from '@/components/admin/PlatformPageHero';
@@ -16,6 +17,7 @@ import FeatureAvailabilityManager from '@/components/admin/FeatureAvailabilityMa
 import PreviewPanel from '@/components/admin/PreviewPanel';
 import { ACCENT_STYLES, ACCENT_STYLE_LABELS, type AccentStyle } from '@/components/ui/SureSignLoader';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
+import { useNotificationSound } from '@/hooks/useNotificationSound';
 
 const ACCENT_STYLE_OPTIONS = ACCENT_STYLES.map(value => ({ value, label: ACCENT_STYLE_LABELS[value] }));
 
@@ -23,6 +25,7 @@ const ACCENT_STYLE_OPTIONS = ACCENT_STYLES.map(value => ({ value, label: ACCENT_
 interface PlatformSettings {
   logo_url:               string | null;
   favicon_url:            string | null;
+  notification_sound_url: string | null;
   letterhead_header_url:  string | null;
   letterhead_footer_url:  string | null;
   letterhead_pdf_url:     string | null;
@@ -220,6 +223,76 @@ function UploadTile({ label, hint, accept, currentUrl, onUpload, onRemove, uploa
   );
 }
 
+/**
+ * Notification Sound System — the platform-wide notification audio asset.
+ * A dedicated tile (rather than reusing UploadTile) since there's nothing
+ * image-like to preview — instead offers a real inline player plus a quick
+ * "Play" button, using the SAME playback primitive
+ * (useNotificationSound().playTestSound) real notifications use, so what's
+ * heard here is exactly what a user hears.
+ */
+function AudioUploadTile({ currentUrl, onUpload, onRemove, uploading }: {
+  currentUrl: string | null;
+  onUpload: (file: File) => void;
+  onRemove: () => void;
+  uploading: boolean;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  const { playTestSound } = useNotificationSound();
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    onUpload(file);
+    e.target.value = '';
+  };
+
+  return (
+    <div>
+      <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Notification sound</p>
+      <p className="text-xs mb-2.5" style={{ color: 'var(--text-muted)' }}>
+        Played to every user with notification sounds enabled when a genuinely new SureSign notification arrives · short, subtle, no speech · MP3, WAV, or OGG · ideally well under 50 KB
+      </p>
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          type="button"
+          onClick={() => !uploading && ref.current?.click()}
+          disabled={uploading}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors disabled:opacity-60"
+          style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+        >
+          {uploading ? <RefreshCw size={13} className="animate-spin" /> : <Upload size={13} />}
+          {currentUrl ? 'Replace' : 'Upload'} audio file
+        </button>
+        {currentUrl && (
+          <>
+            <button
+              type="button"
+              onClick={playTestSound}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors"
+              style={{ backgroundColor: 'var(--gold-15)', border: '1px solid transparent', color: 'var(--gold)' }}
+            >
+              <Play size={13} /> Play
+            </button>
+            <button
+              type="button"
+              onClick={onRemove}
+              className="flex items-center gap-1 text-xs hover:text-red-400"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              <X size={12} /> Remove
+            </button>
+          </>
+        )}
+        {!currentUrl && !uploading && (
+          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>No sound uploaded yet</span>
+        )}
+      </div>
+      <input ref={ref} type="file" accept="audio/mpeg,audio/wav,audio/ogg,.mp3,.wav,.ogg" className="hidden" onChange={handleChange} />
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function AdminSureSignPage() {
   const qc = useQueryClient();
@@ -264,7 +337,7 @@ export default function AdminSureSignPage() {
     queryKey: ['admin-suresign-settings'],
     queryFn: () =>
       api.get('/admin/suresign-settings').then(r => r.data?.data ?? r.data).catch(() => ({
-        logo_url: null, favicon_url: null, letterhead_header_url: null, letterhead_footer_url: null,
+        logo_url: null, favicon_url: null, notification_sound_url: null, letterhead_header_url: null, letterhead_footer_url: null,
         letterhead_pdf_url: null, email_header_url: null, email_footer_url: null,
         email_subject_line: '', email_body_template: '', email_reply_to: '',
         email_sender_email: '', email_sender_name: 'SureSign Contracts', admin_email: '',
@@ -509,6 +582,15 @@ export default function AdminSureSignPage() {
             uploading={!!uploading.favicon}
             onUpload={f => uploadFile('favicon', '/admin/suresign-settings/favicon', 'favicon', f)}
             onRemove={() => removeFile('/admin/suresign-settings/favicon')}
+          />
+
+          <Divider />
+
+          <AudioUploadTile
+            currentUrl={data?.notification_sound_url ?? null}
+            uploading={!!uploading.notification_sound}
+            onUpload={f => uploadFile('notification_sound', '/admin/suresign-settings/notification-sound', 'notification_sound', f)}
+            onRemove={() => removeFile('/admin/suresign-settings/notification-sound')}
           />
 
           <Divider />

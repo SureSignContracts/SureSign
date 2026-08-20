@@ -14,6 +14,7 @@ import {
 import toast from '@/lib/toast';
 import SureSignLoader, { ACCENT_STYLE_LABELS, type AccentStyle } from '@/components/ui/SureSignLoader';
 import { LOADER_EXIT_MS } from '@/hooks/useAuthSplash';
+import { useNotificationSound } from '@/hooks/useNotificationSound';
 
 const ACCENT_ICONS: Record<AccentStyle, React.ComponentType<{ size?: number }>> = {
   monochrome: Contrast,
@@ -241,12 +242,35 @@ function ToastPreviewSection() {
   );
 }
 
+function NotificationSoundPreviewSection() {
+  const { playTestSound, hasSoundConfigured } = useNotificationSound();
+
+  return (
+    <Section
+      title="Notification sound"
+      description="Plays the real, currently-configured notification sound (Branding tab) using the exact same playback path a genuine new notification uses — not a mockup. Configure or replace the asset there; this only previews it."
+    >
+      {hasSoundConfigured ? (
+        <Row label="Play">
+          <Btn icon={Bell} onClick={playTestSound}>Play notification sound</Btn>
+        </Row>
+      ) : (
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+          No notification sound has been uploaded yet — configure one under the Branding tab first.
+        </p>
+      )}
+    </Section>
+  );
+}
+
 export default function PreviewPanel() {
   return (
     <div className="space-y-10">
       <LoaderPreviewSection />
       <div style={{ borderTop: '1px solid var(--border)' }} />
       <ToastPreviewSection />
+      <div style={{ borderTop: '1px solid var(--border)' }} />
+      <NotificationSoundPreviewSection />
     </div>
   );
 }

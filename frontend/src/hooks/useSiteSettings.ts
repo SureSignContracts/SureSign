@@ -7,6 +7,12 @@ export interface SiteSettings {
   date_format: string;
   timezone: string;
   hidden_pages: string[];
+  // Notification Sound System — the one, platform-wide, Super Admin/Admin
+  // -uploaded notification audio asset (see CLAUDE.md's "Notification
+  // Sound System" section). Null until an operator uploads one. Read here
+  // (not a second request) since useSiteSettings is already fetched at the
+  // authenticated shell level.
+  notification_sound_url: string | null;
 }
 
 const DEFAULTS: SiteSettings = {
@@ -15,6 +21,7 @@ const DEFAULTS: SiteSettings = {
   date_format: 'DD/MM/YYYY',
   timezone: 'Europe/London',
   hidden_pages: [],
+  notification_sound_url: null,
 };
 
 export function useSiteSettings() {

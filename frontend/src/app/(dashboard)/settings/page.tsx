@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, Save, Upload, Palette, Building2, KeyRound, ScrollText, Lock, BookOpen, Globe, Eye } from 'lucide-react';
+import { Settings, Save, Upload, Palette, Building2, KeyRound, ScrollText, Lock, BookOpen, Globe, Eye, Play } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/lib/api';
 import toast from '@/lib/toast';
@@ -19,6 +19,7 @@ import BrandingPreviewPanel from '@/components/settings/BrandingPreviewPanel';
 import Select from '@/components/ui/Select';
 import Toggle from '@/components/ui/Toggle';
 import { getErrorMessage } from '@/lib/getErrorMessage';
+import { useNotificationSound } from '@/hooks/useNotificationSound';
 
 type Tab = 'branding' | 'preview' | 'information' | 'preferences' | 'password';
 
@@ -284,6 +285,7 @@ export default function SettingsPage() {
     },
     onError: (err: any) => toast.error(getErrorMessage(err, 'Failed to save notification sound preference.')),
   });
+  const { playTestSound, hasSoundConfigured } = useNotificationSound();
 
   // ── Change Password ──
   const [pwForm, setPwForm] = useState({ current: '', password: '', confirm: '' });
@@ -604,10 +606,19 @@ export default function SettingsPage() {
                   disabled={notificationSoundMutation.isPending}
                 />
               </div>
-              {/* Test Sound intentionally omitted — actual playback awaits
-                  an approved audio asset (see CLAUDE.md's "Notification
-                  Sound System" section). This toggle already persists a
-                  real, working preference regardless. */}
+              {hasSoundConfigured ? (
+                <button
+                  onClick={playTestSound}
+                  className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                  style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                >
+                  <Play size={12} /> Test sound
+                </button>
+              ) : (
+                <p className="mt-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+                  No notification sound has been configured yet.
+                </p>
+              )}
             </div>
           </div>
         ) : tab === 'password' ? (

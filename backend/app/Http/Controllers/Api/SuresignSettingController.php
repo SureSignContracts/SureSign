@@ -46,6 +46,12 @@ class SuresignSettingController extends Controller
                 'date_format'     => $settings->date_format     ?? 'DD/MM/YYYY',
                 'timezone'        => $settings->timezone        ?? 'Europe/London',
                 'hidden_pages'    => $settings->hidden_pages    ?? [],
+                // Notification Sound System — read alongside the settings
+                // this endpoint (useSiteSettings on the frontend) already
+                // fetches at the authenticated shell level, so no second
+                // request is needed just to know the current sound asset.
+                // Null until an operator uploads one (see uploadNotificationSound()).
+                'notification_sound_url' => $settings->notification_sound_url,
             ],
         ]);
     }
@@ -236,6 +242,25 @@ class SuresignSettingController extends Controller
         return response()->json(['data' => ['favicon_url' => Storage::disk('public')->url($path)]]);
     }
 
+    /**
+     * Notification Sound System — the one, platform-wide notification audio
+     * asset. Mirrors uploadFavicon()'s shape exactly. 512KB ceiling is a
+     * generous technical guard, not the recommended size — the Branding
+     * tab's own hint text states the actual target (short, <50KB, no
+     * speech); this validation exists to reject something wildly oversized
+     * (e.g. an accidentally-selected full song), not to enforce that target
+     * itself.
+     */
+    public function uploadNotificationSound(Request $request)
+    {
+        $request->validate(['notification_sound' => 'required|file|max:512']);
+        $path = $this->storeValidatedFile($request->file('notification_sound'), FileSecurityService::AUDIO, 'suresign/branding');
+        $settings = SuresignSetting::instance();
+        $this->deleteOld($settings->notification_sound_path);
+        $settings->update(['notification_sound_path' => $path]);
+        return response()->json(['data' => ['notification_sound_url' => Storage::disk('public')->url($path)]]);
+    }
+
     public function uploadLetterheadHeader(Request $request)
     {
         $request->validate(['header' => 'required|file|max:10240']);
@@ -302,6 +327,14 @@ class SuresignSettingController extends Controller
         $this->deleteOld($settings->favicon_path);
         $settings->update(['favicon_path' => null]);
         return response()->json(['data' => ['favicon_url' => null]]);
+    }
+
+    public function removeNotificationSound()
+    {
+        $settings = SuresignSetting::instance();
+        $this->deleteOld($settings->notification_sound_path);
+        $settings->update(['notification_sound_path' => null]);
+        return response()->json(['data' => ['notification_sound_url' => null]]);
     }
 
     public function removeLetterheadHeader()

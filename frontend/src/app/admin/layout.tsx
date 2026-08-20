@@ -14,6 +14,7 @@ import WhatsNewLauncher from '@/components/product-updates/WhatsNewLauncher';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { getAdminPageLabel } from '@/lib/pageTitle';
 import { useNewNotificationWatcher } from '@/hooks/useNewNotificationWatcher';
+import { useNotificationSound } from '@/hooks/useNotificationSound';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -35,9 +36,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // no equivalent "notification-less" nested route today (NotificationBell
   // always renders once this layout reaches its main return), so this
   // mainly keeps the architecture consistent between both shells rather
-  // than fixing a gap here. `onNew` intentionally unwired until an approved
-  // audio asset lands.
-  useNewNotificationWatcher({ enabled: !!token && !!user && !!isSystemUser });
+  // than fixing a gap here.
+  const { playNotificationSound } = useNotificationSound();
+  useNewNotificationWatcher({
+    enabled: !!token && !!user && !!isSystemUser,
+    onNew: playNotificationSound,
+  });
 
   useEffect(() => {
     if (_hasHydrated) {

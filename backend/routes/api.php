@@ -1241,6 +1241,7 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
             Route::put('/suresign-settings/branding',                [SuresignSettingController::class, 'updateBranding']);
             Route::post('/suresign-settings/logo',                   [SuresignSettingController::class, 'uploadLogo']);
             Route::post('/suresign-settings/favicon',                [SuresignSettingController::class, 'uploadFavicon']);
+            Route::post('/suresign-settings/notification-sound',     [SuresignSettingController::class, 'uploadNotificationSound']);
             Route::post('/suresign-settings/letterhead-header',      [SuresignSettingController::class, 'uploadLetterheadHeader']);
             Route::post('/suresign-settings/letterhead-footer',      [SuresignSettingController::class, 'uploadLetterheadFooter']);
             Route::post('/suresign-settings/letterhead-pdf',         [SuresignSettingController::class, 'uploadLetterheadPdf']);
@@ -1248,6 +1249,7 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
             Route::post('/suresign-settings/email-footer',           [SuresignSettingController::class, 'uploadEmailFooter']);
             Route::delete('/suresign-settings/logo',                 [SuresignSettingController::class, 'removeLogo']);
             Route::delete('/suresign-settings/favicon',              [SuresignSettingController::class, 'removeFavicon']);
+            Route::delete('/suresign-settings/notification-sound',   [SuresignSettingController::class, 'removeNotificationSound']);
             Route::delete('/suresign-settings/letterhead-header',    [SuresignSettingController::class, 'removeLetterheadHeader']);
             Route::delete('/suresign-settings/letterhead-footer',    [SuresignSettingController::class, 'removeLetterheadFooter']);
             Route::delete('/suresign-settings/letterhead-pdf',       [SuresignSettingController::class, 'removeLetterheadPdf']);

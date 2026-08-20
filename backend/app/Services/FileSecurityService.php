@@ -38,6 +38,14 @@ class FileSecurityService
     public const FAVICON = ['ico', 'png', 'jpg', 'jpeg', 'webp'];
 
     /**
+     * Notification Sound System — the platform-wide notification audio
+     * asset (`suresign_settings.notification_sound_path`). Deliberately a
+     * short allow-list of the three formats browsers reliably support
+     * natively via HTMLAudioElement — no video/container formats.
+     */
+    public const AUDIO = ['mp3', 'wav', 'ogg'];
+
+    /**
      * Document template uploads. Matches the existing feature's supported
      * formats (docx/pdf/doc) — macro-enabled .docm/.xlsm/.pptm are
      * intentionally absent and were never accepted.
@@ -76,6 +84,9 @@ class FileSecurityService
         'webp' => ['image/webp'],
         'gif'  => ['image/gif'],
         'ico'  => ['image/x-icon', 'image/vnd.microsoft.icon'],
+        'mp3'  => ['audio/mpeg', 'audio/mp3'],
+        'wav'  => ['audio/wav', 'audio/x-wav', 'audio/wave', 'audio/vnd.wave'],
+        'ogg'  => ['audio/ogg', 'application/ogg'],
     ];
 
     /**
@@ -125,6 +136,12 @@ class FileSecurityService
         'doc'  => ["\xD0\xCF\x11\xE0"],
         'xls'  => ["\xD0\xCF\x11\xE0"],
         'ico'  => ["\x00\x00\x01\x00"],
+        // MP3: either an ID3v2 tag prefix, or a raw MPEG frame sync header
+        // (files with no ID3 tag) — both are legitimate, widely-produced
+        // encodings.
+        'mp3'  => ["ID3", "\xFF\xFB", "\xFF\xF3", "\xFF\xF2"],
+        'wav'  => ["RIFF"],
+        'ogg'  => ["OggS"],
     ];
 
     /**

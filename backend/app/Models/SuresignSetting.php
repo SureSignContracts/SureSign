@@ -21,6 +21,7 @@ class SuresignSetting extends Model
         'anthropic_api_key',
         'logo_path',
         'favicon_path',
+        'notification_sound_path',
         'loader_accent_style',
         'letterhead_header_path',
         'letterhead_footer_path',
@@ -90,6 +91,11 @@ class SuresignSetting extends Model
         return $this->favicon_path ? Storage::disk('public')->url($this->favicon_path) : null;
     }
 
+    public function getNotificationSoundUrlAttribute(): ?string
+    {
+        return $this->notification_sound_path ? Storage::disk('public')->url($this->notification_sound_path) : null;
+    }
+
     public function getLetterheadHeaderUrlAttribute(): ?string
     {
         return $this->letterhead_header_path ? Storage::disk('public')->url($this->letterhead_header_path) : null;
@@ -118,6 +124,7 @@ class SuresignSetting extends Model
     protected $appends = [
         'logo_url',
         'favicon_url',
+        'notification_sound_url',
         'letterhead_header_url',
         'letterhead_footer_url',
         'letterhead_pdf_url',
@@ -128,6 +135,7 @@ class SuresignSetting extends Model
     protected $hidden = [
         'logo_path',
         'favicon_path',
+        'notification_sound_path',
         'letterhead_header_path',
         'letterhead_footer_path',
         'letterhead_pdf_path',
