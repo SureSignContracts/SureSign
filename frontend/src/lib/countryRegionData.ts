@@ -31,46 +31,102 @@ const REGIONS_BY_NAME: Map<string, [string, string][]> = new Map(allCountries.ma
 export const COUNTRY_OPTIONS: ComboboxOption[] = allCountries.map(([name]) => ({ value: name, label: name }));
 
 /**
- * V1 allowlist of countries whose `country-region-data` subdivision list has
- * been VERIFIED (Semantic Subdivision Closeout) to represent the same
- * real-world administrative level SureSign's "State / Province / Region"
- * field means for that country's addresses. A non-empty `regions` array in
- * the dataset is deliberately NOT sufficient on its own to enable a
- * dropdown — ISO 3166-2 subdivision levels vary by country, and two
- * countries with real data were checked and found to expose the WRONG
- * level for this field:
+ * Allowlist of countries whose `country-region-data` subdivision list has
+ * been VERIFIED (Semantic Subdivision Closeout, its V2 expansion, and the
+ * V2 data-completeness correction below) to represent the same real-world
+ * administrative level SureSign's "State / Province / Region" field means
+ * for that country's addresses. A non-empty `regions` array in the dataset
+ * is deliberately NOT sufficient on its own to enable a dropdown —
+ * inclusion requires BOTH:
+ *
+ *   1. semantically correct administrative level; AND
+ *   2. sufficiently complete/current dataset coverage.
+ *
+ * Failing either is enough to defer a country to free text. ISO 3166-2
+ * subdivision levels vary by country, and several were checked and found
+ * to fail one of the two requirements:
  *
  * - Philippines (17 entries: "Bicol", "Calabarzon", "Cordillera
- *   Administrative Region", ...) — these are ISO 3166-2:PH REGIONS, a
- *   level ABOVE the province. A real Philippine address (and this app's
- *   own `users.province`/`organizations.state` fields) means the
- *   province — e.g. "Oriental Mindoro", which sits *inside* the
- *   Calabarzon region and is not itself one of the 17 entries. Building a
- *   province-level dataset by hand is out of scope, so Philippines uses
- *   free text.
+ *   Administrative Region", ...) — fails (1): these are ISO 3166-2:PH
+ *   REGIONS, a level ABOVE the province. A real Philippine address (and
+ *   this app's own `users.province`/`organizations.state` fields) means
+ *   the province — e.g. "Oriental Mindoro", which sits *inside* the
+ *   Calabarzon region and is not itself one of the 17 entries. Free text.
  * - United Kingdom (217 entries: "Aberdeen City", "Barking and Dagenham",
- *   "Armagh City, Banbridge and Craigavon", ...) — these are UK
+ *   "Armagh City, Banbridge and Craigavon", ...) — fails (1): UK
  *   "principal areas" (unitary authorities, London boroughs,
  *   Scottish/Northern-Irish council areas), a different, finer-grained
  *   concept from the traditional "county" this app's own legacy UK data
  *   assumes (e.g. a stored value of "Essex"). Free text.
+ * - Spain (55 entries) — fails (1), and worse than a simple wrong level:
+ *   the list mixes two administrative tiers in one flat array — e.g.
+ *   "Andalucía" (an autonomous community) sits as a sibling entry
+ *   alongside "Almería" (a *province within* Andalucía). Free text.
+ * - France (26 entries: "Auvergne-Rhône-Alpes", "Bretagne", "Île-de-
+ *   France", ...) — fails (1): the 2016-reform administrative *regions*,
+ *   not the ~101 *departments* French postal addressing actually keys on.
+ *   Free text.
+ * - Italy (20 entries: "Abruzzo", "Lombardia", ...) — internally clean
+ *   (exactly Italy's 20 official regions, no mixing), but Italian
+ *   addresses commonly cite the *provincia* (e.g. "Milano (MI)"), not the
+ *   region — kept conservative under (1) rather than resolve that
+ *   ambiguity by assumption. Free text.
+ * - Indonesia (33 entries) — passes (1) (they genuinely are provinces,
+ *   the correct level) but FAILS (2): real-world Indonesia has ~38
+ *   provinces since the 2022 Papua splits ("South Papua" and others
+ *   confirmed absent), so this dataset is knowingly incomplete. A
+ *   selection method known to be missing current provinces must not be
+ *   presented as the primary path even though the level itself is right.
+ *   Free text — deferred as a future candidate once the installed
+ *   dataset's Indonesia coverage is confirmed current, not by manually
+ *   patching the missing provinces in here.
  *
- * US/CA/AU were each checked and confirmed to list the real administrative
- * level a State/Province/Region field means there (US: the 50 states plus
- * real territories; CA: the actual 10 provinces + 3 territories; AU: the
- * actual 6 states + 2 territories) — hence the only three included below.
+ * Verified and INCLUDED below (V1: US/CA/AU; V2 adds the following 11,
+ * each confirmed to be a single, stable, first-order division matching
+ * normal address usage, with no tier-mixing AND sufficiently complete
+ * coverage):
+ * - Germany (16: the 16 Bundesländer, including the city-states Berlin/
+ *   Hamburg/Bremen as their own entries).
+ * - Japan (47: all 47 prefectures, exact real-world count).
+ * - India (36: 28 states + 8 union territories).
+ * - United Arab Emirates (7: the 7 emirates).
+ * - Switzerland (26: all 26 cantons).
+ * - Brazil (27: 26 states + the Distrito Federal).
+ * - Mexico (32: 31 states + Ciudad de México).
+ * - South Africa (9: the 9 provinces).
+ * - Malaysia (16: 13 states + 3 federal territories).
+ * - China (33: a mix of provinces, municipalities, and autonomous
+ *   regions — which IS the correct real-world first-order division for
+ *   China, not a mismatched tier the way Spain's mixing is).
+ * - Nigeria (37: 36 states + the Abuja Federal Capital Territory).
  *
- * Every OTHER country also defaults to free text — not because its data
- * was checked and rejected, but because it has not been verified at all.
- * This is a deliberately small, conservative allowlist ("verified safe"),
- * not an "assume correct unless proven otherwise" one — do not add a
- * country here without the same kind of direct data verification US/CA/AU
- * received (see this feature's closeout report for the full method).
+ * Every country not listed here defaults to free text — not because its
+ * data was checked and rejected, but because it has not been verified at
+ * all (or, for the six above, because it WAS checked and found to fail
+ * requirement 1 or 2). This is a deliberately conservative allowlist
+ * ("verified safe on both semantics and completeness"), not an "assume
+ * correct unless proven otherwise" one — do not add a country here
+ * without the same direct data verification every entry above received
+ * (see this feature's closeout reports for the full method). Ireland and
+ * New Zealand looked like plausible future candidates during the V2
+ * expansion's discovery but were not verified or added — out of scope for
+ * this phase.
  */
 const CONTROLLED_SUBDIVISION_COUNTRIES: Record<string, { label: string }> = {
   US: { label: 'State' },
   CA: { label: 'Province' },
   AU: { label: 'State / Territory' },
+  DE: { label: 'State' },
+  JP: { label: 'Prefecture' },
+  IN: { label: 'State / Union Territory' },
+  AE: { label: 'Emirate' },
+  CH: { label: 'Canton' },
+  BR: { label: 'State' },
+  MX: { label: 'State' },
+  ZA: { label: 'Province' },
+  MY: { label: 'State / Federal Territory' },
+  CN: { label: 'Province / Municipality / Autonomous Region' },
+  NG: { label: 'State' },
 };
 const DEFAULT_REGION_LABEL = 'Region / Province / State';
 
