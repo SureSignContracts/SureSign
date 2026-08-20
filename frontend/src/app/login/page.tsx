@@ -15,6 +15,7 @@ import {
   markPostLoginEntrance,
 } from '@/lib/authStorage';
 import LoginProductShowcase from '@/components/login/LoginProductShowcase';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 interface BrandGateway {
   organisation_name: string;
@@ -31,6 +32,7 @@ export default function LoginPage() {
   const router    = useRouter();
   const login     = useAuthStore((s) => s.login);
   const isLoading = useAuthStore((s) => s.isLoading);
+  useDocumentTitle('Sign In');
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [showPw,   setShowPw]   = useState(false);

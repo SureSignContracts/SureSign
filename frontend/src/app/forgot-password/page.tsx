@@ -5,10 +5,12 @@ import { ArrowLeft, ArrowRight, Mail } from 'lucide-react';
 import api from '@/lib/api';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import RecoveryShell from '@/components/auth/RecoveryShell';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 const EASE = 'cubic-bezier(0.32, 0.72, 0, 1)';
 
 export default function ForgotPasswordPage() {
+  useDocumentTitle('Forgot Password');
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');

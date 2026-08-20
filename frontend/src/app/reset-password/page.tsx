@@ -6,6 +6,7 @@ import { ArrowRight, Eye, EyeOff, KeyRound } from 'lucide-react';
 import api from '@/lib/api';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import RecoveryShell from '@/components/auth/RecoveryShell';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 const EASE = 'cubic-bezier(0.32, 0.72, 0, 1)';
 
@@ -151,6 +152,7 @@ function ResetPasswordForm() {
 }
 
 export default function ResetPasswordPage() {
+  useDocumentTitle('Reset Password');
   return (
     <Suspense fallback={null}>
       <ResetPasswordForm />

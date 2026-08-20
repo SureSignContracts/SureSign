@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Mail, ShieldQuestion, UserPlus, KeyRound } from 'lucide-react';
 import api from '@/lib/api';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 const EASE = 'cubic-bezier(0.32, 0.72, 0, 1)';
 
@@ -25,6 +26,7 @@ const REASONS = [
 ];
 
 export default function ContactAdministratorPage() {
+  useDocumentTitle('Contact Administrator');
   const [supportEmail, setSupportEmail] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');

@@ -6,6 +6,7 @@ import { CheckCircle2, XCircle, MailCheck } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { getErrorMessage } from '@/lib/getErrorMessage';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 const MISSING_INFO_MESSAGE = 'This verification link is missing required information.';
 
@@ -87,6 +88,7 @@ function VerifyEmailContent() {
 }
 
 export default function VerifyEmailPage() {
+  useDocumentTitle('Verify Email');
   return (
     <Suspense fallback={null}>
       <VerifyEmailContent />

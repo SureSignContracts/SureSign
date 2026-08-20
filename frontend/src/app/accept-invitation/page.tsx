@@ -6,6 +6,7 @@ import { ArrowRight, Eye, EyeOff, MailCheck, XCircle, CheckCircle2, ShieldCheck,
 import api from '@/lib/api';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import PasswordStrengthChecker, { checkPassword, isPasswordValid } from '@/components/ui/PasswordStrengthChecker';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 const EASE = 'cubic-bezier(0.32, 0.72, 0, 1)';
 const MISSING_INFO_MESSAGE = 'This invitation link is missing required information.';
@@ -286,6 +287,7 @@ function AcceptInvitationContent() {
 }
 
 export default function AcceptInvitationPage() {
+  useDocumentTitle('Accept Invitation');
   return (
     <Suspense fallback={null}>
       <AcceptInvitationContent />

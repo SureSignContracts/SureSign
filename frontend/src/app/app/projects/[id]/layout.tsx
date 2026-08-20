@@ -8,6 +8,9 @@ import ProjectSidebar from '@/components/layout/ProjectSidebar';
 import MobileTopBar from '@/components/layout/MobileTopBar';
 import WorkspaceTransition from '@/components/layout/WorkspaceTransition';
 import PendingTourLauncher from '@/components/tours/PendingTourLauncher';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
+import { getProjectModuleLabel, resolveProjectOrganizationTitleName } from '@/lib/pageTitle';
+import { useAuthStore } from '@/store/authStore';
 
 export default function ProjectLayout({ children }: { children: React.ReactNode }) {
   const params = useParams();
@@ -22,6 +25,29 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
     enabled: !!projectId,
     staleTime: 5 * 60 * 1000,
     retry: false,
+  });
+
+  // Browser tab title — reuses this same project fetch, plus the
+  // already-in-memory authenticated user (no second request either way).
+  // The Organisation segment prefers the same branded display name
+  // Organisation-level pages use (`branding_settings.company_display_name`,
+  // already loaded onto the auth store at login/fetchUser()) whenever the
+  // viewer's own organisation IS this project's organisation — true for
+  // every ordinary Client (tenant isolation means a Client only ever
+  // reaches their own organisation's projects). It falls back to the plain
+  // organisation name `ProjectController::show()` already returns
+  // whenever that's not the case (e.g. a Super Admin/Admin viewing another
+  // organisation's project) — never a second, organisation-scoped fetch,
+  // and never another organisation's branding leaking onto this one.
+  const { user } = useAuthStore();
+  useDocumentTitle(getProjectModuleLabel(pathname), {
+    project: project?.name,
+    organization: resolveProjectOrganizationTitleName({
+      projectOrganizationId: project?.organization_id,
+      projectOrganizationName: project?.organization?.name,
+      viewerOrganizationId: user?.organization?.id,
+      viewerOrganizationBrandName: user?.organization?.branding?.company_display_name,
+    }),
   });
 
   // A project that exists but belongs to another organization (403) must

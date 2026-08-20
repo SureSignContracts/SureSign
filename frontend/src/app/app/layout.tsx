@@ -20,6 +20,8 @@ import BrandedWorkspaceBanner from '@/components/auth/BrandedWorkspaceBanner';
 import api from '@/lib/api';
 import { fetchWorkspaceContext, type WorkspaceContextResult } from '@/lib/workspaceContext';
 import { isCurrentHostPlatform, currentHostname } from '@/lib/hostContext';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
+import { getAppPageLabel } from '@/lib/pageTitle';
 
 const BLOCKING_WORKSPACE_STATES = new Set([
   'wrong_workspace',
@@ -97,6 +99,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       router.push('/login');
     }
   }, [_hasHydrated, token, router]);
+
+  // Browser tab title. Skipped entirely on project workspace routes — those
+  // render their own layout further down (`isProjectDetail` below), which
+  // owns the title itself via the actual loaded Project. Reuses the same
+  // `branding` query already fetched above for the accent colour — no
+  // second Organisation request just for document.title.
+  const isProjectRouteForTitle = !!pathname?.match(/^\/app\/projects\/[^/]+\//);
+  useDocumentTitle(
+    isProjectRouteForTitle ? undefined : getAppPageLabel(pathname),
+    { organization: branding?.company_name || user?.organization?.name }
+  );
 
   // System users (Admin/Super Admin) don't belong in /app — send them to /admin
   // Exception: project detail pages are shared, so allow access there.

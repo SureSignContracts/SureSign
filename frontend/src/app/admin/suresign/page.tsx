@@ -15,6 +15,7 @@ import PlatformPageHero from '@/components/admin/PlatformPageHero';
 import FeatureAvailabilityManager from '@/components/admin/FeatureAvailabilityManager';
 import PreviewPanel from '@/components/admin/PreviewPanel';
 import { ACCENT_STYLES, ACCENT_STYLE_LABELS, type AccentStyle } from '@/components/ui/SureSignLoader';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 const ACCENT_STYLE_OPTIONS = ACCENT_STYLES.map(value => ({ value, label: ACCENT_STYLE_LABELS[value] }));
 
@@ -234,6 +235,12 @@ export default function AdminSureSignPage() {
     setActiveTab(tab);
     localStorage.setItem('suresign_settings_tab', tab);
   };
+
+  // This page's active section lives in local/localStorage state, not the
+  // URL, so AdminLayout's route-based title mapping can't see it — this
+  // page owns its own title instead (see lib/pageTitle.ts's
+  // getAdminPageLabel docblock).
+  useDocumentTitle(TABS.find(t => t.id === activeTab)?.label ?? 'SureSign');
   const [uploading, setUploading] = useState<Record<string, boolean>>({});
   const [showBrevoKey, setShowBrevoKey] = useState(false);
   const emailBodyRef = useRef<HTMLTextAreaElement>(null);

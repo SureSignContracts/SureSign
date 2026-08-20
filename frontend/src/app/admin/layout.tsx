@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Menu } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useAuthSplash } from '@/hooks/useAuthSplash';
@@ -11,14 +11,23 @@ import NotificationBell from '@/components/notifications/NotificationBell';
 import SureSignLoader from '@/components/ui/SureSignLoader';
 import ForcePasswordChangeGate from '@/components/auth/ForcePasswordChangeGate';
 import WhatsNewLauncher from '@/components/product-updates/WhatsNewLauncher';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
+import { getAdminPageLabel } from '@/lib/pageTitle';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, token, _hasHydrated } = useAuthStore();
   const [navOpen, setNavOpen] = useState(false);
 
   const isSystemUser = user?.roles?.includes('Super Admin') || user?.roles?.includes('Admin');
   const { showLoaderNode, loaderExiting, playEntrance } = useAuthSplash(_hasHydrated && !!token && !!user);
+
+  // Admin/Super Admin platform-management pages never carry an Organisation
+  // segment — see CLAUDE.md's "Dynamic Browser Titles" section.
+  // /admin/suresign owns its own title (tab-driven local state) —
+  // getAdminPageLabel returns `undefined` for it, which skips this hook.
+  useDocumentTitle(getAdminPageLabel(pathname));
 
   useEffect(() => {
     if (_hasHydrated) {
