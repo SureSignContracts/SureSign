@@ -153,6 +153,16 @@ export function getRegionOptions(countryName?: string | null): ComboboxOption[] 
   return regions.map(([name]) => ({ value: name, label: name }));
 }
 
+/**
+ * Global Address UX V3 — the ISO alpha-2 lookup `CityAutocomplete` sends to
+ * the backend's `/location-suggestions/cities` endpoint so Geoapify can
+ * filter by country. UI-internal only, same as every other use of a code
+ * in this file — never changes what's persisted for `country`.
+ */
+export function getCountryCode(countryName?: string | null): string | undefined {
+  return countryName ? CODE_BY_NAME.get(countryName) : undefined;
+}
+
 export function getRegionLabel(countryName?: string | null): string {
   const code = countryName ? CODE_BY_NAME.get(countryName) : undefined;
   return (code && CONTROLLED_SUBDIVISION_COUNTRIES[code]?.label) || DEFAULT_REGION_LABEL;

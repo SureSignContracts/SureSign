@@ -13,6 +13,7 @@ import { getErrorMessage } from '@/lib/getErrorMessage';
 import { getPostalLabel } from '@/lib/countryRegionData';
 import CountrySelect from '@/components/shared/CountrySelect';
 import RegionField from '@/components/shared/RegionField';
+import CityAutocomplete from '@/components/shared/CityAutocomplete';
 
 // ─── Form state types ────────────────────────────────────────────────────────
 
@@ -390,21 +391,22 @@ export default function OnboardingPage() {
                   value={profile.address} onChange={setP('address')}
                   placeholder="10 Construction Way" />
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Field label="City"
-                    value={profile.city} onChange={setP('city')}
-                    placeholder="London" />
+                  <CountrySelect
+                    value={profile.country} onChange={setP('country')}
+                  />
                   <RegionField
                     country={profile.country}
                     value={profile.province} onChange={setP('province')}
                   />
                 </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <CityAutocomplete
+                    value={profile.city} onChange={setP('city')}
+                    country={profile.country} region={profile.province}
+                    placeholder="London" />
                   <Field label={getPostalLabel(profile.country)}
                     value={profile.postal_code} onChange={setP('postal_code')}
                     placeholder="EC1A 1BB" />
-                  <CountrySelect
-                    value={profile.country} onChange={setP('country')}
-                  />
                 </div>
               </div>
             </div>
@@ -450,12 +452,15 @@ export default function OnboardingPage() {
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem' }} className="space-y-3">
                 <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Registered Address</p>
                 <Field label="Street Address" value={company.address} onChange={setO('address')} placeholder="10 Construction Way" />
+                <CountrySelect value={company.country} onChange={setO('country')} />
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  <Field label="City" value={company.city} onChange={setO('city')} placeholder="London" />
                   <RegionField country={company.country} value={company.state} onChange={setO('state')} />
+                  <CityAutocomplete
+                    value={company.city} onChange={setO('city')}
+                    country={company.country} region={company.state}
+                    placeholder="London" />
                   <Field label={getPostalLabel(company.country)} value={company.postcode} onChange={setO('postcode')} placeholder="EC1A 1BB" />
                 </div>
-                <CountrySelect value={company.country} onChange={setO('country')} />
               </div>
             </div>
           )}

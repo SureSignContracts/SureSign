@@ -10,6 +10,7 @@ import PasswordStrengthChecker, { checkPassword, isPasswordValid } from '@/compo
 import TimezoneSelect from '@/components/shared/TimezoneSelect';
 import CountrySelect from '@/components/shared/CountrySelect';
 import RegionField from '@/components/shared/RegionField';
+import CityAutocomplete from '@/components/shared/CityAutocomplete';
 import { getPostalLabel } from '@/lib/countryRegionData';
 import { SUPPORTED_CURRENCIES, currencyLabel } from '@/lib/currency';
 import { useAuthStore } from '@/store/authStore';
@@ -489,12 +490,15 @@ export default function SettingsPage() {
               <p className="text-xs font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>Registered Address</p>
               <div className="space-y-3">
                 <Field label="Street Address" value={infoForm.address} onChange={v => setInfoForm(f => ({ ...f, address: v }))} placeholder="10 Construction Way" />
+                <CountrySelect value={infoForm.country} onChange={v => setInfoForm(f => ({ ...f, country: v }))} />
                 <div className="grid grid-cols-3 gap-3">
-                  <Field label="City" value={infoForm.city} onChange={v => setInfoForm(f => ({ ...f, city: v }))} placeholder="London" />
                   <RegionField country={infoForm.country} value={infoForm.state} onChange={v => setInfoForm(f => ({ ...f, state: v }))} />
+                  <CityAutocomplete
+                    value={infoForm.city} onChange={v => setInfoForm(f => ({ ...f, city: v }))}
+                    country={infoForm.country} region={infoForm.state}
+                    placeholder="London" />
                   <Field label={getPostalLabel(infoForm.country)} value={infoForm.postcode} onChange={v => setInfoForm(f => ({ ...f, postcode: v }))} placeholder="EC1A 1BB" />
                 </div>
-                <CountrySelect value={infoForm.country} onChange={v => setInfoForm(f => ({ ...f, country: v }))} />
               </div>
             </div>
 

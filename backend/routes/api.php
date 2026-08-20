@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\CommercialOverviewController;
 use App\Http\Controllers\Api\SiteAdministrationController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\OrganizationBrandingUrlController;
+use App\Http\Controllers\Api\LocationSuggestionController;
 use App\Http\Controllers\Api\OrganizationController;
 use App\Http\Controllers\Api\OrganizationDomainController;
 use App\Http\Controllers\Api\OrganizationSubscriptionAssignmentController;
@@ -834,6 +835,23 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
         [ProjectContractSetupController::class, 'suggestions']);
     Route::post('/projects/{project}/contracts/{contract}/analyses/{analysis}/apply-project-suggestions',
         [ProjectContractSetupController::class, 'apply']);
+
+    // Global Address UX V3 — City autocomplete suggestions only; no
+    // organisation/tenant data is read or returned, so no per-org scoping
+    // applies. Suggestion service only, never mutates anything.
+    // Closeout: 60/min (not the initial 30/min) — this route already sits
+    // inside the default 'api' limiter (120/min per user,
+    // AppServiceProvider::configureRateLimiters()), which this override
+    // tightens for real per-request Geoapify cost control, without being
+    // so tight that normal multi-field address editing (City in one
+    // field, re-typed a few times, City in another form on the same
+    // page) starts losing suggestions mid-session. Existing protections
+    // (2-char minimum, 300ms frontend debounce, stale-response guard, a
+    // provider result limit, no request on empty/short input) are
+    // unchanged and remain the primary defence against real abuse — this
+    // number is a backstop, not the main control.
+    Route::get('/location-suggestions/cities', [LocationSuggestionController::class, 'cities'])
+        ->middleware('throttle:60,1');
 
     // Organization & Branding
     Route::post('/organization/onboard',             [OrganizationController::class, 'onboard']);
