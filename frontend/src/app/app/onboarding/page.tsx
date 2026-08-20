@@ -10,6 +10,9 @@ import {
   Check, Upload, X, AlertCircle,
 } from 'lucide-react';
 import { getErrorMessage } from '@/lib/getErrorMessage';
+import { getPostalLabel } from '@/lib/countryRegionData';
+import CountrySelect from '@/components/shared/CountrySelect';
+import RegionField from '@/components/shared/RegionField';
 
 // ─── Form state types ────────────────────────────────────────────────────────
 
@@ -390,17 +393,18 @@ export default function OnboardingPage() {
                   <Field label="City"
                     value={profile.city} onChange={setP('city')}
                     placeholder="London" />
-                  <Field label="Province / State"
+                  <RegionField
+                    country={profile.country}
                     value={profile.province} onChange={setP('province')}
-                    placeholder="England" />
+                  />
                 </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Field label="Postal Code"
+                  <Field label={getPostalLabel(profile.country)}
                     value={profile.postal_code} onChange={setP('postal_code')}
                     placeholder="EC1A 1BB" />
-                  <Field label="Country"
+                  <CountrySelect
                     value={profile.country} onChange={setP('country')}
-                    placeholder="United Kingdom" />
+                  />
                 </div>
               </div>
             </div>
@@ -448,10 +452,10 @@ export default function OnboardingPage() {
                 <Field label="Street Address" value={company.address} onChange={setO('address')} placeholder="10 Construction Way" />
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <Field label="City" value={company.city} onChange={setO('city')} placeholder="London" />
-                  <Field label="State / County" value={company.state} onChange={setO('state')} placeholder="England" />
-                  <Field label="Postcode" value={company.postcode} onChange={setO('postcode')} placeholder="EC1A 1BB" />
+                  <RegionField country={company.country} value={company.state} onChange={setO('state')} />
+                  <Field label={getPostalLabel(company.country)} value={company.postcode} onChange={setO('postcode')} placeholder="EC1A 1BB" />
                 </div>
-                <Field label="Country" value={company.country} onChange={setO('country')} placeholder="United Kingdom" />
+                <CountrySelect value={company.country} onChange={setO('country')} />
               </div>
             </div>
           )}

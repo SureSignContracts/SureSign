@@ -8,6 +8,9 @@ import api from '@/lib/api';
 import toast from '@/lib/toast';
 import PasswordStrengthChecker, { checkPassword, isPasswordValid } from '@/components/ui/PasswordStrengthChecker';
 import TimezoneSelect from '@/components/shared/TimezoneSelect';
+import CountrySelect from '@/components/shared/CountrySelect';
+import RegionField from '@/components/shared/RegionField';
+import { getPostalLabel } from '@/lib/countryRegionData';
 import { SUPPORTED_CURRENCIES, currencyLabel } from '@/lib/currency';
 import { useAuthStore } from '@/store/authStore';
 import CustomUrlSection from '@/components/settings/CustomUrlSection';
@@ -488,10 +491,10 @@ export default function SettingsPage() {
                 <Field label="Street Address" value={infoForm.address} onChange={v => setInfoForm(f => ({ ...f, address: v }))} placeholder="10 Construction Way" />
                 <div className="grid grid-cols-3 gap-3">
                   <Field label="City" value={infoForm.city} onChange={v => setInfoForm(f => ({ ...f, city: v }))} placeholder="London" />
-                  <Field label="State / County" value={infoForm.state} onChange={v => setInfoForm(f => ({ ...f, state: v }))} placeholder="England" />
-                  <Field label="Postcode / ZIP" value={infoForm.postcode} onChange={v => setInfoForm(f => ({ ...f, postcode: v }))} placeholder="EC1A 1BB" />
+                  <RegionField country={infoForm.country} value={infoForm.state} onChange={v => setInfoForm(f => ({ ...f, state: v }))} />
+                  <Field label={getPostalLabel(infoForm.country)} value={infoForm.postcode} onChange={v => setInfoForm(f => ({ ...f, postcode: v }))} placeholder="EC1A 1BB" />
                 </div>
-                <Field label="Country" value={infoForm.country} onChange={v => setInfoForm(f => ({ ...f, country: v }))} placeholder="United Kingdom" />
+                <CountrySelect value={infoForm.country} onChange={v => setInfoForm(f => ({ ...f, country: v }))} />
               </div>
             </div>
 
