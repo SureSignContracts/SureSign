@@ -207,7 +207,7 @@
                 <tr><td class="k">Contracting Party</td><td class="v">{{ $contractingParty }}</td></tr>
                 @endif
                 @if($contract->contract_sum)
-                <tr><td class="k">Contract Sum</td><td class="v">£{{ number_format($contract->contract_sum, 2) }}</td></tr>
+                <tr><td class="k">Contract Sum</td><td class="v">{{ $currency }}{{ number_format($contract->contract_sum, 2) }}</td></tr>
                 @endif
             </table>
             @elseif($tradePkg)
@@ -231,7 +231,7 @@
         <thead>
             <tr>
                 <th style="width:63%">Description</th>
-                <th class="r" style="width:37%">Amount (£)</th>
+                <th class="r" style="width:37%">Amount ({{ $currency }})</th>
             </tr>
         </thead>
         <tbody>

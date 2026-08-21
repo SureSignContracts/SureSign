@@ -8,6 +8,7 @@ use App\Models\Contract;
 use App\Models\ContractAiAnalysis;
 use App\Models\Project;
 use App\Models\Variation;
+use App\Services\CurrencyService;
 use App\Services\DocumentGenerationService;
 use App\Services\EmailNotificationService;
 use App\Services\NotificationService;
@@ -347,7 +348,7 @@ class VariationController extends Controller
             NotificationService::VARIATION_ASSESSED,
             "Variation #{$variation->variation_number} Assessed",
             "Variation #{$variation->variation_number} \"{$variation->title}\" has been assessed."
-                . ($assessedAmount ? " Counter-assessed value: {$this->formatAmount($assessedAmount)}." : ''),
+                . ($assessedAmount ? " Counter-assessed value: {$this->formatAmount($assessedAmount, $variation)}." : ''),
             'variation.assessed',
             $variation
         );
@@ -388,7 +389,7 @@ class VariationController extends Controller
             $request->user(),
             NotificationService::VARIATION_APPROVED,
             "Variation #{$variation->variation_number} Approved",
-            "Variation #{$variation->variation_number} \"{$variation->title}\" has been approved. Agreed amount: {$this->formatAmount($variation->agreed_amount)}.",
+            "Variation #{$variation->variation_number} \"{$variation->title}\" has been approved. Agreed amount: {$this->formatAmount($variation->agreed_amount, $variation)}.",
             'variation.approved',
             $variation
         );
@@ -608,10 +609,15 @@ class VariationController extends Controller
         try { return \Carbon\Carbon::parse($date)->format('d M Y'); } catch (\Throwable) { return 'TBC'; }
     }
 
-    private function formatAmount($amount): string
+    // Currency-agnostic — Commercial Correctness Hardening (2026-08-21) fixed
+    // this away from a hardcoded '£', which was wrong for any non-GBP
+    // organisation. Resolves via CurrencyService::resolveSymbol($project),
+    // the same convention DocumentGenerationService already uses for PDFs —
+    // never invents a second formatter.
+    private function formatAmount($amount, Variation $variation): string
     {
         if ($amount === null) return 'TBC';
-        return '£' . number_format((float) $amount, 2);
+        return CurrencyService::resolveSymbol($variation->project) . number_format((float) $amount, 2);
     }
 
     private function quotationDaysFromAnalysis(Contract $contract): int

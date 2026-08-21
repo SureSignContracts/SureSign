@@ -14,6 +14,7 @@ use App\Models\TradePackage;
 use App\Models\Variation;
 use App\Models\ContractAiAnalysis;
 use App\Models\SuresignNotification;
+use App\Services\CurrencyService;
 use App\Services\DocumentGenerationService;
 use App\Services\EmailNotificationService;
 use App\Services\ExcelGenerationService;
@@ -616,7 +617,7 @@ class PaymentApplicationController extends Controller
             \Log::warning("Certificate PDF generation failed: " . $e->getMessage());
         }
 
-        ActivityLog::record('payment_application.certified', 'Payment Application #' . $paymentApplication->application_number . ' certified — £' . number_format($validated['certified_amount'], 2), $request->user(), $paymentApplication, ['certified_amount' => $validated['certified_amount']], $project->id, $project->organization_id);
+        ActivityLog::record('payment_application.certified', 'Payment Application #' . $paymentApplication->application_number . ' certified — ' . CurrencyService::resolveSymbol($project) . number_format($validated['certified_amount'], 2), $request->user(), $paymentApplication, ['certified_amount' => $validated['certified_amount']], $project->id, $project->organization_id);
 
         ProjectActivityService::record(
             $project, $request->user(),
@@ -724,7 +725,23 @@ class PaymentApplicationController extends Controller
         $project = $paymentApplication->project;
         $this->authorizeProject($request, $project);
 
-        if (!in_array($paymentApplication->status, ['submitted', 'payment_notice_issued', 'pay_less_notice_issued'])) {
+        // Commercial Correctness Hardening (2026-08-21) removed
+        // 'payment_notice_issued'/'pay_less_notice_issued' from this guard —
+        // PaymentApplication::$status is application-level only (draft,
+        // submitted, certified, paid, cancelled, disputed) and is never
+        // assigned either of those values anywhere in this codebase;
+        // createPaymentNotice()/createPayLessNotice() only ever set status
+        // on the child PaymentNotice/PayLessNotice record they create, never
+        // on the parent. Whether a notice has been issued against a
+        // submitted/certified application is derived by the frontend from
+        // the presence of linked payment_notices/pay_less_notices (see
+        // frontend/src/app/app/projects/[id]/commercial/page.tsx's
+        // deriveEffectiveStatus()) — it is deliberately never duplicated
+        // onto this column. The two literals were dead code left over from
+        // this table's original migration comment
+        // (2026_01_01_000006_create_commercial_tables.php), which proposed
+        // but never implemented that broader enum.
+        if ($paymentApplication->status !== 'submitted') {
             return response()->json(['message' => 'Only submitted applications can be cancelled.'], 422);
         }
 
@@ -911,7 +928,7 @@ class PaymentApplicationController extends Controller
             \Log::warning("Payment Notice PDF generation failed: " . $e->getMessage());
         }
 
-        ActivityLog::record('payment_notice.issued', 'Payment Notice issued on Application #' . $paymentApplication->application_number . ' — notified sum £' . number_format($validated['notified_sum'], 2), $request->user(), $notice, ['notified_sum' => $validated['notified_sum']], $project->id, $project->organization_id);
+        ActivityLog::record('payment_notice.issued', 'Payment Notice issued on Application #' . $paymentApplication->application_number . ' — notified sum ' . CurrencyService::resolveSymbol($project) . number_format($validated['notified_sum'], 2), $request->user(), $notice, ['notified_sum' => $validated['notified_sum']], $project->id, $project->organization_id);
 
         ProjectActivityService::record(
             $project, $request->user(),
@@ -1016,7 +1033,7 @@ class PaymentApplicationController extends Controller
             \Log::warning("Pay Less Notice PDF generation failed: " . $e->getMessage());
         }
 
-        ActivityLog::record('pay_less_notice.issued', 'Pay Less Notice issued on Application #' . $paymentApplication->application_number . ' — revised payable £' . number_format($revisedAmountPayable, 2), $request->user(), $notice, ['original_amount_due' => $originalAmountDue, 'total_deductions' => $totalDeductions, 'revised_amount_payable' => $revisedAmountPayable], $project->id, $project->organization_id);
+        ActivityLog::record('pay_less_notice.issued', 'Pay Less Notice issued on Application #' . $paymentApplication->application_number . ' — revised payable ' . CurrencyService::resolveSymbol($project) . number_format($revisedAmountPayable, 2), $request->user(), $notice, ['original_amount_due' => $originalAmountDue, 'total_deductions' => $totalDeductions, 'revised_amount_payable' => $revisedAmountPayable], $project->id, $project->organization_id);
 
         ProjectActivityService::record(
             $project, $request->user(),
