@@ -317,72 +317,98 @@ function ProjectCard({ row, index, formatCurrency }: {
   return (
     <Link
       href={row.urls.workspace}
-      className={`group ss-animate-in relative flex min-h-64 flex-col overflow-hidden rounded-2xl transition-all duration-300 ${EASE} hover:-translate-y-1 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-pop)]`}
+      className={`group ss-animate-in relative flex min-h-[316px] flex-col overflow-hidden rounded-2xl shadow-[var(--shadow-card)] transition-all duration-300 ${EASE} hover:-translate-y-1 hover:shadow-[var(--shadow-pop)]`}
       style={{
         backgroundColor: 'var(--bg-surface)',
         border: '1px solid var(--border)',
         animationDelay: staggerDelay(index),
       }}
     >
-      <div className="h-1 w-full origin-left transition-transform duration-500 group-hover:scale-x-[1.02]" style={{ backgroundColor: row.attention.requires_attention ? '#f87171' : 'var(--gold)' }} />
+      <span className="pointer-events-none absolute -right-2 top-1 select-none text-[92px] font-semibold leading-none tracking-[-0.08em] text-[var(--text-primary)] opacity-[0.025]">
+        {String(index + 1).padStart(2, '0')}
+      </span>
 
-      <div className="flex items-start justify-between gap-3 px-5 pt-5">
-        <div className="flex items-start gap-3 min-w-0">
-          <div
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sm font-bold transition-transform duration-300 group-hover:rotate-[-3deg] group-hover:scale-105"
-            style={{ backgroundColor: row.attention.requires_attention ? 'rgba(239,68,68,0.10)' : 'var(--gold-15)', color: row.attention.requires_attention ? '#f87171' : 'var(--gold)', border: '1px solid var(--border)' }}
-          >
-            {row.name?.charAt(0)?.toUpperCase()}
-          </div>
-          <div className="min-w-0">
-            <p className="truncate text-base font-semibold leading-tight tracking-[-0.015em]" style={{ color: 'var(--text-primary)' }}>
-              {row.name}
-            </p>
-            <p className="mt-1 truncate font-mono text-[11px]" style={{ color: 'var(--text-muted)' }}>
-              {row.reference ?? 'No reference'}{row.location ? ` / ${row.location}` : ''}
-            </p>
+      <div className="relative px-6 pb-5 pt-6">
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">
+            Project {String(index + 1).padStart(2, '0')}
+          </p>
+          <div className="flex items-center gap-2 text-[11px] font-semibold capitalize text-[var(--text-secondary)]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#45c878] shadow-[0_0_0_4px_rgba(69,200,120,0.10)]" />
+            {row.status.replace(/_/g, ' ')}
           </div>
         </div>
-        <Badge tone={STATUS_TONE[row.status] ?? 'neutral'}>{row.status.replace(/_/g, ' ')}</Badge>
+
+        <h3 className="mt-7 truncate text-[1.45rem] font-semibold leading-tight tracking-[-0.035em] text-[var(--text-primary)]">
+          {row.name}
+        </h3>
+        <p className="mt-2 truncate font-mono text-[11px] text-[var(--text-muted)]">
+          {row.reference ?? 'Reference not set'}{row.location ? ` · ${row.location}` : ''}
+        </p>
+
+        <div
+          className="mt-6 flex items-center justify-between gap-4 rounded-xl px-3.5 py-3"
+          style={{ backgroundColor: row.attention.requires_attention
+            ? 'color-mix(in srgb, #ef6a6a 10%, var(--bg-surface))'
+            : 'color-mix(in srgb, #66cf8b 11%, var(--bg-surface))' }}
+        >
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span
+              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${row.attention.requires_attention ? 'text-[#e2625a]' : 'text-[#45b76e]'}`}
+              style={{ backgroundColor: row.attention.requires_attention
+                ? 'color-mix(in srgb, #ef6a6a 17%, var(--bg-surface))'
+                : 'color-mix(in srgb, #66cf8b 18%, var(--bg-surface))' }}
+            >
+              {row.attention.requires_attention ? <AlertTriangle size={14} /> : <CheckCircle2 size={14} />}
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-xs font-semibold text-[var(--text-primary)]">
+                {row.attention.requires_attention ? 'Action required' : 'Project on track'}
+              </p>
+              <p className="mt-0.5 truncate text-[10px] text-[var(--text-muted)]">
+                {row.attention.requires_attention
+                  ? `${row.attention.overdue_count + row.attention.due_today_count} item${row.attention.overdue_count + row.attention.due_today_count === 1 ? '' : 's'} need review`
+                  : 'No immediate actions'}
+              </p>
+            </div>
+          </div>
+          <ChevronRight size={14} className={`shrink-0 transition-transform duration-300 group-hover:translate-x-0.5 ${row.attention.requires_attention ? 'text-[#e2625a]' : 'text-[#45b76e]'}`} />
+        </div>
       </div>
 
-      <div className="mt-5 px-5"><AttentionBadge attention={row.attention} /></div>
-
-      {pct !== null && (
-        <div className="px-5">
-        <div
-          className="h-1 overflow-hidden rounded-full"
-          style={{ backgroundColor: 'var(--bg-elevated)' }}
-          title={`${Math.round(pct)}% of programme elapsed`}
-        >
-          <div className="ss-project-progress h-full rounded-full" style={{ '--project-progress': `${pct}%`, backgroundColor: 'var(--gold)' } as React.CSSProperties} />
-        </div>
-        </div>
-      )}
-
-      <div className="mx-5 mt-4 grid grid-cols-2 gap-4 border-t pt-4" style={{ borderColor: 'var(--border)' }}>
-        <div>
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Outstanding</p>
-          <p
-            className="text-sm font-semibold mt-0.5 tabular-nums"
-            style={{ color: row.commercial.outstanding > 0 ? '#fb923c' : 'var(--text-primary)' }}
-          >
+      <div className="relative mx-6 grid grid-cols-2 border-y border-[var(--border)] py-4">
+        <div className="border-r border-[var(--border)] pr-4">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">Outstanding</p>
+          <p className={`mt-1.5 text-base font-semibold tabular-nums ${row.commercial.outstanding > 0 ? 'text-[#b45309]' : 'text-[var(--text-primary)]'}`}>
             {formatCurrency(row.commercial.outstanding, row.commercial.currency)}
           </p>
         </div>
-        <div>
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Completion</p>
-          <p className="text-sm font-semibold mt-0.5 tabular-nums" style={{ color: 'var(--text-primary)' }}>
-            {row.completion_date ? formatDate(row.completion_date) : 'Not set'}
+        <div className="pl-4">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">Completion</p>
+          <p className="mt-1.5 text-base font-semibold tabular-nums text-[var(--text-primary)]">
+            {row.completion_date ? formatDate(row.completion_date) : 'Not scheduled'}
           </p>
         </div>
       </div>
 
-      <div className="mt-auto flex items-center justify-between border-t px-5 py-3.5" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-elevated)' }}>
-        <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Project workspace</span>
-        <div className={`flex items-center gap-1 text-xs font-semibold transition-transform duration-300 group-hover:translate-x-1 ${EASE}`} style={{ color: 'var(--gold)' }}>
-          Open <ChevronRight size={13} />
+      <div className="relative px-6 py-4">
+        <div className="flex items-center justify-between text-[10px] font-medium text-[var(--text-muted)]">
+          <span>Programme</span>
+          <span>{pct === null ? 'Dates incomplete' : `${Math.round(pct)}% elapsed`}</span>
         </div>
+        <div className="mt-2 h-1 overflow-hidden rounded-full bg-[var(--bg-elevated)]" title={pct === null ? 'Programme dates are incomplete' : `${Math.round(pct)}% of programme elapsed`}>
+          {pct !== null ? <div className="ss-project-progress h-full rounded-full bg-[#66cf8b]" style={{ '--project-progress': `${pct}%` } as React.CSSProperties} /> : <div className="h-full w-1/4 rounded-full bg-[var(--border)]" />}
+        </div>
+      </div>
+
+      <div className="relative mt-auto flex items-center justify-between border-t border-[var(--border)] bg-[var(--bg-elevated)] px-6 py-4">
+        <div className="min-w-0 pr-4">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">{row.last_activity ? 'Latest activity' : 'Workspace'}</p>
+          <p className="mt-1 truncate text-xs font-medium text-[var(--text-secondary)]">{row.last_activity?.description ?? row.contract_type ?? 'Open project record'}</p>
+        </div>
+        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--text-primary)] text-[var(--bg-surface)] transition-all duration-300 group-hover:translate-x-0.5 group-hover:opacity-80 ${EASE}`}>
+          <ArrowUpRight size={15} />
+        </span>
       </div>
     </Link>
   );
