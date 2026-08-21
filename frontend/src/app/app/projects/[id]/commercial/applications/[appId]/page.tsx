@@ -538,10 +538,14 @@ function LinkedVariationsPanel({ appId, projectId, canEdit, onSaved }: {
     .filter(v => selected.has(v.id))
     .reduce((s, v) => s + fmt(v.agreed_amount), 0);
 
+  // Content-shaped skeleton (Loading UX convention, CLAUDE.md) — mirrors
+  // the eligible-variation row list below rather than a spinner + text line.
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 py-4 text-sm" style={{ color: 'var(--text-muted)' }}>
-        <Loader2 size={14} className="animate-spin" /> Loading eligible variations…
+      <div className="space-y-2 py-1">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="h-10 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+        ))}
       </div>
     );
   }
@@ -949,10 +953,32 @@ export default function PaymentApplicationDetailPage() {
 
   // ─── Loading / not found ─────────────────────────────────────────────────────
 
+  // Content-shaped skeleton (Loading UX convention, CLAUDE.md) — mirrors
+  // the real header + tab bar below rather than a spinner + text line.
   if (isLoading) {
     return (
-      <div className="p-8 flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
-        <Loader2 size={18} className="animate-spin" /> Loading application…
+      <div className="p-6 max-w-7xl mx-auto space-y-5">
+        <div className="flex items-start justify-between flex-wrap gap-3">
+          <div className="space-y-2">
+            <div className="h-3 w-32 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+            <div className="h-7 w-52 rounded-lg animate-pulse" style={{ backgroundColor: 'var(--bg-surface)' }} />
+          </div>
+          <div className="flex items-center gap-2">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-9 w-24 rounded-lg animate-pulse" style={{ backgroundColor: 'var(--bg-surface)' }} />
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center gap-1 rounded-2xl p-2" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="h-8 w-24 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+          ))}
+        </div>
+        <div className="rounded-2xl p-6 space-y-3" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-12 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+          ))}
+        </div>
       </div>
     );
   }

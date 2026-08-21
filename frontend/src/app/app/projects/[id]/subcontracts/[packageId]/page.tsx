@@ -172,10 +172,32 @@ export default function TradePackageWorkspacePage() {
   const summary = data?.commercial_summary;
   const apps = data?.applications ?? [];
 
+  // Content-shaped skeleton (Loading UX convention, CLAUDE.md) — mirrors
+  // the real dark header card + tab bar below rather than a generic
+  // centered spinner.
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 size={22} className="animate-spin" style={{ color: 'var(--text-muted)' }} />
+      <div className="ss-projects-page mx-auto max-w-7xl space-y-6 p-4 pb-12 sm:p-6 lg:p-8">
+        <div className="rounded-2xl bg-[#18211d] px-6 pb-7 pt-6 sm:px-8 sm:pb-8">
+          <div className="h-3 w-24 rounded animate-pulse bg-white/10" />
+          <div className="mt-6 flex items-start gap-3">
+            <div className="h-11 w-11 flex-shrink-0 rounded-xl animate-pulse bg-white/10" />
+            <div className="space-y-2">
+              <div className="h-8 w-64 rounded-lg animate-pulse bg-white/10" />
+              <div className="h-4 w-40 rounded animate-pulse bg-white/10" />
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 rounded-2xl p-2" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-8 w-24 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+          ))}
+        </div>
+        <div className="rounded-2xl p-6 space-y-3" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-14 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+          ))}
+        </div>
       </div>
     );
   }

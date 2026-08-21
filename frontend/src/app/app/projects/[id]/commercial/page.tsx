@@ -1730,10 +1730,21 @@ function NoticesTab({ paymentNotices, payLessNotices, isLoading, formatCurrency 
   isLoading: boolean;
   formatCurrency: (v: number | string) => string;
 }) {
+  // Content-shaped skeleton (Loading UX convention, CLAUDE.md) — mirrors
+  // the two grouped notice sections below rather than plain "Loading…" text.
   if (isLoading) {
     return (
-      <div className="rounded-xl p-8 text-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
-        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Loading…</p>
+      <div className="space-y-6">
+        {[...Array(2)].map((_, i) => (
+          <div key={i} className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+            <div className="p-3" style={{ backgroundColor: 'var(--bg-surface)' }}>
+              <div className="h-4 w-32 rounded animate-pulse mb-3" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+              {[...Array(2)].map((_, j) => (
+                <div key={j} className="h-10 rounded-lg animate-pulse mb-2" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     );
   }

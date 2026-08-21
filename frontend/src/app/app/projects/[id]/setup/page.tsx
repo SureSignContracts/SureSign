@@ -266,11 +266,27 @@ export default function ProjectSetupPage() {
   }
 
   // ── Loading ──────────────────────────────────────────────────────────────
+  // Content-shaped skeleton (Loading UX convention, CLAUDE.md) — mirrors
+  // the real header + entry-panel layout below rather than a generic
+  // centered spinner.
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto px-6 py-10 flex flex-col items-center justify-center gap-3" style={{ minHeight: '40vh' }}>
-        <Loader2 size={24} className="animate-spin" style={{ color: 'var(--text-muted)' }} />
-        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Loading project…</p>
+      <div className="ss-setup-page mx-auto max-w-6xl px-4 py-7 sm:px-6 lg:py-10">
+        <div className="mb-7 flex items-start justify-between gap-5">
+          <div className="space-y-2">
+            <div className="h-3 w-28 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+            <div className="h-8 w-80 rounded-lg animate-pulse" style={{ backgroundColor: 'var(--bg-surface)' }} />
+            <div className="h-4 w-96 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+          </div>
+          <div className="h-8 w-24 flex-shrink-0 rounded-lg animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+        </div>
+        <div className="rounded-2xl p-8" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {[...Array(2)].map((_, i) => (
+              <div key={i} className="h-40 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }

@@ -139,10 +139,30 @@ function ProjectCloseoutPage() {
     return acc;
   }, {});
 
+  // Content-shaped skeleton (Loading UX convention, CLAUDE.md) — mirrors
+  // the real header/progress-bar/checklist layout below rather than a
+  // generic centered spinner.
   if (isLoading) {
     return (
-      <div className="p-6 max-w-4xl mx-auto flex items-center justify-center h-64">
-        <Loader2 size={24} className="animate-spin" style={{ color: 'var(--text-muted)' }} />
+      <div className="p-6 max-w-4xl mx-auto space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-7 w-32 rounded-lg animate-pulse" style={{ backgroundColor: 'var(--bg-surface)' }} />
+            <div className="h-4 w-56 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+          </div>
+          <div className="h-7 w-16 rounded-lg animate-pulse" style={{ backgroundColor: 'var(--bg-surface)' }} />
+        </div>
+        <div className="h-2 rounded-full w-full animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+        <div className="space-y-5">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="rounded-2xl p-4 space-y-3" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+              <div className="h-4 w-28 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+              {[...Array(2)].map((_, j) => (
+                <div key={j} className="h-10 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+              ))}
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
