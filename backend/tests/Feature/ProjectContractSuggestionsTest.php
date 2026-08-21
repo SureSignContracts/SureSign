@@ -481,14 +481,17 @@ class ProjectContractSuggestionsTest extends TestCase
         $org = $this->makeOrg();
         $user = $this->makeUser($org);
         $project = $this->makeProject($org, $user);
-        // Contract.currency defaults to 'AUD' at the DB level (never
-        // touched) — the service must not treat that as a confirmed value.
-        // (The in-memory $contract from create() won't reflect the DB
-        // default until refreshed — same documented Eloquent quirk as
-        // Project's own `country` default — so this sanity-checks the real
-        // stored row, not the in-memory object.)
+        // Contract.currency is genuinely null on a fresh Contract (Phase 2A,
+        // 2026_08_21_000002_fix_contracts_currency_default.php, removed the
+        // legacy DB-level default('AUD') this test previously had to work
+        // around) — the service must not treat an EMPTY currency (null or
+        // otherwise) as a confirmed value regardless. (The in-memory
+        // $contract from create() won't reflect the persisted row until
+        // refreshed — same documented Eloquent quirk as Project's own
+        // `country` default — so this sanity-checks the real stored row,
+        // not the in-memory object.)
         $contract = $this->makeContract($project, $user, ['contract_sum' => 650000]);
-        $this->assertEquals('AUD', $contract->refresh()->currency);
+        $this->assertNull($contract->refresh()->currency);
         $analysis = $this->makeAnalysis($project, $contract, [
             'status' => 'confirmed',
             'confirmed_data_json' => ['contract_overview' => [], 'parties' => [], 'commercial' => [], 'dates' => []], // no currency anywhere confirmed

@@ -30,7 +30,7 @@ import SubcontractAiOnboardingModal from '@/components/subcontracts/SubcontractA
 import toast from '@/lib/toast';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PromptActionButton from '@/components/prompts/PromptActionButton';
-import { useAiAnalysisStore } from '@/store/aiAnalysisStore';
+import { useAiAnalysisStore, type AiAnalysisRecord } from '@/store/aiAnalysisStore';
 import SharedSection from '@/components/ai/Section';
 import SharedAnalysisLoadingDisplay from '@/components/ai/AnalysisLoadingDisplay';
 import PageTourButton from '@/components/tours/PageTourButton';
@@ -140,11 +140,18 @@ const CONTRACT_STATUS_LABELS: Record<string, string> = {
 
 // ─── AI Review Modal ──────────────────────────────────────────────────────────
 // Phase C — extracted to the shared, authoritative frontend/src/components/ai/
-// ContractAnalysisReview.tsx (mounted below as `ContractAnalysisReview`) so a
-// future Contract-Assisted Project Setup phase can reuse the exact same
-// Review & Confirm UI without inheriting AiContractWizard's own separate
-// post-analysis shortcut (see that component's docblock, and the Phase C
-// final report, for the full reasoning).
+// ContractAnalysisReview.tsx (mounted below as `ContractAnalysisReview`, and
+// also by Project Setup) as the one Review & Confirm UI.
+//
+// Contract AI Workflow Convergence, Phase 2 — AiContractWizard's own
+// "Upload & Analyse New Contract" path (`path === 'new'`) now converges onto
+// this exact component too: once its analysis reaches `completed`, the
+// wizard closes and this mounts instead (see AiContractWizard's
+// `onAnalysisReady` prop and the `newContractReview` state below), reusing
+// that exact completed analysis object — never starting a second one.
+// "Use Existing Analysis as Template" (`path === 'existing'`) remains a
+// deliberately separate, unconverged template-copy workflow — see
+// AiContractWizard's own docblock below for why.
 
 
 // ─── Edit Contract Modal ──────────────────────────────────────────────────────
@@ -322,16 +329,37 @@ function InputField({ label, name, type = 'text', required = false, value, onCha
 // the stub Contract is created (see uploadContractType below); there is no
 // silent default anywhere in this component after this phase.
 //
-// Phase C deliberately did NOT converge this wizard's own post-analysis save
-// path onto the authoritative `POST /ai/analyses/{id}/confirm` pathway (see
-// `ContractAnalysisReview` for that authoritative flow). This wizard maps
-// the AI result into a bespoke flat `ContractForm` and saves via a plain
-// `PUT /contracts/{id}`/`POST /projects/{project}/contracts` — a materially
-// different data shape from the raw `confirmed_data` JSON the confirm
-// endpoint expects, not a thin wrapper difference. Converging them safely
-// would need a deliberate, separately-approved change, not a Phase C
-// side-effect — see the Phase C final report for the full before/after
-// comparison and why this remains known, documented technical debt.
+// Contract AI Workflow Convergence, Phase 2 — this wizard now has TWO
+// deliberately different post-analysis behaviours, matching the two
+// choice-screen options:
+//
+//   A. "Upload & Analyse New Contract" (`path === 'new'`) — the analysis
+//      performed here is FOR the stub Contract this wizard itself just
+//      created. Once that analysis reaches `completed`, this wizard calls
+//      `onAnalysisReady(stubContract, analysis)` and stops — it never
+//      reaches its own `reviewing`/`form` steps or `mapExtractedToForm()`
+//      for this path. The parent (`ProjectContractsPage`) closes this
+//      wizard and opens the shared `ContractAnalysisReview` with that exact
+//      Contract + analysis, which is what actually calls
+//      `POST /ai/analyses/{id}/confirm` — the same authoritative pipeline
+//      Project Setup and the existing-Contract AI flow already use. No
+//      second analysis is started; the wizard's own bespoke save path
+//      (`saveMutation`/`mapExtractedToForm()`) is never invoked for this
+//      path.
+//
+//   B. "Use Existing Analysis as Template" (`path === 'existing'`) —
+//      deliberately NOT converged (product decision). This copies an
+//      already-confirmed analysis belonging to a DIFFERENT, existing
+//      Contract as a starting template for a brand-new Contract.
+//      `confirmAnalysis()` cannot express this — an analysis's `contract_id`
+//      is immutable, so it can only ever confirm onto the Contract it
+//      already belongs to, never a different new one. This path still uses
+//      this wizard's own `reviewing`/`form` steps, `mapExtractedToForm()`,
+//      and a plain `PUT`/`POST` save exactly as before — it does not call
+//      `confirmAnalysis()` for the new Contract, does not mutate the source
+//      Contract or its analysis, and is not itself an AI-reviewed analysis
+//      of the new Contract. See the Contract AI Workflow Convergence
+//      discovery report for the full reasoning.
 
 type WizardStep = 'choice' | 'upload' | 'analysing' | 'reviewing' | 'select' | 'form';
 
@@ -391,11 +419,24 @@ function mapExtractedToForm(data: Record<string, any>): Partial<ContractForm> {
   };
 }
 
-function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
+function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated, onAnalysisReady }: {
   projectId: string;
   aiAnalyses: any[];
   onClose: () => void;
   onCreated: () => void;
+  /**
+   * Contract AI Workflow Convergence (Phase 2) — called exactly once, only
+   * for the "Upload & Analyse New Contract" path (`path === 'new'`), the
+   * moment its analysis reaches `completed`. The parent is responsible for
+   * closing this wizard and opening the one authoritative
+   * ContractAnalysisReview with the exact stub Contract and completed
+   * analysis object handed back here — no second analysis is started, and
+   * this wizard's own bespoke reviewing/form steps are never reached for
+   * this path. Never called for "Use Existing Analysis as Template"
+   * (`path === 'existing'`) or a failed/cancelled analysis — those continue
+   * using this wizard's own steps exactly as before.
+   */
+  onAnalysisReady: (contract: ProjectContract, analysis: AiAnalysisRecord) => void;
 }) {
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -505,9 +546,13 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
       setAnalysisId(id);
       store.start({ analysisId: id, contractId: contract.id, contractTitle: contract.title, projectId });
       if (analysisData.data?.status === 'completed') {
-        setAnalysis(analysisData.data);
+        // Rare (an already-cached/instant result), but handled the same
+        // way as the normal polled-completion path below — hand off to
+        // ContractAnalysisReview immediately, never the wizard's own
+        // reviewing/form steps. Uses the freshly-returned `contract` here
+        // (not `stubContract` state, which may not have flushed yet).
         store.updateStatus('completed', analysisData.data);
-        setStep('reviewing');
+        onAnalysisReady(contract, analysisData.data);
       } else {
         setPolling(true);
         store.updateStatus('processing');
@@ -525,8 +570,18 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
   // extracted; see useAiAnalysisPolling's own docblock).
   useAiAnalysisPolling(analysisId, polling, (a) => {
     setPolling(false);
+    // Completed → hand off to the one authoritative ContractAnalysisReview
+    // (never this wizard's own reviewing/form steps) for the same reason as
+    // the immediate-completion branch above. A failed analysis still goes
+    // to this wizard's own 'reviewing' step, which renders its own
+    // failure state and "Continue Manually" escape hatch — unchanged.
+    if (a.status === 'completed' && stubContract) {
+      store.updateStatus('completed', a);
+      onAnalysisReady(stubContract, a);
+      return;
+    }
     setAnalysis(a);
-    store.updateStatus(a.status, a.status === 'completed' ? a : null);
+    store.updateStatus(a.status, null);
     setStep('reviewing');
   }, () => { setPolling(false); setStep('reviewing'); });
 
@@ -755,9 +810,9 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated }: {
                     <CheckCircle size={16} style={{ color: '#4ade80' }} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold mb-0.5" style={{ color: 'var(--text-primary)' }}>Use Existing AI Analysis</p>
+                    <p className="text-sm font-semibold mb-0.5" style={{ color: 'var(--text-primary)' }}>Use Existing Analysis as Template</p>
                     <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                      Select a previously completed analysis to populate the contract form. No AI will run.
+                      Copy details from a previously completed analysis on another contract into this new contract's form. No AI will run, and this is not an AI-reviewed analysis of this new contract.
                     </p>
                     <p className="text-xs mt-2 font-medium" style={{ color: '#4ade80' }}>
                       ✓ Will not affect your monthly AI usage.
@@ -1834,6 +1889,15 @@ function ProjectContractsPage() {
   const { canManageContracts: canWrite } = useProjectPermissions();
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
+  // Contract AI Workflow Convergence (Phase 2) — set only when
+  // AiContractWizard's own "Upload & Analyse New Contract" path reaches a
+  // completed analysis. Closing the wizard and opening the one authoritative
+  // ContractAnalysisReview here (instead of continuing into the wizard's own
+  // bespoke reviewing/form steps) is the whole of the convergence — see
+  // AiContractWizard's `onAnalysisReady` prop below. Never set for the
+  // "Use Existing Analysis as Template" path, which remains unconverged by
+  // deliberate product decision.
+  const [newContractReview, setNewContractReview] = useState<{ contract: ProjectContract; analysis: AiAnalysisRecord } | null>(null);
   const [editContract, setEditContract] = useState<(ProjectContract & Record<string, any>) | null>(null);
   const [analyseContract, setAnalyseContract] = useState<ProjectContract | null>(null);
   const [previewTarget, setPreviewTarget] = useState<PreviewTarget | null>(null);
@@ -2361,8 +2425,35 @@ function ProjectContractsPage() {
 
       {canWrite && showModal && (
         aiEnabled
-          ? <AiContractWizard projectId={id!} aiAnalyses={aiAnalyses} onClose={() => setShowModal(false)} onCreated={() => { refetchAnalyses(); }} />
+          ? (
+            <AiContractWizard
+              projectId={id!}
+              aiAnalyses={aiAnalyses}
+              onClose={() => setShowModal(false)}
+              onCreated={() => { refetchAnalyses(); }}
+              onAnalysisReady={(contract, analysis) => {
+                // Hand off to the one authoritative ContractAnalysisReview
+                // instead of continuing into the wizard's own bespoke
+                // reviewing/form steps — closes the wizard and opens the
+                // review as a sibling, so only one AI confirmation screen
+                // is ever shown (never both stacked).
+                setShowModal(false);
+                setNewContractReview({ contract, analysis });
+              }}
+            />
+          )
           : <NewContractModal projectId={id!} onClose={() => setShowModal(false)} />
+      )}
+      {newContractReview && (
+        <ContractAnalysisReview
+          contract={newContractReview.contract}
+          projectId={id!}
+          initialAnalysis={newContractReview.analysis}
+          onClose={() => {
+            setNewContractReview(null);
+            refetchAnalyses();
+          }}
+        />
       )}
       {canWrite && editContract && (
         <EditContractModal contract={editContract} projectId={id!} onClose={() => setEditContract(null)} />
