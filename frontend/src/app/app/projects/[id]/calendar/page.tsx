@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { parseDateOnly } from '@/lib/dateTime';
 import {
   ChevronLeft, ChevronRight, CalendarDays, X, CalendarClock, CalendarRange, Layers,
   ArrowUpRight, AlertTriangle,
@@ -155,14 +156,15 @@ function monthName(month: number): string {
 }
 
 function relativeLabel(dateStr: string, todayStr: string): string {
+  if (!dateStr) return '';
   if (dateStr === todayStr) return 'Today';
-  const a = new Date(dateStr + 'T00:00:00').getTime();
-  const b = new Date(todayStr + 'T00:00:00').getTime();
+  const a = parseDateOnly(dateStr).getTime();
+  const b = parseDateOnly(todayStr).getTime();
   const days = Math.round((a - b) / 86_400_000);
   if (days === 1) return 'Tomorrow';
   if (days > 1 && days < 7) return `In ${days} days`;
   if (days >= 7 && days < 14) return 'Next week';
-  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  return parseDateOnly(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
 // ─── Badges ───────────────────────────────────────────────────────────────────
@@ -338,9 +340,9 @@ function DayDetailPanel({
   onClose: () => void;
   onEventClick: (e: CalendarEvent) => void;
 }) {
-  const parsed = new Date(date + 'T00:00:00');
-  const weekday = parsed.toLocaleDateString('en-GB', { weekday: 'long' });
-  const rest = parsed.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  const parsed = date ? parseDateOnly(date) : null;
+  const weekday = parsed ? parsed.toLocaleDateString('en-GB', { weekday: 'long' }) : '';
+  const rest = parsed ? parsed.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
 
   return (
     <div
@@ -428,9 +430,9 @@ function OperationalSidebar({ events, todayStr, onEventClick }: {
   todayStr: string;
   onEventClick: (e: CalendarEvent) => void;
 }) {
-  const in7 = new Date(todayStr + 'T00:00:00'); in7.setDate(in7.getDate() + 7);
+  const in7 = parseDateOnly(todayStr); in7.setDate(in7.getDate() + 7);
   const in7Str = toYMD(in7);
-  const in30 = new Date(todayStr + 'T00:00:00'); in30.setDate(in30.getDate() + 30);
+  const in30 = parseDateOnly(todayStr); in30.setDate(in30.getDate() + 30);
   const in30Str = toYMD(in30);
 
   const overdue  = events.filter(e => e.date && e.date < todayStr).sort((a, b) => a.date.localeCompare(b.date));
@@ -488,7 +490,7 @@ function AgendaView({ events, todayStr, onEventClick }: { events: CalendarEvent[
   return (
     <div className="ss-animate-in overflow-hidden rounded-2xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
       {groups.map(([date, evs]) => {
-        const d = new Date(date + 'T00:00:00');
+        const d = parseDateOnly(date);
         const weekday = d.toLocaleDateString('en-GB', { weekday: 'short' });
         const day = d.toLocaleDateString('en-GB', { day: '2-digit' });
         const month = d.toLocaleDateString('en-GB', { month: 'short' });
@@ -669,7 +671,7 @@ export default function ProjectCalendarPage() {
     } else if (quickFilter === 'today') {
       list = list.filter(e => e.date === todayStr);
     } else if (quickFilter === 'week') {
-      const in7 = new Date(todayStr + 'T00:00:00'); in7.setDate(in7.getDate() + 7);
+      const in7 = parseDateOnly(todayStr); in7.setDate(in7.getDate() + 7);
       const in7Str = toYMD(in7);
       list = list.filter(e => e.date && e.date >= todayStr && e.date <= in7Str);
     } else if (quickFilter === 'upcoming') {
@@ -898,7 +900,7 @@ export default function ProjectCalendarPage() {
                         const isCurrentMonth = cell.getMonth() === month;
                         const isToday = dateStr === todayStr;
                         const isSelected = dateStr === selectedDate;
-                        const isPast = cell < new Date(todayStr + 'T00:00:00');
+                        const isPast = cell < parseDateOnly(todayStr);
                         const dow = idx % 7;
                         const isWeekend = dow >= 5;
                         const dayEvents = eventsByDate.get(dateStr) ?? [];
