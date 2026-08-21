@@ -195,6 +195,31 @@ class AdjudicationCaseController extends Controller
         // Validate date chronology
         $this->validateDateChronology($validated);
 
+        // Security — mirrors store()'s own existing checks exactly.
+        // `exists:*,id` above only proves each row exists ANYWHERE on the
+        // platform; store() already correctly re-verifies project
+        // ownership, but update() previously did not, letting an existing
+        // case be re-pointed at a foreign Contract/Payment
+        // Application/Variation — all three of which show() eager-loads.
+        if (!empty($validated['contract_id'])) {
+            abort_unless(
+                \App\Models\Contract::where('id', $validated['contract_id'])->where('project_id', $project->id)->exists(),
+                422, 'Contract does not belong to this project.'
+            );
+        }
+        if (!empty($validated['payment_application_id'])) {
+            abort_unless(
+                \App\Models\PaymentApplication::where('id', $validated['payment_application_id'])->where('project_id', $project->id)->exists(),
+                422, 'Payment Application does not belong to this project.'
+            );
+        }
+        if (!empty($validated['variation_id'])) {
+            abort_unless(
+                \App\Models\Variation::where('id', $validated['variation_id'])->where('project_id', $project->id)->exists(),
+                422, 'Variation does not belong to this project.'
+            );
+        }
+
         $adjudicationCase->update($validated);
 
         return response()->json($adjudicationCase->fresh()->load(['creator:id,name', 'steps']));

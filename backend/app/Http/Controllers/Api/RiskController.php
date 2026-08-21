@@ -126,6 +126,28 @@ class RiskController extends Controller
             return response()->json(['message' => 'A risk must belong to either a contract or a trade package (not both, not neither).'], 422);
         }
 
+        // Security — `exists:contracts,id`/`exists:trade_packages,id` above
+        // only prove the row exists ANYWHERE on the platform, never that it
+        // belongs to this Project. Without this check a client could link a
+        // Risk under their own Project to another organisation's (or their
+        // own org's different Project's) Contract/TradePackage, which is
+        // then exposed via indexForProject()'s own contract/tradePackage
+        // eager-load. Mirrors AdjudicationCaseController::store()'s
+        // existing pattern exactly — deliberately generic message, no
+        // foreign-tenant detail.
+        if (!empty($validated['contract_id'])) {
+            abort_unless(
+                \App\Models\Contract::where('id', $validated['contract_id'])->where('project_id', $project->id)->exists(),
+                422, 'Contract does not belong to this project.'
+            );
+        }
+        if (!empty($validated['trade_package_id'])) {
+            abort_unless(
+                TradePackage::where('id', $validated['trade_package_id'])->where('project_id', $project->id)->exists(),
+                422, 'Trade package does not belong to this project.'
+            );
+        }
+
         $risk = ContractRisk::create(array_merge($validated, [
             'organization_id' => $project->organization_id,
             'project_id'      => $project->id,

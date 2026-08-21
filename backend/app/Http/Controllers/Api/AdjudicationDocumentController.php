@@ -71,6 +71,20 @@ class AdjudicationDocumentController extends Controller
             'file'          => 'nullable|file|max:' . SuresignSetting::maxUploadKb(),
         ]);
 
+        // Security — `exists:documents,id` above only proves the row
+        // exists ANYWHERE on the platform, never that it belongs to this
+        // Adjudication Case's own Project. Same relationship-integrity
+        // class as the confirmed P0s elsewhere in this remediation; scoped
+        // against the case's own project_id (the authoritative parent),
+        // not the route's, mirroring DeliveryDocumentController::update()'s
+        // "derive from the record, not the route" reasoning.
+        if (!empty($validated['document_id'])) {
+            abort_unless(
+                \App\Models\Document::where('id', $validated['document_id'])->where('project_id', $adjudicationCase->project_id)->exists(),
+                422, 'Document does not belong to this project.'
+            );
+        }
+
         // file_path/file_name/mime_type/file_size are never trusted from the
         // request — they are only ever derived from an actual uploaded file
         // below, or (for the document_id linking flow) left null and

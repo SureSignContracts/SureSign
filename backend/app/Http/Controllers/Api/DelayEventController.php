@@ -92,6 +92,35 @@ class DelayEventController extends Controller
 
         $validated = $request->validate(self::RULES);
 
+        // Security — `exists:*,id` above only proves each row exists
+        // ANYWHERE on the platform, never that it belongs to this Project.
+        // Without this check a client could link a Delay Event under their
+        // own Project to another organisation's (or their own org's
+        // different Project's) Contract/Variation/Milestone — the Contract
+        // relation is eager-loaded by indexForProject(); Variation/Milestone
+        // are closed here as data-integrity risk even though no direct
+        // eager-load leak was confirmed. Mirrors
+        // AdjudicationCaseController::store()'s existing pattern —
+        // deliberately generic message, no foreign-tenant detail.
+        if (!empty($validated['contract_id'])) {
+            abort_unless(
+                \App\Models\Contract::where('id', $validated['contract_id'])->where('project_id', $project->id)->exists(),
+                422, 'Contract does not belong to this project.'
+            );
+        }
+        if (!empty($validated['variation_id'])) {
+            abort_unless(
+                \App\Models\Variation::where('id', $validated['variation_id'])->where('project_id', $project->id)->exists(),
+                422, 'Variation does not belong to this project.'
+            );
+        }
+        if (!empty($validated['affected_milestone_id'])) {
+            abort_unless(
+                \App\Models\ContractProgrammeMilestone::where('id', $validated['affected_milestone_id'])->where('project_id', $project->id)->exists(),
+                422, 'Milestone does not belong to this project.'
+            );
+        }
+
         $eventNumber = (DelayEvent::where('project_id', $project->id)->max('event_number') ?? 0) + 1;
 
         $delayEvent = DelayEvent::create(array_merge($validated, [

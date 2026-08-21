@@ -13,12 +13,38 @@ class DocumentRegisterController extends Controller
     public function __construct(private DocumentNumberService $numberService) {}
 
     /**
-     * GET /api/projects/{project}/document-register
+     * Mirrors the standard SureSign project-authorization convention used
+     * across every other project-nested controller (e.g.
+     * RiskController::authorize()) — Super Admin/Admin bypass, otherwise
+     * strict organisation match.
      */
-    public function index(Request $request, int $projectId)
+    private function authorize(Request $request, Project $project): void
     {
+        $user = $request->user();
+        if ($user->hasRole('Super Admin') || $user->hasRole('Admin')) return;
+        if ($user->organization_id !== $project->organization_id) abort(403, 'Access denied.');
+    }
+
+    /**
+     * GET /api/projects/{project}/document-register
+     *
+     * Security fix (P0, 2026-08-21) — this previously received the route
+     * segment as a plain `int $projectId`, never resolved through Laravel's
+     * implicit model binding, and performed no authorization check at all:
+     * any authenticated user (any organisation) could request another
+     * organisation's Project ID and receive its Document Register metadata
+     * (document numbers/titles, project name/code, trade package names).
+     * Changing the parameter to a real, route-bound `Project $project` and
+     * calling the new authorize() above closes it — the route's own
+     * `{project}` segment name already matches, so no route file change
+     * was needed.
+     */
+    public function index(Request $request, Project $project)
+    {
+        $this->authorize($request, $project);
+
         $query = DocumentRegister::with(['package:id,name,package_code'])
-            ->where('project_id', $projectId)
+            ->where('project_id', $project->id)
             ->orderBy('created_at', 'desc');
 
         if ($search = $request->input('search')) {

@@ -92,6 +92,26 @@ class EotRequestController extends Controller
 
         $validated = $request->validate(self::RULES);
 
+        // Security — `exists:*,id` above only proves each row exists
+        // ANYWHERE on the platform, never that it belongs to this Project.
+        // The delay_event relationship in particular feeds
+        // currentCompletionDate()/date-resolution logic elsewhere in this
+        // controller, so a foreign-project Delay Event must never enter
+        // this workflow. Mirrors AdjudicationCaseController::store()'s
+        // existing pattern — deliberately generic message.
+        if (!empty($validated['contract_id'])) {
+            abort_unless(
+                \App\Models\Contract::where('id', $validated['contract_id'])->where('project_id', $project->id)->exists(),
+                422, 'Contract does not belong to this project.'
+            );
+        }
+        if (!empty($validated['delay_event_id'])) {
+            abort_unless(
+                \App\Models\DelayEvent::where('id', $validated['delay_event_id'])->where('project_id', $project->id)->exists(),
+                422, 'Delay event does not belong to this project.'
+            );
+        }
+
         $validated['eot_number'] = $validated['eot_number']
             ?? (EotRequest::where('project_id', $project->id)->max('eot_number') ?? 0) + 1;
 

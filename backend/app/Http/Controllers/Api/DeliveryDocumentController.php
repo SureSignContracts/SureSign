@@ -136,6 +136,30 @@ class DeliveryDocumentController extends Controller
             return response()->json(['message' => 'A delivery document must belong to either a contract or a trade package (not both, not neither).'], 422);
         }
 
+        // Security — `exists:*,id` above only proves each row exists
+        // ANYWHERE on the platform, never that it belongs to this Project.
+        // Mirrors AdjudicationCaseController::store()'s existing pattern —
+        // deliberately generic message, no foreign-tenant detail. All three
+        // are eager-loaded by indexForProject() (contract/tradePackage/document).
+        if (!empty($validated['contract_id'])) {
+            abort_unless(
+                \App\Models\Contract::where('id', $validated['contract_id'])->where('project_id', $project->id)->exists(),
+                422, 'Contract does not belong to this project.'
+            );
+        }
+        if (!empty($validated['trade_package_id'])) {
+            abort_unless(
+                TradePackage::where('id', $validated['trade_package_id'])->where('project_id', $project->id)->exists(),
+                422, 'Trade package does not belong to this project.'
+            );
+        }
+        if (!empty($validated['document_id'])) {
+            abort_unless(
+                Document::where('id', $validated['document_id'])->where('project_id', $project->id)->exists(),
+                422, 'Document does not belong to this project.'
+            );
+        }
+
         $doc = DeliveryDocument::create(array_merge($validated, [
             'organization_id' => $project->organization_id,
             'project_id'      => $project->id,
@@ -187,6 +211,21 @@ class DeliveryDocumentController extends Controller
         $this->authorize($request, $deliveryDocument);
 
         $validated = $request->validate(array_merge(self::RULES, ['title' => 'sometimes|string|max:255']));
+
+        // Security — `exists:documents,id` in self::RULES only proves the
+        // row exists ANYWHERE on the platform. Deliberately scoped against
+        // $deliveryDocument's OWN project_id, not the route $project — this
+        // method already never trusted the route Project for anything else
+        // (see the comment above), so the authoritative parent is always
+        // re-derived from the record being updated, never assumed from the
+        // URL. Mirrors AdjudicationCaseController::store()'s existing
+        // pattern — deliberately generic message.
+        if (!empty($validated['document_id'])) {
+            abort_unless(
+                Document::where('id', $validated['document_id'])->where('project_id', $deliveryDocument->project_id)->exists(),
+                422, 'Document does not belong to this project.'
+            );
+        }
 
         $hadNoDocument = $deliveryDocument->document_id === null;
         $deliveryDocument->update($validated);

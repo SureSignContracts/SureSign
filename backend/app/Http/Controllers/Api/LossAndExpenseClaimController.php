@@ -91,6 +91,29 @@ class LossAndExpenseClaimController extends Controller
 
         $validated = $request->validate(self::RULES);
 
+        // Security — `exists:*,id` above only proves each row exists
+        // ANYWHERE on the platform, never that it belongs to this Project.
+        // Mirrors AdjudicationCaseController::store()'s existing pattern —
+        // deliberately generic message, no foreign-tenant detail.
+        if (!empty($validated['contract_id'])) {
+            abort_unless(
+                \App\Models\Contract::where('id', $validated['contract_id'])->where('project_id', $project->id)->exists(),
+                422, 'Contract does not belong to this project.'
+            );
+        }
+        if (!empty($validated['delay_event_id'])) {
+            abort_unless(
+                \App\Models\DelayEvent::where('id', $validated['delay_event_id'])->where('project_id', $project->id)->exists(),
+                422, 'Delay event does not belong to this project.'
+            );
+        }
+        if (!empty($validated['eot_request_id'])) {
+            abort_unless(
+                \App\Models\EotRequest::where('id', $validated['eot_request_id'])->where('project_id', $project->id)->exists(),
+                422, 'EOT request does not belong to this project.'
+            );
+        }
+
         $claimNumber = (LossAndExpenseClaim::where('project_id', $project->id)->max('claim_number') ?? 0) + 1;
 
         $claim = LossAndExpenseClaim::create(array_merge($validated, [
