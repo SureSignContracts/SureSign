@@ -442,7 +442,7 @@ export default function AdminPromptsPage() {
   });
 
   // Fetch templates (server-side pagination)
-  const { data: templateData, isLoading } = useQuery({
+  const { data: templateData, isLoading, isError } = useQuery({
     queryKey: ['prompt-templates', activeCategory, activeModule, debouncedSearch, featuredOnly, page, perPage],
     queryFn: () => {
       const params: Record<string, any> = { page, per_page: perPage };
@@ -454,6 +454,14 @@ export default function AdminPromptsPage() {
     },
     placeholderData: (prev: any) => prev,
   });
+
+  // A failed fetch must never render identically to a genuine empty
+  // result (see Loading UX convention, CLAUDE.md) — matches the existing
+  // toast-on-isError convention already used elsewhere (e.g. Admin
+  // Document Register) rather than a new page-level error banner.
+  useEffect(() => {
+    if (isError) toast.error('Failed to load prompts.');
+  }, [isError]);
 
   // Fetch favorites
   const { data: favorites = [] } = useQuery<PromptTemplate[]>({
