@@ -9,6 +9,7 @@ import api from '@/lib/api';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import EmptyState from '@/components/ui/EmptyState';
+import Checkbox from '@/components/ui/Checkbox';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 
 // Display order Mon..Sun; `weekday` values match Carbon's dayOfWeek (0=Sun..6=Sat).
@@ -221,10 +222,13 @@ export default function ConsultancyAvailabilityPage() {
 
             <div className="flex flex-wrap items-end gap-2">
               <Input type="date" value={overrideForm.local_date} onChange={e => setOverrideForm(f => ({ ...f, local_date: e.target.value }))} />
-              <label className="flex items-center gap-1.5 text-xs pb-2.5" style={{ color: 'var(--text-secondary)' }}>
-                <input type="checkbox" checked={overrideForm.is_unavailable} onChange={e => setOverrideForm(f => ({ ...f, is_unavailable: e.target.checked }))} />
-                Unavailable all day
-              </label>
+              <Checkbox
+                className="gap-1.5 text-xs pb-2.5"
+                style={{ color: 'var(--text-secondary)' }}
+                checked={overrideForm.is_unavailable}
+                onChange={checked => setOverrideForm(f => ({ ...f, is_unavailable: checked }))}
+                label="Unavailable all day"
+              />
               {!overrideForm.is_unavailable && (
                 <>
                   <Input type="time" value={overrideForm.start_time} onChange={e => setOverrideForm(f => ({ ...f, start_time: e.target.value }))} className="w-28" />

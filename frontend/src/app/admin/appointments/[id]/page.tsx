@@ -16,6 +16,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { Card, CardBody } from '@/components/ui/Card';
 import TimezoneSelect from '@/components/shared/TimezoneSelect';
+import Checkbox from '@/components/ui/Checkbox';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 
 const STATUS_TONE: Record<string, 'neutral' | 'success' | 'warning' | 'info' | 'danger' | 'accent'> = {
@@ -302,10 +303,13 @@ export default function AdminAppointmentDetailPage() {
 
             {rescheduleAvailability.checked && !rescheduleAvailability.available && isSuperAdmin && (
               <div className="space-y-2 p-2.5 rounded-lg" style={{ border: '1px dashed #facc15' }}>
-                <label className="flex items-center gap-2 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                  <input type="checkbox" checked={rescheduleOverride} onChange={e => setRescheduleOverride(e.target.checked)} />
-                  Override availability and proceed anyway
-                </label>
+                <Checkbox
+                  className="gap-2 text-xs font-medium"
+                  style={{ color: 'var(--text-secondary)' }}
+                  checked={rescheduleOverride}
+                  onChange={setRescheduleOverride}
+                  label="Override availability and proceed anyway"
+                />
                 {rescheduleOverride && (
                   <Input placeholder="Reason for override (required)" value={rescheduleOverrideReason} onChange={e => setRescheduleOverrideReason(e.target.value)} />
                 )}
@@ -346,10 +350,13 @@ export default function AdminAppointmentDetailPage() {
             )}
             {assignConflict && (
               <div className="space-y-2 p-2.5 rounded-lg" style={{ border: '1px dashed #facc15' }}>
-                <label className="flex items-center gap-2 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                  <input type="checkbox" checked={assignOverride} onChange={e => setAssignOverride(e.target.checked)} />
-                  Override availability and proceed anyway
-                </label>
+                <Checkbox
+                  className="gap-2 text-xs font-medium"
+                  style={{ color: 'var(--text-secondary)' }}
+                  checked={assignOverride}
+                  onChange={setAssignOverride}
+                  label="Override availability and proceed anyway"
+                />
                 {assignOverride && (
                   <Input placeholder="Reason for override (required)" value={assignOverrideReason} onChange={e => setAssignOverrideReason(e.target.value)} />
                 )}

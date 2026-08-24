@@ -6,6 +6,7 @@ import { X, Box } from 'lucide-react';
 import toast from '@/lib/toast';
 import api from '@/lib/api';
 import Button from '@/components/ui/Button';
+import Checkbox from '@/components/ui/Checkbox';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 
 // ── constants ──────────────────────────────────────────────────────────────
@@ -283,17 +284,16 @@ export default function GenerateTradePackageFolderModal({
               </h3>
 
               {/* Select All */}
-              <label className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-[var(--bg-hover)]">
-                <input
-                  type="checkbox"
-                  checked={allChecked}
-                  onChange={toggleAll}
-                  className="h-4 w-4 rounded accent-[var(--gold)]"
-                />
-                <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                  Select All
-                </span>
-              </label>
+              <Checkbox
+                className="gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-[var(--bg-hover)]"
+                checked={allChecked}
+                onChange={toggleAll}
+                label={(
+                  <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                    Select All
+                  </span>
+                )}
+              />
 
               <div
                 className="rounded-xl divide-y overflow-hidden"
@@ -309,57 +309,55 @@ export default function GenerateTradePackageFolderModal({
                     (n) => n.toLowerCase() === pkg.name.toLowerCase()
                   );
                   return (
-                    <label
+                    <Checkbox
                       key={pkg.name}
-                      className={`flex cursor-pointer items-center gap-3 px-4 py-2.5 transition-colors ${alreadyExists ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[var(--bg-hover)]'}`}
+                      className={`gap-3 px-4 py-2.5 transition-colors ${alreadyExists ? '' : 'hover:bg-[var(--bg-hover)]'}`}
                       style={{ backgroundColor: 'var(--bg-surface)' }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checkedStandard.has(pkg.name)}
-                        disabled={alreadyExists}
-                        onChange={() => !alreadyExists && toggleStandard(pkg.name)}
-                        className="h-4 w-4 rounded accent-[var(--gold)]"
-                      />
-                      <span className="flex-1 text-sm" style={{ color: 'var(--text-primary)' }}>
-                        {pkg.name}
-                      </span>
-                      <span
-                        className="rounded px-1.5 py-0.5 text-xs font-mono font-medium"
-                        style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}
-                      >
-                        {pkg.code}
-                      </span>
-                      {alreadyExists && (
-                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                          exists
-                        </span>
+                      checked={checkedStandard.has(pkg.name)}
+                      disabled={alreadyExists}
+                      onChange={() => !alreadyExists && toggleStandard(pkg.name)}
+                      label={(
+                        <>
+                          <span className="flex-1 text-sm" style={{ color: 'var(--text-primary)' }}>
+                            {pkg.name}
+                          </span>
+                          <span
+                            className="rounded px-1.5 py-0.5 text-xs font-mono font-medium"
+                            style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}
+                          >
+                            {pkg.code}
+                          </span>
+                          {alreadyExists && (
+                            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                              exists
+                            </span>
+                          )}
+                        </>
                       )}
-                    </label>
+                    />
                   );
                 })}
 
                 {/* Other */}
-                <label
-                  className="flex cursor-pointer items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--bg-hover)]"
+                <Checkbox
+                  className="gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--bg-hover)]"
                   style={{ backgroundColor: 'var(--bg-surface)' }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={includeOther}
-                    onChange={() => setIncludeOther((v) => !v)}
-                    className="h-4 w-4 rounded accent-[var(--gold)]"
-                  />
-                  <span className="flex-1 text-sm" style={{ color: 'var(--text-primary)' }}>
-                    Other (custom)
-                  </span>
-                  <span
-                    className="rounded px-1.5 py-0.5 text-xs font-medium"
-                    style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}
-                  >
-                    Custom
-                  </span>
-                </label>
+                  checked={includeOther}
+                  onChange={checked => setIncludeOther(checked)}
+                  label={(
+                    <>
+                      <span className="flex-1 text-sm" style={{ color: 'var(--text-primary)' }}>
+                        Other (custom)
+                      </span>
+                      <span
+                        className="rounded px-1.5 py-0.5 text-xs font-medium"
+                        style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}
+                      >
+                        Custom
+                      </span>
+                    </>
+                  )}
+                />
               </div>
             </section>
 

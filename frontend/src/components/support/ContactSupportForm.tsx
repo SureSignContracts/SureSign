@@ -7,6 +7,7 @@ import api from '@/lib/api';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import { collectDiagnostics, parseRouteContext, SUPPORT_CATEGORIES } from '@/lib/supportContext';
 import Select from '@/components/ui/Select';
+import Checkbox from '@/components/ui/Checkbox';
 
 const MAX_SCREENSHOT_BYTES = 5 * 1024 * 1024;
 const ALLOWED_SCREENSHOT_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
@@ -239,15 +240,13 @@ export function ContactSupportForm({
             {/* Diagnostics opt-in */}
             <div className="space-y-1">
               <div className="flex items-center gap-3">
-                <label className="flex items-center gap-2 text-xs cursor-pointer" style={{ color: 'var(--text-secondary)' }}>
-                  <input
-                    type="checkbox"
-                    checked={includeDiagnostics}
-                    onChange={e => setIncludeDiagnostics(e.target.checked)}
-                    className="rounded"
-                  />
-                  Include technical diagnostics
-                </label>
+                <Checkbox
+                  className="gap-2 text-xs"
+                  style={{ color: 'var(--text-secondary)' }}
+                  checked={includeDiagnostics}
+                  onChange={setIncludeDiagnostics}
+                  label="Include technical diagnostics"
+                />
                 <button
                   type="button"
                   onClick={() => setShowDiagnosticsInfo(v => !v)}
@@ -270,15 +269,13 @@ export function ContactSupportForm({
             {/* Recent activity opt-in */}
             <div className="space-y-1.5">
               <div className="flex items-center gap-3">
-                <label className="flex items-center gap-2 text-xs cursor-pointer" style={{ color: 'var(--text-secondary)' }}>
-                  <input
-                    type="checkbox"
-                    checked={includeRecentActivity}
-                    onChange={e => { setIncludeRecentActivity(e.target.checked); if (!e.target.checked) setShowActivityPreview(false); }}
-                    className="rounded"
-                  />
-                  Include recent SureSign activity
-                </label>
+                <Checkbox
+                  className="gap-2 text-xs"
+                  style={{ color: 'var(--text-secondary)' }}
+                  checked={includeRecentActivity}
+                  onChange={checked => { setIncludeRecentActivity(checked); if (!checked) setShowActivityPreview(false); }}
+                  label="Include recent SureSign activity"
+                />
                 {includeRecentActivity && (
                   <button
                     type="button"

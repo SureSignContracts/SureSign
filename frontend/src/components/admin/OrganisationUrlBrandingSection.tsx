@@ -6,6 +6,7 @@ import toast from '@/lib/toast';
 import { Globe, X } from 'lucide-react';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import Checkbox from '@/components/ui/Checkbox';
 import { formatDateTime } from '@/lib/dateTime';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
@@ -211,10 +212,14 @@ export default function OrganisationUrlBrandingSection({
 
             {fieldError && <p className="text-xs mb-3" style={{ color: '#f87171' }}>{fieldError}</p>}
 
-            <label className="flex items-start gap-2 text-xs mb-5 mt-2" style={{ color: 'var(--text-secondary)' }}>
-              <input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="mt-0.5" />
-              I confirm changing {organizationName}&rsquo;s public branded hostname.
-            </label>
+            <Checkbox
+              align="start"
+              className="text-xs mb-5 mt-2"
+              style={{ color: 'var(--text-secondary)' }}
+              checked={confirmed}
+              onChange={setConfirmed}
+              label={<>I confirm changing {organizationName}&rsquo;s public branded hostname.</>}
+            />
 
             <div className="flex gap-3">
               <button onClick={closeDialog} className="flex-1 py-2.5 rounded-xl text-sm font-medium" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
@@ -272,10 +277,14 @@ export default function OrganisationUrlBrandingSection({
             )}
             {fieldError && <p className="text-xs mb-3" style={{ color: '#f87171' }}>{fieldError}</p>}
 
-            <label className="flex items-start gap-2 text-xs mb-5 mt-2" style={{ color: 'var(--text-secondary)' }}>
-              <input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="mt-0.5" />
-              I confirm removing {organizationName}&rsquo;s public branded hostname.
-            </label>
+            <Checkbox
+              align="start"
+              className="text-xs mb-5 mt-2"
+              style={{ color: 'var(--text-secondary)' }}
+              checked={confirmed}
+              onChange={setConfirmed}
+              label={<>I confirm removing {organizationName}&rsquo;s public branded hostname.</>}
+            />
 
             <div className="flex gap-3">
               <button onClick={closeDialog} className="flex-1 py-2.5 rounded-xl text-sm font-medium" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>

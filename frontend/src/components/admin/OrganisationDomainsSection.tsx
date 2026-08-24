@@ -6,6 +6,7 @@ import toast from '@/lib/toast';
 import { Globe2, X, RefreshCw } from 'lucide-react';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge, Tone } from '@/components/ui/Badge';
+import Checkbox from '@/components/ui/Checkbox';
 import { formatDateTime } from '@/lib/dateTime';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
@@ -95,10 +96,14 @@ function ReasonDialog({
           style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
         />
 
-        <label className="flex items-start gap-2 text-xs mb-5" style={{ color: 'var(--text-secondary)' }}>
-          <input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="mt-0.5" />
-          I confirm this action for {organizationName}.
-        </label>
+        <Checkbox
+          align="start"
+          className="text-xs mb-5"
+          style={{ color: 'var(--text-secondary)' }}
+          checked={confirmed}
+          onChange={setConfirmed}
+          label={<>I confirm this action for {organizationName}.</>}
+        />
 
         <div className="flex gap-3">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-medium" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
@@ -381,10 +386,14 @@ function AddDomainReasonForm({
         style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
       />
 
-      <label className="flex items-start gap-2 text-xs mb-5" style={{ color: 'var(--text-secondary)' }}>
-        <input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="mt-0.5" />
-        I confirm registering this domain for {organizationName}.
-      </label>
+      <Checkbox
+        align="start"
+        className="text-xs mb-5"
+        style={{ color: 'var(--text-secondary)' }}
+        checked={confirmed}
+        onChange={setConfirmed}
+        label={<>I confirm registering this domain for {organizationName}.</>}
+      />
 
       <div className="flex gap-3">
         <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-medium" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>

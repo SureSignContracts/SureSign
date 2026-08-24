@@ -677,10 +677,13 @@ function SetPasswordModal({
             Regenerate
           </button>
         </div>
-        <label className="flex items-center gap-2 mb-5 text-xs" style={{ color: 'var(--text-secondary)' }}>
-          <input type="checkbox" checked={requireChange} onChange={e => setRequireChange(e.target.checked)} />
-          Require password change on next login
-        </label>
+        <Checkbox
+          className="gap-2 mb-5 text-xs"
+          style={{ color: 'var(--text-secondary)' }}
+          checked={requireChange}
+          onChange={setRequireChange}
+          label="Require password change on next login"
+        />
         <div className="flex gap-3">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-medium" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
             Cancel
@@ -1226,15 +1229,13 @@ export default function AdminUsersPage() {
                   <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Applies to every email in this batch.</p>
                 )}
               </div>
-              <label className="flex items-start gap-2 cursor-pointer">
-                <input
-                  type="checkbox" checked={inviteBetaNotice} onChange={e => setInviteBetaNotice(e.target.checked)}
-                  className="mt-0.5"
-                />
-                <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                  Include beta notice in invitation email
-                </span>
-              </label>
+              <Checkbox
+                align="start"
+                className="gap-2"
+                checked={inviteBetaNotice}
+                onChange={setInviteBetaNotice}
+                label={<span className="text-xs" style={{ color: 'var(--text-secondary)' }}>Include beta notice in invitation email</span>}
+              />
 
               {/* Partial-success results — a bad email in the batch never
                   blocks the rest (see UserController::bulkInvite()); shown

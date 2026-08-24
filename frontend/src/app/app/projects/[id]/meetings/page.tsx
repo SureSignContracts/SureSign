@@ -17,6 +17,7 @@ import PageTourButton from '@/components/tours/PageTourButton';
 import { ProjectModuleHeader } from '@/components/projects/ProjectModuleHeader';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
+import Checkbox from '@/components/ui/Checkbox';
 
 /** One hour after `time` (HH:MM), wrapping past midnight if needed — used
  * only as a starting suggestion when a user first switches a meeting to
@@ -49,25 +50,23 @@ function TimedScheduleFields({
   const inputStyle = { backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' };
   return (
     <div className="space-y-3">
-      <label className="flex items-center gap-2 cursor-pointer select-none">
-        <input
-          type="checkbox"
-          checked={isTimed}
-          onChange={e => {
-            const next = e.target.checked;
-            onToggle(next);
-            if (next && !startTime) {
-              onStartTime('09:00');
-              onEndTime('10:00');
-              onTimezone(timezone || defaultSchedulingTimezone());
-            }
-          }}
-          className="w-4 h-4"
-        />
-        <span className="text-sm flex items-center gap-1.5" style={{ color: 'var(--text-secondary)' }}>
-          <Clock size={13} /> Add a specific time
-        </span>
-      </label>
+      <Checkbox
+        className="gap-2 select-none"
+        checked={isTimed}
+        onChange={next => {
+          onToggle(next);
+          if (next && !startTime) {
+            onStartTime('09:00');
+            onEndTime('10:00');
+            onTimezone(timezone || defaultSchedulingTimezone());
+          }
+        }}
+        label={(
+          <span className="text-sm flex items-center gap-1.5" style={{ color: 'var(--text-secondary)' }}>
+            <Clock size={13} /> Add a specific time
+          </span>
+        )}
+      />
 
       {isTimed && (
         <div className="grid grid-cols-2 gap-4 pl-6">

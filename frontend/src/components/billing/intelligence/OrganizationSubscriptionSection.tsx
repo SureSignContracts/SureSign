@@ -20,6 +20,7 @@ import TrialCardComponent from './TrialCard';
 import HealthOverview from './HealthOverview';
 import StripeInfoCard from './StripeInfoCard';
 import Select from '@/components/ui/Select';
+import Checkbox from '@/components/ui/Checkbox';
 import { AssignablePlan, SnapshotSummary, SubscriptionSummaryView } from '@/types/subscriptionIntelligence';
 
 const REASON_MIN_LENGTH = 10;
@@ -285,10 +286,14 @@ function AssignSubscriptionDialog({
             </ul>
           </div>
 
-          <label className="flex items-start gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
-            <input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="mt-0.5" />
-            I confirm this {sourceLabel.toLowerCase()} subscription assignment for {organizationName}.
-          </label>
+          <Checkbox
+            align="start"
+            className="text-xs"
+            style={{ color: 'var(--text-secondary)' }}
+            checked={confirmed}
+            onChange={setConfirmed}
+            label={<>I confirm this {sourceLabel.toLowerCase()} subscription assignment for {organizationName}.</>}
+          />
         </div>
 
         <div className="flex gap-3 mt-6">
@@ -360,10 +365,14 @@ function TerminateSubscriptionDialog({
           style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
         />
 
-        <label className="flex items-start gap-2 text-xs mb-5" style={{ color: 'var(--text-secondary)' }}>
-          <input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="mt-0.5" />
-          I confirm ending this subscription and understand it will restrict {organizationName}&rsquo;s access.
-        </label>
+        <Checkbox
+          align="start"
+          className="text-xs mb-5"
+          style={{ color: 'var(--text-secondary)' }}
+          checked={confirmed}
+          onChange={setConfirmed}
+          label={<>I confirm ending this subscription and understand it will restrict {organizationName}&rsquo;s access.</>}
+        />
 
         <div className="flex gap-3">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-medium" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>

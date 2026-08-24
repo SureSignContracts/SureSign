@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, ReactNode, CSSProperties } from 'react';
 import { gsap } from 'gsap';
 import { prefersReducedMotion } from '@/lib/motion';
 
@@ -12,6 +12,20 @@ interface CheckboxProps {
   disabled?: boolean;
   title?: string;
   'aria-label'?: string;
+  /** Applied to the outer label — layout/spacing classes (e.g. `flex items-center gap-2 text-sm`) when `label` is used, or a plain margin (e.g. `mt-0.5`) for a bare checkbox in a table cell. */
+  className?: string;
+  /** Applied to the outer label — e.g. `{ color: 'var(--text-secondary)' }` for trailing label text color. */
+  style?: CSSProperties;
+  /**
+   * Trailing text/content, rendered inside the SAME <label> as the checkbox
+   * (not a separate wrapping <label> — a <label> can't nest inside another
+   * <label>) so clicking the text also toggles it, matching every native
+   * `<label><input type="checkbox"/> Some text</label>` call site this
+   * replaces.
+   */
+  label?: ReactNode;
+  /** 'center' (default) for a short single-line label, 'start' to top-align the checkbox against multi-line body text (e.g. a "confirm" paragraph). Ignored when `label` isn't set. */
+  align?: 'center' | 'start';
 }
 
 // A CHECK_PATH-style tick (see SureSignLoader's own path-draw convention) is
@@ -24,12 +38,18 @@ interface CheckboxProps {
 const TICK_PATH = 'M 3.5 8.2 L 6.5 11.2 L 12.5 4.8';
 
 /**
- * Replaces the native checkbox appearance (Admin Users' bulk-select column)
- * with a small custom control — the native input stays mounted (sr-only,
- * still the real form/a11y target: keyboard, screen readers, click target)
- * so this is a skin over real semantics, not a from-scratch widget.
+ * Replaces the native checkbox appearance everywhere in the app with a
+ * small themed control — the native input stays mounted (sr-only, still
+ * the real form/a11y target: keyboard, screen readers, click target) so
+ * this is a skin over real semantics, not a from-scratch widget. This is
+ * the platform-wide checkbox standard (see CLAUDE.md's "Checkbox Standard")
+ * — do not add a second checkbox implementation or leave a bare
+ * `<input type="checkbox">` in new code.
  */
-export default function Checkbox({ checked, indeterminate = false, onChange, disabled, title, 'aria-label': ariaLabel }: CheckboxProps) {
+export default function Checkbox({
+  checked, indeterminate = false, onChange, disabled, title, 'aria-label': ariaLabel,
+  className, style, label, align = 'center',
+}: CheckboxProps) {
   const boxRef = useRef<HTMLSpanElement>(null);
   const tickRef = useRef<SVGPathElement>(null);
   const dashRef = useRef<HTMLSpanElement>(null);
@@ -74,11 +94,8 @@ export default function Checkbox({ checked, indeterminate = false, onChange, dis
     return () => { tl.kill(); };
   }, [checked, indeterminate]);
 
-  return (
-    <label
-      className={`relative inline-flex h-4 w-4 flex-shrink-0 items-center justify-center ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
-      title={title}
-    >
+  const visual = (
+    <span className={`relative inline-flex h-4 w-4 flex-shrink-0 items-center justify-center ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}${label ? '' : (className ? ` ${className}` : '')}`}>
       <input
         type="checkbox"
         className="peer absolute inset-0 h-full w-full cursor-[inherit] opacity-0"
@@ -109,6 +126,25 @@ export default function Checkbox({ checked, indeterminate = false, onChange, dis
           opacity={0}
         />
       </svg>
+    </span>
+  );
+
+  if (!label) {
+    return (
+      <label className={disabled ? 'cursor-not-allowed' : 'cursor-pointer'} title={title} style={style}>
+        {visual}
+      </label>
+    );
+  }
+
+  return (
+    <label
+      className={`flex ${align === 'start' ? 'items-start' : 'items-center'} gap-2 ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}${className ? ` ${className}` : ''}`}
+      title={title}
+      style={style}
+    >
+      <span className={align === 'start' ? 'mt-0.5' : ''}>{visual}</span>
+      {label}
     </label>
   );
 }

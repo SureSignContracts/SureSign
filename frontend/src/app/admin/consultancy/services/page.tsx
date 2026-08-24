@@ -9,6 +9,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Modal from '@/components/ui/Modal';
 import EmptyState from '@/components/ui/EmptyState';
+import Checkbox from '@/components/ui/Checkbox';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import PlatformPageHero from '@/components/admin/PlatformPageHero';
 
@@ -222,22 +223,34 @@ export default function ConsultancyServicesPage() {
               </p>
 
               <div className="space-y-2 pt-1">
-                <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  <input type="checkbox" checked={form.enabled} onChange={e => setForm(f => ({ ...f, enabled: e.target.checked }))} />
-                  Enabled
-                </label>
-                <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  <input type="checkbox" checked={form.publicly_bookable} onChange={e => setForm(f => ({ ...f, publicly_bookable: e.target.checked }))} />
-                  Publicly bookable (marketing site)
-                </label>
-                <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  <input type="checkbox" checked={form.available_to_existing_customers} onChange={e => setForm(f => ({ ...f, available_to_existing_customers: e.target.checked }))} />
-                  Available to existing customers (in-app)
-                </label>
-                <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  <input type="checkbox" checked={form.is_introductory} onChange={e => setForm(f => ({ ...f, is_introductory: e.target.checked }))} />
-                  Introductory service (e.g. Quick Consultation)
-                </label>
+                <Checkbox
+                  className="gap-2 text-sm"
+                  style={{ color: 'var(--text-secondary)' }}
+                  checked={form.enabled}
+                  onChange={checked => setForm(f => ({ ...f, enabled: checked }))}
+                  label="Enabled"
+                />
+                <Checkbox
+                  className="gap-2 text-sm"
+                  style={{ color: 'var(--text-secondary)' }}
+                  checked={form.publicly_bookable}
+                  onChange={checked => setForm(f => ({ ...f, publicly_bookable: checked }))}
+                  label="Publicly bookable (marketing site)"
+                />
+                <Checkbox
+                  className="gap-2 text-sm"
+                  style={{ color: 'var(--text-secondary)' }}
+                  checked={form.available_to_existing_customers}
+                  onChange={checked => setForm(f => ({ ...f, available_to_existing_customers: checked }))}
+                  label="Available to existing customers (in-app)"
+                />
+                <Checkbox
+                  className="gap-2 text-sm"
+                  style={{ color: 'var(--text-secondary)' }}
+                  checked={form.is_introductory}
+                  onChange={checked => setForm(f => ({ ...f, is_introductory: checked }))}
+                  label="Introductory service (e.g. Quick Consultation)"
+                />
               </div>
 
               <div className="flex gap-2 pt-2">

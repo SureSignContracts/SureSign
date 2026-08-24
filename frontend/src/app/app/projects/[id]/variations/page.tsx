@@ -21,6 +21,7 @@ import PageTourButton from '@/components/tours/PageTourButton';
 import { ProjectModuleHeader } from '@/components/projects/ProjectModuleHeader';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
+import Checkbox from '@/components/ui/Checkbox';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import DrawingLocationsSection from '@/components/drawings/DrawingLocationsSection';
 
@@ -404,11 +405,12 @@ function EditVariationModal({ variation, projectId, onClose }: { variation: any;
                   className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
               </div>
             </div>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={form.agreed_in_writing}
-                onChange={e => setForm(p => ({ ...p, agreed_in_writing: e.target.checked }))} />
-              <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Agreed in writing</span>
-            </label>
+            <Checkbox
+              className="gap-2"
+              checked={form.agreed_in_writing}
+              onChange={checked => setForm(p => ({ ...p, agreed_in_writing: checked }))}
+              label={<span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Agreed in writing</span>}
+            />
           </div>
 
           <DrawingLocationsSection projectId={projectId} type="variation" recordId={variation.id} />

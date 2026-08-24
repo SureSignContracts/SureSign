@@ -17,6 +17,7 @@ import toast from '@/lib/toast';
 import PromptActionButton from '@/components/prompts/PromptActionButton';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
+import Checkbox from '@/components/ui/Checkbox';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -282,10 +283,12 @@ function AddDocumentModal({
             </div>
           </div>
           {mode === 'draft' && (
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={form.ai_generated} onChange={e => setForm(f => ({ ...f, ai_generated: e.target.checked }))} />
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>AI-generated draft</span>
-            </label>
+            <Checkbox
+              className="gap-2"
+              checked={form.ai_generated}
+              onChange={checked => setForm(f => ({ ...f, ai_generated: checked }))}
+              label={<span className="text-xs" style={{ color: 'var(--text-muted)' }}>AI-generated draft</span>}
+            />
           )}
           {mutation.isError && <p className="text-xs text-red-400">Failed to save document.</p>}
           <div className="flex justify-end gap-3 pt-2">

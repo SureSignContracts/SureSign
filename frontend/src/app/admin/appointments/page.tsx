@@ -15,6 +15,7 @@ import EmptyState from '@/components/ui/EmptyState';
 import PaginationBar from '@/components/ui/PaginationBar';
 import TimezoneSelect from '@/components/shared/TimezoneSelect';
 import { getErrorMessage } from '@/lib/getErrorMessage';
+import Checkbox from '@/components/ui/Checkbox';
 import PlatformPageHero from '@/components/admin/PlatformPageHero';
 
 const STATUS_FILTERS = [
@@ -336,10 +337,13 @@ export default function AdminAppointmentsPage() {
 
             {availability.checked && !availability.available && isSuperAdmin && (
               <div className="space-y-2 p-2.5 rounded-lg" style={{ border: '1px dashed #facc15' }}>
-                <label className="flex items-center gap-2 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                  <input type="checkbox" checked={override} onChange={e => setOverride(e.target.checked)} />
-                  Override availability and proceed anyway
-                </label>
+                <Checkbox
+                  className="gap-2 text-xs font-medium"
+                  style={{ color: 'var(--text-secondary)' }}
+                  checked={override}
+                  onChange={setOverride}
+                  label="Override availability and proceed anyway"
+                />
                 {override && (
                   <Input placeholder="Reason for override (required)" value={overrideReason} onChange={e => setOverrideReason(e.target.value)} />
                 )}

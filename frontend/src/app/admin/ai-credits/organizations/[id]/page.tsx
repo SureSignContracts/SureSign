@@ -9,6 +9,7 @@ import api from '@/lib/api';
 import { ArrowLeft, Wallet, Coins, Lock, PiggyBank, Plus, Minus, TimerOff, X } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
+import Checkbox from '@/components/ui/Checkbox';
 import { formatDate } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
 
@@ -126,10 +127,14 @@ function ManageCreditsDialog({
             </ul>
           </div>
 
-          <label className="flex items-start gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
-            <input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="mt-0.5" />
-            I confirm this {ACTION_LABEL[action].toLowerCase()} action for {organizationName}.
-          </label>
+          <Checkbox
+            align="start"
+            className="text-xs"
+            style={{ color: 'var(--text-secondary)' }}
+            checked={confirmed}
+            onChange={setConfirmed}
+            label={<>I confirm this {ACTION_LABEL[action].toLowerCase()} action for {organizationName}.</>}
+          />
         </div>
 
         <div className="flex gap-3 mt-6">

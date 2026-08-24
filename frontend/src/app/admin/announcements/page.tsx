@@ -8,6 +8,7 @@ import { getErrorMessage } from '@/lib/getErrorMessage';
 import { SEVERITY_STYLES, SEVERITY_LABELS } from '@/lib/announcements';
 import { fromUtcIso, toUtcIso } from '@/lib/dateTime';
 import Select from '@/components/ui/Select';
+import Checkbox from '@/components/ui/Checkbox';
 import PlatformPageHero from '@/components/admin/PlatformPageHero';
 
 interface Announcement {
@@ -157,10 +158,13 @@ export default function AdminAnnouncementsPage() {
             >
               {SEVERITIES.map(s => <option key={s} value={s}>{SEVERITY_LABELS[s]}</option>)}
             </Select>
-            <label className="flex items-center gap-2 text-sm px-3.5" style={{ color: 'var(--text-secondary)' }}>
-              <input type="checkbox" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} />
-              Active
-            </label>
+            <Checkbox
+              className="gap-2 text-sm px-3.5"
+              style={{ color: 'var(--text-secondary)' }}
+              checked={form.is_active}
+              onChange={checked => setForm(f => ({ ...f, is_active: checked }))}
+              label="Active"
+            />
             <div>
               <label className="text-xs" style={{ color: 'var(--text-muted)' }}>Starts</label>
               <input

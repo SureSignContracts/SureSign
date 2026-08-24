@@ -20,6 +20,7 @@ import api from '@/lib/api';
 import toast from '@/lib/toast';
 import { CheckCircle, Loader2, AlertTriangle, ArrowLeft } from 'lucide-react';
 import Button from '@/components/ui/Button';
+import Checkbox from '@/components/ui/Checkbox';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import FullscreenDialogPortal from '@/components/ui/FullscreenDialogPortal';
 
@@ -247,8 +248,7 @@ export default function ProjectSuggestionsPanel({
               className={`flex items-start gap-4 rounded-xl bg-white px-5 py-4 shadow-[0_6px_18px_rgba(24,33,29,0.05)] transition-transform duration-200 ${showCheckbox && selected.has(s.key) ? '-translate-y-0.5 ring-2 ring-[#78c993]' : ''}`}
             >
               {showCheckbox ? (
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={selected.has(s.key)}
                   onChange={() => toggle(s.key)}
                   className="mt-1 flex-shrink-0"

@@ -7,6 +7,7 @@ import { X, Wrench, Sparkles, CheckCircle2, Pencil } from 'lucide-react';
 import api from '@/lib/api';
 import Select from '@/components/ui/Select';
 import EmptyState from '@/components/ui/EmptyState';
+import Checkbox from '@/components/ui/Checkbox';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import { toUtcIso, fromUtcIso, formatDateTime } from '@/lib/dateTime';
 import { useAuthStore } from '@/store/authStore';
@@ -173,10 +174,14 @@ function EditDialog({
             )}
           </div>
 
-          <label className="flex items-start gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
-            <input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="mt-0.5" />
-            I confirm this Feature Availability change.
-          </label>
+          <Checkbox
+            align="start"
+            className="text-xs"
+            style={{ color: 'var(--text-secondary)' }}
+            checked={confirmed}
+            onChange={setConfirmed}
+            label="I confirm this Feature Availability change."
+          />
         </div>
 
         <div className="flex gap-3 mt-6">

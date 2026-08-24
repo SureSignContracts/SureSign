@@ -12,6 +12,7 @@ import toast from '@/lib/toast';
 import PromptContextModal from '@/components/prompts/PromptContextModal';
 import PaginationBar from '@/components/ui/PaginationBar';
 import Select from '@/components/ui/Select';
+import Checkbox from '@/components/ui/Checkbox';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import PlatformPageHero from '@/components/admin/PlatformPageHero';
 
@@ -362,24 +363,18 @@ function PromptFormModal({
 
           {/* Toggles */}
           <div className="flex items-center gap-6">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={form.is_featured}
-                onChange={e => setForm(f => ({ ...f, is_featured: e.target.checked }))}
-                className="w-4 h-4 rounded"
-              />
-              <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Featured</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={form.is_active}
-                onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))}
-                className="w-4 h-4 rounded"
-              />
-              <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Active</span>
-            </label>
+            <Checkbox
+              className="gap-2 select-none"
+              checked={form.is_featured}
+              onChange={checked => setForm(f => ({ ...f, is_featured: checked }))}
+              label={<span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Featured</span>}
+            />
+            <Checkbox
+              className="gap-2 select-none"
+              checked={form.is_active}
+              onChange={checked => setForm(f => ({ ...f, is_active: checked }))}
+              label={<span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Active</span>}
+            />
           </div>
         </form>
 

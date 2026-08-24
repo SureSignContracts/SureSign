@@ -13,6 +13,7 @@ import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import { Badge } from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
+import Checkbox from '@/components/ui/Checkbox';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 
 interface AppointmentType {
@@ -172,18 +173,27 @@ export default function AppointmentTypesPage() {
               </Select>
             </div>
 
-            <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-              <input type="checkbox" checked={form.is_public} onChange={e => setForm(f => ({ ...f, is_public: e.target.checked }))} />
-              Public (bookable outside internal management — future phase)
-            </label>
-            <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-              <input type="checkbox" checked={form.requires_confirmation} onChange={e => setForm(f => ({ ...f, requires_confirmation: e.target.checked }))} />
-              Requires manual staff confirmation
-            </label>
-            <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-              <input type="checkbox" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} />
-              Active
-            </label>
+            <Checkbox
+              className="gap-2 text-sm"
+              style={{ color: 'var(--text-secondary)' }}
+              checked={form.is_public}
+              onChange={checked => setForm(f => ({ ...f, is_public: checked }))}
+              label="Public (bookable outside internal management — future phase)"
+            />
+            <Checkbox
+              className="gap-2 text-sm"
+              style={{ color: 'var(--text-secondary)' }}
+              checked={form.requires_confirmation}
+              onChange={checked => setForm(f => ({ ...f, requires_confirmation: checked }))}
+              label="Requires manual staff confirmation"
+            />
+            <Checkbox
+              className="gap-2 text-sm"
+              style={{ color: 'var(--text-secondary)' }}
+              checked={form.is_active}
+              onChange={checked => setForm(f => ({ ...f, is_active: checked }))}
+              label="Active"
+            />
 
             <div className="flex gap-2 pt-2">
               <Button variant="secondary" className="flex-1" onClick={closeModal}>Cancel</Button>

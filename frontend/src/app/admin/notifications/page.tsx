@@ -14,6 +14,7 @@ import { type SuresignNotification, type NotificationFilter } from '@/hooks/useN
 import { formatDateTime } from '@/lib/dateTime';
 import { useAuthStore } from '@/store/authStore';
 import Select from '@/components/ui/Select';
+import Checkbox from '@/components/ui/Checkbox';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -310,7 +311,7 @@ export default function NotificationsPage() {
 
         <div className="ss-notifications-register mt-5 overflow-hidden rounded-2xl bg-white shadow-[0_12px_35px_rgba(24,33,29,0.07)]">
           <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4 sm:px-6">
-            <div className="flex items-center gap-3"><input type="checkbox" checked={allSelected} onChange={toggleSelectAll} aria-label="Select all notifications" className="h-4 w-4 rounded border-gray-300 accent-[#18211d]" /><div><h2 className="text-sm font-semibold text-gray-900">Notification register</h2><p className="mt-0.5 text-xs text-gray-400">Newest platform activity first</p></div></div>
+            <div className="flex items-center gap-3"><Checkbox checked={allSelected} onChange={toggleSelectAll} aria-label="Select all notifications" /><div><h2 className="text-sm font-semibold text-gray-900">Notification register</h2><p className="mt-0.5 text-xs text-gray-400">Newest platform activity first</p></div></div>
             <span className="text-xs font-medium text-gray-400">{rows.length} shown</span>
           </div>
           {error ? (
@@ -327,7 +328,7 @@ export default function NotificationsPage() {
                 const Icon = n.priority === 'critical' ? AlertTriangle : n.priority === 'warning' ? AlertCircle : n.priority === 'reminder' ? Clock : Info;
                 return (
                   <article key={n.id} className={`ss-notifications-row group grid grid-cols-[auto_2.75rem_minmax(0,1fr)] gap-x-3 px-5 py-5 transition-[background-color,transform] duration-200 hover:bg-[#fafcfb] sm:px-6 lg:grid-cols-[auto_2.75rem_minmax(0,1fr)_13rem_auto] ${isUnread ? 'bg-[#f7fcf9]' : ''}`} style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}>
-                    <input type="checkbox" checked={selected.has(n.id)} onChange={() => toggleSelect(n.id)} aria-label={`Select ${n.title}`} className="mt-3 h-4 w-4 rounded border-gray-300 accent-[#18211d]" />
+                    <Checkbox checked={selected.has(n.id)} onChange={() => toggleSelect(n.id)} aria-label={`Select ${n.title}`} className="mt-3" />
                     <span className="ss-notifications-priority-icon flex h-11 w-11 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-105" style={{ backgroundColor: cfg.bg, color: cfg.color }}><Icon size={17} /></span>
                     <button type="button" onClick={() => handleOpen(n)} className="min-w-0 text-left">
                       <div className="flex flex-wrap items-center gap-2">{isUnread ? <span className="h-1.5 w-1.5 rounded-full bg-[#2f9e5a]" /> : null}<h3 className={`truncate text-sm text-gray-900 ${isUnread ? 'font-semibold' : 'font-medium'}`}>{n.title}</h3></div>

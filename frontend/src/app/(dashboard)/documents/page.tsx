@@ -15,6 +15,7 @@ import toast from '@/lib/toast';
 import DocumentPreviewModal, { type PreviewTarget } from '@/components/documents/DocumentPreviewModal';
 import EmptyState from '@/components/ui/EmptyState';
 import Select from '@/components/ui/Select';
+import Checkbox from '@/components/ui/Checkbox';
 import { EASE, staggerDelay } from '@/lib/motion';
 
 // ── Types (mirrors OrganisationDocumentService::build()) ──────────────────
@@ -464,10 +465,13 @@ function DocumentsPage() {
               {(data?.filters.file_types ?? []).map(t => <option key={t} value={t}>{t}</option>)}
             </Select>
 
-            <label className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm transition-colors hover:bg-[var(--bg-hover)]" style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
-              <input type="checkbox" checked={aiOnly} onChange={e => { setAiOnly(e.target.checked); setPage(1); }} />
-              AI Generated only
-            </label>
+            <Checkbox
+              className="gap-1.5 rounded-xl px-3 py-2 text-sm transition-colors hover:bg-[var(--bg-hover)]"
+              style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+              checked={aiOnly}
+              onChange={checked => { setAiOnly(checked); setPage(1); }}
+              label="AI Generated only"
+            />
 
             <Select value={sort} onChange={e => setSort(e.target.value)} aria-label="Sort documents">
               <option value="newest">Sort: Newest</option>

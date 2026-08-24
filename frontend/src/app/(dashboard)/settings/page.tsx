@@ -18,6 +18,7 @@ import CustomUrlSection from '@/components/settings/CustomUrlSection';
 import BrandingPreviewPanel from '@/components/settings/BrandingPreviewPanel';
 import Select from '@/components/ui/Select';
 import Toggle from '@/components/ui/Toggle';
+import Checkbox from '@/components/ui/Checkbox';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import { useNotificationSound } from '@/hooks/useNotificationSound';
 
@@ -556,20 +557,20 @@ export default function SettingsPage() {
           <div className="space-y-5 max-w-sm">
             <div>
               <p className="text-xs font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>Your Timezone</p>
-              <label className="flex items-start gap-2.5 cursor-pointer mb-3">
-                <input
-                  type="checkbox"
-                  checked={useOrgTimezone}
-                  onChange={e => setUseOrgTimezone(e.target.checked)}
-                  className="mt-0.5"
-                />
-                <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
-                  Use company timezone
-                  <span className="block text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                    {user?.organization?.timezone ?? 'Europe/London'}
+              <Checkbox
+                align="start"
+                className="gap-2.5 mb-3"
+                checked={useOrgTimezone}
+                onChange={setUseOrgTimezone}
+                label={(
+                  <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
+                    Use company timezone
+                    <span className="block text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                      {user?.organization?.timezone ?? 'Europe/London'}
+                    </span>
                   </span>
-                </span>
-              </label>
+                )}
+              />
 
               {!useOrgTimezone && (
                 <div>

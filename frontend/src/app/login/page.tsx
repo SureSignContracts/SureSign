@@ -15,6 +15,7 @@ import {
   markPostLoginEntrance,
 } from '@/lib/authStorage';
 import LoginProductShowcase from '@/components/login/LoginProductShowcase';
+import Checkbox from '@/components/ui/Checkbox';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 interface BrandGateway {
@@ -478,16 +479,13 @@ export default function LoginPage() {
               )}
             </div>
 
-            <label className="ss-login-reveal flex items-center gap-2 text-xs font-medium select-none" style={{ animationDelay: '840ms', color: '#444440' }}>
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={(e) => setRemember(e.target.checked)}
-                className="h-4 w-4 rounded border focus-visible:outline-2 focus-visible:outline-[#0f0f0f] focus-visible:outline-offset-2"
-                style={{ accentColor: '#0f0f0f', borderColor: '#deddd9' }}
-              />
-              Remember me
-            </label>
+            <Checkbox
+              className="ss-login-reveal gap-2 text-xs font-medium select-none"
+              style={{ animationDelay: '840ms', color: '#444440' }}
+              checked={remember}
+              onChange={setRemember}
+              label="Remember me"
+            />
 
             {/* Primary CTA with a restrained directional affordance */}
             <div className="ss-login-reveal" style={{ animationDelay: '920ms' }}>

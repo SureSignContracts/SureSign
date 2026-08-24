@@ -8,6 +8,7 @@ import { Users, UserPlus, Shield, Mail, MoreVertical, Search } from 'lucide-reac
 import { formatDate } from '@/lib/utils';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
+import Checkbox from '@/components/ui/Checkbox';
 
 const ROLES = ['Company Admin', 'Project Manager', 'Quantity Surveyor', 'Site Manager', 'Commercial Manager', 'Read-only User'];
 
@@ -187,17 +188,13 @@ function AppTeamPage() {
                   {ROLES.map(r => <option key={r}>{r}</option>)}
                 </Select>
               </div>
-              <label className="flex items-start gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={inviteBetaNotice}
-                  onChange={e => setInviteBetaNotice(e.target.checked)}
-                  className="mt-0.5"
-                />
-                <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                  Include beta notice in invitation email
-                </span>
-              </label>
+              <Checkbox
+                align="start"
+                className="gap-2"
+                checked={inviteBetaNotice}
+                onChange={setInviteBetaNotice}
+                label={<span className="text-xs" style={{ color: 'var(--text-secondary)' }}>Include beta notice in invitation email</span>}
+              />
             </div>
             <div className="flex gap-3 mt-6">
               <button

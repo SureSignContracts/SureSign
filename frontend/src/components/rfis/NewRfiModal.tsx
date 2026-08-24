@@ -8,6 +8,7 @@ import api from '@/lib/api';
 import { effectiveTodayYmd } from '@/lib/dateTime';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import Select from '@/components/ui/Select';
+import Checkbox from '@/components/ui/Checkbox';
 import DrawingCreationContextBadge from '@/components/drawings/DrawingCreationContextBadge';
 import type { DrawingCreationContext } from '@/components/drawings/DrawingCreationContext';
 
@@ -124,11 +125,12 @@ export default function NewRfiModal({ projectId, onClose, onCreated, drawingCont
                 className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
             </div>
           </div>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={form.programme_impact} onChange={e => set('programme_impact', e.target.checked)}
-              className="rounded" />
-            <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>Programme Impact</span>
-          </label>
+          <Checkbox
+            className="gap-2"
+            checked={form.programme_impact}
+            onChange={checked => set('programme_impact', checked)}
+            label={<span className="text-xs" style={{ color: 'var(--text-secondary)' }}>Programme Impact</span>}
+          />
           {form.programme_impact && (
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Programme impact (days)</label>

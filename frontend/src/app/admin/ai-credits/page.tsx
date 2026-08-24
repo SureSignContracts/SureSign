@@ -8,6 +8,7 @@ import PlatformPageHero from '@/components/admin/PlatformPageHero';
 import { Wallet, Coins, Lock, PiggyBank, Building2, Brain, ShieldCheck, ShieldAlert, HelpCircle, ShieldOff, ShieldQuestion, X } from 'lucide-react';
 import CountUp from '@/components/ui/CountUp';
 import EmptyState from '@/components/ui/EmptyState';
+import Checkbox from '@/components/ui/Checkbox';
 import { useAuthStore } from '@/store/authStore';
 
 interface ShadowCounts {
@@ -169,10 +170,14 @@ function OperatingModeDialog({
             )}
           </div>
 
-          <label className="flex items-start gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
-            <input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="mt-0.5" />
-            I confirm I want to switch AI Credit operating mode to {meta.label} platform-wide.
-          </label>
+          <Checkbox
+            align="start"
+            className="text-xs"
+            style={{ color: 'var(--text-secondary)' }}
+            checked={confirmed}
+            onChange={setConfirmed}
+            label={<>I confirm I want to switch AI Credit operating mode to {meta.label} platform-wide.</>}
+          />
         </div>
 
         <div className="flex gap-3 mt-6">
