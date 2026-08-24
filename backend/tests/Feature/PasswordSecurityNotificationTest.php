@@ -53,8 +53,8 @@ class PasswordSecurityNotificationTest extends TestCase
 
         $this->putJson('/api/auth/password', [
             'current_password' => 'theExistingPassphrase',
-            'password' => 'aBrandNewLongPassphrase',
-            'password_confirmation' => 'aBrandNewLongPassphrase',
+            'password' => 'aBrandNewLongPassphrase1!',
+            'password_confirmation' => 'aBrandNewLongPassphrase1!',
         ])->assertStatus(200);
 
         Bus::assertDispatched(SendPasswordSecurityNotificationJob::class, function ($job) use ($user) {
@@ -71,8 +71,8 @@ class PasswordSecurityNotificationTest extends TestCase
 
         $this->putJson('/api/auth/password', [
             'current_password' => 'totallyWrongPassphrase',
-            'password' => 'aBrandNewLongPassphrase',
-            'password_confirmation' => 'aBrandNewLongPassphrase',
+            'password' => 'aBrandNewLongPassphrase1!',
+            'password_confirmation' => 'aBrandNewLongPassphrase1!',
         ])->assertStatus(422);
 
         Bus::assertNotDispatched(SendPasswordSecurityNotificationJob::class);
@@ -119,8 +119,8 @@ class PasswordSecurityNotificationTest extends TestCase
         Sanctum::actingAs($user);
 
         $this->putJson('/api/auth/force-password-change', [
-            'password' => 'aBrandNewLongPassphrase',
-            'password_confirmation' => 'aBrandNewLongPassphrase',
+            'password' => 'aBrandNewLongPassphrase1!',
+            'password_confirmation' => 'aBrandNewLongPassphrase1!',
         ])->assertStatus(200);
 
         Bus::assertDispatchedTimes(SendPasswordSecurityNotificationJob::class, 1);
@@ -158,8 +158,8 @@ class PasswordSecurityNotificationTest extends TestCase
         $this->postJson('/api/auth/reset-password', [
             'token' => $token,
             'email' => $user->email,
-            'password' => 'aFreshResetPassphrase',
-            'password_confirmation' => 'aFreshResetPassphrase',
+            'password' => 'aFreshResetPassphrase1!',
+            'password_confirmation' => 'aFreshResetPassphrase1!',
         ])->assertStatus(200);
 
         $this->assertSame(0, $user->fresh()->tokens()->count());
@@ -194,7 +194,7 @@ class PasswordSecurityNotificationTest extends TestCase
         Sanctum::actingAs($admin);
 
         $this->postJson("/api/users/{$user->id}/set-password", [
-            'password' => 'anAdminChosenLongPassphrase',
+            'password' => 'anAdminChosenLongPassphrase1!',
         ])->assertStatus(200);
 
         Bus::assertDispatchedTimes(SendPasswordSecurityNotificationJob::class, 1);
@@ -233,8 +233,8 @@ class PasswordSecurityNotificationTest extends TestCase
         parse_str((string) parse_url($apiUrl, PHP_URL_QUERY), $query);
 
         $this->postJson('/api/public/invitations/' . $user->id . '?' . http_build_query($query), [
-            'password' => 'myFirstChosenPassphrase',
-            'password_confirmation' => 'myFirstChosenPassphrase',
+            'password' => 'myFirstChosenPassphrase1!',
+            'password_confirmation' => 'myFirstChosenPassphrase1!',
         ])->assertStatus(200);
 
         Bus::assertNotDispatched(SendPasswordSecurityNotificationJob::class);
@@ -250,13 +250,13 @@ class PasswordSecurityNotificationTest extends TestCase
 
         $this->putJson('/api/auth/password', [
             'current_password' => 'theExistingPassphrase',
-            'password' => 'aBrandNewLongPassphrase',
-            'password_confirmation' => 'aBrandNewLongPassphrase',
+            'password' => 'aBrandNewLongPassphrase1!',
+            'password_confirmation' => 'aBrandNewLongPassphrase1!',
         ])->assertStatus(200);
 
         Bus::assertDispatched(SendPasswordSecurityNotificationJob::class, function ($job) {
             $serialized = serialize($job);
-            return !str_contains($serialized, 'aBrandNewLongPassphrase')
+            return !str_contains($serialized, 'aBrandNewLongPassphrase1!')
                 && !str_contains($serialized, 'theExistingPassphrase');
         });
     }
@@ -276,12 +276,12 @@ class PasswordSecurityNotificationTest extends TestCase
 
         $response = $this->putJson('/api/auth/password', [
             'current_password' => 'theExistingPassphrase',
-            'password' => 'aBrandNewLongPassphrase',
-            'password_confirmation' => 'aBrandNewLongPassphrase',
+            'password' => 'aBrandNewLongPassphrase1!',
+            'password_confirmation' => 'aBrandNewLongPassphrase1!',
         ]);
 
         $response->assertStatus(200);
-        $this->assertTrue(Hash::check('aBrandNewLongPassphrase', $user->fresh()->password), 'Password must have actually changed regardless of mail provider state.');
+        $this->assertTrue(Hash::check('aBrandNewLongPassphrase1!', $user->fresh()->password), 'Password must have actually changed regardless of mail provider state.');
     }
 
     /**
@@ -303,12 +303,12 @@ class PasswordSecurityNotificationTest extends TestCase
 
         $response = $this->putJson('/api/auth/password', [
             'current_password' => 'theExistingPassphrase',
-            'password' => 'aBrandNewLongPassphrase',
-            'password_confirmation' => 'aBrandNewLongPassphrase',
+            'password' => 'aBrandNewLongPassphrase1!',
+            'password_confirmation' => 'aBrandNewLongPassphrase1!',
         ]);
 
         $response->assertStatus(200);
-        $this->assertTrue(Hash::check('aBrandNewLongPassphrase', $user->fresh()->password));
+        $this->assertTrue(Hash::check('aBrandNewLongPassphrase1!', $user->fresh()->password));
         Bus::assertDispatchedTimes(SendPasswordSecurityNotificationJob::class, 1);
     }
 }

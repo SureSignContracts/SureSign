@@ -32,19 +32,23 @@ class SureSignPasswordPolicyTest extends TestCase
         );
     }
 
-    public function test_14_characters_rejected(): void
+    public function test_11_characters_rejected(): void
     {
-        $this->assertTrue($this->validate(str_repeat('a', 14))->fails());
+        $this->assertTrue($this->validate(str_repeat('a', 11))->fails());
     }
 
-    public function test_15_character_clean_passphrase_accepted(): void
+    public function test_12_character_compliant_passphrase_accepted(): void
     {
-        $this->assertFalse($this->validate('correcthorsebattery')->fails());
+        // 12 chars exactly, with uppercase/lowercase/number/special — the
+        // minimum length boundary AND full composition satisfied together.
+        $this->assertFalse($this->validate('Correct1Ho1!')->fails());
     }
 
-    public function test_64_ascii_characters_accepted(): void
+    public function test_64_character_compliant_password_accepted(): void
     {
-        $this->assertFalse($this->validate(str_repeat('a1', 32))->fails());
+        // A 4-character compliant unit (upper/lower/number/special)
+        // repeated to exactly the 64-character ceiling.
+        $this->assertFalse($this->validate(str_repeat('Aa1!', 16))->fails());
     }
 
     public function test_password_exceeding_64_characters_rejected(): void
@@ -67,9 +71,10 @@ class SureSignPasswordPolicyTest extends TestCase
 
     public function test_valid_unicode_password_within_byte_boundary_accepted(): void
     {
-        // 20 'é' characters = 40 bytes — well within both the 64-character
-        // and 72-byte boundaries.
-        $value = str_repeat('é', 20);
+        // 4 compliant ASCII chars (upper/lower/number/special) + 16 'é'
+        // characters — 20 chars total, 36 bytes, well within both the
+        // 64-character and 72-byte boundaries, and fully composition-compliant.
+        $value = 'Aa1!' . str_repeat('é', 16);
         $this->assertLessThanOrEqual(72, strlen($value));
 
         $this->assertFalse($this->validate($value)->fails());
@@ -85,9 +90,11 @@ class SureSignPasswordPolicyTest extends TestCase
      */
     public function test_two_passwords_sharing_a_72_byte_prefix_but_differing_after_it_are_both_rejected(): void
     {
-        // 36 × 'é' (2 bytes each) = exactly 72 bytes, 36 characters —
-        // valid on its own (at the boundary, under the 64-char ceiling).
-        $sharedPrefix = str_repeat('é', 36);
+        // 4 compliant ASCII chars (upper/lower/number/special) + 34 × 'é'
+        // (2 bytes each) = exactly 72 bytes, 38 characters — valid on its
+        // own (at the byte boundary, under the 64-char ceiling, fully
+        // composition-compliant).
+        $sharedPrefix = 'Aa1!' . str_repeat('é', 34);
         $this->assertSame(72, strlen($sharedPrefix));
         $this->assertFalse($this->validate($sharedPrefix)->fails());
 
@@ -99,29 +106,74 @@ class SureSignPasswordPolicyTest extends TestCase
         $this->assertTrue($this->validate($sharedPrefix . 'b')->fails());
     }
 
-    public function test_spaces_accepted(): void
+    public function test_spaces_accepted_within_an_otherwise_compliant_password(): void
     {
-        $this->assertFalse($this->validate('this passphrase has spaces')->fails());
+        // Spaces remain a permitted character within a password that is
+        // otherwise fully composition-compliant — distinct from a space
+        // being the ONLY non-alphanumeric character (see
+        // test_whitespace_alone_does_not_satisfy_the_special_character_requirement
+        // below), which must not count as satisfying "special character".
+        $this->assertFalse($this->validate('This passphrase Has1!')->fails());
     }
 
-    public function test_uppercase_not_mandatory(): void
+    /**
+     * Password Composition Restoration (August 24, 2026) — SureSign's
+     * product policy was intentionally changed on this date to require
+     * one uppercase letter, one lowercase letter, one number, and one
+     * special character, on top of the pre-existing length/uncompromised
+     * policy. This is a deliberate reversal of the earlier "composition
+     * not mandatory" decision (see SureSignPasswordPolicy's own docblock)
+     * — not a correction of a defect in that earlier policy.
+     *
+     * Each test below otherwise satisfies every OTHER requirement (the
+     * minimum length, and every other composition class) except the one
+     * under test, so a passing assertion actually proves that specific rule —
+     * not merely "this password happens to fail somehow".
+     */
+    public function test_missing_uppercase_is_rejected(): void
     {
-        $this->assertFalse($this->validate('alllowercasepassphrase')->fails());
+        // 17 chars, has lowercase/number/special — missing uppercase only.
+        $this->assertTrue($this->validate('alllowercase1234!')->fails());
     }
 
-    public function test_lowercase_not_mandatory(): void
+    public function test_missing_lowercase_is_rejected(): void
     {
-        $this->assertFalse($this->validate('ALLUPPERCASEPASSPHRASE')->fails());
+        // 17 chars, has uppercase/number/special — missing lowercase only.
+        $this->assertTrue($this->validate('ALLUPPERCASE1234!')->fails());
     }
 
-    public function test_number_not_mandatory(): void
+    public function test_missing_number_is_rejected(): void
     {
-        $this->assertFalse($this->validate('noNumbersInThisPassphrase')->fails());
+        // 17 chars, has uppercase/lowercase/special — missing a number only.
+        $this->assertTrue($this->validate('NoNumbersHerePls!')->fails());
     }
 
-    public function test_symbol_not_mandatory(): void
+    public function test_missing_special_character_is_rejected(): void
     {
-        $this->assertFalse($this->validate('noSymbolsInThisPassphraseEither')->fails());
+        // 18 chars, has uppercase/lowercase/number — missing a special character only.
+        $this->assertTrue($this->validate('NoSymbolsHere12345')->fails());
+    }
+
+    public function test_fully_compliant_password_is_accepted(): void
+    {
+        // 16 chars, has uppercase/lowercase/number/special — every rule satisfied.
+        $this->assertFalse($this->validate('Correct123Horse!')->fails());
+    }
+
+    /**
+     * Laravel's own Password::symbols() matches `\p{Z}|\p{S}|\p{P}` —
+     * `\p{Z}` is Unicode "Separator", which includes plain whitespace, so
+     * a password containing nothing but a space would satisfy it.
+     * SureSign's product definition of "special character" (enforced via
+     * the dedicated PasswordHasSpecialCharacter rule, not ->symbols())
+     * deliberately excludes whitespace — this proves that exclusion
+     * actually holds, not merely that *a* symbol rule exists.
+     */
+    public function test_whitespace_alone_does_not_satisfy_the_special_character_requirement(): void
+    {
+        // 20 chars, has uppercase/lowercase/number — the only non-alphanumeric
+        // character is a trailing space, which must not count as "special".
+        $this->assertTrue($this->validate('Uppercaselower12345 ')->fails());
     }
 
     public function test_compromised_password_rejected(): void

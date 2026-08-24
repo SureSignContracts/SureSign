@@ -47,7 +47,7 @@ class AppServiceProvider extends ServiceProvider
         Appointment::observe(ConsultancyAppointmentObserver::class);
 
         // Unified Password Security Hardening — the ONE place
-        // Password::defaults() is configured (min(15)->uncompromised()).
+        // Password::defaults() is configured (min(12)->mixedCase()->numbers()->uncompromised()).
         // Every password-write workflow resolves its policy through
         // SureSignPasswordPolicy::rules(), which includes Password::defaults()
         // — never a per-controller Password::min(...) call again.

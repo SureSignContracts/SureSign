@@ -363,10 +363,10 @@ export default function SettingsPage() {
               : { color: 'var(--text-secondary)' }
             }
           >
-            <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${tab === t.id ? 'bg-[#9ee5b5] text-[#18211d]' : 'bg-[#f2f4f3] text-[#66716b]'}`}>
+            <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${tab === t.id ? 'bg-[#9ee5b5] text-[#18211d]' : 'bg-[#f2f4f3] text-[#66716b]'}`}>
               <t.icon size={14} />
             </span>
-            {t.label}
+            <span className="min-w-0 flex-1 leading-[1.35]">{t.label}</span>
           </button>
         ))}
       </nav>
@@ -651,15 +651,14 @@ export default function SettingsPage() {
                   autoComplete="new-password"
                   value={pwForm.password}
                   onChange={e => { setPwForm(f => ({ ...f, password: e.target.value })); setPwErrors(p => ({ ...p, password: undefined })); }}
-                  placeholder="Use at least 15 characters"
+                  placeholder="Use at least 12 characters"
                   className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
                   style={{ backgroundColor: 'var(--bg-elevated)', border: `1px solid ${pwErrors.password ? '#ef4444' : 'var(--border)'}`, color: 'var(--text-primary)' }}
                 />
                 <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-                  Use at least 15 characters. Longer passphrases are more secure.
+                  Use at least 12 characters. Longer passphrases are more secure.
                 </p>
                 {pwErrors.password && <p className="mt-1 text-xs" style={{ color: '#ef4444' }}>{pwErrors.password}</p>}
-                <PasswordStrengthChecker password={pwForm.password} />
               </div>
 
               <div>

@@ -18,6 +18,7 @@ import PaginationBar from '@/components/ui/PaginationBar';
 import Toggle from '@/components/ui/Toggle';
 import Select from '@/components/ui/Select';
 import Checkbox from '@/components/ui/Checkbox';
+import PasswordStrengthChecker, { checkPassword, isPasswordValid } from '@/components/ui/PasswordStrengthChecker';
 import { Badge, Tone } from '@/components/ui/Badge';
 import { useUserInheritedSubscription } from '@/hooks/useBilling';
 import { SubscriptionSummaryView } from '@/types/subscriptionIntelligence';
@@ -56,15 +57,33 @@ const roleBadge: Record<string, { bg: string; text: string }> = {
 // Password::mixedCase()->numbers()->symbols() rule requires, rather than
 // leaving it to chance (a purely random base-36 string could land on an
 // all-digit or all-letter run and fail server-side validation).
+// Password Composition Restoration (August 24, 2026) — must always produce
+// a password that already satisfies SureSignPasswordPolicy/the shared
+// isPasswordValid(checkPassword(...)) checker (12+ chars, one uppercase,
+// one lowercase, one number, one special character) the moment the modal
+// opens, never relying on chance. One character from each required
+// category is guaranteed up front, then the remaining positions are
+// filled from the full combined pool and the whole result is shuffled
+// (Fisher-Yates) so the required types don't always land in the same
+// first few positions.
 function genPassword(): string {
-  const upper  = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-  const lower  = 'abcdefghijkmnopqrstuvwxyz';
-  const digits = '23456789';
-  const symbols = '!@#$%';
+  const upper   = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const lower   = 'abcdefghijkmnopqrstuvwxyz';
+  const digits  = '23456789';
+  const symbols = '!@#$%^&*';
+  const all = upper + lower + digits + symbols;
   const pick = (chars: string) => chars[Math.floor(Math.random() * chars.length)];
-  const required = [pick(upper), pick(upper), pick(lower), pick(lower), pick(digits), pick(digits), pick(symbols)];
-  const filler = Array.from({ length: 3 }, () => pick(upper + lower + digits));
-  return [...required, ...filler].sort(() => Math.random() - 0.5).join('');
+
+  const LENGTH = 18;
+  const required = [pick(upper), pick(lower), pick(digits), pick(symbols)];
+  const filler = Array.from({ length: LENGTH - required.length }, () => pick(all));
+
+  const chars = [...required, ...filler];
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join('');
 }
 
 interface OrganizationSubscriptionSummary {
@@ -627,6 +646,7 @@ function SetPasswordModal({
   const [password, setPassword] = useState(() => genPassword());
   const [requireChange, setRequireChange] = useState(true);
   const [copied, setCopied] = useState(false);
+  const passwordValid = isPasswordValid(checkPassword(password));
 
   if (result) {
     return (
@@ -677,6 +697,13 @@ function SetPasswordModal({
             Regenerate
           </button>
         </div>
+        {/* No showConfirmMatch — this modal intentionally has only one
+            password field (the admin sees/copies the value directly
+            rather than typing it twice), matching the backend's own
+            UserController::setPassword() contract (no `confirmed` rule). */}
+        <div className="mb-5">
+          <PasswordStrengthChecker password={password} />
+        </div>
         <Checkbox
           className="gap-2 mb-5 text-xs"
           style={{ color: 'var(--text-secondary)' }}
@@ -690,7 +717,7 @@ function SetPasswordModal({
           </button>
           <button
             onClick={() => onSave(password, requireChange)}
-            disabled={saving || password.length < 8}
+            disabled={saving || !passwordValid}
             className="flex-1 py-2.5 rounded-xl text-sm font-medium disabled:opacity-60"
             style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
           >

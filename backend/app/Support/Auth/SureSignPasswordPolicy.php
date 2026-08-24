@@ -3,6 +3,7 @@
 namespace App\Support\Auth;
 
 use App\Rules\PasswordByteSafe;
+use App\Rules\PasswordHasSpecialCharacter;
 use Illuminate\Validation\Rules\Password;
 
 /**
@@ -15,25 +16,40 @@ use Illuminate\Validation\Rules\Password;
  * was independently duplicated across six controllers — this replaces all
  * six.
  *
- * Modern password-security guidance (and this app's own product decision):
- * length and uncompromised-status matter, arbitrary character-category
- * composition rules do not. A 15+ character passphrase with no uppercase,
- * number, or symbol is fully valid; a short password satisfying every
- * legacy composition rule is not.
+ * Policy history — read before assuming either direction is "the bug":
  *
- * `Password::defaults()` (configured once, in
- * `AppServiceProvider::boot()` via `configureDefaults()` below) is Laravel
- * 13's own reusable-policy mechanism — `min(15)->uncompromised()`. This
- * class layers on top of it, rather than duplicating it, the two things
- * `Password::defaults()` cannot itself express: a maximum CHARACTER length
- * (a plain `max:` string rule) and a maximum BYTE length safe for this
- * app's bcrypt hashing driver (`PasswordByteSafe` — see that class's own
- * docblock for why these are two separate constraints, not one).
+ * 1. Unified Password Security Hardening (original phase) intentionally
+ *    moved SureSign to a length + uncompromised-password policy, with no
+ *    mandatory character-category composition — a deliberate product
+ *    decision at the time, following the modern guidance that length and
+ *    breach-checking matter more than forced composition. That was a
+ *    real, considered choice, not an oversight.
+ * 2. Password Composition Restoration (August 24, 2026) — SureSign's
+ *    product policy was then intentionally CHANGED to additionally
+ *    require one uppercase letter, one lowercase letter, one number, and
+ *    one special character, on top of the existing length/max-length/
+ *    byte-safety/uncompromised protections, all of which are unchanged.
+ *    This is a conscious reversal of decision #1, made for SureSign's own
+ *    product-security reasons — not a correction of a defect in decision
+ *    #1's implementation, and not a claim that #1 was ever a bug.
+ *
+ * `Password::defaults()` (configured once, in `AppServiceProvider::boot()`
+ * via `configureDefaults()` below) is Laravel 13's own reusable-policy
+ * mechanism — `min(12)->mixedCase()->numbers()->uncompromised()`. This
+ * class layers on top of it, rather than duplicating it, the things
+ * `Password::defaults()` cannot itself express in the way SureSign's
+ * product policy needs: a maximum CHARACTER length (a plain `max:` string
+ * rule), a maximum BYTE length safe for this app's bcrypt hashing driver
+ * (`PasswordByteSafe` — see that class's own docblock for why these are
+ * two separate constraints, not one), and a special-character requirement
+ * that excludes plain whitespace (`PasswordHasSpecialCharacter` —
+ * deliberately not Laravel's own `->symbols()`, whose Unicode "Separator"
+ * branch would let a bare space satisfy it; see that rule's own docblock).
  */
 class SureSignPasswordPolicy
 {
-    /** Below Password::defaults()'s own min(15) — kept here only as the single source both this class and its tests reference. */
-    public const MIN_LENGTH = 15;
+    /** Below Password::defaults()'s own min(12) — kept here only as the single source both this class and its tests reference. */
+    public const MIN_LENGTH = 12;
 
     /** Character-count ceiling — a plain `max:` string rule, independent of PasswordByteSafe's BYTE ceiling. */
     public const MAX_LENGTH = 64;
@@ -41,7 +57,7 @@ class SureSignPasswordPolicy
     /** Registers this app's `Password::defaults()` — call once, from `AppServiceProvider::boot()`. */
     public static function configureDefaults(): void
     {
-        Password::defaults(fn () => Password::min(self::MIN_LENGTH)->uncompromised());
+        Password::defaults(fn () => Password::min(self::MIN_LENGTH)->mixedCase()->numbers()->uncompromised());
     }
 
     /**
@@ -60,6 +76,7 @@ class SureSignPasswordPolicy
             'string',
             'max:' . self::MAX_LENGTH,
             new PasswordByteSafe(),
+            new PasswordHasSpecialCharacter(),
             Password::defaults(),
         ];
     }
@@ -85,9 +102,11 @@ class SureSignPasswordPolicy
      *
      * CSPRNG only (`random_int`, PHP's cryptographically secure source) —
      * never `shuffle()`/`mt_rand()`/`Math.random()`. No guaranteed
-     * character-category scheme (the old generator forced uppercase/
-     * lowercase/digit/symbol slots, a leftover from the composition rules
-     * this whole phase removes) — pure independent per-character CSPRNG
+     * character-category scheme — this secret is never seen or typed by a
+     * human and is immediately overwritten the moment the invited user
+     * accepts (`InvitationService::accept()`), so it has no reason to
+     * satisfy the human-facing composition policy either before or after
+     * the August 24, 2026 restoration — pure independent per-character CSPRNG
      * selection is both simpler and stronger.
      */
     public static function generateTemporarySecret(int $length = 28): string
