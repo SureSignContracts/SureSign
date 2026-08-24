@@ -407,4 +407,117 @@ class AuthRateLimitingTest extends TestCase
             'password' => 'correct-password',
         ])->assertStatus(200);
     }
+
+    // ── Cloudflare edge trust (production topology: Cloudflare → Dokploy
+    // Traefik → this app's nginx → Laravel) — added August 24, 2026 after a
+    // live production investigation found Laravel resolving the Cloudflare
+    // edge address instead of the real visitor once Traefik itself was fixed
+    // to stop discarding the real forwarded chain. See bootstrap/app.php's
+    // trustProxies() docblock. ────────────────────────────────────────────
+
+    /**
+     * The full verified production chain: a real client through Cloudflare
+     * (edge IP 172.64.213.136, inside Cloudflare's published 172.64.0.0/13)
+     * through our own trusted nginx/Traefik private hop. REMOTE_ADDR is the
+     * private nginx container address (as in every other test above);
+     * X-Forwarded-For carries the real client first, then the Cloudflare
+     * edge — exactly the shape nginx's own $proxy_add_x_forwarded_for
+     * produces from what Traefik forwards. Laravel must peel through BOTH
+     * trusted hops and resolve the real client, not the Cloudflare edge.
+     */
+    public function test_forwarded_for_header_through_a_trusted_cloudflare_edge_resolves_the_real_client(): void
+    {
+        $this->makeUser('behind-cloudflare@example.com', 'correct-password');
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->withServerVariables([
+                'REMOTE_ADDR' => '172.18.0.5', // simulated nginx container IP
+                'HTTP_X_FORWARDED_FOR' => '198.51.100.10, 172.64.213.136', // real client, Cloudflare edge
+            ])->postJson('/api/auth/login', [
+                'email' => 'behind-cloudflare@example.com',
+                'password' => 'wrong',
+            ])->assertStatus(401);
+        }
+        $this->withServerVariables([
+            'REMOTE_ADDR' => '172.18.0.5',
+            'HTTP_X_FORWARDED_FOR' => '198.51.100.10, 172.64.213.136',
+        ])->postJson('/api/auth/login', [
+            'email' => 'behind-cloudflare@example.com',
+            'password' => 'wrong',
+        ])->assertStatus(429);
+
+        // A second real client, routed through a DIFFERENT Cloudflare edge
+        // address (as real Cloudflare traffic does — the edge address is not
+        // stable even within one visitor's session) must not share client
+        // A's bucket, proving resolution keyed off the real client, not the
+        // rotating Cloudflare edge.
+        $this->withServerVariables([
+            'REMOTE_ADDR' => '172.18.0.5',
+            'HTTP_X_FORWARDED_FOR' => '198.51.100.20, 162.158.216.200',
+        ])->postJson('/api/auth/login', [
+            'email' => 'behind-cloudflare@example.com',
+            'password' => 'correct-password',
+        ])->assertStatus(200);
+    }
+
+    /**
+     * The exact IPv6 shape observed in real production traffic during the
+     * investigation: a real IPv6 visitor forwarded through a Cloudflare
+     * IPv6 edge (2400:cb00::/32, one of Cloudflare's published ranges).
+     */
+    public function test_forwarded_for_header_through_a_trusted_cloudflare_ipv6_edge_resolves_the_real_ipv6_client(): void
+    {
+        $this->makeUser('ipv6-client@example.com', 'correct-password');
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->withServerVariables([
+                'REMOTE_ADDR' => '172.18.0.5',
+                'HTTP_X_FORWARDED_FOR' => '2001:4453:3a6:5800:c7f:6194:7c24:7de1, 2400:cb00:1234::1',
+            ])->postJson('/api/auth/login', [
+                'email' => 'ipv6-client@example.com',
+                'password' => 'wrong',
+            ])->assertStatus(401);
+        }
+        $this->withServerVariables([
+            'REMOTE_ADDR' => '172.18.0.5',
+            'HTTP_X_FORWARDED_FOR' => '2001:4453:3a6:5800:c7f:6194:7c24:7de1, 2400:cb00:1234::1',
+        ])->postJson('/api/auth/login', [
+            'email' => 'ipv6-client@example.com',
+            'password' => 'wrong',
+        ])->assertStatus(429);
+    }
+
+    /**
+     * A direct, untrusted caller cannot bypass the limiter by forging a
+     * leading X-Forwarded-For entry that merely LOOKS like a plausible
+     * client/proxy pair — the same protection test_spoofed_forwarded_for_header
+     * _from_an_untrusted_ip_cannot_bypass_the_login_limiter() already proves
+     * for a single forged value, extended here to confirm today's Cloudflare
+     * trust addition didn't widen what an untrusted direct caller can control:
+     * REMOTE_ADDR is a genuine public IP (not private, not a Cloudflare
+     * range), so it is never stripped, and remains the resolved client
+     * regardless of any forged chain the caller supplies ahead of it.
+     */
+    public function test_spoofed_forwarded_for_chain_from_an_untrusted_ip_still_cannot_bypass_the_login_limiter(): void
+    {
+        $this->makeUser('spoof-chain-target@example.com', 'correct-password');
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->withServerVariables([
+                'REMOTE_ADDR' => '203.0.113.77', // genuine untrusted public IP
+                'HTTP_X_FORWARDED_FOR' => "1.2.3.{$i}, 172.64.213.136", // forged client + a real Cloudflare edge IP
+            ])->postJson('/api/auth/login', [
+                'email' => 'spoof-chain-target@example.com',
+                'password' => 'wrong',
+            ])->assertStatus(401);
+        }
+
+        $this->withServerVariables([
+            'REMOTE_ADDR' => '203.0.113.77',
+            'HTTP_X_FORWARDED_FOR' => '1.2.3.99, 172.64.213.136',
+        ])->postJson('/api/auth/login', [
+            'email' => 'spoof-chain-target@example.com',
+            'password' => 'wrong',
+        ])->assertStatus(429);
+    }
 }
