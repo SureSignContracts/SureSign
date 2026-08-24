@@ -392,6 +392,68 @@ class UserController extends Controller
         return response()->json(['message' => 'User removed.']);
     }
 
+    /**
+     * Bulk Remove — same per-user removal path as destroy() above, just fed
+     * from a list of ids instead of one route id, for the Users page's
+     * multi-select "Remove Selected" action (e.g. clearing out a batch of
+     * test/invited accounts without removing them one at a time). Mirrors
+     * bulkInvite()'s partial-success shape: a bad id in the batch never
+     * aborts the rest — each row is checked independently and the response
+     * reports exactly which were removed and which weren't, with a reason.
+     * A soft-delete (same as destroy()) — recoverable via restore(), not a
+     * permanent purge.
+     */
+    public function bulkRemove(Request $request)
+    {
+        $validated = $request->validate([
+            'ids'   => 'required|array|min:1|max:100',
+            'ids.*' => 'integer',
+        ]);
+
+        // Dedupe within the batch — a pasted/checkbox-driven id list
+        // shouldn't ever repeat, but stay defensive regardless.
+        $ids = array_values(array_unique($validated['ids']));
+
+        $removed = [];
+        $failed = [];
+
+        foreach ($ids as $id) {
+            if ((int) $id === Auth::id()) {
+                $failed[] = ['id' => $id, 'reason' => 'You cannot remove your own account.'];
+                continue;
+            }
+
+            $user = User::find($id);
+
+            if (! $user) {
+                $failed[] = ['id' => $id, 'reason' => 'User not found.'];
+                continue;
+            }
+
+            // Re-checked per row (not just once up front) — removing one
+            // Super Admin in this same batch can make the next one in the
+            // list newly "the last" active Super Admin.
+            if ($this->isLastActiveSuperAdmin($user)) {
+                $failed[] = ['id' => $id, 'email' => $user->email, 'reason' => 'Cannot remove the last Super Admin.'];
+                continue;
+            }
+
+            $user->delete();
+
+            ActivityLog::record('user.removed', "Removed {$user->email}", Auth::user(), $user);
+
+            $removed[] = ['id' => $user->id, 'email' => $user->email];
+        }
+
+        return response()->json([
+            'message' => count($removed) . ' of ' . count($ids) . ' user(s) removed.',
+            'data'    => [
+                'removed' => $removed,
+                'failed'  => $failed,
+            ],
+        ]);
+    }
+
     // ── Verification ─────────────────────────────────────────────────────
 
     public function verifyEmail(string $id)

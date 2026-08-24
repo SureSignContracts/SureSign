@@ -895,6 +895,7 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
     Route::middleware(['role:Super Admin', 'throttle:30,1'])->group(function () {
         Route::post('users/invite', [UserController::class, 'invite']);
         Route::post('users/bulk-invite', [UserController::class, 'bulkInvite']);
+        Route::post('users/bulk-remove', [UserController::class, 'bulkRemove']);
         Route::apiResource('users', UserController::class)->except(['store']);
         Route::post('users/{id}/verify-email',         [UserController::class, 'verifyEmail']);
         Route::post('users/{id}/unverify-email',       [UserController::class, 'unverifyEmail']);

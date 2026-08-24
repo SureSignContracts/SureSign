@@ -69,7 +69,7 @@ export default function PaginationBar({
             <button
               key={p}
               onClick={() => onPage(p)}
-              className="w-7 h-7 rounded-lg text-xs font-medium transition-colors"
+              className={`w-7 h-7 rounded-lg text-xs font-medium transition-colors ${p === page ? '' : 'hover:bg-[var(--bg-hover)]'}`}
               style={
                 p === page
                   ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }

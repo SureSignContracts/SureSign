@@ -17,6 +17,7 @@ import toast from '@/lib/toast';
 import PaginationBar from '@/components/ui/PaginationBar';
 import Toggle from '@/components/ui/Toggle';
 import Select from '@/components/ui/Select';
+import Checkbox from '@/components/ui/Checkbox';
 import { Badge, Tone } from '@/components/ui/Badge';
 import { useUserInheritedSubscription } from '@/hooks/useBilling';
 import { SubscriptionSummaryView } from '@/types/subscriptionIntelligence';
@@ -719,6 +720,8 @@ export default function AdminUsersPage() {
   const [manageUser, setManageUser]     = useState<AdminUser | null>(null);
   const [passwordUser, setPasswordUser]   = useState<AdminUser | null>(null);
   const [passwordResult, setPasswordResult] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds]   = useState<number[]>([]);
+  const [confirmingBulkRemove, setConfirmingBulkRemove] = useState(false);
   const qc = useQueryClient();
 
   // Defense-in-depth: nav hiding already keeps non-Super-Admins from seeing
@@ -824,6 +827,30 @@ export default function AdminUsersPage() {
     },
   });
 
+  // Users page multi-select "Remove Selected" — mirrors bulkInviteMutation's
+  // partial-success shape (UserController::bulkRemove()). A soft-delete,
+  // same as removing one user at a time — recoverable, not a purge.
+  const bulkRemoveMutation = useMutation({
+    mutationFn: (ids: number[]) => api.post('/users/bulk-remove', { ids }).then(r => r.data),
+    onSuccess: (res: any) => {
+      qc.invalidateQueries({ queryKey: ['admin-users'] });
+      const removed: { id: number; email: string }[] = res?.data?.removed ?? [];
+      const failed: { id: number; email?: string; reason: string }[] = res?.data?.failed ?? [];
+      setSelectedIds([]);
+      setConfirmingBulkRemove(false);
+      if (failed.length === 0) {
+        toast.success(res?.message ?? `${removed.length} user(s) removed.`);
+      } else {
+        // Partial-success honesty — never let a mixed result read as a
+        // clean success (Error Handling Standard).
+        toast.error(`${res?.message ?? ''} ${failed.length} could not be removed: ${failed.map(f => f.reason).join(' ')}`.trim());
+      }
+    },
+    onError: (e: any) => {
+      toast.error(getErrorMessage(e, 'Failed to remove selected users.'));
+    },
+  });
+
   // Generic action mutation for the simple POST /users/{id}/{action} endpoints.
   const actionMutation = useMutation({
     mutationFn: ({ id, action, payload }: { id: number; action: string; payload?: Record<string, unknown> }) =>
@@ -893,6 +920,56 @@ export default function AdminUsersPage() {
         )}
       />
 
+      {/* Bulk selection toolbar — only shown once a row is checked, mirrors
+          the invite modal's partial-success reporting via toast on completion */}
+      {selectedIds.length > 0 && (
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+          <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+            {selectedIds.length} user{selectedIds.length === 1 ? '' : 's'} selected
+          </span>
+          <div className="flex items-center gap-2">
+            {confirmingBulkRemove ? (
+              <>
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Remove {selectedIds.length} user{selectedIds.length === 1 ? '' : 's'}?</span>
+                <button
+                  onClick={() => bulkRemoveMutation.mutate(selectedIds)}
+                  disabled={bulkRemoveMutation.isPending}
+                  className="text-xs px-3 py-1.5 rounded-lg font-medium text-white disabled:opacity-60"
+                  style={{ backgroundColor: '#ef4444' }}
+                >
+                  {bulkRemoveMutation.isPending ? 'Removing…' : 'Confirm'}
+                </button>
+                <button
+                  onClick={() => setConfirmingBulkRemove(false)}
+                  className="text-xs px-3 py-1.5 rounded-lg font-medium"
+                  style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-secondary)' }}
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => setSelectedIds([])}
+                  className="text-xs px-3 py-1.5 rounded-lg font-medium"
+                  style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-secondary)' }}
+                >
+                  Clear
+                </button>
+                <button
+                  onClick={() => setConfirmingBulkRemove(true)}
+                  className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium"
+                  style={{ backgroundColor: 'rgba(239,68,68,0.12)', color: '#ef4444' }}
+                >
+                  <Trash2 size={12} />
+                  Remove selected
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Filters row */}
       <div className="flex flex-col gap-3 sm:flex-row">
         <div className="flex gap-1 p-1 rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
@@ -928,6 +1005,25 @@ export default function AdminUsersPage() {
         <table className="w-full min-w-[820px]">
           <thead>
             <tr style={{ backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
+                <th className="w-10 px-4 py-3">
+                  {(() => {
+                    const selectableIds = users.filter(u => u.id !== currentUser?.id).map(u => u.id);
+                    const selectedOnPage = selectableIds.filter(id => selectedIds.includes(id));
+                    return (
+                      <Checkbox
+                        title="Select all on this page"
+                        aria-label="Select all users on this page"
+                        checked={selectableIds.length > 0 && selectedOnPage.length === selectableIds.length}
+                        indeterminate={selectedOnPage.length > 0 && selectedOnPage.length < selectableIds.length}
+                        onChange={checked =>
+                          setSelectedIds(checked
+                            ? Array.from(new Set([...selectedIds, ...selectableIds]))
+                            : selectedIds.filter(id => !selectableIds.includes(id)))
+                        }
+                      />
+                    );
+                  })()}
+                </th>
               {['User', 'Role', 'Status', 'Organisation', 'Joined', 'Last Active', ''].map((h, i) => (
                 <th key={i} className="text-left px-4 py-3 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{h}</th>
               ))}
@@ -937,7 +1033,7 @@ export default function AdminUsersPage() {
             {isLoading ? (
               [...Array(4)].map((_, i) => (
                 <tr key={i} style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)' }}>
-                  {[...Array(7)].map((_, j) => (
+                  {[...Array(8)].map((_, j) => (
                     <td key={j} className="px-4 py-3">
                       <div className="h-4 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)', width: j === 0 ? '60%' : '40%' }} />
                     </td>
@@ -946,7 +1042,7 @@ export default function AdminUsersPage() {
               ))
             ) : users.length === 0 ? (
               <tr style={{ backgroundColor: 'var(--bg-surface)' }}>
-                <td colSpan={6} className="text-center py-16">
+                <td colSpan={8} className="text-center py-16">
                   <Users size={24} className="mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
                   <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                     {search || statusFilter !== 'all' ? 'No users match your filter.' : 'No users yet.'}
@@ -966,6 +1062,15 @@ export default function AdminUsersPage() {
                     opacity: u.is_active && !u.banned_at ? 1 : 0.6,
                   }}
                 >
+                  <td className="px-4 py-3">
+                    <Checkbox
+                      disabled={u.id === currentUser?.id}
+                      title={u.id === currentUser?.id ? "You can't remove your own account." : undefined}
+                      aria-label={`Select ${u.name}`}
+                      checked={selectedIds.includes(u.id)}
+                      onChange={checked => setSelectedIds(checked ? [...selectedIds, u.id] : selectedIds.filter(id => id !== u.id))}
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-xs font-bold transition-transform duration-200 group-hover:-translate-y-0.5"
