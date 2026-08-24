@@ -7,6 +7,7 @@ import api from '@/lib/api';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import RecoveryShell from '@/components/auth/RecoveryShell';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
+import PasswordStrengthChecker, { checkPassword, isPasswordValid } from '@/components/ui/PasswordStrengthChecker';
 
 const EASE = 'cubic-bezier(0.32, 0.72, 0, 1)';
 
@@ -27,6 +28,10 @@ function ResetPasswordForm() {
     e.preventDefault();
     setError('');
 
+    if (!isPasswordValid(checkPassword(password))) {
+      setError('Please choose a password that meets all the requirements below.');
+      return;
+    }
     if (password !== passwordConfirmation) {
       setError('Passwords do not match.');
       return;
@@ -107,9 +112,6 @@ function ResetPasswordForm() {
                   {showPw ? <EyeOff size={15} strokeWidth={1.75} /> : <Eye size={15} strokeWidth={1.75} />}
                 </button>
               </div>
-              <p className="text-xs" style={{ color: '#a3a3a3' }}>
-                Use at least 15 characters. Longer passphrases are more secure.
-              </p>
             </div>
 
             <div className="space-y-1.5">
@@ -127,6 +129,8 @@ function ResetPasswordForm() {
                 style={{ color: '#0f0f0f', transition: `border-color 300ms ${EASE}, background-color 300ms ${EASE}` }}
               />
             </div>
+
+            <PasswordStrengthChecker password={password} confirmPassword={passwordConfirmation} showConfirmMatch />
 
             <button
               type="submit"

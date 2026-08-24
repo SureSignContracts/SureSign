@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/authStore';
 import api from '@/lib/api';
 import toast from '@/lib/toast';
 import { getErrorMessage } from '@/lib/getErrorMessage';
+import PasswordStrengthChecker, { checkPassword, isPasswordValid } from '@/components/ui/PasswordStrengthChecker';
 
 // Rendered instead of the normal app shell whenever the logged-in user's
 // `must_change_password` flag is set (a Super Admin forced a reset, or set
@@ -24,6 +25,10 @@ export default function ForcePasswordChangeGate() {
     e.preventDefault();
     setError('');
 
+    if (!isPasswordValid(checkPassword(password))) {
+      setError('Please choose a password that meets all the requirements below.');
+      return;
+    }
     if (password !== confirm) {
       setError('Passwords do not match.');
       return;
@@ -97,9 +102,7 @@ export default function ForcePasswordChangeGate() {
               style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
             />
           </div>
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            Use at least 15 characters. Longer passphrases are more secure.
-          </p>
+          <PasswordStrengthChecker password={password} confirmPassword={confirm} showConfirmMatch />
           <button
             type="submit"
             disabled={saving}
