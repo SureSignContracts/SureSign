@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Rules\DiffersFromCurrentPassword;
 use App\Services\CurrencyService;
 use App\Services\EmailVerificationService;
+use App\Services\NotificationService;
 use App\Services\Organizations\AuthenticatedWorkspaceContextService;
 use App\Services\TimezoneResolver;
 use App\Support\Auth\PasswordSecurityNotifier;
@@ -54,7 +55,16 @@ class AuthController extends Controller
             ], 403);
         }
 
+        // Captured before the update below overwrites it — this is what
+        // makes the notification below fire exactly once, on the genuinely
+        // first login, never on every subsequent one.
+        $isFirstLogin = $user->last_login_at === null;
+
         $user->update(['last_login_at' => now()]);
+
+        if ($isFirstLogin) {
+            $this->notifyPlatformOperatorsOfInvitedUserFirstLogin($user);
+        }
 
         $token = $user->createToken('suresign-token')->plainTextToken;
 
@@ -71,6 +81,47 @@ class AuthController extends Controller
             'token' => $token,
             'user'  => $this->userResource($user),
         ]);
+    }
+
+    /**
+     * Notifies every Super Admin/Admin the first time an admin-invited user
+     * actually logs in — never for a self-registered/onboarded account, and
+     * never on that same user's second-or-later login (see the
+     * `$isFirstLogin` guard at the call site). "Invited" here means this
+     * exact account was created via UserController::invite()/bulkInvite()
+     * — checked via the 'user.invited' ActivityLog entry those methods
+     * record on the account, not by role or organisation membership, since
+     * an invited account can hold any of the allowed roles. Best-effort,
+     * never fatal — this must never turn an otherwise-successful login into
+     * an error.
+     */
+    private function notifyPlatformOperatorsOfInvitedUserFirstLogin(User $user): void
+    {
+        try {
+            $wasInvited = ActivityLog::where('action', 'user.invited')
+                ->where('subject_type', User::class)
+                ->where('subject_id', $user->id)
+                ->exists();
+
+            if (!$wasInvited) {
+                return;
+            }
+
+            NotificationService::sendToPlatformOperators(
+                NotificationService::INVITED_USER_FIRST_LOGIN,
+                'Invited user logged in for the first time',
+                "{$user->name} ({$user->email}) accepted their invitation and just logged in for the first time.",
+                ['user_id' => $user->id],
+                ['action_url' => '/admin/users']
+            );
+        } catch (\Throwable $e) {
+            // Must never turn an otherwise-successful login into an error —
+            // same discipline as NotificationService::sendToPlatformOperators()
+            // itself, extended to cover this method's own ActivityLog lookup.
+            \Illuminate\Support\Facades\Log::warning(
+                "AuthController::notifyPlatformOperatorsOfInvitedUserFirstLogin: exception for user {$user->id}: " . $e->getMessage()
+            );
+        }
     }
 
     public function logout(Request $request)

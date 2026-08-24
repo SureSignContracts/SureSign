@@ -60,6 +60,14 @@ class NotificationService
     public const TOUR_MILESTONE_FIRST            = 'tour_milestone_first';
     public const TOUR_MILESTONE_GETTING_STARTED  = 'tour_milestone_getting_started';
     public const TOUR_MILESTONE_ALL_COMPLETE     = 'tour_milestone_all_complete';
+    // Fires once, the first time an admin-invited user actually logs in
+    // (AuthController::login()) — deliberately not invitation acceptance
+    // (InvitationService::accept()), which only proves a password was set,
+    // not that the person ever came back and used the product. Every
+    // Super Admin/Admin is notified (see sendToPlatformOperators()) —
+    // never a self-registered/onboarded user, only one that originated
+    // from an explicit UserController::invite()/bulkInvite() call.
+    public const INVITED_USER_FIRST_LOGIN = 'invited_user_first_login';
 
     /**
      * Create a manual (non-operational) notification.
@@ -192,6 +200,36 @@ class NotificationService
             }
         } catch (\Throwable $e) {
             Log::warning("NotificationService::sendToOrganization: exception sending event '{$type}' for organization {$organization->id}: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Personal in-app notification to every platform operator (Super
+     * Admin/Admin) — the narrowest platform-wide recipient set this app has
+     * a mechanism for (there's no separate "support team"/"ops team" user
+     * group; every Super Admin/Admin already has full access to whatever
+     * these events are about). A plain relational lookup rather than
+     * Spatie's role() scope, which throws RoleDoesNotExist if a role name
+     * has never been created in the roles table (e.g. a fresh database with
+     * only Client seeded) — this must never break the caller's own
+     * already-successful action just because no admin account exists yet.
+     * Never rethrows, same discipline as sendToOrganization().
+     */
+    public static function sendToPlatformOperators(
+        string $type,
+        string $title,
+        string $message,
+        array  $data = [],
+        array  $meta = [],
+    ): void {
+        try {
+            $operators = User::whereHas('roles', fn ($q) => $q->whereIn('name', ['Super Admin', 'Admin']))->get();
+
+            foreach ($operators as $operator) {
+                self::send($operator, $type, $title, $message, $data, $meta);
+            }
+        } catch (\Throwable $e) {
+            Log::warning("NotificationService::sendToPlatformOperators: exception sending event '{$type}': " . $e->getMessage());
         }
     }
 }

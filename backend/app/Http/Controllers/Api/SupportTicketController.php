@@ -9,7 +9,6 @@ use App\Models\SupportTicket;
 use App\Models\SupportTicketMessage;
 use App\Models\SuresignSetting;
 use App\Models\TradePackage;
-use App\Models\User;
 use App\Services\EmailNotificationService;
 use App\Services\FileSecurityService;
 use App\Services\NotificationService;
@@ -217,23 +216,17 @@ class SupportTicketController extends Controller
     // place, not duplicated across both call sites.
     public static function notifySupportOperators(SupportTicket $ticket, string $type, string $title, string $message): void
     {
-        // A plain relational lookup rather than Spatie's role() scope, which
-        // throws RoleDoesNotExist if either role name has never been created
-        // in the roles table (e.g. a fresh database with only a Client role
-        // seeded so far) — this must never break ticket submission just
-        // because no admin account exists yet.
-        $operators = User::whereHas('roles', fn ($q) => $q->whereIn('name', ['Super Admin', 'Admin']))->get();
-
-        foreach ($operators as $operator) {
-            NotificationService::send(
-                $operator,
-                $type,
-                $title,
-                $message,
-                ['ticket_id' => $ticket->id, 'reference' => $ticket->reference],
-                ['action_url' => "/admin/support?ticket={$ticket->id}"]
-            );
-        }
+        // Delegates to NotificationService::sendToPlatformOperators() — the
+        // same "every Super Admin/Admin" recipient resolution this method
+        // originated, now shared with other platform-operator notifications
+        // (e.g. invited-user-first-login) rather than duplicated per module.
+        NotificationService::sendToPlatformOperators(
+            $type,
+            $title,
+            $message,
+            ['ticket_id' => $ticket->id, 'reference' => $ticket->reference],
+            ['action_url' => "/admin/support?ticket={$ticket->id}"]
+        );
     }
 
     /**
