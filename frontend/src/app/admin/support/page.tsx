@@ -15,6 +15,7 @@ import { SUPPORT_CATEGORIES, SUPPORT_STATUSES, SUPPORT_STATUS_LABELS, SUPPORT_ST
 import { formatDateTime } from '@/lib/dateTime';
 import { useAuthStore } from '@/store/authStore';
 import Select from '@/components/ui/Select';
+import PaginationBar from '@/components/ui/PaginationBar';
 import PlatformPageHero from '@/components/admin/PlatformPageHero';
 
 interface TicketSummary {
@@ -449,26 +450,16 @@ export default function AdminSupportPage() {
         </table>
       </div>
 
-      {data && data.last_page > 1 && (
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page <= 1}
-            className="text-xs font-medium disabled:opacity-40"
-            style={{ color: 'var(--gold)' }}
-          >
-            Previous
-          </button>
-          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Page {data.current_page} of {data.last_page}</span>
-          <button
-            onClick={() => setPage(p => Math.min(data.last_page, p + 1))}
-            disabled={page >= data.last_page}
-            className="text-xs font-medium disabled:opacity-40"
-            style={{ color: 'var(--gold)' }}
-          >
-            Next
-          </button>
-        </div>
+      {data && (
+        <PaginationBar
+          page={data.current_page}
+          lastPage={data.last_page}
+          total={data.total}
+          perPage={20}
+          onPage={setPage}
+          onPerPage={() => {}}
+          showPerPageSelect={false}
+        />
       )}
 
       {openTicketId && <TicketModal ticketId={openTicketId} onClose={closeModal} />}

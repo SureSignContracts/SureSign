@@ -7,7 +7,7 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   Search, FileText, Sparkles, Upload, X, ArrowRight, AlertTriangle,
-  Eye, Download, ExternalLink, ChevronLeft, ChevronRight, ChevronDown,
+  Eye, Download, ExternalLink, ChevronDown,
   Table2, FolderTree, Folder, FolderKanban,
 } from 'lucide-react';
 import api from '@/lib/api';
@@ -16,6 +16,7 @@ import DocumentPreviewModal, { type PreviewTarget } from '@/components/documents
 import EmptyState from '@/components/ui/EmptyState';
 import Select from '@/components/ui/Select';
 import Checkbox from '@/components/ui/Checkbox';
+import PaginationBar from '@/components/ui/PaginationBar';
 import { EASE, staggerDelay } from '@/lib/motion';
 
 // ── Types (mirrors OrganisationDocumentService::build()) ──────────────────
@@ -550,21 +551,20 @@ function DocumentsPage() {
               <div style={{ opacity: isFetching ? 0.6 : 1 }}>
                 <DocumentExplorer rows={rows} onPreview={openPreview} onDownload={downloadRow} onOpenSource={openSource} />
               </div>
-              {pagination && pagination.last_page > 1 && (
-                <div className="flex items-center justify-between pt-2">
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                    Page {pagination.current_page} of {pagination.last_page} ({pagination.total} documents). Explorer groups this page by project and module.
+              {pagination && (
+                <div className="pt-2">
+                  <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
+                    Explorer groups this page by project and module.
                   </p>
-                  <div className="flex gap-2 flex-shrink-0">
-                    <button disabled={pagination.current_page <= 1} onClick={() => setPage(pagination.current_page - 1)}
-                      className="p-2 rounded-lg disabled:opacity-40 transition-colors hover:bg-[var(--bg-hover)]" style={{ border: '1px solid var(--border)' }} aria-label="Previous page">
-                      <ChevronLeft size={14} />
-                    </button>
-                    <button disabled={pagination.current_page >= pagination.last_page} onClick={() => setPage(pagination.current_page + 1)}
-                      className="p-2 rounded-lg disabled:opacity-40 transition-colors hover:bg-[var(--bg-hover)]" style={{ border: '1px solid var(--border)' }} aria-label="Next page">
-                      <ChevronRight size={14} />
-                    </button>
-                  </div>
+                  <PaginationBar
+                    page={pagination.current_page}
+                    lastPage={pagination.last_page}
+                    total={pagination.total}
+                    perPage={pagination.per_page}
+                    onPage={setPage}
+                    onPerPage={() => {}}
+                    showPerPageSelect={false}
+                  />
                 </div>
               )}
             </>
@@ -623,21 +623,17 @@ function DocumentsPage() {
                 ))}
               </div>
 
-              {pagination && pagination.last_page > 1 && (
-                <div className="flex items-center justify-between pt-2">
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                    Page {pagination.current_page} of {pagination.last_page} ({pagination.total} documents)
-                  </p>
-                  <div className="flex gap-2">
-                    <button disabled={pagination.current_page <= 1} onClick={() => setPage(pagination.current_page - 1)}
-                      className="p-2 rounded-lg disabled:opacity-40 transition-colors hover:bg-[var(--bg-hover)]" style={{ border: '1px solid var(--border)' }} aria-label="Previous page">
-                      <ChevronLeft size={14} />
-                    </button>
-                    <button disabled={pagination.current_page >= pagination.last_page} onClick={() => setPage(pagination.current_page + 1)}
-                      className="p-2 rounded-lg disabled:opacity-40 transition-colors hover:bg-[var(--bg-hover)]" style={{ border: '1px solid var(--border)' }} aria-label="Next page">
-                      <ChevronRight size={14} />
-                    </button>
-                  </div>
+              {pagination && (
+                <div className="pt-2">
+                  <PaginationBar
+                    page={pagination.current_page}
+                    lastPage={pagination.last_page}
+                    total={pagination.total}
+                    perPage={pagination.per_page}
+                    onPage={setPage}
+                    onPerPage={() => {}}
+                    showPerPageSelect={false}
+                  />
                 </div>
               )}
             </>

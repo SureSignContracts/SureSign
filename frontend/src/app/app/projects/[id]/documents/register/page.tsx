@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { FileText, Search } from 'lucide-react';
-import Select from '@/components/ui/Select';
+import PaginationBar from '@/components/ui/PaginationBar';
 
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   drawing:       'Drawing',
@@ -29,8 +29,6 @@ const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
   programme:      { bg: 'rgba(236,72,153,0.12)',  text: '#f472b6' },
   other:          { bg: 'rgba(90,86,82,0.2)',     text: '#9a9490' },
 };
-
-const PER_PAGE_OPTIONS = [25, 50, 100];
 
 type RegisterEntry = {
   id: number;
@@ -137,15 +135,6 @@ export default function DocumentRegisterPage() {
           ))}
         </div>
 
-        {/* Per page */}
-        <Select
-          value={perPage}
-          onChange={e => { setPerPage(Number(e.target.value)); setPage(1); }}
-        >
-          {PER_PAGE_OPTIONS.map(n => (
-            <option key={n} value={n}>{n} per page</option>
-          ))}
-        </Select>
       </div>
 
       {/* Table */}
@@ -234,63 +223,15 @@ export default function DocumentRegisterPage() {
       </div>
 
       {/* Pagination */}
-      {!isLoading && lastPage > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
-            Page {meta?.current_page} of {lastPage} &mdash; {meta?.total} total
-          </p>
-          <div className="flex gap-2">
-            <button
-              disabled={page <= 1}
-              onClick={() => setPage(p => p - 1)}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity disabled:opacity-40"
-              style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}
-            >
-              Previous
-            </button>
-            {[...Array(Math.min(lastPage, 7))].map((_, i) => {
-              const pageNum = i + 1;
-              return (
-                <button
-                  key={pageNum}
-                  onClick={() => setPage(pageNum)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                  style={
-                    page === pageNum
-                      ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
-                      : { backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }
-                  }
-                >
-                  {pageNum}
-                </button>
-              );
-            })}
-            {lastPage > 7 && page < lastPage - 3 && (
-              <span className="px-1 text-xs self-center" style={{ color: 'var(--text-muted)' }}>…</span>
-            )}
-            {lastPage > 7 && (
-              <button
-                onClick={() => setPage(lastPage)}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                style={
-                  page === lastPage
-                    ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
-                    : { backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }
-                }
-              >
-                {lastPage}
-              </button>
-            )}
-            <button
-              disabled={page >= lastPage}
-              onClick={() => setPage(p => p + 1)}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity disabled:opacity-40"
-              style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}
-            >
-              Next
-            </button>
-          </div>
-        </div>
+      {!isLoading && meta && (
+        <PaginationBar
+          page={meta.current_page}
+          lastPage={lastPage}
+          total={meta.total}
+          perPage={perPage}
+          onPage={setPage}
+          onPerPage={n => { setPerPage(n); setPage(1); }}
+        />
       )}
     </div>
   );

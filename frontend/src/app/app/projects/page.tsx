@@ -13,12 +13,13 @@ import Select from '@/components/ui/Select';
 import { PROJECT_ORGANIZATION_ROLE_OPTIONS } from '@/lib/projectOrganizationRole';
 import {
   Plus, Search, FolderKanban, ChevronRight, X, AlertTriangle, CheckCircle2,
-  ChevronLeft, ArrowRight, LayoutGrid, LayoutList, Activity, Archive, RefreshCw,
+  ArrowRight, LayoutGrid, LayoutList, Activity, Archive, RefreshCw,
   FolderPlus, Check, ArrowUpRight,
 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
+import PaginationBar from '@/components/ui/PaginationBar';
 import PageTourButton from '@/components/tours/PageTourButton';
 import { normalizeApiError } from '@/lib/normalizeApiError';
 
@@ -750,31 +751,17 @@ export default function AppProjectsPage() {
               )}
 
               {/* Pagination — shared by both card and table views */}
-              {!isLoading && rows.length > 0 && pagination && pagination.last_page > 1 && (
-                <div className="flex items-center justify-between pt-2">
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                    Page {pagination.current_page} of {pagination.last_page} ({pagination.total} projects)
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      disabled={pagination.current_page <= 1}
-                      onClick={() => setParam({ page: String(pagination.current_page - 1) })}
-                      className="p-2 rounded-lg disabled:opacity-40 transition-colors hover:bg-[var(--bg-hover)]"
-                      style={{ border: '1px solid var(--border)' }}
-                      aria-label="Previous page"
-                    >
-                      <ChevronLeft size={14} />
-                    </button>
-                    <button
-                      disabled={pagination.current_page >= pagination.last_page}
-                      onClick={() => setParam({ page: String(pagination.current_page + 1) })}
-                      className="p-2 rounded-lg disabled:opacity-40 transition-colors hover:bg-[var(--bg-hover)]"
-                      style={{ border: '1px solid var(--border)' }}
-                      aria-label="Next page"
-                    >
-                      <ChevronRight size={14} />
-                    </button>
-                  </div>
+              {!isLoading && rows.length > 0 && pagination && (
+                <div className="pt-2">
+                  <PaginationBar
+                    page={pagination.current_page}
+                    lastPage={pagination.last_page}
+                    total={pagination.total}
+                    perPage={pagination.per_page}
+                    onPage={p => setParam({ page: String(p) })}
+                    onPerPage={() => {}}
+                    showPerPageSelect={false}
+                  />
                 </div>
               )}
             </div>

@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { ArrowLeft, FileText, Search } from 'lucide-react';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
-import Select from '@/components/ui/Select';
+import PaginationBar from '@/components/ui/PaginationBar';
 
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   drawing:        'Drawing',
@@ -30,8 +30,6 @@ const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
   programme:      { bg: 'rgba(236,72,153,0.12)',  text: '#f472b6' },
   other:          { bg: 'rgba(90,86,82,0.2)',     text: '#9a9490' },
 };
-
-const PER_PAGE_OPTIONS = [25, 50, 100];
 
 type RegisterEntry = {
   id: number;
@@ -140,10 +138,6 @@ export default function DocumentRegisterPage() {
                 </button>
               ))}
             </div>
-
-            <Select value={perPage} onChange={e => { setPerPage(Number(e.target.value)); setPage(1); }}>
-              {PER_PAGE_OPTIONS.map(n => <option key={n} value={n}>{n} per page</option>)}
-            </Select>
           </div>
 
           {/* Table */}
@@ -215,45 +209,15 @@ export default function DocumentRegisterPage() {
           </div>
 
           {/* Pagination */}
-          {!isLoading && lastPage > 1 && (
-            <div className="flex items-center justify-between">
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                Page {meta?.current_page} of {lastPage} — {meta?.total} total
-              </p>
-              <div className="flex gap-2">
-                <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-40"
-                  style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
-                  Previous
-                </button>
-                {[...Array(Math.min(lastPage, 7))].map((_, i) => {
-                  const n = i + 1;
-                  return (
-                    <button key={n} onClick={() => setPage(n)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium"
-                      style={page === n
-                        ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
-                        : { backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
-                      {n}
-                    </button>
-                  );
-                })}
-                {lastPage > 7 && (
-                  <button onClick={() => setPage(lastPage)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium"
-                    style={page === lastPage
-                      ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }
-                      : { backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
-                    {lastPage}
-                  </button>
-                )}
-                <button disabled={page >= lastPage} onClick={() => setPage(p => p + 1)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-40"
-                  style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
-                  Next
-                </button>
-              </div>
-            </div>
+          {!isLoading && meta && (
+            <PaginationBar
+              page={meta.current_page}
+              lastPage={lastPage}
+              total={meta.total}
+              perPage={perPage}
+              onPage={setPage}
+              onPerPage={n => { setPerPage(n); setPage(1); }}
+            />
           )}
         </>
       )}

@@ -12,6 +12,7 @@ import { formatDate } from '@/lib/utils';
 import { ContactSupportForm } from '@/components/support/ContactSupportForm';
 import { EmergencyBanner } from '@/components/support/EmergencyBanner';
 import Select from '@/components/ui/Select';
+import PaginationBar from '@/components/ui/PaginationBar';
 import {
   SUPPORT_CATEGORIES, SUPPORT_STATUSES, SUPPORT_STATUS_LABELS, SUPPORT_STATUS_COLORS,
 } from '@/lib/supportContext';
@@ -163,25 +164,17 @@ function MyRequestsTab() {
           </div>
         )}
 
-        {data && data.last_page > 1 && (
-          <div className="flex items-center justify-between px-5 py-3" style={{ borderTop: '1px solid var(--border)' }}>
-            <button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page <= 1}
-              className="text-xs font-medium disabled:opacity-40"
-              style={{ color: 'var(--gold)' }}
-            >
-              Previous
-            </button>
-            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Page {data.current_page} of {data.last_page}</span>
-            <button
-              onClick={() => setPage(p => Math.min(data.last_page, p + 1))}
-              disabled={page >= data.last_page}
-              className="text-xs font-medium disabled:opacity-40"
-              style={{ color: 'var(--gold)' }}
-            >
-              Next
-            </button>
+        {data && (
+          <div className="px-5 py-3" style={{ borderTop: '1px solid var(--border)' }}>
+            <PaginationBar
+              page={data.current_page}
+              lastPage={data.last_page}
+              total={data.total}
+              perPage={10}
+              onPage={setPage}
+              onPerPage={() => {}}
+              showPerPageSelect={false}
+            />
           </div>
         )}
       </div>

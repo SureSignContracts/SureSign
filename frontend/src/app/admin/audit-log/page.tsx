@@ -6,6 +6,7 @@ import api from '@/lib/api';
 import { ClipboardList, Search, ChevronDown, ChevronRight, ShieldCheck, Users } from 'lucide-react';
 import EmptyState from '@/components/ui/EmptyState';
 import Select from '@/components/ui/Select';
+import PaginationBar from '@/components/ui/PaginationBar';
 import { useAuthStore } from '@/store/authStore';
 import PlatformPageHero from '@/components/admin/PlatformPageHero';
 
@@ -197,22 +198,16 @@ export default function AuditLogPage() {
       </div>
 
       {/* Pagination */}
-      {!isLoading && lastPage > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Page {data?.current_page} of {lastPage}</p>
-          <div className="flex gap-2">
-            <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-40"
-              style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
-              Previous
-            </button>
-            <button disabled={page >= lastPage} onClick={() => setPage(p => p + 1)}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-40"
-              style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
-              Next
-            </button>
-          </div>
-        </div>
+      {!isLoading && (
+        <PaginationBar
+          page={data?.current_page ?? page}
+          lastPage={lastPage}
+          total={total}
+          perPage={50}
+          onPage={setPage}
+          onPerPage={() => {}}
+          showPerPageSelect={false}
+        />
       )}
     </div>
   );
