@@ -120,4 +120,35 @@ class DocumentTemplate extends Model
             ->whereNotNull('file_path')
             ->first();
     }
+
+    /**
+     * P0 Security Remediation (August 24, 2026) — the scoped counterpart to
+     * findForGeneration() for a client-supplied explicit template ID (e.g.
+     * TradePackagePackageGenerationController's optional `template_id`
+     * override). Applies the EXACT same eligibility rules findForGeneration()
+     * already enforces for the automatic "best match" lookup — organisation-
+     * owned OR explicitly global, active, matching category/template_type,
+     * has a file — so an explicit ID can never be more permissive than the
+     * automatic path it stands in for. Returns null (never throws) for any
+     * ID that doesn't exist, belongs to a different (non-global)
+     * organisation, is inactive, or is the wrong category/type — the caller
+     * must treat all of these identically (a generic "not available"
+     * response) so a foreign template ID cannot be distinguished from a
+     * missing/ineligible one.
+     */
+    public static function findEligibleForGeneration(int $id, string $category, string $templateType, ?int $organizationId = null): ?self
+    {
+        return static::where('id', $id)
+            ->where('category', $category)
+            ->where('template_type', $templateType)
+            ->where('is_active', true)
+            ->whereNotNull('file_path')
+            ->where(function ($query) use ($organizationId) {
+                $query->where('is_global', true);
+                if ($organizationId) {
+                    $query->orWhere('organization_id', $organizationId);
+                }
+            })
+            ->first();
+    }
 }

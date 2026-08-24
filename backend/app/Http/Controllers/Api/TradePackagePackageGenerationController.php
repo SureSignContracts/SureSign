@@ -79,7 +79,21 @@ class TradePackagePackageGenerationController extends Controller
 
         $validated = $request->validate([
             'generation_type'          => 'nullable|string|in:master_package,separate_documents',
-            'template_id'              => 'nullable|integer|exists:document_templates,id',
+            // P0 Security Remediation follow-up (August 24, 2026) — deliberately
+            // NOT `exists:document_templates,id`. That global existence check
+            // let a nonexistent id fail HERE (Laravel's own validation-error
+            // response shape) while an existing-but-foreign id passed this
+            // check and instead fell through to generateMasterPackage()'s
+            // generic "no template found" response (a different shape) — an
+            // enumeration oracle revealing which template IDs exist platform-
+            // wide, even though their contents stayed protected. Existence AND
+            // eligibility are now BOTH decided solely by
+            // DocumentTemplate::findEligibleForGeneration(), which returns the
+            // same null (and therefore the same generic response) for a
+            // nonexistent id, a foreign organisation's id, an inactive id, or
+            // the wrong category/type — validation here only checks the
+            // primitive shape.
+            'template_id'              => 'nullable|integer',
             'selected_document_types'  => 'nullable|array',
             'selected_document_types.*'=> 'string|in:procurement_summary,tender_enquiry_letter,schedule_of_documents,subcontract_draft',
             'company_name'                  => 'nullable|string|max:255',
@@ -191,7 +205,26 @@ class TradePackagePackageGenerationController extends Controller
     private function generateMasterPackage($request, $tradePackage, $project, $user, $validated, $values, $projRef, $pkgCode, $dateStr, $storageDir)
     {
         if (!empty($validated['template_id'])) {
-            $template = DocumentTemplate::findOrFail($validated['template_id']);
+            // P0 Security Remediation (August 24, 2026) — this was previously
+            // App\Models\DocumentTemplate::findOrFail($validated['template_id']),
+            // an UNSCOPED lookup: request-level validation only proved the ID
+            // existed SOMEWHERE on the platform (exists:document_templates,id),
+            // never that it belonged to this project's own organisation or was
+            // explicitly global. An authenticated Client could supply any other
+            // organisation's private template_id and the server would read that
+            // organisation's file and generate a derived document from it inside
+            // the requester's own project. findEligibleForGeneration() applies
+            // the exact same organisation/global/active/category/type
+            // eligibility findForGeneration() already enforces for the
+            // automatic path below, so the explicit override can never be more
+            // permissive. Falls through to the existing "no template found"
+            // response for ANY ineligible reason (foreign, inactive, wrong
+            // type, or truly nonexistent) — deliberately indistinguishable, so
+            // a foreign template ID is never confirmed to exist via the
+            // response.
+            $template = DocumentTemplate::findEligibleForGeneration(
+                (int) $validated['template_id'], 'subcontract', 'master_package', $project->organization_id
+            );
         } else {
             $template = DocumentTemplate::findForGeneration('subcontract', 'master_package', $project->organization_id);
         }
