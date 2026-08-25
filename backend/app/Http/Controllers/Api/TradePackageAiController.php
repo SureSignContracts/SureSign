@@ -17,6 +17,7 @@ use App\Support\AI\AiWorkflow;
 use App\Services\CalendarSyncService;
 use App\Services\TradePackages\TradePackageIntelligenceSyncService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Sibling to AiController, scoped to Trade Package (subcontract) onboarding.
@@ -50,14 +51,6 @@ class TradePackageAiController extends Controller
             return response()->json(['message' => 'AI features are disabled.'], 403);
         }
 
-        $active = TradePackageAiAnalysis::where('trade_package_id', $tradePackage->id)
-            ->whereIn('status', ['pending', 'processing'])
-            ->exists();
-
-        if ($active) {
-            return response()->json(['message' => 'An analysis is already in progress for this trade package.'], 409);
-        }
-
         if (!$request->boolean('force_new')) {
             $existing = TradePackageAiAnalysis::where('trade_package_id', $tradePackage->id)
                 ->whereIn('status', ['completed', 'confirmed'])
@@ -82,22 +75,46 @@ class TradePackageAiController extends Controller
 
         $settings = SuresignSetting::instance();
 
-        $analysis = TradePackageAiAnalysis::create([
-            'trade_package_id' => $tradePackage->id,
-            'organization_id'  => $tradePackage->organization_id,
-            'project_id'       => $tradePackage->project_id,
-            'file_upload_id'   => $fileUpload->id,
-            'status'           => 'pending',
-            'progress_percent' => 5,
-            'progress_stage'   => 'queued',
-            'progress_message' => 'Waiting for an analysis worker',
-            'progress_updated_at' => now(),
-            'provider'         => $settings->ai_provider ?? 'anthropic',
-            'model'            => $settings->ai_model ?? config('ai.anthropic.model'),
-            'workflow'         => AiWorkflow::TRADE_PACKAGE_ANALYSIS,
-            'telemetry_schema_version' => AiTelemetrySchema::CURRENT_VERSION,
-            'created_by'       => $user->id,
-        ]);
+        // P2 TOCTOU fix — mirrors AiController::startAnalysis()'s identical
+        // fix exactly (see that method's own comment for the full
+        // rationale). Locking the parent TradePackage row serializes
+        // concurrent callers on the SAME package only; a different
+        // package's row is untouched. Dispatch happens only after this
+        // closure returns (i.e. after commit), never from inside it.
+        [$analysis, $conflict] = DB::transaction(function () use ($tradePackage, $fileUpload, $settings, $user) {
+            $locked = TradePackage::where('id', $tradePackage->id)->lockForUpdate()->first();
+
+            $activeAnalysis = TradePackageAiAnalysis::where('trade_package_id', $locked->id)
+                ->whereIn('status', ['pending', 'processing'])
+                ->exists();
+
+            if ($activeAnalysis) {
+                return [null, true];
+            }
+
+            $created = TradePackageAiAnalysis::create([
+                'trade_package_id' => $locked->id,
+                'organization_id'  => $locked->organization_id,
+                'project_id'       => $locked->project_id,
+                'file_upload_id'   => $fileUpload->id,
+                'status'           => 'pending',
+                'progress_percent' => 5,
+                'progress_stage'   => 'queued',
+                'progress_message' => 'Waiting for an analysis worker',
+                'progress_updated_at' => now(),
+                'provider'         => $settings->ai_provider ?? 'anthropic',
+                'model'            => $settings->ai_model ?? config('ai.anthropic.model'),
+                'workflow'         => AiWorkflow::TRADE_PACKAGE_ANALYSIS,
+                'telemetry_schema_version' => AiTelemetrySchema::CURRENT_VERSION,
+                'created_by'       => $user->id,
+            ]);
+
+            return [$created, false];
+        });
+
+        if ($conflict) {
+            return response()->json(['message' => 'An analysis is already in progress for this trade package.'], 409);
+        }
 
         AnalyseTradePackageWithAiJob::dispatch($analysis->id, $fileUpload->id, $user->id);
 

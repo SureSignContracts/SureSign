@@ -20,6 +20,7 @@ use App\Services\ContractIntelligenceSyncService;
 use App\Services\DocumentGenerationService;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class AiController extends Controller
 {
@@ -47,15 +48,6 @@ class AiController extends Controller
 
         if (!$this->analysisService->isEnabled()) {
             return response()->json(['message' => 'AI features are disabled.'], 403);
-        }
-
-        // One active analysis at a time per contract
-        $active = ContractAiAnalysis::where('contract_id', $contract->id)
-            ->whereIn('status', ['pending', 'processing'])
-            ->exists();
-
-        if ($active) {
-            return response()->json(['message' => 'An analysis is already in progress for this contract.'], 409);
         }
 
         // Return existing completed analysis info so frontend can offer "View Existing" option
@@ -102,22 +94,53 @@ class AiController extends Controller
 
         $settings = SuresignSetting::instance();
 
-        $analysis = ContractAiAnalysis::create([
-            'contract_id'     => $contract->id,
-            'organization_id' => $contract->organization_id,
-            'project_id'      => $contract->project_id,
-            'file_upload_id'  => $fileUpload->id,
-            'status'          => 'pending',
-            'progress_percent' => 5,
-            'progress_stage' => 'queued',
-            'progress_message' => 'Waiting for an analysis worker',
-            'progress_updated_at' => now(),
-            'provider'        => $settings->ai_provider ?? 'anthropic',
-            'model'           => $settings->ai_model ?? config('ai.anthropic.model'),
-            'workflow'        => AiWorkflow::CONTRACT_ANALYSIS,
-            'telemetry_schema_version' => AiTelemetrySchema::CURRENT_VERSION,
-            'created_by'      => $user->id,
-        ]);
+        // P2 TOCTOU fix — the active-analysis check and the analysis-row
+        // create must be atomic, or two concurrent requests for the same
+        // contract can both pass the check and both create a row (see
+        // project-context.md's AI Analysis TOCTOU entry). Locking the
+        // parent Contract row inside a short transaction serializes
+        // concurrent callers on the SAME contract only — a different
+        // contract's row is untouched, so unrelated analyses are never
+        // blocked by this. No provider call, credit reservation, or
+        // network/file work happens inside this transaction — only the
+        // re-check and the insert, kept as short as possible. Dispatch
+        // happens only after this closure returns (i.e. after commit),
+        // never from inside it, so the queue worker can never pick up the
+        // job before the claim is durably persisted.
+        [$analysis, $conflict] = DB::transaction(function () use ($contract, $fileUpload, $settings, $user) {
+            $locked = Contract::where('id', $contract->id)->lockForUpdate()->first();
+
+            $activeAnalysis = ContractAiAnalysis::where('contract_id', $locked->id)
+                ->whereIn('status', ['pending', 'processing'])
+                ->exists();
+
+            if ($activeAnalysis) {
+                return [null, true];
+            }
+
+            $created = ContractAiAnalysis::create([
+                'contract_id'     => $locked->id,
+                'organization_id' => $locked->organization_id,
+                'project_id'      => $locked->project_id,
+                'file_upload_id'  => $fileUpload->id,
+                'status'          => 'pending',
+                'progress_percent' => 5,
+                'progress_stage' => 'queued',
+                'progress_message' => 'Waiting for an analysis worker',
+                'progress_updated_at' => now(),
+                'provider'        => $settings->ai_provider ?? 'anthropic',
+                'model'           => $settings->ai_model ?? config('ai.anthropic.model'),
+                'workflow'        => AiWorkflow::CONTRACT_ANALYSIS,
+                'telemetry_schema_version' => AiTelemetrySchema::CURRENT_VERSION,
+                'created_by'      => $user->id,
+            ]);
+
+            return [$created, false];
+        });
+
+        if ($conflict) {
+            return response()->json(['message' => 'An analysis is already in progress for this contract.'], 409);
+        }
 
         AnalyseContractWithAiJob::dispatch($analysis->id, $fileUpload->id, $user->id);
 
