@@ -12,10 +12,13 @@ use App\Services\InvitationService;
 use App\Services\Intelligence\SubscriptionIntelligenceService;
 use App\Support\Auth\PasswordSecurityNotifier;
 use App\Support\Auth\SureSignPasswordPolicy;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Validator as ValidatorFacade;
 use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Role;
@@ -189,7 +192,15 @@ class UserController extends Controller
             $emails[] = $email;
         }
 
-        $invited = [];
+        // ── PASS 1 (preflight) — P2 Security Remediation ────────────────
+        // Determine exactly which recipients would genuinely proceed to
+        // inviteOneUser() WITHOUT creating/restoring any User, assigning
+        // any role, dispatching any job, or writing any ActivityLog. This
+        // is the authoritative recipient count the volume budget below
+        // consumes — never the raw submitted count, so a batch padded with
+        // duplicates/already-existing users can't cheaply exhaust an
+        // operator's quota without any real invitation ever happening.
+        $eligibleEmails = [];
         $failed = [];
 
         foreach ($emails as $email) {
@@ -202,6 +213,37 @@ class UserController extends Controller
                 continue;
             }
 
+            $eligibleEmails[] = $email;
+        }
+
+        // Zero-eligible must never consume quota or return 429 — a fully
+        // invalid/already-existing batch is a no-op for real invitation
+        // volume, so the existing partial-success response is returned
+        // exactly as before this fix.
+        if (count($eligibleEmails) === 0) {
+            return response()->json([
+                'message' => '0 of ' . count($emails) . ' invitation(s) sent.',
+                'data'    => ['invited' => [], 'failed' => $failed],
+            ], 201);
+        }
+
+        $reservation = $this->reserveBulkInviteRecipients($request->user()->id, count($eligibleEmails));
+
+        if (!$reservation['accepted']) {
+            $headers = $reservation['retry_after'] !== null
+                ? ['Retry-After' => $reservation['retry_after']]
+                : [];
+
+            return response()->json([
+                'message' => 'Too many invitations have been sent recently. Please try again later.',
+            ], 429, $headers);
+        }
+
+        // ── PASS 2 — unchanged invitation pipeline ──────────────────────
+        // Every email here already passed Pass 1's validation; no
+        // re-validation, no double-counting.
+        $invited = [];
+        foreach ($eligibleEmails as $email) {
             $invited[] = $this->inviteOneUser($email, $role, $includeBetaNotice);
         }
 
@@ -212,6 +254,120 @@ class UserController extends Controller
                 'failed'  => $failed,
             ],
         ], 201);
+    }
+
+    /**
+     * P2 Security Remediation (Bulk Invite Email-Volume Abuse) — atomically
+     * admits or rejects a batch of $eligibleCount recipients against three
+     * independent limiter dimensions (operator hour, operator day, platform
+     * hour), via one short global Cache::lock() around the whole read →
+     * decide → increment sequence. Deliberately NOT an increment-then-
+     * rollback design — see project-context.md's Bulk Invite entry for the
+     * full reasoning: Illuminate\Cache\RateLimiter::decrement() recreates
+     * an expired counter key via the same Cache::add() calls increment()
+     * uses, so decrementing after a window has already rolled over would
+     * start the NEW window at a negative count, briefly granting it extra
+     * headroom — a real, if narrow and self-healing, correctness gap this
+     * lock-serialized design avoids entirely by never incrementing
+     * anything that isn't going to be kept.
+     *
+     * The lock protects ONLY these six cache operations (3 reads, up to 3
+     * writes) — never any User/database/queue/email work, which all
+     * happens after this method returns and the lock has already been
+     * released.
+     *
+     * @return array{accepted: bool, retry_after: ?int}
+     */
+    /**
+     * Reads an env-backed recipient-limit config value as a positive
+     * integer, falling back to the given secure default whenever the
+     * configured value is not a positive integer — never a large
+     * configuration-validation system, just the smallest safe
+     * normalization against a typo'd/malformed env value.
+     */
+    private function positiveIntConfig(string $key, int $secureDefault): int
+    {
+        $value = (int) config($key);
+
+        return $value > 0 ? $value : $secureDefault;
+    }
+
+    private function reserveBulkInviteRecipients(int $operatorId, int $eligibleCount): array
+    {
+        $operatorHourKey  = "bulk-invite-recipients:operator:{$operatorId}:hour";
+        $operatorDayKey   = "bulk-invite-recipients:operator:{$operatorId}:day";
+        $platformHourKey  = 'bulk-invite-recipients:platform:hour';
+
+        // A malformed/zero/negative configured value would only ever bias
+        // this admission check toward rejecting MORE aggressively (never
+        // toward disabling it — see reserveBulkInviteRecipients()'s own
+        // $wouldExceed check below), so this is already safe from a pure
+        // security standpoint. Still fall back to the documented secure
+        // default rather than a broken value, purely to avoid a confusing
+        // "bulk invite silently rejects everything forever" operational
+        // trap from a simple env-var typo.
+        $operatorHourLimit = $this->positiveIntConfig('suresign.invitation.bulk_invite_operator_hourly_recipients', 500);
+        $operatorDayLimit  = $this->positiveIntConfig('suresign.invitation.bulk_invite_operator_daily_recipients', 2000);
+        $platformHourLimit = $this->positiveIntConfig('suresign.invitation.bulk_invite_platform_hourly_recipients', 1500);
+
+        try {
+            // block()'s callback form acquires and releases the lock via
+            // its own try/finally — the lock is never left held on any
+            // exit path out of the closure below.
+            return Cache::lock('bulk-invite-recipients:reservation-lock', 10)->block(3, function () use (
+                $operatorHourKey, $operatorDayKey, $platformHourKey,
+                $operatorHourLimit, $operatorDayLimit, $platformHourLimit,
+                $eligibleCount,
+            ) {
+                $operatorHourAttempts = RateLimiter::attempts($operatorHourKey);
+                $operatorDayAttempts  = RateLimiter::attempts($operatorDayKey);
+                $platformHourAttempts = RateLimiter::attempts($platformHourKey);
+
+                $wouldExceed = ($operatorHourAttempts + $eligibleCount > $operatorHourLimit)
+                    || ($operatorDayAttempts + $eligibleCount > $operatorDayLimit)
+                    || ($platformHourAttempts + $eligibleCount > $platformHourLimit);
+
+                if ($wouldExceed) {
+                    // Increment NOTHING — no rollback is ever needed
+                    // because nothing was ever incremented for a rejected
+                    // batch. Retry-After is taken from whichever dimension
+                    // is currently furthest from resetting, a safe
+                    // over-estimate that never tells the caller anything
+                    // about which specific dimension fired.
+                    //
+                    // availableIn() correctly returns 0 when a dimension's
+                    // window timer was never established at all (this
+                    // operator's very first attempt already exceeding a
+                    // limit on its own) — since all three dimensions are
+                    // only ever incremented together, either all three
+                    // timers exist or none do. Fall back to a full hour
+                    // in that case rather than omitting Retry-After
+                    // entirely; a client retrying then will simply be
+                    // re-evaluated correctly either way.
+                    $retryAfter = max(
+                        RateLimiter::availableIn($operatorHourKey),
+                        RateLimiter::availableIn($operatorDayKey),
+                        RateLimiter::availableIn($platformHourKey),
+                    );
+
+                    return ['accepted' => false, 'retry_after' => $retryAfter > 0 ? $retryAfter : 3600];
+                }
+
+                // All three fit — increment all three, back-to-back, no
+                // I/O between them.
+                RateLimiter::increment($operatorHourKey, 3600, $eligibleCount);
+                RateLimiter::increment($operatorDayKey, 86400, $eligibleCount);
+                RateLimiter::increment($platformHourKey, 3600, $eligibleCount);
+
+                return ['accepted' => true, 'retry_after' => null];
+            });
+        } catch (LockTimeoutException) {
+            // Lock contention itself exceeded the bounded wait — fail
+            // closed exactly like an exhausted counter, with the same
+            // generic response. Never bypass recipient limits just
+            // because the lock store is momentarily busy.
+            return ['accepted' => false, 'retry_after' => 3];
+        }
     }
 
     /**

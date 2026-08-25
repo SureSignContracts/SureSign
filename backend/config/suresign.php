@@ -84,6 +84,20 @@ return [
 
     'invitation' => [
         'link_expiry_days' => env('SURESIGN_INVITATION_LINK_EXPIRY_DAYS', 7),
+
+        // P2 Security Remediation (Bulk Invite Email-Volume Abuse) — the
+        // existing 30 requests/minute throttle on POST /users/bulk-invite
+        // controls REQUEST rate, not RECIPIENT volume (up to 100 recipients
+        // per request). These three limits are a recipient-aware budget on
+        // top of that unchanged request limiter, enforced atomically via a
+        // single global Cache::lock() around the admission decision (see
+        // UserController::reserveBulkInviteRecipients()) — never through a
+        // customer-facing/Super-Admin-UI-editable setting, since an abuse
+        // ceiling should not be raisable through the same account class it
+        // protects against.
+        'bulk_invite_operator_hourly_recipients'  => env('SURESIGN_BULK_INVITE_OPERATOR_HOURLY_RECIPIENTS', 500),
+        'bulk_invite_operator_daily_recipients'   => env('SURESIGN_BULK_INVITE_OPERATOR_DAILY_RECIPIENTS', 2000),
+        'bulk_invite_platform_hourly_recipients'  => env('SURESIGN_BULK_INVITE_PLATFORM_HOURLY_RECIPIENTS', 1500),
     ],
 
 ];
