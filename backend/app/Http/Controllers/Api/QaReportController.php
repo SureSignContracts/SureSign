@@ -16,6 +16,7 @@ use App\Services\TradePackages\WorkspaceNavigationResolver;
 use App\Support\Drawings\DrawingLinkableType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class QaReportController extends Controller
@@ -25,6 +26,37 @@ class QaReportController extends Controller
         $user = $request->user();
         if ($user->hasRole('Super Admin') || $user->hasRole('Admin')) return;
         if ($user->organization_id !== $subject->organization_id) abort(403, 'Access denied.');
+    }
+
+    /**
+     * Pre-Commit Nested Resource Integrity Check (P3 follow-up) — mirrors
+     * SnagController::authorizeProjectSnag() exactly (see that method's
+     * own docblock for the full rationale). Re-derives the QA Report's
+     * REAL parent project so a same-organisation but mismatched project
+     * ID in the URL can't address a report belonging to a different
+     * project.
+     */
+    private function authorizeProjectQaReport(Request $request, Project $project, QaReport $qaReport): void
+    {
+        $this->authorize($request, $qaReport);
+        if ($qaReport->project_id !== $project->id) {
+            abort(404, 'QA report not found for this project.');
+        }
+    }
+
+    /**
+     * P3 Security Remediation — mirrors SnagController::eligibleAssigneeRule()
+     * exactly (see that method's own docblock for the full evidence-based
+     * rationale). Applied to inspected_by here.
+     */
+    private function eligibleInspectorRule(int $organizationId): \Illuminate\Validation\Rules\Exists
+    {
+        return Rule::exists('users', 'id')->where(function ($query) use ($organizationId) {
+            $query->where('organization_id', $organizationId)
+                ->where('is_active', true)
+                ->whereNull('banned_at')
+                ->whereNull('deleted_at');
+        });
     }
 
     public function index(Request $request, Project $project)
@@ -58,7 +90,7 @@ class QaReportController extends Controller
             'title'              => 'required|string|max:255',
             'inspection_type'    => 'nullable|string|max:100',
             'area'               => 'nullable|string|max:255',
-            'inspected_by'       => 'nullable|integer|exists:users,id',
+            'inspected_by'       => ['nullable', 'integer', $this->eligibleInspectorRule($project->organization_id)],
             'inspection_date'    => 'nullable|date',
             'status'             => 'nullable|in:draft,open,failed,passed,closed',
             'result'             => 'nullable|string|max:100',
@@ -122,14 +154,14 @@ class QaReportController extends Controller
     // applied to MeetingMinutesController/SiteDiaryController/etc.
     public function show(Request $request, Project $project, QaReport $qaReport)
     {
-        $this->authorize($request, $qaReport);
+        $this->authorizeProjectQaReport($request, $project, $qaReport);
 
         return response()->json($qaReport->load(['creator:id,name', 'inspector:id,name']));
     }
 
     public function update(Request $request, Project $project, QaReport $qaReport)
     {
-        $this->authorize($request, $qaReport);
+        $this->authorizeProjectQaReport($request, $project, $qaReport);
 
         $oldStatus = $qaReport->status;
 
@@ -137,7 +169,13 @@ class QaReportController extends Controller
             'title'              => 'sometimes|string|max:255',
             'inspection_type'    => 'nullable|string|max:100',
             'area'               => 'nullable|string|max:255',
-            'inspected_by'       => 'nullable|integer|exists:users,id',
+            // Deliberately uses $qaReport->organization_id, NOT
+            // $project->organization_id — mirrors SnagController::update()'s
+            // identical reasoning: nothing verifies the URL's {project}
+            // segment actually matches $qaReport->project_id, so only the
+            // already-persisted organization_id on the record itself is
+            // authoritative.
+            'inspected_by'       => ['nullable', 'integer', $this->eligibleInspectorRule($qaReport->organization_id)],
             'inspection_date'    => 'nullable|date',
             // status/follow_up_required are NOT NULL columns whose DB
             // defaults only apply when the column is omitted from an
@@ -181,7 +219,7 @@ class QaReportController extends Controller
 
     public function destroy(Request $request, Project $project, QaReport $qaReport)
     {
-        $this->authorize($request, $qaReport);
+        $this->authorizeProjectQaReport($request, $project, $qaReport);
 
         $qaReport->delete();
         return response()->json(null, 204);
@@ -193,7 +231,7 @@ class QaReportController extends Controller
 
     public function attachments(Request $request, Project $project, QaReport $qaReport)
     {
-        $this->authorize($request, $qaReport);
+        $this->authorizeProjectQaReport($request, $project, $qaReport);
 
         return response()->json(
             (new RecordAttachmentService())->list($qaReport)
@@ -202,7 +240,7 @@ class QaReportController extends Controller
 
     public function uploadAttachment(Request $request, Project $project, QaReport $qaReport)
     {
-        $this->authorize($request, $qaReport);
+        $this->authorizeProjectQaReport($request, $project, $qaReport);
 
         $upload = (new RecordAttachmentService())->upload(
             $request, $project, $qaReport, $request->user(),
@@ -214,7 +252,7 @@ class QaReportController extends Controller
 
     public function deleteAttachment(Request $request, Project $project, QaReport $qaReport, FileUpload $fileUpload)
     {
-        $this->authorize($request, $qaReport);
+        $this->authorizeProjectQaReport($request, $project, $qaReport);
 
         (new RecordAttachmentService())->delete(
             $fileUpload, $qaReport, $project, $request->user(),

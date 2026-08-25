@@ -13,6 +13,7 @@ use App\Services\ProjectActivityService;
 use App\Support\Drawings\DrawingLinkableType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class SnagController extends Controller
 {
@@ -21,6 +22,58 @@ class SnagController extends Controller
         $user = $request->user();
         if ($user->hasRole('Super Admin') || $user->hasRole('Admin')) return;
         if ($user->organization_id !== $subject->organization_id) abort(403, 'Access denied.');
+    }
+
+    /**
+     * Pre-Commit Nested Resource Integrity Check (P3 follow-up, discovered
+     * during the assigned_to fix's own implementation) — re-derives the
+     * Snag's REAL parent project so a same-organisation but mismatched
+     * project ID in the URL can't address a Snag that actually belongs to
+     * a different project. Laravel's default (non-`->scoped()`) nested
+     * apiResource() routing binds {project} and {snagging} independently
+     * by primary key — it does NOT verify $snagging->project_id ===
+     * $project->id on its own. Mirrors the identical, already-established
+     * pattern in SiteDiaryController/MeetingMinutesController/RiskController/etc.
+     */
+    private function authorizeProjectSnag(Request $request, Project $project, Snag $snagging): void
+    {
+        $this->authorize($request, $snagging);
+        if ($snagging->project_id !== $project->id) {
+            abort(404, 'Snag not found for this project.');
+        }
+    }
+
+    /**
+     * P3 Security Remediation — assigned_to must reference a user
+     * eligible for THIS record's own organisation, not merely any
+     * platform-wide user row. A plain `exists:users,id` accepts any user
+     * ID regardless of organisation (including a platform operator whose
+     * organization_id is null), leaks that foreign user's name/id via the
+     * eager-loaded `assignee` relation, and never excludes a soft-deleted
+     * user (the raw `exists` rule bypasses Eloquent's SoftDeletes scope).
+     *
+     * Eligibility, evidence-based (never invented): same organization_id
+     * as the record; is_active and not banned — the same two criteria
+     * AppointmentAvailabilityService already uses elsewhere in this
+     * codebase to gate operational-reference eligibility
+     * ($user->is_active && !$user->isBanned()); and not soft-deleted.
+     * Deliberately does NOT require email_verified_at — no existing rule
+     * in this codebase ties that to reference eligibility.
+     *
+     * Laravel's own default validation message for `exists`
+     * ("The selected :attribute is invalid.") is reused as-is — a
+     * nonexistent ID and a foreign/ineligible ID are structurally
+     * indistinguishable to the caller, since both simply fail the same
+     * scoped existence check.
+     */
+    private function eligibleAssigneeRule(int $organizationId): \Illuminate\Validation\Rules\Exists
+    {
+        return Rule::exists('users', 'id')->where(function ($query) use ($organizationId) {
+            $query->where('organization_id', $organizationId)
+                ->where('is_active', true)
+                ->whereNull('banned_at')
+                ->whereNull('deleted_at');
+        });
     }
 
     public function index(Request $request, Project $project)
@@ -61,7 +114,7 @@ class SnagController extends Controller
             'category'    => 'nullable|string|max:100',
             'priority'    => 'nullable|in:low,medium,high,critical',
             'status'      => 'nullable|in:open,in_progress,ready_for_review,closed',
-            'assigned_to' => 'nullable|integer|exists:users,id',
+            'assigned_to' => ['nullable', 'integer', $this->eligibleAssigneeRule($project->organization_id)],
             'due_date'    => 'nullable|date',
             'notes'       => 'nullable|string',
             // Drawing Phase 7B1 — optional; absent behaves exactly as
@@ -129,14 +182,14 @@ class SnagController extends Controller
     // the same fix already applied to the other Delivery controllers.
     public function show(Request $request, Project $project, Snag $snagging)
     {
-        $this->authorize($request, $snagging);
+        $this->authorizeProjectSnag($request, $project, $snagging);
 
         return response()->json($snagging->load(['creator:id,name', 'assignee:id,name']));
     }
 
     public function update(Request $request, Project $project, Snag $snagging)
     {
-        $this->authorize($request, $snagging);
+        $this->authorizeProjectSnag($request, $project, $snagging);
 
         $snag = $snagging;
         $oldStatus = $snag->status;
@@ -153,7 +206,13 @@ class SnagController extends Controller
             // already applied to Rfi/SiteDiary/Meeting/QaReport).
             'priority'    => 'sometimes|in:low,medium,high,critical',
             'status'      => 'sometimes|in:open,in_progress,ready_for_review,closed',
-            'assigned_to' => 'nullable|integer|exists:users,id',
+            // Deliberately uses $snagging->organization_id, NOT
+            // $project->organization_id — nothing in this method (or
+            // authorize()) actually verifies the URL's {project} segment
+            // matches $snagging->project_id, so the only value that is
+            // definitely authoritative for this specific Snag is its own
+            // already-persisted organization_id, set once at creation.
+            'assigned_to' => ['nullable', 'integer', $this->eligibleAssigneeRule($snagging->organization_id)],
             'due_date'    => 'nullable|date',
             'notes'       => 'nullable|string',
         ]);
@@ -184,7 +243,7 @@ class SnagController extends Controller
 
     public function destroy(Request $request, Project $project, Snag $snagging)
     {
-        $this->authorize($request, $snagging);
+        $this->authorizeProjectSnag($request, $project, $snagging);
 
         $snagging->delete();
         return response()->json(null, 204);
@@ -196,7 +255,7 @@ class SnagController extends Controller
 
     public function attachments(Request $request, Project $project, Snag $snagging)
     {
-        $this->authorize($request, $snagging);
+        $this->authorizeProjectSnag($request, $project, $snagging);
 
         return response()->json(
             (new RecordAttachmentService())->list($snagging)
@@ -205,7 +264,7 @@ class SnagController extends Controller
 
     public function uploadAttachment(Request $request, Project $project, Snag $snagging)
     {
-        $this->authorize($request, $snagging);
+        $this->authorizeProjectSnag($request, $project, $snagging);
 
         $upload = (new RecordAttachmentService())->upload(
             $request, $project, $snagging, $request->user(),
@@ -217,7 +276,7 @@ class SnagController extends Controller
 
     public function deleteAttachment(Request $request, Project $project, Snag $snagging, FileUpload $fileUpload)
     {
-        $this->authorize($request, $snagging);
+        $this->authorizeProjectSnag($request, $project, $snagging);
 
         (new RecordAttachmentService())->delete(
             $fileUpload, $snagging, $project, $request->user(),
