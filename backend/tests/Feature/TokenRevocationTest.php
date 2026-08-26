@@ -299,4 +299,184 @@ class TokenRevocationTest extends TestCase
 
         $this->requestAs($stolenToken)->getJson('/api/auth/me')->assertStatus(401);
     }
+
+    // ── User Removal Token Revocation (UserController::destroy/bulkRemove) ─
+    //
+    // Removal alone (SoftDeletes) is not an authentication boundary: a
+    // still-valid token merely fails to resolve a soft-deleted user, but the
+    // exact same token becomes valid again the instant the row is restored
+    // (e.g. a later re-invite of the same email). These tests prove removal
+    // now durably revokes tokens up front, so a restore can never resurrect
+    // a pre-removal session.
+
+    public function test_single_remove_revokes_all_existing_tokens(): void
+    {
+        $this->makeAdmin('remove-admin1@example.com');
+        $user = $this->makeUser('remove-me1@example.com');
+        $this->loginAndGetToken('remove-me1@example.com');
+        $this->loginAndGetToken('remove-me1@example.com');
+        $this->assertSame(2, $user->tokens()->count());
+
+        $adminToken = $this->loginAndGetToken('remove-admin1@example.com');
+        $this->requestAs($adminToken)
+            ->deleteJson("/api/users/{$user->id}")
+            ->assertStatus(200);
+
+        $this->assertSame(0, User::withTrashed()->find($user->id)->tokens()->count());
+        $this->assertSoftDeleted('users', ['id' => $user->id]);
+    }
+
+    public function test_removed_users_old_token_returns_401(): void
+    {
+        $this->makeAdmin('remove-admin2@example.com');
+        $user = $this->makeUser('remove-me2@example.com');
+        $oldToken = $this->loginAndGetToken('remove-me2@example.com');
+
+        $adminToken = $this->loginAndGetToken('remove-admin2@example.com');
+        $this->requestAs($adminToken)
+            ->deleteJson("/api/users/{$user->id}")
+            ->assertStatus(200);
+
+        $this->requestAs($oldToken)->getJson('/api/auth/me')->assertStatus(401);
+    }
+
+    public function test_restoring_a_removed_user_does_not_revive_their_old_token(): void
+    {
+        $this->makeAdmin('remove-admin3@example.com');
+        $user = $this->makeUser('remove-me3@example.com');
+        $oldToken = $this->loginAndGetToken('remove-me3@example.com');
+
+        $adminToken = $this->loginAndGetToken('remove-admin3@example.com');
+        $this->requestAs($adminToken)
+            ->deleteJson("/api/users/{$user->id}")
+            ->assertStatus(200);
+
+        // Sanity: unusable while soft-deleted (SoftDeletingScope).
+        $this->requestAs($oldToken)->getJson('/api/auth/me')->assertStatus(401);
+
+        User::withTrashed()->find($user->id)->restore();
+
+        // The old token must still be dead — restore() alone must never
+        // resurrect a pre-removal session.
+        $this->requestAs($oldToken)->getJson('/api/auth/me')->assertStatus(401);
+    }
+
+    public function test_reinviting_a_removed_user_does_not_resurrect_their_old_token(): void
+    {
+        $this->fakeBrevoForInvite();
+        $this->makeAdmin('remove-admin4@example.com');
+        $user = $this->makeUser('remove-me4@example.com');
+        $oldToken = $this->loginAndGetToken('remove-me4@example.com');
+        $originalOrgId = $user->organization_id;
+
+        $adminToken = $this->loginAndGetToken('remove-admin4@example.com');
+        $this->requestAs($adminToken)
+            ->deleteJson("/api/users/{$user->id}")
+            ->assertStatus(200);
+
+        // Re-invite the exact same email — this is UserController::
+        // inviteOneUser()'s restore branch, the real production path a
+        // holder of the old token would be hoping to ride back in on.
+        $this->requestAs($adminToken)
+            ->postJson('/api/users/invite', ['email' => 'remove-me4@example.com', 'role' => 'Client'])
+            ->assertStatus(201);
+
+        $this->requestAs($oldToken)->getJson('/api/auth/me')->assertStatus(401);
+
+        // Existing organisation-preservation invariant is untouched by this
+        // fix — re-invite still restores the same organization_id.
+        $this->assertSame($originalOrgId, $user->fresh()->organization_id);
+    }
+
+    public function test_a_freshly_issued_token_works_normally_after_legitimate_restoration(): void
+    {
+        $this->fakeBrevoForInvite();
+        $this->makeAdmin('remove-admin5@example.com');
+        $user = $this->makeUser('remove-me5@example.com');
+        $this->loginAndGetToken('remove-me5@example.com');
+
+        $adminToken = $this->loginAndGetToken('remove-admin5@example.com');
+        $this->requestAs($adminToken)
+            ->deleteJson("/api/users/{$user->id}")
+            ->assertStatus(200);
+
+        $this->requestAs($adminToken)
+            ->postJson('/api/users/invite', ['email' => 'remove-me5@example.com', 'role' => 'Client'])
+            ->assertStatus(201);
+
+        // The restored account can still authenticate normally and get a
+        // brand-new, genuinely valid token — this fix only kills the OLD
+        // pre-removal token, not the account's ability to be used again.
+        $restored = $user->fresh();
+        $restored->forceFill(['password' => \Illuminate\Support\Facades\Hash::make('BrandNewPassw0rd!')])->save();
+        $newToken = $this->loginAndGetToken('remove-me5@example.com', 'BrandNewPassw0rd!');
+
+        $this->requestAs($newToken)->getJson('/api/auth/me')->assertStatus(200);
+    }
+
+    public function test_bulk_remove_revokes_tokens_for_every_successfully_removed_user(): void
+    {
+        $this->makeAdmin('remove-admin6@example.com');
+        $alice = $this->makeUser('bulk-remove-alice@example.com');
+        $bob = $this->makeUser('bulk-remove-bob@example.com');
+        $aliceToken = $this->loginAndGetToken('bulk-remove-alice@example.com');
+        $bobToken = $this->loginAndGetToken('bulk-remove-bob@example.com');
+
+        $adminToken = $this->loginAndGetToken('remove-admin6@example.com');
+        $this->requestAs($adminToken)
+            ->postJson('/api/users/bulk-remove', ['ids' => [$alice->id, $bob->id]])
+            ->assertStatus(200)
+            ->assertJsonCount(2, 'data.removed');
+
+        $this->requestAs($aliceToken)->getJson('/api/auth/me')->assertStatus(401);
+        $this->requestAs($bobToken)->getJson('/api/auth/me')->assertStatus(401);
+        $this->assertSame(0, User::withTrashed()->find($alice->id)->tokens()->count());
+        $this->assertSame(0, User::withTrashed()->find($bob->id)->tokens()->count());
+    }
+
+    public function test_bulk_remove_leaves_a_last_super_admin_rejected_rows_token_untouched(): void
+    {
+        $superAdmin = $this->makeAdmin('remove-admin7@example.com');
+        $otherUser = $this->makeUser('bulk-remove-other@example.com');
+        $superAdminToken = $this->loginAndGetToken('remove-admin7@example.com');
+
+        $response = $this->requestAs($superAdminToken)
+            ->postJson('/api/users/bulk-remove', ['ids' => [$otherUser->id, $superAdmin->id]])
+            ->assertStatus(200);
+
+        $response->assertJsonCount(1, 'data.removed')->assertJsonCount(1, 'data.failed');
+
+        // The last-Super-Admin row was rejected — it must remain active,
+        // not soft-deleted, and its token must still be valid (the fix
+        // must never revoke a token for a row the operation itself refused
+        // to remove).
+        $this->assertDatabaseHas('users', ['id' => $superAdmin->id, 'deleted_at' => null]);
+        $this->requestAs($superAdminToken)->getJson('/api/auth/me')->assertStatus(200);
+    }
+
+    public function test_normal_remove_leaves_organization_id_unchanged(): void
+    {
+        $this->makeAdmin('remove-admin8@example.com');
+        $user = $this->makeUser('remove-me8@example.com');
+        $originalOrgId = $user->organization_id;
+        $this->assertNotNull($originalOrgId);
+
+        $adminToken = $this->loginAndGetToken('remove-admin8@example.com');
+        $this->requestAs($adminToken)
+            ->deleteJson("/api/users/{$user->id}")
+            ->assertStatus(200);
+
+        $this->assertSame($originalOrgId, $user->fresh()->organization_id);
+    }
+
+    private function fakeBrevoForInvite(): void
+    {
+        \App\Models\SuresignSetting::instance()->update([
+            'brevo_api_key' => 'fake-brevo-key',
+            'email_sender_email' => 'noreply@suresigncontracts.app',
+            'support_email' => 'support@suresigncontracts.app',
+            'admin_email' => 'admin@suresigncontracts.app',
+        ]);
+        \Illuminate\Support\Facades\Http::fake(['api.brevo.com/*' => \Illuminate\Support\Facades\Http::response(['messageId' => 'fake-message-id'], 201)]);
+    }
 }

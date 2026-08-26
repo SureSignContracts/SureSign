@@ -317,7 +317,19 @@ class OrganizationController extends Controller
             return response()->json(['data' => $this->defaultBrandingResource()]);
         }
 
-        $org      = $user->organization;
+        // Invited-User Organisation Lifecycle hardening — a Client between
+        // accepting their invitation and completing onboarding legitimately
+        // has no organisation yet (organization_id is null by design; see
+        // that audit). There is nothing to resolve/create branding for, so
+        // return the same default resource platform operators get above —
+        // never dereference a null $org or create a BrandingSetting row
+        // with organization_id = NULL (branding_settings.organization_id is
+        // a NOT NULL FK, so that insert would throw).
+        $org = $user->organization;
+        if (!$org) {
+            return response()->json(['data' => $this->defaultBrandingResource()]);
+        }
+
         $branding = BrandingSetting::firstOrCreate(
             ['organization_id' => $org->id],
             ['primary_color' => '#0a0a0a', 'company_display_name' => $org->name]

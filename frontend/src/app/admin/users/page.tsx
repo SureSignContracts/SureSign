@@ -7,7 +7,7 @@ import Link from 'next/link';
 import {
   Users, UserPlus, Shield, Mail, Search, Copy, Check,
   Settings2, Trash2, X,
-  KeyRound, RotateCcw, LogOut, Compass, ShieldCheck, ExternalLink,
+  KeyRound, RotateCcw, LogOut, Compass, ShieldCheck, ExternalLink, UserMinus,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
@@ -24,6 +24,7 @@ import { useUserInheritedSubscription } from '@/hooks/useBilling';
 import { SubscriptionSummaryView } from '@/types/subscriptionIntelligence';
 import UsageMeter from '@/components/billing/intelligence/UsageMeter';
 import { getErrorMessage } from '@/lib/getErrorMessage';
+import { normalizeApiError } from '@/lib/normalizeApiError';
 import PlatformPageHero from '@/components/admin/PlatformPageHero';
 
 const ACCESS_MODE_TONE: Record<string, Tone> = {
@@ -332,6 +333,110 @@ function ConfirmButton({
   );
 }
 
+// ── Remove & Detach — Two User Removal Modes ──────────────────────────────
+// A stronger, checkbox-gated confirmation than ConfirmButton's plain
+// "Are you sure?" (per the approved product decision — this action forecloses
+// the "just restore them to the same organisation" recovery path a plain
+// Remove keeps open). A second, distinct stage renders when the backend
+// rejects the first attempt with LAST_CLIENT_DETACH_REQUIRES_CONFIRMATION —
+// branched on that stable `code`, never on message text (Error Handling
+// Standard) — and requires its own explicit acknowledgement before
+// resubmitting with confirm_last_client: true. Never resembles Organisation
+// deletion copy.
+function RemoveAndDetachControl({
+  onConfirm,
+  onConfirmLastClient,
+  onCancelLastClient,
+  loading,
+  lastClientMessage,
+}: {
+  onConfirm: () => void;
+  onConfirmLastClient: () => void;
+  onCancelLastClient: () => void;
+  loading?: boolean;
+  lastClientMessage: string | null;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [acknowledged, setAcknowledged] = useState(false);
+  const [lastClientAcknowledged, setLastClientAcknowledged] = useState(false);
+
+  if (lastClientMessage) {
+    return (
+      <div className="flex flex-col gap-3 p-3 rounded-xl" style={{ border: '1px solid #ef4444' }}>
+        <p className="text-xs font-medium" style={{ color: '#ef4444' }}>{lastClientMessage}</p>
+        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          The organisation, its projects, billing and data will NOT be deleted. After this action, the organisation will have no Client users who can log in.
+        </p>
+        <Checkbox
+          checked={lastClientAcknowledged}
+          onChange={setLastClientAcknowledged}
+          label="I understand no Client user will be able to access this organisation after this action."
+        />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { onConfirmLastClient(); setLastClientAcknowledged(false); }}
+            disabled={loading || !lastClientAcknowledged}
+            className="text-xs px-2.5 py-1.5 rounded-lg font-medium disabled:opacity-50"
+            style={{ backgroundColor: '#ef4444', color: '#fff' }}
+          >
+            Detach anyway
+          </button>
+          <button
+            onClick={() => { onCancelLastClient(); setLastClientAcknowledged(false); setConfirming(false); }}
+            className="text-xs px-2.5 py-1.5 rounded-lg font-medium"
+            style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (confirming) {
+    return (
+      <div className="flex flex-col gap-3 p-3 rounded-xl" style={{ border: '1px solid var(--border)' }}>
+        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          Removes the account and disconnects it from its current organisation. If invited again, this person will go through organisation onboarding again.
+        </p>
+        <Checkbox
+          checked={acknowledged}
+          onChange={setAcknowledged}
+          label="I understand this disconnects the account from its organisation."
+        />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { onConfirm(); setConfirming(false); setAcknowledged(false); }}
+            disabled={loading || !acknowledged}
+            className="text-xs px-2.5 py-1.5 rounded-lg font-medium disabled:opacity-50"
+            style={{ backgroundColor: '#ef4444', color: '#fff' }}
+          >
+            Remove & detach
+          </button>
+          <button
+            onClick={() => { setConfirming(false); setAcknowledged(false); }}
+            className="text-xs px-2.5 py-1.5 rounded-lg font-medium"
+            style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => setConfirming(true)}
+      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-left transition-colors hover:bg-[var(--bg-hover)]"
+      style={{ color: '#ef4444', border: '1px solid var(--border)' }}
+    >
+      <UserMinus size={13} />
+      Remove & detach
+    </button>
+  );
+}
+
 // ── Manage user modal — consolidates rename, role, status pills and actions ───
 function ManageUserModal({
   user,
@@ -348,6 +453,11 @@ function ManageUserModal({
   onRevokeTokens,
   onResetTours,
   onRemove,
+  onRemoveAndDetach,
+  onConfirmLastClientDetach,
+  onCancelLastClientDetach,
+  lastClientDetachMessage,
+  canRemoveAndDetach,
 }: {
   user: AdminUser;
   onClose: () => void;
@@ -363,6 +473,11 @@ function ManageUserModal({
   onRevokeTokens: () => void;
   onResetTours: () => void;
   onRemove: () => void;
+  onRemoveAndDetach: () => void;
+  onConfirmLastClientDetach: () => void;
+  onCancelLastClientDetach: () => void;
+  lastClientDetachMessage: string | null;
+  canRemoveAndDetach: boolean;
 }) {
   const [name, setName] = useState(user.name);
   const [role, setRole] = useState(user.roles[0] ?? 'Client');
@@ -621,7 +736,25 @@ function ManageUserModal({
         {/* ── Danger Zone ── */}
         <section>
           <SectionHeader>Danger Zone</SectionHeader>
-          <ConfirmButton label="Remove User" icon={<Trash2 size={13} />} onConfirm={onRemove} loading={actionLoading} danger />
+          <div className="flex flex-col gap-2.5">
+            <div>
+              <ConfirmButton label="Remove User" icon={<Trash2 size={13} />} onConfirm={onRemove} loading={actionLoading} danger />
+              <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>
+                Removes the account but keeps its organisation association, so it can be restored later.
+              </p>
+            </div>
+            {canRemoveAndDetach && (
+              <div>
+                <RemoveAndDetachControl
+                  onConfirm={onRemoveAndDetach}
+                  onConfirmLastClient={onConfirmLastClientDetach}
+                  onCancelLastClient={onCancelLastClientDetach}
+                  loading={actionLoading}
+                  lastClientMessage={lastClientDetachMessage}
+                />
+              </div>
+            )}
+          </div>
         </section>
         </main>
       </div>
@@ -854,6 +987,35 @@ export default function AdminUsersPage() {
     },
     onError: (e: any) => {
       toast.error(getErrorMessage(e, 'Failed to remove user.'));
+    },
+  });
+
+  // Two User Removal Modes — "Remove & Detach" (UserController::
+  // removeAndDetach()). Distinct from removeMutation above: on success the
+  // account is soft-deleted with organization_id cleared, not preserved.
+  // lastClientDetachMessage holds the backend's safe explanatory message
+  // once (and only once) the first attempt is rejected with the stable
+  // `LAST_CLIENT_DETACH_REQUIRES_CONFIRMATION` code — branched on that code,
+  // never on message text (Error Handling Standard) — prompting
+  // ManageUserModal's second, stronger confirmation stage.
+  const [lastClientDetachMessage, setLastClientDetachMessage] = useState<string | null>(null);
+
+  const removeAndDetachMutation = useMutation({
+    mutationFn: ({ id, confirmLastClient }: { id: number; confirmLastClient?: boolean }) =>
+      api.post(`/users/${id}/remove-and-detach`, confirmLastClient ? { confirm_last_client: true } : {}).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-users'] });
+      setManageUser(null);
+      setLastClientDetachMessage(null);
+      toast.success('User removed and detached from their organisation.');
+    },
+    onError: (e: any) => {
+      const normalized = normalizeApiError(e, 'Failed to remove & detach user.');
+      if (normalized.code === 'LAST_CLIENT_DETACH_REQUIRES_CONFIRMATION') {
+        setLastClientDetachMessage(normalized.message);
+        return;
+      }
+      toast.error(normalized.message);
     },
   });
 
@@ -1134,7 +1296,7 @@ export default function AdminUsersPage() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button
-                      onClick={() => setManageUser(u)}
+                      onClick={() => { setLastClientDetachMessage(null); setManageUser(u); }}
                       title="Manage user"
                       className="p-1.5 rounded-lg transition-colors hover:bg-[var(--bg-hover)]"
                     >
@@ -1161,9 +1323,9 @@ export default function AdminUsersPage() {
       {manageUser && (
         <ManageUserModal
           user={users.find(x => x.id === manageUser.id) ?? manageUser}
-          onClose={() => setManageUser(null)}
+          onClose={() => { setManageUser(null); setLastClientDetachMessage(null); }}
           saving={updateMutation.isPending}
-          actionLoading={actionMutation.isPending || removeMutation.isPending}
+          actionLoading={actionMutation.isPending || removeMutation.isPending || removeAndDetachMutation.isPending}
           onSave={payload => updateMutation.mutate({ id: manageUser.id, payload })}
           onToggleActive={active => updateMutation.mutate({ id: manageUser.id, payload: { is_active: active } })}
           onToggleVerify={verified => actionMutation.mutate({ id: manageUser.id, action: verified ? 'verify-email' : 'unverify-email' })}
@@ -1174,6 +1336,11 @@ export default function AdminUsersPage() {
           onRevokeTokens={() => actionMutation.mutate({ id: manageUser.id, action: 'revoke-tokens' })}
           onResetTours={() => actionMutation.mutate({ id: manageUser.id, action: 'reset-tours' })}
           onRemove={() => removeMutation.mutate(manageUser.id)}
+          onRemoveAndDetach={() => removeAndDetachMutation.mutate({ id: manageUser.id })}
+          onConfirmLastClientDetach={() => removeAndDetachMutation.mutate({ id: manageUser.id, confirmLastClient: true })}
+          onCancelLastClientDetach={() => setLastClientDetachMessage(null)}
+          lastClientDetachMessage={lastClientDetachMessage}
+          canRemoveAndDetach={!manageUser.is_platform_operator && manageUser.organization_id !== null}
         />
       )}
 

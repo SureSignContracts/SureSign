@@ -896,6 +896,13 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
         Route::post('users/invite', [UserController::class, 'invite']);
         Route::post('users/bulk-invite', [UserController::class, 'bulkInvite']);
         Route::post('users/bulk-remove', [UserController::class, 'bulkRemove']);
+        // Two User Removal Modes — "Remove & Detach" (UserController::
+        // removeAndDetach()). A separate action from DELETE /users/{id}
+        // ("Remove User"), not a mode flag on it — see that method's own
+        // docblock. Sits inside this same role:Super Admin group, same as
+        // every other user-management action here; bulk removal
+        // deliberately still only offers "Remove User" (see bulkRemove()).
+        Route::post('users/{id}/remove-and-detach', [UserController::class, 'removeAndDetach']);
         Route::apiResource('users', UserController::class)->except(['store']);
         Route::post('users/{id}/verify-email',         [UserController::class, 'verifyEmail']);
         Route::post('users/{id}/unverify-email',       [UserController::class, 'unverifyEmail']);

@@ -104,6 +104,34 @@ class UserBulkRemoveApiTest extends TestCase
         $response->assertJsonValidationErrors(['ids']);
     }
 
+    /**
+     * Two User Removal Modes — bulk removal deliberately still only offers
+     * "Remove User" (Option A) semantics; no bulk "Remove & Detach" exists.
+     * A batch containing an org-attached Client must preserve
+     * organization_id exactly as it always has, and passing a
+     * detach-shaped parameter alongside `ids` must have no effect (this
+     * endpoint's request validation doesn't recognise it at all).
+     */
+    public function test_bulk_remove_preserves_organization_id_and_has_no_detach_option(): void
+    {
+        $this->actingAsSuperAdmin();
+
+        $org = \App\Models\Organization::create(['name' => 'Bulk Org', 'slug' => 'bulk-org-' . uniqid()]);
+        $client = User::factory()->create(['organization_id' => $org->id, 'email' => 'bulk-preserve@example.com']);
+        $client->assignRole(Role::firstOrCreate(['name' => 'Client', 'guard_name' => 'web']));
+
+        $response = $this->postJson('/api/users/bulk-remove', [
+            'ids' => [$client->id],
+            // Not a recognised field for this endpoint — proves it's
+            // silently ignored, not a hidden detach switch.
+            'confirm_last_client' => true,
+        ]);
+
+        $response->assertStatus(200);
+        $this->assertSoftDeleted('users', ['id' => $client->id]);
+        $this->assertSame($org->id, User::withTrashed()->find($client->id)->organization_id);
+    }
+
     public function test_bulk_remove_is_forbidden_for_non_super_admins(): void
     {
         $admin = User::factory()->create(['organization_id' => null]);

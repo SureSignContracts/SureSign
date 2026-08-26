@@ -17,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Validator as ValidatorFacade;
@@ -541,11 +542,240 @@ class UserController extends Controller
             return response()->json(['message' => 'Cannot remove the last Super Admin.'], 422);
         }
 
-        $user->delete();
+        // Remove & Detach Concurrency Hardening — a Client's own removal
+        // must be serialized on their organisation's row (see
+        // withOrganizationLock()'s docblock) so a concurrent
+        // removeAndDetach() request for a DIFFERENT Client in the SAME
+        // organisation can never decide "another Client still exists"
+        // against a stale, pre-commit view. This does not change Remove
+        // User's own behaviour or add any confirmation step here — a plain
+        // Client/Admin/Super Admin removal never itself requires
+        // last-Client confirmation (see that method's docblock for the
+        // exact, narrower invariant this protects).
+        $this->removeUserWithinOrganizationLock($user);
 
         ActivityLog::record('user.removed', "Removed {$user->email}", Auth::user(), $user);
 
         return response()->json(['message' => 'User removed.']);
+    }
+
+    /**
+     * Remove & Detach Concurrency Hardening — the token-revocation +
+     * soft-delete pair every "Remove User" call site performs (destroy(),
+     * bulkRemove()'s per-row loop), wrapped in the same short
+     * organisation-row lock removeAndDetach() uses. Never changes Remove
+     * User's own behaviour (still: revoke tokens, soft-delete, preserve
+     * organization_id, reversible via restore) — the lock exists purely so
+     * a concurrent removeAndDetach() for a sibling Client in the same
+     * organisation observes this removal's committed effect rather than a
+     * stale pre-commit read. A user with no organisation (organization_id
+     * null — Admin/Super Admin, or an already pre-onboarding Client) has
+     * nothing to serialize against, so no lock is taken at all in that
+     * case — identical to today's unlocked behaviour.
+     */
+    private function removeUserWithinOrganizationLock(User $user): void
+    {
+        $organizationId = $user->organization_id;
+
+        if ($organizationId === null) {
+            $user->tokens()->delete();
+            $user->delete();
+
+            return;
+        }
+
+        $this->withOrganizationLock($organizationId, function () use ($user) {
+            // User Removal Token Revocation hardening — revoke BEFORE
+            // soft-delete, not after. SoftDeletes alone is not an
+            // authentication boundary: a still-valid Sanctum token merely
+            // fails to resolve a soft-deleted user (Sanctum's tokenable
+            // lookup respects the model's own SoftDeletingScope), but the
+            // exact same token becomes valid again the moment the row is
+            // restored (e.g. via a later re-invite of the same email — see
+            // UserController::inviteOneUser()). Revoking here, same
+            // pattern as ban()/forcePasswordReset()/setPassword() below,
+            // makes removal durable regardless of any future restore.
+            // Revoking first means a failure on the delete() call below
+            // leaves the user active-but-signed-out (recoverable) rather
+            // than the unsafe opposite — removed, with old tokens quietly
+            // left live for restore. Both writes happen inside the same
+            // transaction as the organisation lock, so a failure here
+            // never leaves the row soft-deleted with its tokens still live.
+            $user->tokens()->delete();
+            $user->delete();
+        });
+    }
+
+    /**
+     * Remove & Detach Concurrency Hardening — the single serialization
+     * primitive every Client-removal decision for a given organisation
+     * goes through: destroy(), bulkRemove()'s per-row loop, and
+     * removeAndDetach()'s last-Client check + mutation. `SELECT ... FOR
+     * UPDATE` on the Organisation row inside a short transaction means two
+     * concurrent removal operations for the SAME organisation are
+     * strictly ordered — the second can only acquire the lock after the
+     * first's transaction has committed, so it always recomputes
+     * "remaining Client users" against the first operation's committed
+     * result, never a stale pre-commit snapshot. A different
+     * organisation's row is never touched, locked, or blocked — this is
+     * per-organisation serialization, not a global one.
+     *
+     * Deliberately narrow in scope: only holds the lock for the DB
+     * writes the callback performs. Never call this around email/provider
+     * calls or any other external I/O.
+     */
+    private function withOrganizationLock(int $organizationId, callable $callback): mixed
+    {
+        return DB::transaction(function () use ($organizationId, $callback) {
+            Organization::where('id', $organizationId)->lockForUpdate()->first();
+
+            return $callback();
+        });
+    }
+
+    /**
+     * Two User Removal Modes — "Remove & Detach". A deliberately SEPARATE
+     * action from destroy() above, not a hidden mode flag on it (per the
+     * approved product decision): destroy() ("Remove User") preserves
+     * organization_id so a later re-invite restores the same person to the
+     * same organisation; this action additionally clears organization_id
+     * first, so a later re-invite instead re-enters the ordinary
+     * pre-onboarding null-org lifecycle (see InvitedUserOrganisationLifecycleTest)
+     * and the previous organisation is never silently restored.
+     *
+     * Never touches the Organisation row itself, or any Project/Contract/
+     * Document/Branding/Billing/AI-usage record — those are all scoped by
+     * organization_id, not by any reference to this user, so clearing this
+     * one column changes nothing else. Organisation deletion does not exist
+     * in this codebase and is explicitly out of scope here.
+     *
+     * Only meaningful for a Client currently attached to an organisation —
+     * see eligibility check below. Bulk removal deliberately still only
+     * offers "Remove User" (destroy()/bulkRemove()) — bulk detachment can
+     * span multiple organisations and its own last-Client/orphan-organisation
+     * confirmation UX is deferred, not required to ship these two per-user
+     * modes safely.
+     */
+    public function removeAndDetach(Request $request, string $id)
+    {
+        if ((int) $id === Auth::id()) {
+            return response()->json(['message' => 'You cannot remove your own account.'], 422);
+        }
+
+        $user = User::findOrFail($id);
+
+        // Eligibility — the smallest correct rule: Remove & Detach only
+        // makes semantic sense for a Client who currently has an
+        // organisation to be detached from. Super Admin/Admin (platform
+        // operators with no organisation of their own) and a Client already
+        // at organization_id = null (nothing to detach) are all rejected
+        // here with one generic, non-leaking message — never naming a role
+        // or organisation, matching this codebase's existing
+        // authorize()/abort() convention.
+        if (! $user->hasRole('Client') || $user->organization_id === null) {
+            return response()->json([
+                'message' => 'Remove & Detach only applies to a Client user who is currently associated with an organisation.',
+            ], 422);
+        }
+
+        $organizationId = $user->organization_id;
+
+        // Remove & Detach Concurrency Hardening — the last-Client check AND
+        // the mutation it gates now live INSIDE the same organisation-row
+        // lock (withOrganizationLock()), closing the race the earlier,
+        // unlocked version had: two concurrent detach requests for two
+        // different Clients in the same organisation could previously both
+        // read "another Client still exists" before either committed, so
+        // neither was ever asked for confirm_last_client even though the
+        // organisation ended up with zero. Locking here does not add any
+        // new confirmation requirement to Remove User (destroy()/
+        // bulkRemove()) — only Remove & Detach's own decision must be this
+        // fresh; see removeUserWithinOrganizationLock()'s docblock for the
+        // narrower reason a plain removal still takes the same lock.
+        //
+        // Re-fetches the target INSIDE the lock rather than trusting the
+        // $user instance captured above — a concurrent operation holding
+        // this same lock immediately before us (a normal remove of this
+        // exact user, or another detach of them) may have already changed
+        // it, and this decision must never be made against a stale copy.
+        $result = $this->withOrganizationLock($organizationId, function () use ($request, $id) {
+            $fresh = User::find($id);
+
+            if (! $fresh || ! $fresh->hasRole('Client') || $fresh->organization_id === null) {
+                return [
+                    'status' => 422,
+                    'body'   => ['message' => 'Remove & Detach only applies to a Client user who is currently associated with an organisation.'],
+                ];
+            }
+
+            $organization = $fresh->organization;
+            $previousOrganizationId = $organization->id;
+            $previousOrganizationName = $organization->name;
+
+            // Last-Client guard — an organisation with zero remaining
+            // Client users is technically safe (its Organisation/Projects/
+            // Contracts/Documents/Billing all remain intact and Super
+            // Admin/Admin retain full access) but operationally awkward
+            // enough that it must never happen silently. Counts only real,
+            // currently-attached Client users of THIS organisation,
+            // excluding the target themselves and (via the default
+            // Eloquent query, since no ::withTrashed() is used) any
+            // already-soft-deleted row. Safe to evaluate here because
+            // this whole closure runs while holding this organisation's
+            // row lock — no concurrent removal for this same organisation
+            // can be mid-flight.
+            $isLastClient = ! User::role('Client')
+                ->where('organization_id', $previousOrganizationId)
+                ->where('id', '!=', $fresh->id)
+                ->exists();
+
+            if ($isLastClient && ! $request->boolean('confirm_last_client')) {
+                return [
+                    'status' => 409,
+                    'body'   => [
+                        'message' => 'This is the last Client user attached to this organisation. The organisation, its projects, billing and data will remain intact, but no Client user will be able to access it after this action.',
+                        'code'    => 'LAST_CLIENT_DETACH_REQUIRES_CONFIRMATION',
+                    ],
+                ];
+            }
+
+            // Same ordering rationale as destroy()'s token revocation —
+            // revoke first, so a failure on the write below leaves the
+            // user active-but-signed-out (recoverable), never
+            // removed-with-old-tokens still live for a future restore.
+            // Both writes are inside the same transaction as the
+            // organisation lock, so a failure here can never leave the row
+            // soft-deleted/detached with its tokens still live.
+            $fresh->tokens()->delete();
+            $fresh->organization_id = null;
+            $fresh->save();
+            $fresh->delete();
+
+            return [
+                'status' => 200,
+                'body'   => ['message' => 'User removed and detached from their organisation.'],
+                'meta'   => [
+                    'email'                      => $fresh->email,
+                    'previous_organization_id'   => $previousOrganizationId,
+                    'previous_organization_name' => $previousOrganizationName,
+                ],
+            ];
+        });
+
+        if ($result['status'] === 200) {
+            ActivityLog::record(
+                'user.removed_and_detached',
+                "Removed {$result['meta']['email']} and detached them from their organisation",
+                Auth::user(),
+                $user,
+                [
+                    'previous_organization_id'   => $result['meta']['previous_organization_id'],
+                    'previous_organization_name' => $result['meta']['previous_organization_name'],
+                ],
+            );
+        }
+
+        return response()->json($result['body'], $result['status']);
     }
 
     /**
@@ -594,7 +824,19 @@ class UserController extends Controller
                 continue;
             }
 
-            $user->delete();
+            // Remove & Detach Concurrency Hardening — same per-row
+            // organisation-row lock destroy() takes, scoped to only THIS
+            // row's own short transaction (see
+            // removeUserWithinOrganizationLock()'s docblock). Each row
+            // acquires, mutates, and releases its own organisation's lock
+            // independently — never holds more than one organisation's
+            // lock at a time, so a batch spanning several organisations
+            // never contends across them, and partial-success semantics
+            // (a later row's failure never undoes an earlier row's already
+            // -committed removal) are unchanged. A row rejected above
+            // (last Super Admin / not found / self) never reaches this
+            // line, so its tokens are never touched.
+            $this->removeUserWithinOrganizationLock($user);
 
             ActivityLog::record('user.removed', "Removed {$user->email}", Auth::user(), $user);
 

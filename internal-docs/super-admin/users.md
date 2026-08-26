@@ -53,7 +53,19 @@ Open a user to see their action panel:
 | **Revoke Active Sessions** | Signs the user out everywhere immediately. |
 | **Reset Onboarding Tours** | The user's guided product tours will show again next time they sign in. |
 | **Role** | Change between Super Admin, Admin, and Client. |
-| **Remove User** | Removes the account (with confirmation). |
+| **Remove User** | Removes the account (with confirmation). Keeps the account's organisation association — if this same person is invited again later (same email), they return to the same organisation, no onboarding needed. Ends all their active sessions immediately, permanently — even if the account is later restored, none of their old sessions come back. |
+| **Remove & detach** | Client only, and only when the account currently belongs to an organisation. Removes the account and disconnects it from its organisation — the organisation itself, and everything in it (Projects, Contracts, Documents, Billing/subscription, branding), is never touched or deleted. If this same person is invited again later, they start over as a brand-new, unaffiliated invite and go through organisation onboarding again; their previous organisation does not come back. Ends all their active sessions immediately, same as Remove User. If this account is the *only* remaining Client on its organisation, you'll be asked to confirm a second time — the organisation will still exist afterward, it just won't have any Client who can sign in to it until someone is invited and onboards. |
+
+Use **Remove User** for a temporary/accidental removal where the person is
+expected to come back to the same company. Use **Remove & detach** when this
+person is genuinely leaving that company for good — especially if their email
+address might later be reused for a completely different customer
+relationship, since Remove User would otherwise silently hand that new person
+the old organisation's data.
+
+There is no bulk "Remove & detach" — the Users page's multi-select **Remove
+Selected** action always performs the ordinary Remove User (organisation
+preserved) for every row in the batch.
 
 ## Safeguards
 
@@ -61,6 +73,9 @@ Open a user to see their action panel:
 - You cannot deactivate, ban, re-role, or remove **the last active Super
   Admin** — SureSign blocks this to prevent the platform being left without an
   administrator.
+- Removing or detaching an account never deletes the organisation, its
+  projects, contracts, documents, billing, or any other data — organisation
+  deletion is a separate capability that doesn't currently exist in SureSign.
 
 ## Filters
 
