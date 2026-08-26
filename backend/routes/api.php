@@ -950,10 +950,7 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
     // (admin.module.pricing), unlike the frontend/backend mismatches
     // tightened elsewhere in this file, and the frontend's own stale
     // `superAdminOnly: true` sidebar flag was the bug, not this route.
-    // STAGE2-HOLD: permission:admin.module.pricing deliberately NOT attached here yet
-    // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
-    // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
-    Route::middleware(['role:Super Admin|Admin'])->prefix('admin/pricing')->group(function () {
+    Route::middleware(['role:Super Admin|Admin', 'permission:admin.module.pricing'])->prefix('admin/pricing')->group(function () {
         Route::get('/settings', [PricingController::class, 'showSettings']);
         Route::put('/settings', [PricingController::class, 'updateSettings']);
 
@@ -1006,10 +1003,7 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
     // customer-org scoped) in this codebase's role model. Every response
     // is built exclusively from AiAnalysisPresenter's internal*() methods —
     // see AiTelemetryReportingController's own docblock. Read-only.
-    // STAGE2-HOLD: permission:admin.module.ai_usage deliberately NOT attached here yet
-    // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
-    // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
-    Route::middleware(['role:Super Admin|Admin'])->prefix('admin/ai-telemetry')->group(function () {
+    Route::middleware(['role:Super Admin|Admin', 'permission:admin.module.ai_usage'])->prefix('admin/ai-telemetry')->group(function () {
         Route::get('/summary', [AiTelemetryReportingController::class, 'summary']);
         Route::get('/detail',  [AiTelemetryReportingController::class, 'detail']);
         Route::get('/export',  [AiTelemetryReportingController::class, 'export']);
@@ -1020,10 +1014,7 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
     // Phase G4C.3D-1 — AI Credits Operations Dashboard (read-only). Same
     // 'Super Admin|Admin' gate as ai-telemetry above, for the same reason
     // (both roles are platform-wide, not customer-org scoped).
-    // STAGE2-HOLD: permission:admin.module.ai_credits deliberately NOT attached here yet
-    // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
-    // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
-    Route::middleware(['role:Super Admin|Admin'])->prefix('admin/ai-credits')->group(function () {
+    Route::middleware(['role:Super Admin|Admin', 'permission:admin.module.ai_credits'])->prefix('admin/ai-credits')->group(function () {
         Route::get('/summary', [AiCreditsOperationsController::class, 'summary']);
         Route::get('/organizations', [AiCreditsOperationsController::class, 'organizations']);
         Route::get('/organizations/{id}', [AiCreditsOperationsController::class, 'organizationDetail']);
@@ -1064,10 +1055,7 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
     // every mutating/live-call action is Super Admin ONLY, matching the
     // ai-credits grant/adjust/expire precedent for high-consequence
     // platform actions. See GoogleIntegrationController's own docblock.
-    // STAGE2-HOLD: permission:admin.module.google_integration deliberately NOT attached here yet
-    // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
-    // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
-    Route::middleware(['role:Super Admin|Admin'])->prefix('admin/google')->group(function () {
+    Route::middleware(['role:Super Admin|Admin', 'permission:admin.module.google_integration'])->prefix('admin/google')->group(function () {
         Route::get('/diagnostics', [GoogleIntegrationController::class, 'diagnostics']);
     });
 
@@ -1079,10 +1067,7 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
     // ConsultancySettingsController::retryConversion()'s risk profile, not
     // the stricter Super-Admin-only gate reserved for OAuth connect/
     // disconnect above. See GoogleCalendarSyncController's own docblock.
-    // STAGE2-HOLD: permission:admin.module.google_integration deliberately NOT attached here yet
-    // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
-    // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
-    Route::middleware(['role:Super Admin|Admin'])->prefix('admin/google/calendar-syncs')->group(function () {
+    Route::middleware(['role:Super Admin|Admin', 'permission:admin.module.google_integration'])->prefix('admin/google/calendar-syncs')->group(function () {
         Route::get('/', [GoogleCalendarSyncController::class, 'index']);
         Route::get('/{sync}', [GoogleCalendarSyncController::class, 'show']);
         Route::post('/{sync}/retry', [GoogleCalendarSyncController::class, 'retry']);
@@ -1121,10 +1106,7 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
         // (admin.module.consultancy). Everything below through the
         // availability/blocked-periods block is the Consultancy module's
         // full admin surface.
-        // STAGE2-HOLD: permission:admin.module.consultancy deliberately NOT attached here yet
-        // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
-        // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
-        Route::middleware([])->group(function () {
+        Route::middleware(['permission:admin.module.consultancy'])->group(function () {
         // Consultancy Service catalogue (Phase C1) — Super Admin OR Admin,
         // matching the Pricing Management precedent (both platform-wide
         // roles), not the stricter Appointment-Type-only rule below.
@@ -1228,10 +1210,7 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
         // ungated, since any admin operator may need to set their own
         // availability regardless of whether they otherwise manage the
         // Appointments module.
-        // STAGE2-HOLD: permission:admin.module.appointments deliberately NOT attached here yet
-        // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
-        // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
-        Route::middleware([])->group(function () {
+        Route::middleware(['permission:admin.module.appointments'])->group(function () {
             Route::apiResource('appointment-types', AppointmentTypeController::class);
 
             // Registered before the apiResource below so this literal path
@@ -1293,24 +1272,15 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
         // but reachable by Admin here before this phase (tightened into
         // their own role:Super Admin group below, not made configurable).
         Route::prefix('admin')->group(function () {
-            // STAGE2-HOLD: permission:admin.module.dashboard deliberately NOT attached here yet
-            // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
-            // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
-            Route::middleware([])->group(function () {
+            Route::middleware(['permission:admin.module.dashboard'])->group(function () {
                 Route::get('/dashboard', [AdminController::class, 'dashboard']);
             });
 
-            // STAGE2-HOLD: permission:admin.module.companies deliberately NOT attached here yet
-            // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
-            // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
-            Route::middleware([])->group(function () {
+            Route::middleware(['permission:admin.module.companies'])->group(function () {
                 Route::get('/organizations', [AdminController::class, 'organizations']);
             });
 
-            // STAGE2-HOLD: permission:admin.module.projects deliberately NOT attached here yet
-            // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
-            // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
-            Route::middleware([])->group(function () {
+            Route::middleware(['permission:admin.module.projects'])->group(function () {
                 Route::get('/projects', [AdminController::class, 'projects']);
                 // Admin: create project on behalf of a company
                 Route::post('/companies/{organization}/projects', [ProjectController::class, 'storeForCompany']);
@@ -1319,10 +1289,7 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
                 Route::post('/projects/{project}/subcontracts/generate-trade-packages', [GenerateTradePackageFoldersController::class, 'store']);
             });
 
-            // STAGE2-HOLD: permission:admin.module.documents deliberately NOT attached here yet
-            // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
-            // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
-            Route::middleware([])->group(function () {
+            Route::middleware(['permission:admin.module.documents'])->group(function () {
                 Route::get('/documents', [AdminController::class, 'documents']);
 
                 // Document Explorer
@@ -1336,19 +1303,13 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
                 Route::get('/document-register/projects', [DocumentRegisterController::class, 'adminProjects']);
             });
 
-            // STAGE2-HOLD: permission:admin.module.templates deliberately NOT attached here yet
-            // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
-            // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
-            Route::middleware([])->group(function () {
+            Route::middleware(['permission:admin.module.templates'])->group(function () {
                 // Document Templates CRUD
                 Route::apiResource('templates', DocumentTemplateController::class);
                 Route::get('/templates/{template}/preview', [DocumentTemplateController::class, 'preview']);
             });
 
-            // STAGE2-HOLD: permission:admin.module.product_updates deliberately NOT attached here yet
-            // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
-            // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
-            Route::middleware([])->group(function () {
+            Route::middleware(['permission:admin.module.product_updates'])->group(function () {
                 // "What's New in SureSign" management — see App\Models\ProductUpdate's docblock.
                 Route::apiResource('product-updates', ProductUpdateController::class)->except(['show']);
             });
@@ -1365,10 +1326,7 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
             Route::put('/suresign-settings/notifications', [SuresignSettingController::class, 'updateNotifications']);
             Route::put('/suresign-settings/appointments',  [SuresignSettingController::class, 'updateAppointments']);
 
-            // STAGE2-HOLD: permission:admin.module.branding deliberately NOT attached here yet
-            // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
-            // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
-            Route::middleware([])->group(function () {
+            Route::middleware(['permission:admin.module.branding'])->group(function () {
                 // SureSign platform settings (branding tab) — deliberately
                 // excludes /suresign-settings/ai (tightened to Super Admin
                 // only below — see the Pricing-style mismatch this phase
@@ -1399,10 +1357,7 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
             });
 
             // Prompt Library
-            // STAGE2-HOLD: permission:admin.module.prompt_library deliberately NOT attached here yet
-            // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
-            // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
-            Route::middleware([])->prefix('prompts')->group(function () {
+            Route::middleware(['permission:admin.module.prompt_library'])->prefix('prompts')->group(function () {
                 Route::get('/categories',              [PromptController::class, 'indexCategories']);
                 Route::post('/categories',             [PromptController::class, 'storeCategory']);
                 Route::put('/categories/{category}',   [PromptController::class, 'updateCategory']);
@@ -1422,10 +1377,7 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
             });
 
             // Companies House (UK) lookup
-            // STAGE2-HOLD: permission:admin.module.find_company deliberately NOT attached here yet
-            // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
-            // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
-            Route::middleware([])->group(function () {
+            Route::middleware(['permission:admin.module.find_company'])->group(function () {
                 Route::get('/companies-house/search', [CompaniesHouseController::class, 'search']);
                 Route::get('/companies-house/{companyNumber}/officers', [CompaniesHouseController::class, 'officers']);
                 Route::get('/companies-house/{companyNumber}', [CompaniesHouseController::class, 'show']);
@@ -1463,10 +1415,7 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
 
         // Companies detail (admin/companies/{id}) — Super Admin
         // Configurable Admin Access.
-        // STAGE2-HOLD: permission:admin.module.companies deliberately NOT attached here yet
-        // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
-        // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
-        Route::middleware([])->group(function () {
+        Route::middleware(['permission:admin.module.companies'])->group(function () {
             // Show individual organization by ID (admin)
             Route::get('/organizations/{id}', [OrganizationController::class, 'showById']);
             // G4A — read-only Organisation Subscription Administration (see

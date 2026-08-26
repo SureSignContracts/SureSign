@@ -16,22 +16,19 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Super Admin Configurable Admin Access — STAGE 1 ONLY (Two-Stage Admin
- * Access rollout). Covers the catalogue bootstrap, the sentinel, the full
+ * Super Admin Configurable Admin Access — the per-Admin module permission
+ * system, now fully live (both Stage 1 and Stage 2 of the Two-Stage Admin
+ * Access rollout are shipped; the production backfill completed
+ * 2026-08-26). Covers the catalogue bootstrap, the sentinel, the full
  * lifecycle (new/existing/restricted/role-change Admins), cold-start
  * safety, the Gate::before() Super Admin bypass, the configuration
  * endpoints, permanently-Super-Admin-only role tightening, and the
- * ActivityLog audit trail — everything that is safe and correct BEFORE
- * `permission:admin.module.*` backend middleware or AdminSidebar's
- * permission-aware hiding exist. It deliberately does NOT assert that a
- * restricted/zero-permission Admin is blocked from a configurable
- * module's API — that assertion only becomes true in Stage 2. See
- * AdminAccessEnforcementTest.php (held for Stage 2, not part of this
- * commit) for that coverage, and this file's own
- * test_legacy_admin_retains_historical_access_before_stage_2_enforcement
- * for the explicit proof of the opposite, currently-correct behaviour.
- * Client regression lives in Batch1ClientPermissionsTest and is re-run,
- * not duplicated, here.
+ * ActivityLog audit trail. Configurable-module `admin.module.*`
+ * enforcement coverage (restricted -> 403, permitted -> 200) lives in
+ * AdminAccessEnforcementTest.php — a separate file kept for the duration
+ * of the rollout, not merged back into this one, since it still reads
+ * clearly on its own. Client regression lives in
+ * Batch1ClientPermissionsTest and is re-run, not duplicated, here.
  */
 class AdminAccessTest extends TestCase
 {
@@ -306,46 +303,21 @@ class AdminAccessTest extends TestCase
         $this->assertCount(0, $admin->fresh()->getPermissionNames()->intersect(AdminAccess::keys()));
     }
 
-    /**
-     * Stage 1 test expectation (Two-Stage Admin Access rollout): a legacy
-     * Admin — Admin role, zero managed permissions, zero sentinel — must
-     * still get the historical, pre-feature role-based access to every
-     * representative configurable module, because
-     * `permission:admin.module.*` enforcement has not shipped yet in this
-     * build (routes/api.php's Stage-2-held groups). At the same time, the
-     * permanently-Super-Admin-only tightening (independent of this
-     * mechanism) must already deny Admin — proving the two are correctly
-     * decoupled.
-     */
-    public function test_legacy_admin_retains_historical_access_before_stage_2_enforcement(): void
-    {
-        $admin = $this->makeAdmin();
-        // Genuinely zero managed permissions AND zero sentinel — the
-        // Stage-1-shipped listener still grants baseline on assignRole(),
-        // so simulate the real pre-feature legacy state explicitly.
-        $admin->syncPermissions([]);
-        $this->assertFalse(AdminAccessService::isInitialized($admin->fresh()));
-        Sanctum::actingAs($admin->fresh());
-
-        // Configurable modules — historical role-based access, unaffected
-        // by having zero admin.module.* permissions, because Stage 2
-        // hasn't shipped.
-        $this->getJson('/api/admin/organizations')->assertStatus(200);
-        $this->getJson('/api/admin/projects')->assertStatus(200);
-        $this->getJson('/api/admin/pricing/settings')->assertStatus(200);
-        $this->getJson('/api/admin/ai-credits/summary')->assertStatus(200);
-        $this->getJson('/api/admin/google/diagnostics')->assertStatus(200);
-        $this->getJson('/api/admin/dashboard')->assertStatus(200);
-
-        // Permanently-Super-Admin-only modules — already denied, since
-        // this tightening is a plain role check, independent of the
-        // admin.module.* mechanism entirely.
-        $this->getJson('/api/admin/storage')->assertStatus(403);
-        $this->getJson('/api/admin/system-logs')->assertStatus(403);
-        $this->getJson('/api/admin/audit-log')->assertStatus(403);
-        $this->getJson('/api/admin/support-tickets')->assertStatus(403);
-        $this->putJson('/api/admin/suresign-settings/ai', ['ai_enabled' => true])->assertStatus(403);
-    }
+    // NOTE (Two-Stage Admin Access rollout): the Stage-1-only
+    // test_legacy_admin_retains_historical_access_before_stage_2_enforcement
+    // that used to live here asserted that a zero-permission Admin still
+    // got historical (unenforced) access — correct only while Stage 2's
+    // `permission:admin.module.*` middleware was deliberately held back.
+    // Now that Stage 2 is live (production backfill confirmed complete,
+    // 2026-08-26), that assertion is no longer true and has been removed
+    // rather than left to bit-rot. Equivalent, now-correct coverage
+    // already exists: AdminAccessEnforcementTest.php's
+    // test_backend_authority_companies_projects_pricing_ai_credits_google_integration
+    // covers the same five modules (restricted -> 403, permitted -> 200),
+    // and this file's own
+    // test_permanently_super_admin_only_api_remains_blocked_from_admin_even_with_full_catalogue
+    // / test_admin_cannot_access_super_admin_only_api_by_faking_a_permission_name
+    // already cover the permanently-Super-Admin-only denial.
 
     public function test_new_admin_via_invite_receives_full_baseline(): void
     {

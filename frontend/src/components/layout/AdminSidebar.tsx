@@ -488,16 +488,14 @@ export default function AdminSidebar({
   }
 
   const isSuperAdmin  = user?.roles?.includes('Super Admin');
-  const isAdmin       = user?.roles?.includes('Admin');
-  // STAGE2-HOLD (Two-Stage Admin Access rollout, Stage 1): the real
-  // permission-aware hasModulePermission()/permissionKey visibility gate
-  // is deliberately NOT active in this build — backend enforcement
-  // (permission:admin.module.* middleware) is also held for Stage 2 (see
-  // routes/api.php), so gating the sidebar ahead of the backend would
-  // hide a module an Admin can still successfully call directly, which
-  // is worse than showing it. isVisible() below intentionally does not
-  // check permissionKey yet. See internal-docs/super-admin/admin-access.md's
-  // Production rollout section.
+  // Super Admin Configurable Admin Access — the same `permissions` field
+  // already returned by /auth/me (AuthController::userResource()); Super
+  // Admin never needs to appear here (they bypass every check via
+  // isVisible()'s own `|| isSuperAdmin` below, matching the backend's
+  // Gate::before() bypass exactly — visibility here is a convenience, the
+  // backend permission: middleware is what's actually authoritative).
+  const adminPermissions: string[] = user?.permissions ?? [];
+  const hasModulePermission = (key?: string) => !key || isSuperAdmin || adminPermissions.includes(key);
   const { data: siteSettings, isSettingsReady } = useSiteSettings();
   const hiddenPages: string[] = siteSettings?.hidden_pages ?? [];
 
@@ -515,22 +513,21 @@ export default function AdminSidebar({
   const supportBadge = supportCounts?.waiting_for_support ?? 0;
 
   // Consultancy queue badge — "needs attention" count (awaiting_consultant),
-  // mirroring the Support inbox badge above exactly. STAGE2-HOLD: not yet
-  // gated on admin.module.consultancy — the backend route isn't enforcing
-  // that permission in this build either (see routes/api.php), so this
-  // fires for any Super Admin/Admin exactly as it always historically did.
+  // mirroring the Support inbox badge above exactly. Gated on the same
+  // admin.module.consultancy permission the nav item and its backend route
+  // now require, so a restricted Admin's sidebar never fires a doomed,
+  // always-403 request for a module they can't see anyway.
   const { data: consultancyCounts } = useQuery({
     queryKey: ['admin-consultancy-counts'],
     queryFn: () => api.get('/admin/consultancy/counts').then(r => r.data.counts as Record<string, number>),
-    enabled: !!(isSuperAdmin || isAdmin),
+    enabled: hasModulePermission('admin.module.consultancy'),
     refetchInterval: 60000,
   });
   const consultancyBadge = consultancyCounts?.awaiting_consultant ?? 0;
 
   function isVisible(item: { pageKey: string | null; superAdminOnly?: boolean; permissionKey?: string }) {
     if (item.superAdminOnly && !isSuperAdmin) return false;
-    // STAGE2-HOLD: permissionKey-based hiding for configurable modules is
-    // deliberately not enforced here yet — see the docblock above.
+    if (item.permissionKey && !hasModulePermission(item.permissionKey)) return false;
     if (item.pageKey && hiddenPages.includes(item.pageKey)) return false;
     return true;
   }

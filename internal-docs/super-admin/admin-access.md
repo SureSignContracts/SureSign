@@ -238,7 +238,7 @@ its stale sidebar until the normal `/auth/me` refresh/reload/next-login
 cycle — the backend is authoritative regardless, so a stale sidebar showing
 an item does not mean the API call behind it will succeed.
 
-## Production rollout (deployment-safety, confirmed)
+## Production rollout (deployment-safety, confirmed — COMPLETE, 2026-08-26)
 
 **SureSign has no automated pre-cutover release-command gate.** Confirmed
 directly from `backend/docker/entrypoint.sh` and `docker-compose.prod.yml`:
@@ -290,3 +290,24 @@ fallback to paper over ordering — restriction must always fail closed. See
 the AdminAccessTest.php cold-start tests for the direct regression proof
 that Stage 1 alone (catalogue + sentinel + backfill) is safe against a
 genuinely empty permissions table before Stage 2 ever ships.
+
+**Executed sequence (2026-08-26):**
+
+1. Stage 1 committed (`dede8a3`) and pushed to `origin/main`.
+2. Deployed to production.
+3. `php artisan admin:permissions:backfill --dry-run` run against the
+   production container — reported exactly one legacy Admin
+   (`graham@suresigncontracts.com`, id 2) would be granted the full
+   baseline, zero already initialised, no errors.
+4. `php artisan admin:permissions:backfill` (real run) — granted the full
+   baseline to that same Admin, matching the dry-run prediction exactly.
+5. `php artisan admin:permissions:backfill --dry-run` run again —
+   confirmed zero remaining legacy Admins (`0 Admin(s) granted... 1
+   already initialised and were left unchanged`), proving the backfill
+   took effect and is idempotent.
+6. Only after that confirmation was Stage 2 (the `permission:admin.module.*`
+   middleware attachments and `AdminSidebar.tsx`'s permission-aware
+   hiding, held uncommitted in the working tree since Stage 1) committed
+   and enforcement went live. No legacy Admin experienced a lockout
+   window — every existing Admin held `admin.access.initialized` before
+   enforcement shipped.
