@@ -37,6 +37,7 @@ use App\Http\Controllers\Api\LossAndExpenseClaimController;
 use App\Http\Controllers\Api\PayLessNoticeController;
 use App\Http\Controllers\Api\SiteInstructionController;
 use App\Http\Controllers\Api\AdminController;
+use App\Http\Controllers\Api\AdminUserAccessController;
 use App\Http\Controllers\Api\ProjectActivityController;
 use App\Http\Controllers\Api\SuresignSettingController;
 use App\Http\Controllers\Api\FeatureAvailabilityController;
@@ -922,6 +923,13 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
         // internal-docs/super-admin/subscription-billing.md).
         Route::get('users/{id}/subscription',          [UserController::class, 'subscription']);
 
+        // Super Admin Configurable Admin Access — sits in this same
+        // role:Super Admin ONLY group as every other user-management
+        // mutation above; an Admin can never reach this controller at
+        // all (see AdminUserAccessController's own docblock).
+        Route::get('users/{id}/permissions',            [AdminUserAccessController::class, 'show']);
+        Route::put('users/{id}/permissions',            [AdminUserAccessController::class, 'update']);
+
         // Application Monitoring — cross-organization presence/usage/operational
         // data. Super Admin only; deliberately not in the 'Super Admin|Admin'
         // group below (see internal-docs/super-admin/application-monitoring.md).
@@ -936,8 +944,16 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
     // this app's role model, so this carries no customer-org exposure risk
     // (see internal-docs/super-admin/pricing-management.md and
     // internal-docs/super-admin/subscription-billing.md's Phase G0/G2
-    // sections).
-    Route::middleware('role:Super Admin|Admin')->prefix('admin/pricing')->group(function () {
+    // sections). Super Admin Configurable Admin Access: that documented
+    // Phase G0 decision is exactly the evidence-of-deliberate-widening the
+    // admin-access catalogue looked for — Pricing is genuinely configurable
+    // (admin.module.pricing), unlike the frontend/backend mismatches
+    // tightened elsewhere in this file, and the frontend's own stale
+    // `superAdminOnly: true` sidebar flag was the bug, not this route.
+    // STAGE2-HOLD: permission:admin.module.pricing deliberately NOT attached here yet
+    // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
+    // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
+    Route::middleware(['role:Super Admin|Admin'])->prefix('admin/pricing')->group(function () {
         Route::get('/settings', [PricingController::class, 'showSettings']);
         Route::put('/settings', [PricingController::class, 'updateSettings']);
 
@@ -990,7 +1006,10 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
     // customer-org scoped) in this codebase's role model. Every response
     // is built exclusively from AiAnalysisPresenter's internal*() methods —
     // see AiTelemetryReportingController's own docblock. Read-only.
-    Route::middleware('role:Super Admin|Admin')->prefix('admin/ai-telemetry')->group(function () {
+    // STAGE2-HOLD: permission:admin.module.ai_usage deliberately NOT attached here yet
+    // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
+    // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
+    Route::middleware(['role:Super Admin|Admin'])->prefix('admin/ai-telemetry')->group(function () {
         Route::get('/summary', [AiTelemetryReportingController::class, 'summary']);
         Route::get('/detail',  [AiTelemetryReportingController::class, 'detail']);
         Route::get('/export',  [AiTelemetryReportingController::class, 'export']);
@@ -1001,7 +1020,10 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
     // Phase G4C.3D-1 — AI Credits Operations Dashboard (read-only). Same
     // 'Super Admin|Admin' gate as ai-telemetry above, for the same reason
     // (both roles are platform-wide, not customer-org scoped).
-    Route::middleware('role:Super Admin|Admin')->prefix('admin/ai-credits')->group(function () {
+    // STAGE2-HOLD: permission:admin.module.ai_credits deliberately NOT attached here yet
+    // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
+    // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
+    Route::middleware(['role:Super Admin|Admin'])->prefix('admin/ai-credits')->group(function () {
         Route::get('/summary', [AiCreditsOperationsController::class, 'summary']);
         Route::get('/organizations', [AiCreditsOperationsController::class, 'organizations']);
         Route::get('/organizations/{id}', [AiCreditsOperationsController::class, 'organizationDetail']);
@@ -1042,7 +1064,10 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
     // every mutating/live-call action is Super Admin ONLY, matching the
     // ai-credits grant/adjust/expire precedent for high-consequence
     // platform actions. See GoogleIntegrationController's own docblock.
-    Route::middleware('role:Super Admin|Admin')->prefix('admin/google')->group(function () {
+    // STAGE2-HOLD: permission:admin.module.google_integration deliberately NOT attached here yet
+    // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
+    // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
+    Route::middleware(['role:Super Admin|Admin'])->prefix('admin/google')->group(function () {
         Route::get('/diagnostics', [GoogleIntegrationController::class, 'diagnostics']);
     });
 
@@ -1054,7 +1079,10 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
     // ConsultancySettingsController::retryConversion()'s risk profile, not
     // the stricter Super-Admin-only gate reserved for OAuth connect/
     // disconnect above. See GoogleCalendarSyncController's own docblock.
-    Route::middleware('role:Super Admin|Admin')->prefix('admin/google/calendar-syncs')->group(function () {
+    // STAGE2-HOLD: permission:admin.module.google_integration deliberately NOT attached here yet
+    // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
+    // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
+    Route::middleware(['role:Super Admin|Admin'])->prefix('admin/google/calendar-syncs')->group(function () {
         Route::get('/', [GoogleCalendarSyncController::class, 'index']);
         Route::get('/{sync}', [GoogleCalendarSyncController::class, 'show']);
         Route::post('/{sync}/retry', [GoogleCalendarSyncController::class, 'retry']);
@@ -1069,8 +1097,34 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
     });
 
     Route::middleware('role:Super Admin|Admin')->group(function () {
-        Route::apiResource('organizations', OrganizationController::class)->except(['show', 'update']);
+        // REMOVED (Admin Access Configuration — Final Initialisation
+        // phase, 2026-08-26): this apiResource previously registered
+        // index/store/destroy for /organizations pointing at
+        // OrganizationController, which has no index()/store()/destroy()
+        // methods at all (only show()/update(), already routed separately
+        // via the singular '/organization' self-service routes above, and
+        // 'admin/organizations' via AdminController::organizations(),
+        // already gated behind admin.module.companies). These three
+        // routes were dead — any call would throw a 500
+        // BadMethodCallException, not expose or bypass anything — and no
+        // frontend caller was found for them in this phase's audit or the
+        // one before it. Removed rather than gated: there was no real
+        // capability behind them to protect, and leaving an inert but
+        // unexplained route registered is exactly the kind of ambiguity
+        // this phase's route-coverage review is meant to close. If a real
+        // Organisation list/create/delete capability is ever built for
+        // Super Admin/Admin, it should be added as new, deliberate
+        // controller methods wrapped in admin.module.companies from the
+        // start, not by restoring this registration.
 
+        // Consultancy — Super Admin Configurable Admin Access
+        // (admin.module.consultancy). Everything below through the
+        // availability/blocked-periods block is the Consultancy module's
+        // full admin surface.
+        // STAGE2-HOLD: permission:admin.module.consultancy deliberately NOT attached here yet
+        // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
+        // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
+        Route::middleware([])->group(function () {
         // Consultancy Service catalogue (Phase C1) — Super Admin OR Admin,
         // matching the Pricing Management precedent (both platform-wide
         // roles), not the stricter Appointment-Type-only rule below.
@@ -1161,26 +1215,38 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
         Route::post('/admin/consultancy/availability/blocked-periods',                   [ConsultancyAvailabilityController::class, 'storeBlockedPeriod']);
         Route::put('/admin/consultancy/availability/blocked-periods/{blockedPeriod}',    [ConsultancyAvailabilityController::class, 'updateBlockedPeriod']);
         Route::delete('/admin/consultancy/availability/blocked-periods/{blockedPeriod}', [ConsultancyAvailabilityController::class, 'destroyBlockedPeriod']);
+        }); // end admin.module.consultancy
 
         // Appointments & Scheduling — Phase 1 (Foundation). Index/show +
         // ordinary CRUD are open to both roles (finer-grained view/manage
         // rules are enforced inside AppointmentController); Appointment
         // Type mutation is Super-Admin-only (enforced inside
-        // AppointmentTypeController) per the approved architecture.
-        Route::apiResource('appointment-types', AppointmentTypeController::class);
+        // AppointmentTypeController) per the approved architecture. Super
+        // Admin Configurable Admin Access: gated on admin.module.appointments
+        // — the resource-management surface only. Personal availability
+        // self-management below ("/me" routes) is deliberately left
+        // ungated, since any admin operator may need to set their own
+        // availability regardless of whether they otherwise manage the
+        // Appointments module.
+        // STAGE2-HOLD: permission:admin.module.appointments deliberately NOT attached here yet
+        // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
+        // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
+        Route::middleware([])->group(function () {
+            Route::apiResource('appointment-types', AppointmentTypeController::class);
 
-        // Registered before the apiResource below so this literal path
-        // ("check-availability") isn't swallowed by the {appointment}
-        // route-model-binding wildcard.
-        Route::post('/appointments/check-availability', [AppointmentController::class, 'checkAvailability']);
-        Route::apiResource('appointments', AppointmentController::class);
-        Route::post('/appointments/{appointment}/assign',    [AppointmentController::class, 'assign']);
-        Route::post('/appointments/{appointment}/reschedule', [AppointmentController::class, 'reschedule']);
-        Route::post('/appointments/{appointment}/confirm',   [AppointmentController::class, 'confirm']);
-        Route::post('/appointments/{appointment}/decline',   [AppointmentController::class, 'decline']);
-        Route::post('/appointments/{appointment}/cancel',    [AppointmentController::class, 'cancel']);
-        Route::post('/appointments/{appointment}/complete',  [AppointmentController::class, 'complete']);
-        Route::post('/appointments/{appointment}/no-show',   [AppointmentController::class, 'noShow']);
+            // Registered before the apiResource below so this literal path
+            // ("check-availability") isn't swallowed by the {appointment}
+            // route-model-binding wildcard.
+            Route::post('/appointments/check-availability', [AppointmentController::class, 'checkAvailability']);
+            Route::apiResource('appointments', AppointmentController::class);
+            Route::post('/appointments/{appointment}/assign',    [AppointmentController::class, 'assign']);
+            Route::post('/appointments/{appointment}/reschedule', [AppointmentController::class, 'reschedule']);
+            Route::post('/appointments/{appointment}/confirm',   [AppointmentController::class, 'confirm']);
+            Route::post('/appointments/{appointment}/decline',   [AppointmentController::class, 'decline']);
+            Route::post('/appointments/{appointment}/cancel',    [AppointmentController::class, 'cancel']);
+            Route::post('/appointments/{appointment}/complete',  [AppointmentController::class, 'complete']);
+            Route::post('/appointments/{appointment}/no-show',   [AppointmentController::class, 'noShow']);
+        });
 
         // Appointment Availability — Phase 2. "/me" routes MUST be
         // registered before their "/{user}" counterparts, or the literal
@@ -1211,72 +1277,132 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
         Route::put('/appointment-availability/{user}/blocked-periods/{blockedPeriod}',    [AppointmentAvailabilityController::class, 'updateBlockedPeriod']);
         Route::delete('/appointment-availability/{user}/blocked-periods/{blockedPeriod}', [AppointmentAvailabilityController::class, 'destroyBlockedPeriod']);
 
-        // Super Admin dashboard & management
+        // Super Admin dashboard & management — Super Admin Configurable
+        // Admin Access. Each module below is wrapped in its own
+        // `permission:admin.module.X` group (native Spatie middleware,
+        // already aliased in bootstrap/app.php) nested inside this
+        // existing `role:Super Admin|Admin` boundary — Client can never
+        // reach any route here regardless, so a bare permission check is
+        // safe with no risk of blocking a Client. Super Admin bypasses
+        // every one of these via Gate::before() (AppServiceProvider) — this
+        // restructuring changes nothing for Super Admin. See
+        // App\Support\Admin\AdminAccess for the authoritative catalogue
+        // and internal-docs/super-admin/admin-access.md for the full
+        // per-module route map this was built from, including the six
+        // modules found to be permanently Super-Admin-only on the frontend
+        // but reachable by Admin here before this phase (tightened into
+        // their own role:Super Admin group below, not made configurable).
         Route::prefix('admin')->group(function () {
-            Route::get('/dashboard', [AdminController::class, 'dashboard']);
-            Route::get('/organizations', [AdminController::class, 'organizations']);
-            Route::get('/projects', [AdminController::class, 'projects']);
-            Route::get('/documents', [AdminController::class, 'documents']);
-            Route::get('/storage', [AdminController::class, 'storage']);
+            // STAGE2-HOLD: permission:admin.module.dashboard deliberately NOT attached here yet
+            // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
+            // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
+            Route::middleware([])->group(function () {
+                Route::get('/dashboard', [AdminController::class, 'dashboard']);
+            });
 
-            // Document Templates CRUD
-            Route::apiResource('templates', DocumentTemplateController::class);
-            Route::get('/templates/{template}/preview', [DocumentTemplateController::class, 'preview']);
-            Route::get('/support-tickets', [SupportTicketController::class, 'index']);
-            // Registered before the {supportTicket} wildcard below so this
-            // literal path is matched first, not treated as a ticket id.
-            Route::get('/support-tickets/counts', [SupportTicketController::class, 'counts']);
-            Route::get('/support-tickets/{supportTicket}', [SupportTicketController::class, 'adminShow']);
-            Route::put('/support-tickets/{id}', [SupportTicketController::class, 'updateStatus']);
+            // STAGE2-HOLD: permission:admin.module.companies deliberately NOT attached here yet
+            // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
+            // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
+            Route::middleware([])->group(function () {
+                Route::get('/organizations', [AdminController::class, 'organizations']);
+            });
 
-            // Platform-wide emergency / known-issue banner management
-            Route::apiResource('platform-announcements', PlatformAnnouncementController::class)->except(['show']);
-            // "What's New in SureSign" management — see App\Models\ProductUpdate's docblock.
-            Route::apiResource('product-updates', ProductUpdateController::class)->except(['show']);
-            Route::get('/system-logs', [AdminController::class, 'systemLogs']);
-            Route::get('/audit-log', [AdminController::class, 'auditLog']);
+            // STAGE2-HOLD: permission:admin.module.projects deliberately NOT attached here yet
+            // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
+            // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
+            Route::middleware([])->group(function () {
+                Route::get('/projects', [AdminController::class, 'projects']);
+                // Admin: create project on behalf of a company
+                Route::post('/companies/{organization}/projects', [ProjectController::class, 'storeForCompany']);
+                Route::post('/trade-packages/{tradePackage}/generate-package', [TradePackagePackageGenerationController::class, 'generate']);
+                // Bulk trade package folder generation
+                Route::post('/projects/{project}/subcontracts/generate-trade-packages', [GenerateTradePackageFoldersController::class, 'store']);
+            });
+
+            // STAGE2-HOLD: permission:admin.module.documents deliberately NOT attached here yet
+            // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
+            // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
+            Route::middleware([])->group(function () {
+                Route::get('/documents', [AdminController::class, 'documents']);
+
+                // Document Explorer
+                Route::get('/documents/explorer', [AdminController::class, 'explorerCompanies']);
+                Route::get('/documents/explorer/company/{organization}', [AdminController::class, 'explorerProjects']);
+                Route::get('/documents/explorer/project/{project}', [AdminController::class, 'explorerModules']);
+                Route::get('/documents/explorer/project/{project}/module/{moduleKey}', [AdminController::class, 'explorerModuleFiles'])->where('moduleKey', '.+');
+
+                // Document Register (admin)
+                Route::get('/document-register',          [DocumentRegisterController::class, 'adminIndex']);
+                Route::get('/document-register/projects', [DocumentRegisterController::class, 'adminProjects']);
+            });
+
+            // STAGE2-HOLD: permission:admin.module.templates deliberately NOT attached here yet
+            // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
+            // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
+            Route::middleware([])->group(function () {
+                // Document Templates CRUD
+                Route::apiResource('templates', DocumentTemplateController::class);
+                Route::get('/templates/{template}/preview', [DocumentTemplateController::class, 'preview']);
+            });
+
+            // STAGE2-HOLD: permission:admin.module.product_updates deliberately NOT attached here yet
+            // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
+            // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
+            Route::middleware([])->group(function () {
+                // "What's New in SureSign" management — see App\Models\ProductUpdate's docblock.
+                Route::apiResource('product-updates', ProductUpdateController::class)->except(['show']);
+            });
+
+            // AdminController::settings()/updateSettings() (general
+            // platform config + feature flags) and these two
+            // SuresignSettingController sub-routes are reached via the
+            // profile popover's own "Settings" link, not any AdminSidebar
+            // module — deliberately OUTSIDE the admin.module.* catalogue,
+            // unchanged scope, still reachable by every Admin exactly as
+            // before this phase.
             Route::get('/settings', [AdminController::class, 'settings']);
             Route::put('/settings', [AdminController::class, 'updateSettings']);
+            Route::put('/suresign-settings/notifications', [SuresignSettingController::class, 'updateNotifications']);
+            Route::put('/suresign-settings/appointments',  [SuresignSettingController::class, 'updateAppointments']);
 
-            // Admin: create project on behalf of a company
-            Route::post('/companies/{organization}/projects', [ProjectController::class, 'storeForCompany']);
-
-            // Document Explorer
-            Route::get('/documents/explorer', [AdminController::class, 'explorerCompanies']);
-            Route::get('/documents/explorer/company/{organization}', [AdminController::class, 'explorerProjects']);
-            Route::get('/documents/explorer/project/{project}', [AdminController::class, 'explorerModules']);
-            Route::get('/documents/explorer/project/{project}/module/{moduleKey}', [AdminController::class, 'explorerModuleFiles'])->where('moduleKey', '.+');
-
-            // SureSign platform settings
-            Route::get('/suresign-settings',                         [SuresignSettingController::class, 'show']);
-            Route::put('/suresign-settings',                         [SuresignSettingController::class, 'update']);
-            Route::put('/suresign-settings/email',                   [SuresignSettingController::class, 'updateEmail']);
-            Route::put('/suresign-settings/site',                    [SuresignSettingController::class, 'updateSite']);
-            Route::put('/suresign-settings/branding',                [SuresignSettingController::class, 'updateBranding']);
-            Route::post('/suresign-settings/logo',                   [SuresignSettingController::class, 'uploadLogo']);
-            Route::post('/suresign-settings/favicon',                [SuresignSettingController::class, 'uploadFavicon']);
-            Route::post('/suresign-settings/notification-sound',     [SuresignSettingController::class, 'uploadNotificationSound']);
-            Route::post('/suresign-settings/letterhead-header',      [SuresignSettingController::class, 'uploadLetterheadHeader']);
-            Route::post('/suresign-settings/letterhead-footer',      [SuresignSettingController::class, 'uploadLetterheadFooter']);
-            Route::post('/suresign-settings/letterhead-pdf',         [SuresignSettingController::class, 'uploadLetterheadPdf']);
-            Route::post('/suresign-settings/email-header',           [SuresignSettingController::class, 'uploadEmailHeader']);
-            Route::post('/suresign-settings/email-footer',           [SuresignSettingController::class, 'uploadEmailFooter']);
-            Route::delete('/suresign-settings/logo',                 [SuresignSettingController::class, 'removeLogo']);
-            Route::delete('/suresign-settings/favicon',              [SuresignSettingController::class, 'removeFavicon']);
-            Route::delete('/suresign-settings/notification-sound',   [SuresignSettingController::class, 'removeNotificationSound']);
-            Route::delete('/suresign-settings/letterhead-header',    [SuresignSettingController::class, 'removeLetterheadHeader']);
-            Route::delete('/suresign-settings/letterhead-footer',    [SuresignSettingController::class, 'removeLetterheadFooter']);
-            Route::delete('/suresign-settings/letterhead-pdf',       [SuresignSettingController::class, 'removeLetterheadPdf']);
-            Route::delete('/suresign-settings/email-header',         [SuresignSettingController::class, 'removeEmailHeader']);
-            Route::delete('/suresign-settings/email-footer',         [SuresignSettingController::class, 'removeEmailFooter']);
-            Route::post('/suresign-settings/test-pdf',               [SuresignSettingController::class, 'testPdf']);
-            Route::post('/suresign-settings/test-email',             [SuresignSettingController::class, 'testEmail']);
-            Route::put('/suresign-settings/ai',                      [SuresignSettingController::class, 'updateAi']);
-            Route::put('/suresign-settings/notifications',           [SuresignSettingController::class, 'updateNotifications']);
-            Route::put('/suresign-settings/appointments',            [SuresignSettingController::class, 'updateAppointments']);
+            // STAGE2-HOLD: permission:admin.module.branding deliberately NOT attached here yet
+            // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
+            // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
+            Route::middleware([])->group(function () {
+                // SureSign platform settings (branding tab) — deliberately
+                // excludes /suresign-settings/ai (tightened to Super Admin
+                // only below — see the Pricing-style mismatch this phase
+                // resolved) and the two general-settings sub-routes above.
+                Route::get('/suresign-settings',                         [SuresignSettingController::class, 'show']);
+                Route::put('/suresign-settings',                         [SuresignSettingController::class, 'update']);
+                Route::put('/suresign-settings/email',                   [SuresignSettingController::class, 'updateEmail']);
+                Route::put('/suresign-settings/site',                    [SuresignSettingController::class, 'updateSite']);
+                Route::put('/suresign-settings/branding',                [SuresignSettingController::class, 'updateBranding']);
+                Route::post('/suresign-settings/logo',                   [SuresignSettingController::class, 'uploadLogo']);
+                Route::post('/suresign-settings/favicon',                [SuresignSettingController::class, 'uploadFavicon']);
+                Route::post('/suresign-settings/notification-sound',     [SuresignSettingController::class, 'uploadNotificationSound']);
+                Route::post('/suresign-settings/letterhead-header',      [SuresignSettingController::class, 'uploadLetterheadHeader']);
+                Route::post('/suresign-settings/letterhead-footer',      [SuresignSettingController::class, 'uploadLetterheadFooter']);
+                Route::post('/suresign-settings/letterhead-pdf',         [SuresignSettingController::class, 'uploadLetterheadPdf']);
+                Route::post('/suresign-settings/email-header',           [SuresignSettingController::class, 'uploadEmailHeader']);
+                Route::post('/suresign-settings/email-footer',           [SuresignSettingController::class, 'uploadEmailFooter']);
+                Route::delete('/suresign-settings/logo',                 [SuresignSettingController::class, 'removeLogo']);
+                Route::delete('/suresign-settings/favicon',              [SuresignSettingController::class, 'removeFavicon']);
+                Route::delete('/suresign-settings/notification-sound',   [SuresignSettingController::class, 'removeNotificationSound']);
+                Route::delete('/suresign-settings/letterhead-header',    [SuresignSettingController::class, 'removeLetterheadHeader']);
+                Route::delete('/suresign-settings/letterhead-footer',    [SuresignSettingController::class, 'removeLetterheadFooter']);
+                Route::delete('/suresign-settings/letterhead-pdf',       [SuresignSettingController::class, 'removeLetterheadPdf']);
+                Route::delete('/suresign-settings/email-header',         [SuresignSettingController::class, 'removeEmailHeader']);
+                Route::delete('/suresign-settings/email-footer',         [SuresignSettingController::class, 'removeEmailFooter']);
+                Route::post('/suresign-settings/test-pdf',               [SuresignSettingController::class, 'testPdf']);
+                Route::post('/suresign-settings/test-email',             [SuresignSettingController::class, 'testEmail']);
+            });
 
             // Prompt Library
-            Route::prefix('prompts')->group(function () {
+            // STAGE2-HOLD: permission:admin.module.prompt_library deliberately NOT attached here yet
+            // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
+            // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
+            Route::middleware([])->prefix('prompts')->group(function () {
                 Route::get('/categories',              [PromptController::class, 'indexCategories']);
                 Route::post('/categories',             [PromptController::class, 'storeCategory']);
                 Route::put('/categories/{category}',   [PromptController::class, 'updateCategory']);
@@ -1295,27 +1421,58 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
                 Route::get('/favorites',                       [PromptController::class, 'myFavorites']);
             });
 
-            Route::post('/trade-packages/{tradePackage}/generate-package', [TradePackagePackageGenerationController::class, 'generate']);
-
-            // Bulk trade package folder generation
-            Route::post('/projects/{project}/subcontracts/generate-trade-packages', [GenerateTradePackageFoldersController::class, 'store']);
-
-            // Document Register (admin)
-            Route::get('/document-register',          [DocumentRegisterController::class, 'adminIndex']);
-            Route::get('/document-register/projects', [DocumentRegisterController::class, 'adminProjects']);
-
             // Companies House (UK) lookup
-            Route::get('/companies-house/search', [CompaniesHouseController::class, 'search']);
-            Route::get('/companies-house/{companyNumber}/officers', [CompaniesHouseController::class, 'officers']);
-            Route::get('/companies-house/{companyNumber}', [CompaniesHouseController::class, 'show']);
+            // STAGE2-HOLD: permission:admin.module.find_company deliberately NOT attached here yet
+            // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
+            // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
+            Route::middleware([])->group(function () {
+                Route::get('/companies-house/search', [CompaniesHouseController::class, 'search']);
+                Route::get('/companies-house/{companyNumber}/officers', [CompaniesHouseController::class, 'officers']);
+                Route::get('/companies-house/{companyNumber}', [CompaniesHouseController::class, 'show']);
+            });
 
+            // Permanently Super-Admin-only — tightened from the previous
+            // 'Super Admin|Admin' gating. Confirmed via AdminSidebar.tsx's
+            // own existing `superAdminOnly: true` flags for Storage,
+            // Support, Announcements, System Logs, and Audit Log (with no
+            // code-comment evidence anywhere of a deliberate widening
+            // decision, unlike Pricing below), and for AI Config
+            // (suresign-settings/ai) which controls the platform's
+            // Anthropic API key and AI-enabled toggle — the same "hide on
+            // frontend, reachable by Admin on backend" gap Pricing had,
+            // just never previously identified. None of these become
+            // admin.module.* permissions; Gate::before()'s Super Admin
+            // bypass cannot weaken this since it never touches `role:`
+            // middleware at all.
+            Route::middleware(['role:Super Admin'])->group(function () {
+                Route::get('/storage', [AdminController::class, 'storage']);
+                Route::get('/support-tickets', [SupportTicketController::class, 'index']);
+                // Registered before the {supportTicket} wildcard below so this
+                // literal path is matched first, not treated as a ticket id.
+                Route::get('/support-tickets/counts', [SupportTicketController::class, 'counts']);
+                Route::get('/support-tickets/{supportTicket}', [SupportTicketController::class, 'adminShow']);
+                Route::put('/support-tickets/{id}', [SupportTicketController::class, 'updateStatus']);
+
+                // Platform-wide emergency / known-issue banner management
+                Route::apiResource('platform-announcements', PlatformAnnouncementController::class)->except(['show']);
+                Route::get('/system-logs', [AdminController::class, 'systemLogs']);
+                Route::get('/audit-log', [AdminController::class, 'auditLog']);
+                Route::put('/suresign-settings/ai', [SuresignSettingController::class, 'updateAi']);
+            });
         });
 
-        // Show individual organization by ID (admin)
-        Route::get('/organizations/{id}', [OrganizationController::class, 'showById']);
-        // G4A — read-only Organisation Subscription Administration (see
-        // internal-docs/super-admin/subscription-billing.md).
-        Route::get('/organizations/{id}/subscription', [OrganizationController::class, 'subscription']);
+        // Companies detail (admin/companies/{id}) — Super Admin
+        // Configurable Admin Access.
+        // STAGE2-HOLD: permission:admin.module.companies deliberately NOT attached here yet
+        // (Two-Stage Admin Access rollout, Stage 1) — see internal-docs/super-admin/admin-access.md's
+        // Production rollout section. Restored by Stage 2, never by editing this comment away alone.
+        Route::middleware([])->group(function () {
+            // Show individual organization by ID (admin)
+            Route::get('/organizations/{id}', [OrganizationController::class, 'showById']);
+            // G4A — read-only Organisation Subscription Administration (see
+            // internal-docs/super-admin/subscription-billing.md).
+            Route::get('/organizations/{id}/subscription', [OrganizationController::class, 'subscription']);
+        });
     });
 
     // G4B.2 — Manual & Complimentary subscription assignment/termination.

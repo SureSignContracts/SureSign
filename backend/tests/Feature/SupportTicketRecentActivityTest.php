@@ -243,7 +243,9 @@ class SupportTicketRecentActivityTest extends TestCase
             'subject' => 'Test', 'message' => 'msg', 'include_recent_activity' => true,
         ])->assertStatus(201)->json('data.id');
 
-        $admin = $this->makeUser('Admin');
+        // Super Admin Configurable Admin Access tightened
+        // /admin/support-tickets* to role:Super Admin ONLY.
+        $admin = $this->makeUser('Super Admin');
         Sanctum::actingAs($admin);
         // recent_activity lives on the admin detail endpoint (Batch 5's
         // lighter, paginated list omits it, same split as the Client side).

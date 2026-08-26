@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\Organization;
 use App\Models\User;
+use App\Services\Admin\AdminAccessService;
 use App\Rules\DiffersFromCurrentPassword;
 use App\Services\Entitlements\SubscriptionAccessPolicy;
 use App\Services\InvitationService;
@@ -433,6 +434,18 @@ class UserController extends Controller
         $roleModel = Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']);
         $user->assignRole($roleModel);
 
+        // Super Admin Configurable Admin Access — a fresh or restored
+        // invite that assigns the Admin role always starts with the FULL
+        // configurable baseline (never "zero rows"), per the approved
+        // backward-compatible default. This is the ONE place a brand-new
+        // Admin identity is created via invite, so it's also the one place
+        // that baseline needs to be granted — see AdminAccessService's own
+        // docblock for why this must never run on an ordinary Admin
+        // profile edit instead.
+        if ($role === 'Admin') {
+            AdminAccessService::grantFullAccess($user);
+        }
+
         $this->invitations->send($user, $includeBetaNotice);
 
         ActivityLog::record(
@@ -495,9 +508,24 @@ class UserController extends Controller
 
             if (isset($validated['role'])) {
                 $beforeRoles = $target->roles->pluck('name')->all();
+                $wasAdmin = in_array('Admin', $beforeRoles, true);
                 $target->syncRoles([]);
                 $role = Role::firstOrCreate(['name' => $validated['role'], 'guard_name' => 'web']);
                 $target->assignRole($role);
+
+                // Super Admin Configurable Admin Access — role-change
+                // lifecycle (see AdminAccessService's own docblock).
+                // Deliberately keyed on the TRANSITION, not merely "role is
+                // now Admin": re-submitting the SAME role ('Admin' -> 'Admin')
+                // must never reset a Super Admin's prior restriction back to
+                // full access, and a genuine transition away from Admin
+                // must never leave dormant admin.module.* grants on a
+                // Client/Super Admin account.
+                if ($validated['role'] === 'Admin' && ! $wasAdmin) {
+                    AdminAccessService::grantFullAccess($target);
+                } elseif ($validated['role'] !== 'Admin' && $wasAdmin) {
+                    AdminAccessService::removeManagedAccess($target);
+                }
 
                 ActivityLog::record(
                     'user.role_changed',

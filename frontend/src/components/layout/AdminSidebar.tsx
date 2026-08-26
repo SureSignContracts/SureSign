@@ -24,42 +24,57 @@ import { useAutoHideScrollbar } from '@/hooks/useAutoHideScrollbar';
 
 const COLLAPSED_KEY = 'suresign_sidebar_collapsed';
 
+// Super Admin Configurable Admin Access — `permissionKey` names the
+// admin.module.* permission (see App\Support\Admin\AdminAccess, the
+// authoritative backend catalogue this list must stay in sync with) an
+// Admin needs to see/use that item; Super Admin always sees it regardless
+// (see isVisible() below). `superAdminOnly` items are UNRELATED to this —
+// they're permanently Super-Admin-only and never became configurable
+// (Users, AI Config, Application Monitoring, Storage, Support,
+// Announcements, System Logs, Audit Log — see routes/api.php's own
+// tightened-mismatch comments for why). An item never has both.
 const NAV_GROUPS = [
   {
     label: null,
     items: [
-      { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true, pageKey: null },
+      { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true, pageKey: null, permissionKey: 'admin.module.dashboard' },
     ],
   },
   {
     label: 'Platform',
     items: [
-      { href: '/admin/companies', label: 'Companies',      icon: Building2,    pageKey: 'companies' },
-      { href: '/admin/projects',  label: 'Projects',       icon: FolderKanban, pageKey: 'projects'  },
-      { href: '/admin/documents', label: 'Documents',      icon: FileText,     pageKey: 'documents' },
-      { href: '/admin/appointments', label: 'Appointments', icon: CalendarClock, pageKey: 'appointments' },
-      { href: '/admin/consultancy/dashboard', label: 'Consultancy', icon: HeartHandshake, pageKey: 'consultancy', activePrefix: '/admin/consultancy' },
+      { href: '/admin/companies', label: 'Companies',      icon: Building2,    pageKey: 'companies',    permissionKey: 'admin.module.companies' },
+      { href: '/admin/projects',  label: 'Projects',       icon: FolderKanban, pageKey: 'projects',     permissionKey: 'admin.module.projects' },
+      { href: '/admin/documents', label: 'Documents',      icon: FileText,     pageKey: 'documents',    permissionKey: 'admin.module.documents' },
+      { href: '/admin/appointments', label: 'Appointments', icon: CalendarClock, pageKey: 'appointments', permissionKey: 'admin.module.appointments' },
+      { href: '/admin/consultancy/dashboard', label: 'Consultancy', icon: HeartHandshake, pageKey: 'consultancy', activePrefix: '/admin/consultancy', permissionKey: 'admin.module.consultancy' },
       { href: '/admin/users',     label: 'Users',          icon: Users,        pageKey: 'users',     superAdminOnly: true },
     ],
   },
   {
     label: 'Tools',
     items: [
-      { href: '/admin/templates', label: 'Templates',      icon: LayoutTemplate, pageKey: 'templates' },
-      { href: '/admin/prompts',   label: 'Prompt Library', icon: BookOpen,       pageKey: 'prompts'   },
-      { href: '/admin/find',      label: 'Find Company',   icon: Search,         pageKey: 'find'      },
-      { href: '/admin/pricing',   label: 'Pricing',        icon: CreditCard,     pageKey: 'pricing',   superAdminOnly: true },
-      { href: '/admin/product-updates', label: 'Product Updates', icon: Sparkles, pageKey: 'product-updates' },
-      { href: '/admin/suresign',  label: 'SureSign',       icon: Gem,            pageKey: 'suresign'  },
+      { href: '/admin/templates', label: 'Templates',      icon: LayoutTemplate, pageKey: 'templates',    permissionKey: 'admin.module.templates' },
+      { href: '/admin/prompts',   label: 'Prompt Library', icon: BookOpen,       pageKey: 'prompts',      permissionKey: 'admin.module.prompt_library' },
+      { href: '/admin/find',      label: 'Find Company',   icon: Search,         pageKey: 'find',         permissionKey: 'admin.module.find_company' },
+      // Pricing — Super Admin Configurable Admin Access resolved the
+      // pre-existing frontend/backend mismatch here: the backend has
+      // deliberately allowed Super Admin OR Admin since the approved
+      // Phase G0 decision (see routes/api.php's own comment), so this was
+      // the frontend flag going stale, not the backend being too broad.
+      // Now genuinely configurable instead of hardcoded Super-Admin-only.
+      { href: '/admin/pricing',   label: 'Pricing',        icon: CreditCard,     pageKey: 'pricing',      permissionKey: 'admin.module.pricing' },
+      { href: '/admin/product-updates', label: 'Product Updates', icon: Sparkles, pageKey: 'product-updates', permissionKey: 'admin.module.product_updates' },
+      { href: '/admin/suresign',  label: 'SureSign',       icon: Gem,            pageKey: 'suresign',     permissionKey: 'admin.module.branding' },
     ],
   },
   {
     label: 'AI Credits',
     items: [
-      { href: '/admin/ai-credits', label: 'Dashboard', icon: Wallet, pageKey: 'ai-credits', exact: true },
-      { href: '/admin/ai-credits/organizations', label: 'Organisations', icon: Building2, pageKey: 'ai-credits' },
-      { href: '/admin/ai-credits/transactions', label: 'Transactions', icon: ScrollText, pageKey: 'ai-credits' },
-      { href: '/admin/ai-credits/shadow-activity', label: 'Shadow Activity', icon: Activity, pageKey: 'ai-credits' },
+      { href: '/admin/ai-credits', label: 'Dashboard', icon: Wallet, pageKey: 'ai-credits', exact: true, permissionKey: 'admin.module.ai_credits' },
+      { href: '/admin/ai-credits/organizations', label: 'Organisations', icon: Building2, pageKey: 'ai-credits', permissionKey: 'admin.module.ai_credits' },
+      { href: '/admin/ai-credits/transactions', label: 'Transactions', icon: ScrollText, pageKey: 'ai-credits', permissionKey: 'admin.module.ai_credits' },
+      { href: '/admin/ai-credits/shadow-activity', label: 'Shadow Activity', icon: Activity, pageKey: 'ai-credits', permissionKey: 'admin.module.ai_credits' },
     ],
   },
   {
@@ -67,8 +82,8 @@ const NAV_GROUPS = [
     superAdminOnly: true,
     items: [
       { href: '/admin/ai-configurations', label: 'AI Config',   icon: Brain,         pageKey: 'ai-configurations', superAdminOnly: true },
-      { href: '/admin/ai-usage', label: 'AI Usage & Cost', icon: Brain, pageKey: 'ai-usage' },
-      { href: '/admin/google-integration', label: 'Google Integration', icon: Link2, pageKey: 'google-integration' },
+      { href: '/admin/ai-usage', label: 'AI Usage & Cost', icon: Brain, pageKey: 'ai-usage', permissionKey: 'admin.module.ai_usage' },
+      { href: '/admin/google-integration', label: 'Google Integration', icon: Link2, pageKey: 'google-integration', permissionKey: 'admin.module.google_integration' },
       { href: '/admin/application-monitoring', label: 'Application Monitoring', icon: Activity, pageKey: 'application-monitoring', superAdminOnly: true },
       { href: '/admin/storage',           label: 'Storage',     icon: HardDrive,     pageKey: 'storage',           superAdminOnly: true },
       { href: '/admin/support',           label: 'Support',     icon: LifeBuoy,      pageKey: 'support',           superAdminOnly: true },
@@ -473,6 +488,16 @@ export default function AdminSidebar({
   }
 
   const isSuperAdmin  = user?.roles?.includes('Super Admin');
+  const isAdmin       = user?.roles?.includes('Admin');
+  // STAGE2-HOLD (Two-Stage Admin Access rollout, Stage 1): the real
+  // permission-aware hasModulePermission()/permissionKey visibility gate
+  // is deliberately NOT active in this build — backend enforcement
+  // (permission:admin.module.* middleware) is also held for Stage 2 (see
+  // routes/api.php), so gating the sidebar ahead of the backend would
+  // hide a module an Admin can still successfully call directly, which
+  // is worse than showing it. isVisible() below intentionally does not
+  // check permissionKey yet. See internal-docs/super-admin/admin-access.md's
+  // Production rollout section.
   const { data: siteSettings, isSettingsReady } = useSiteSettings();
   const hiddenPages: string[] = siteSettings?.hidden_pages ?? [];
 
@@ -490,18 +515,22 @@ export default function AdminSidebar({
   const supportBadge = supportCounts?.waiting_for_support ?? 0;
 
   // Consultancy queue badge — "needs attention" count (awaiting_consultant),
-  // mirroring the Support inbox badge above exactly. Not Super-Admin-only:
-  // the Consultancy nav item itself isn't, since any Admin/Super Admin has
-  // platform-wide read access to the queue.
+  // mirroring the Support inbox badge above exactly. STAGE2-HOLD: not yet
+  // gated on admin.module.consultancy — the backend route isn't enforcing
+  // that permission in this build either (see routes/api.php), so this
+  // fires for any Super Admin/Admin exactly as it always historically did.
   const { data: consultancyCounts } = useQuery({
     queryKey: ['admin-consultancy-counts'],
     queryFn: () => api.get('/admin/consultancy/counts').then(r => r.data.counts as Record<string, number>),
+    enabled: !!(isSuperAdmin || isAdmin),
     refetchInterval: 60000,
   });
   const consultancyBadge = consultancyCounts?.awaiting_consultant ?? 0;
 
-  function isVisible(item: { pageKey: string | null; superAdminOnly?: boolean }) {
+  function isVisible(item: { pageKey: string | null; superAdminOnly?: boolean; permissionKey?: string }) {
     if (item.superAdminOnly && !isSuperAdmin) return false;
+    // STAGE2-HOLD: permissionKey-based hiding for configurable modules is
+    // deliberately not enforced here yet — see the docblock above.
     if (item.pageKey && hiddenPages.includes(item.pageKey)) return false;
     return true;
   }

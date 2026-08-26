@@ -238,7 +238,7 @@ class HelpCenterBatch4Test extends TestCase
 
     public function test_authorized_platform_operator_can_manage_banners(): void
     {
-        $admin = $this->makeUser('Admin');
+        $admin = $this->makeUser('Super Admin');
         Sanctum::actingAs($admin);
 
         $create = $this->postJson('/api/admin/platform-announcements', [
@@ -269,7 +269,7 @@ class HelpCenterBatch4Test extends TestCase
 
     public function test_banner_content_is_returned_as_plain_text_and_unsafe_link_schemes_are_rejected(): void
     {
-        $admin = $this->makeUser('Admin');
+        $admin = $this->makeUser('Super Admin');
         Sanctum::actingAs($admin);
 
         $response = $this->postJson('/api/admin/platform-announcements', [
@@ -286,7 +286,7 @@ class HelpCenterBatch4Test extends TestCase
         // "//evil.com" would otherwise pass a naive "starts with /" check on
         // both the backend and the frontend, and browsers resolve it to
         // https://evil.com — found during the Batch 5 security review.
-        $admin = $this->makeUser('Admin');
+        $admin = $this->makeUser('Super Admin');
         Sanctum::actingAs($admin);
 
         $response = $this->postJson('/api/admin/platform-announcements', [
@@ -299,7 +299,7 @@ class HelpCenterBatch4Test extends TestCase
 
     public function test_banner_accepts_a_safe_internal_link(): void
     {
-        $admin = $this->makeUser('Admin');
+        $admin = $this->makeUser('Super Admin');
         Sanctum::actingAs($admin);
 
         $response = $this->postJson('/api/admin/platform-announcements', [

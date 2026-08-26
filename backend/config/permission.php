@@ -136,7 +136,22 @@ return [
      *
      * To enable, set to true, and then create listeners to watch these events.
      */
-    'events_enabled' => false,
+    // Super Admin Configurable Admin Access — enabled so
+    // App\Listeners\GrantBaselineAdminAccessOnRoleAttached can catch EVERY
+    // code path that ever assigns the Admin role, not only the specific
+    // call sites this phase instrumented explicitly
+    // (UserController::inviteOneUser()/update(), DatabaseSeeder's Admin
+    // demo user). Re-confirmed necessary (Admin Access Configuration —
+    // Final Initialisation phase, 2026-08-26): database/seeders/DatabaseSeeder.php
+    // assigns the Admin role directly via assignRole() outside those call
+    // sites, and dozens of pre-existing test fixtures do the same — this
+    // is a genuine, still-relied-upon safety net, not merely a
+    // test-fixture convenience. The listener itself now keys off
+    // AdminAccess::INITIALIZED_SENTINEL absence, not permission count, so
+    // it can never re-grant access to a deliberately zero-module Admin.
+    // No other listener in this codebase reacts to any Spatie event
+    // today, so this has no other effect.
+    'events_enabled' => true,
 
     /*
      * Teams Feature.

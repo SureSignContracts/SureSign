@@ -437,6 +437,109 @@ function RemoveAndDetachControl({
   );
 }
 
+// ── Super Admin Configurable Admin Access — the "Access" section shown
+// only when the target's saved role is Admin. Fetches the authoritative
+// backend catalogue (App\Support\Admin\AdminAccess, via GET
+// /users/{id}/permissions) rather than hardcoding the module list here —
+// the checkbox list is always exactly what the backend will actually
+// enforce. Super Admin/Client targets never render this at all (see
+// ManageUserModal below).
+interface AdminAccessModule { key: string; label: string; group: string }
+
+function AdminAccessSection({ userId }: { userId: number }) {
+  const qc = useQueryClient();
+  // `null` means "no local edit yet — show exactly what the server last
+  // said was granted." Deliberately not seeded via a useEffect (this repo's
+  // lint config forbids setState-in-effect): the query's own `data.granted`
+  // is the source of truth until the user actually touches a checkbox.
+  const [selected, setSelected] = useState<string[] | null>(null);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin-user-access', userId],
+    queryFn: () => api.get(`/users/${userId}/permissions`).then(r => r.data.data as { modules: AdminAccessModule[]; granted: string[] }),
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: (permissions: string[]) => api.put(`/users/${userId}/permissions`, { permissions }).then(r => r.data.data),
+    onSuccess: (result: { granted: string[] }) => {
+      setSelected(result.granted);
+      qc.invalidateQueries({ queryKey: ['admin-user-access', userId] });
+      toast.success('Access updated.');
+    },
+    onError: (e: any) => toast.error(getErrorMessage(e, 'Failed to update access.')),
+  });
+
+  if (isLoading || !data) {
+    return <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Loading access…</p>;
+  }
+
+  const current = selected ?? data.granted;
+
+  const grouped = data.modules.reduce<Record<string, AdminAccessModule[]>>((acc, m) => {
+    (acc[m.group] ??= []).push(m);
+    return acc;
+  }, {});
+
+  const dirty = JSON.stringify([...current].sort()) !== JSON.stringify([...data.granted].sort());
+
+  function toggle(key: string) {
+    setSelected((current.includes(key) ? current.filter(k => k !== key) : [...current, key]));
+  }
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <button
+          type="button"
+          onClick={() => setSelected(data.modules.map(m => m.key))}
+          className="text-xs px-2.5 py-1 rounded-lg font-medium"
+          style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}
+        >
+          Select all
+        </button>
+        <button
+          type="button"
+          onClick={() => setSelected([])}
+          className="text-xs px-2.5 py-1 rounded-lg font-medium"
+          style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}
+        >
+          Clear all
+        </button>
+      </div>
+
+      <div className="space-y-4">
+        {Object.entries(grouped).map(([group, modules]) => (
+          <div key={group}>
+            <p className="text-[10px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: 'var(--text-muted)' }}>{group}</p>
+            <div className="space-y-1.5">
+              {modules.map(m => (
+                <Checkbox
+                  key={m.key}
+                  checked={current.includes(m.key)}
+                  onChange={() => toggle(m.key)}
+                  label={m.label}
+                  className="text-sm"
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {dirty && (
+        <button
+          onClick={() => saveMutation.mutate(current)}
+          disabled={saveMutation.isPending}
+          className="w-full mt-4 py-2.5 rounded-xl text-sm font-medium disabled:opacity-60 transition-opacity hover:opacity-90 active:scale-[0.98]"
+          style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
+        >
+          {saveMutation.isPending ? 'Saving…' : 'Save Access'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ── Manage user modal — consolidates rename, role, status pills and actions ───
 function ManageUserModal({
   user,
@@ -623,6 +726,20 @@ function ManageUserModal({
             </button>
           )}
         </section>
+
+        {user.roles.includes('Admin') && (
+          <>
+            <div style={{ borderTop: '1px solid var(--border)', margin: '0 0 20px' }} />
+            {/* ── Access — Super Admin Configurable Admin Access ── */}
+            <section className="mb-6">
+              <SectionHeader>Access</SectionHeader>
+              <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
+                Choose which modules this Admin can use. Super Admin always has full access regardless of this list.
+              </p>
+              <AdminAccessSection userId={user.id} />
+            </section>
+          </>
+        )}
 
         <div style={{ borderTop: '1px solid var(--border)', margin: '0 0 20px' }} />
 

@@ -1,0 +1,706 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\ActivityLog;
+use App\Models\Organization;
+use App\Models\User;
+use App\Services\Admin\AdminAccessService;
+use App\Support\Admin\AdminAccess;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Http;
+use Laravel\Sanctum\Sanctum;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+use Tests\TestCase;
+
+/**
+ * Super Admin Configurable Admin Access — STAGE 1 ONLY (Two-Stage Admin
+ * Access rollout). Covers the catalogue bootstrap, the sentinel, the full
+ * lifecycle (new/existing/restricted/role-change Admins), cold-start
+ * safety, the Gate::before() Super Admin bypass, the configuration
+ * endpoints, permanently-Super-Admin-only role tightening, and the
+ * ActivityLog audit trail — everything that is safe and correct BEFORE
+ * `permission:admin.module.*` backend middleware or AdminSidebar's
+ * permission-aware hiding exist. It deliberately does NOT assert that a
+ * restricted/zero-permission Admin is blocked from a configurable
+ * module's API — that assertion only becomes true in Stage 2. See
+ * AdminAccessEnforcementTest.php (held for Stage 2, not part of this
+ * commit) for that coverage, and this file's own
+ * test_legacy_admin_retains_historical_access_before_stage_2_enforcement
+ * for the explicit proof of the opposite, currently-correct behaviour.
+ * Client regression lives in Batch1ClientPermissionsTest and is re-run,
+ * not duplicated, here.
+ */
+class AdminAccessTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function makeSuperAdmin(string $email = 'sa@example.com'): User
+    {
+        $user = User::factory()->create(['organization_id' => null, 'email' => $email]);
+        $user->assignRole(Role::firstOrCreate(['name' => 'Super Admin', 'guard_name' => 'web']));
+
+        return $user;
+    }
+
+    private function makeAdmin(string $email = 'admin@example.com'): User
+    {
+        $user = User::factory()->create(['organization_id' => null, 'email' => $email]);
+        $user->assignRole(Role::firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']));
+
+        return $user;
+    }
+
+    private function makeClient(): User
+    {
+        $org = Organization::create(['name' => 'Org', 'slug' => 'org-' . uniqid()]);
+        $user = User::factory()->create(['organization_id' => $org->id]);
+        $user->assignRole(Role::firstOrCreate(['name' => 'Client', 'guard_name' => 'web']));
+
+        return $user;
+    }
+
+    // ── Catalogue bootstrap ──────────────────────────────────────────────
+
+    public function test_permission_catalogue_bootstraps_idempotently(): void
+    {
+        AdminAccessService::ensurePermissionsExist();
+        AdminAccessService::ensurePermissionsExist();
+
+        $count = Permission::whereIn('name', AdminAccess::keys())->count();
+        $this->assertSame(count(AdminAccess::keys()), $count);
+    }
+
+    // ── Cold-start backfill (Final Deployment / Cold-Start Hardening) ────
+
+    /**
+     * Reproduces, then proves fixed, the true production cold-start
+     * state: NOT ONE admin.module.* or admin.access.initialized row
+     * exists in the permissions table at all (a fresh install, or any
+     * environment where nothing has ever called ensurePermissionsExist()
+     * yet) — distinct from every other test in this file, which relies on
+     * makeAdmin()'s own assignRole() call having already triggered the
+     * listener and bootstrapped the catalogue via RoleAttachedEvent. Here
+     * that event is deliberately faked/suppressed so the row is left in a
+     * genuinely untouched legacy state, matching a real Admin created
+     * before this feature existed or with events disabled at the time.
+     */
+    public function test_backfill_cold_start_zero_permission_rows_does_not_throw(): void
+    {
+        \Illuminate\Support\Facades\Event::fake();
+
+        $this->assertSame(0, Permission::whereIn('name', array_merge(AdminAccess::keys(), [AdminAccess::INITIALIZED_SENTINEL]))->count());
+
+        $role = Role::firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']);
+        $admin = User::factory()->create(['organization_id' => null]);
+        $admin->assignRole($role);
+        $this->assertSame(0, $admin->permissions()->count());
+
+        // 1-4. --dry-run must not throw PermissionDoesNotExist, and must
+        // not mutate anything — no catalogue/sentinel rows created, no
+        // permissions granted.
+        Artisan::call('admin:permissions:backfill', ['--dry-run' => true]);
+        $this->assertSame(0, Permission::whereIn('name', array_merge(AdminAccess::keys(), [AdminAccess::INITIALIZED_SENTINEL]))->count());
+        $this->assertSame(0, $admin->fresh()->permissions()->count());
+
+        // 5-7. The real run bootstraps the catalogue AND the sentinel,
+        // then grants the legacy Admin the full baseline.
+        Artisan::call('admin:permissions:backfill');
+        $this->assertSame(count(AdminAccess::keys()) + 1, Permission::whereIn('name', array_merge(AdminAccess::keys(), [AdminAccess::INITIALIZED_SENTINEL]))->count());
+        $fresh = $admin->fresh();
+        $this->assertTrue(AdminAccessService::isInitialized($fresh));
+        foreach (AdminAccess::keys() as $key) {
+            $this->assertTrue($fresh->hasPermissionTo($key));
+        }
+
+        // 8-9. Re-running changes nothing.
+        Artisan::call('admin:permissions:backfill');
+        $this->assertSame(count(AdminAccess::keys()) + 1, $admin->fresh()->permissions->count());
+    }
+
+    /**
+     * Same cold-start database state, but the legacy Admin was already
+     * deliberately Clear-All'd (initialised, zero modules) via a genuine
+     * pre-existing sentinel row of its own before the catalogue's OTHER
+     * rows ever got created elsewhere. Distinguishes "no catalogue rows
+     * exist anywhere yet" from "this specific Admin holds none" — the
+     * backfill command must still leave this Admin at zero.
+     */
+    public function test_backfill_cold_start_intentionally_zero_admin_stays_zero(): void
+    {
+        \Illuminate\Support\Facades\Event::fake();
+
+        $role = Role::firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']);
+        $admin = User::factory()->create(['organization_id' => null]);
+        $admin->assignRole($role);
+
+        // Simulate an Admin already deliberately initialised to zero
+        // modules, in a database where the wider catalogue rows otherwise
+        // don't exist yet (only the sentinel does).
+        AdminAccessService::ensurePermissionsExist();
+        $admin->givePermissionTo(AdminAccess::INITIALIZED_SENTINEL);
+        $this->assertSame(0, $admin->fresh()->getPermissionNames()->intersect(AdminAccess::keys())->count());
+
+        Artisan::call('admin:permissions:backfill');
+
+        $this->assertSame(0, $admin->fresh()->getPermissionNames()->intersect(AdminAccess::keys())->count());
+        $this->assertTrue(AdminAccessService::isInitialized($admin->fresh()));
+    }
+
+    /**
+     * Phase 4 recheck: an initialised-to-zero Admin survives boot/login
+     * (/auth/me), an unrelated profile update, and a backfill run +
+     * rerun — all without regaining a single admin.module.* permission.
+     * Only a genuine role transition away from and back into Admin may
+     * reset to the full baseline.
+     */
+    public function test_initialized_zero_permission_admin_survives_me_update_and_backfill(): void
+    {
+        $superAdmin = $this->makeSuperAdmin();
+        $admin = $this->makeAdmin();
+        AdminAccessService::grantFullAccess($admin);
+        Sanctum::actingAs($superAdmin);
+        $this->putJson("/api/users/{$admin->id}/permissions", ['permissions' => []])->assertStatus(200);
+
+        Sanctum::actingAs($admin->fresh());
+        $this->getJson('/api/auth/me')->assertStatus(200);
+        $this->assertSame(0, $admin->fresh()->getPermissionNames()->intersect(AdminAccess::keys())->count());
+
+        Sanctum::actingAs($superAdmin);
+        $this->putJson("/api/users/{$admin->id}", ['name' => 'Renamed'])->assertStatus(200);
+        $this->assertSame(0, $admin->fresh()->getPermissionNames()->intersect(AdminAccess::keys())->count());
+
+        Artisan::call('admin:permissions:backfill');
+        $this->assertSame(0, $admin->fresh()->getPermissionNames()->intersect(AdminAccess::keys())->count());
+        Artisan::call('admin:permissions:backfill');
+        $this->assertSame(0, $admin->fresh()->getPermissionNames()->intersect(AdminAccess::keys())->count());
+
+        // Only a genuine transition away and back resets to full baseline.
+        $this->putJson("/api/users/{$admin->id}", ['role' => 'Client'])->assertStatus(200);
+        $this->putJson("/api/users/{$admin->id}", ['role' => 'Admin'])->assertStatus(200);
+        $this->assertSame(count(AdminAccess::keys()), $admin->fresh()->getPermissionNames()->intersect(AdminAccess::keys())->count());
+    }
+
+    // ── Baseline lifecycle ───────────────────────────────────────────────
+
+    public function test_existing_admin_receives_full_baseline_via_backfill(): void
+    {
+        $admin = $this->makeAdmin();
+        // Simulates a genuinely legacy/never-initialised Admin row — no
+        // AdminAccess::INITIALIZED_SENTINEL, regardless of how many (if
+        // any) admin.module.* permissions happen to be present. Wiping
+        // ALL permissions (including any auto-granted-by-listener sentinel)
+        // is the correct way to model "never initialised" under the fixed
+        // sentinel-based logic.
+        $admin->syncPermissions([]);
+        $this->assertFalse(AdminAccessService::isInitialized($admin->fresh()));
+
+        Artisan::call('admin:permissions:backfill');
+
+        $fresh = $admin->fresh();
+        $this->assertTrue(AdminAccessService::isInitialized($fresh));
+        foreach (AdminAccess::keys() as $key) {
+            $this->assertTrue($fresh->hasPermissionTo($key));
+        }
+    }
+
+    public function test_backfill_never_restores_an_admin_deliberately_restricted_to_a_subset(): void
+    {
+        $superAdmin = $this->makeSuperAdmin();
+        $admin = $this->makeAdmin();
+        AdminAccessService::grantFullAccess($admin);
+        Sanctum::actingAs($superAdmin);
+
+        // Restrict via the REAL configuration endpoint — the only
+        // safe/realistic way a Super Admin restricts an Admin. This is
+        // what correctly preserves the sentinel (unlike a raw
+        // syncPermissions() call, which this test deliberately avoids).
+        $this->putJson("/api/users/{$admin->id}/permissions", ['permissions' => ['admin.module.pricing']])
+            ->assertStatus(200);
+        $this->assertTrue(AdminAccessService::isInitialized($admin->fresh()));
+
+        Artisan::call('admin:permissions:backfill');
+
+        $this->assertSame(['admin.module.pricing'], $admin->fresh()->getPermissionNames()->intersect(AdminAccess::keys())->values()->all());
+    }
+
+    /**
+     * The mandatory four-state backfill matrix (Admin Access Configuration
+     * — Final Initialisation phase): legacy-uninitialised is granted;
+     * already-initialised-full, already-initialised-partial, and
+     * already-initialised-ZERO are all left completely untouched. This is
+     * the direct regression test for the confirmed zero-permission bug —
+     * before this fix, the zero-module case was indistinguishable from
+     * the legacy case and would have been wrongly re-granted.
+     */
+    public function test_backfill_four_state_matrix(): void
+    {
+        $superAdmin = $this->makeSuperAdmin();
+        Sanctum::actingAs($superAdmin);
+
+        $legacy = $this->makeAdmin('legacy@example.com');
+        $legacy->syncPermissions([]); // never initialised
+
+        $full = $this->makeAdmin('full@example.com');
+        AdminAccessService::grantFullAccess($full); // initialised, full
+
+        $partial = $this->makeAdmin('partial@example.com');
+        $this->putJson("/api/users/{$partial->id}/permissions", ['permissions' => ['admin.module.pricing']])
+            ->assertStatus(200);
+
+        $zero = $this->makeAdmin('zero@example.com');
+        AdminAccessService::grantFullAccess($zero);
+        $this->putJson("/api/users/{$zero->id}/permissions", ['permissions' => []])
+            ->assertStatus(200); // Clear All — deliberately initialised to zero modules
+
+        Artisan::call('admin:permissions:backfill');
+
+        $this->assertTrue($legacy->fresh()->hasPermissionTo('admin.module.pricing'));
+        $this->assertSame(count(AdminAccess::keys()), $full->fresh()->getPermissionNames()->intersect(AdminAccess::keys())->count());
+        $this->assertSame(['admin.module.pricing'], $partial->fresh()->getPermissionNames()->intersect(AdminAccess::keys())->values()->all());
+        // The critical assertion: zero stays zero after backfill.
+        $this->assertCount(0, $zero->fresh()->getPermissionNames()->intersect(AdminAccess::keys()));
+        $this->assertTrue(AdminAccessService::isInitialized($zero->fresh()));
+    }
+
+    /**
+     * Clear-All PERSISTENCE sequence (Stage 1 scope only): an
+     * intentionally zero-module Admin must survive a backfill re-run AND
+     * a legitimate role-lifecycle event that isn't a genuine role
+     * transition — the permission STATE itself (sentinel present,
+     * catalogue permissions empty) is stable regardless of Stage.
+     * Deliberately does NOT assert a 403 on any module route here — Stage
+     * 1 has no `permission:admin.module.*` middleware yet, so a
+     * Clear-All'd Admin correctly still succeeds against those routes in
+     * this build (see test_legacy_admin_retains_historical_access_before_stage_2_enforcement
+     * below). The Stage-2 counterpart (asserting the eventual 403) lives
+     * in AdminAccessEnforcementTest.php, held for Stage 2.
+     */
+    public function test_clear_all_state_survives_backfill_rerun_and_a_non_transition_role_event(): void
+    {
+        $superAdmin = $this->makeSuperAdmin();
+        $admin = $this->makeAdmin();
+        AdminAccessService::grantFullAccess($admin); // 1. Admin gets baseline
+        Sanctum::actingAs($superAdmin);
+
+        // 2/3. Super Admin uses the Access API to Clear All.
+        $this->putJson("/api/users/{$admin->id}/permissions", ['permissions' => []])
+            ->assertStatus(200);
+        $this->assertCount(0, $admin->fresh()->getPermissionNames()->intersect(AdminAccess::keys()));
+
+        // 4. Sentinel remains.
+        $this->assertTrue(AdminAccessService::isInitialized($admin->fresh()));
+
+        // 5/6. Re-running the backfill changes nothing.
+        Artisan::call('admin:permissions:backfill');
+        $this->assertCount(0, $admin->fresh()->getPermissionNames()->intersect(AdminAccess::keys()));
+
+        // 7/8. A legitimate role-lifecycle event that is NOT a genuine
+        // transition (re-submitting the same role) must not restore access
+        // — exercises both UserController::update()'s own before/after
+        // guard and the RoleAttachedEvent listener (which now checks
+        // sentinel presence, not permission count).
+        $this->putJson("/api/users/{$admin->id}", ['role' => 'Admin'])->assertStatus(200);
+        $this->assertCount(0, $admin->fresh()->getPermissionNames()->intersect(AdminAccess::keys()));
+    }
+
+    /**
+     * Stage 1 test expectation (Two-Stage Admin Access rollout): a legacy
+     * Admin — Admin role, zero managed permissions, zero sentinel — must
+     * still get the historical, pre-feature role-based access to every
+     * representative configurable module, because
+     * `permission:admin.module.*` enforcement has not shipped yet in this
+     * build (routes/api.php's Stage-2-held groups). At the same time, the
+     * permanently-Super-Admin-only tightening (independent of this
+     * mechanism) must already deny Admin — proving the two are correctly
+     * decoupled.
+     */
+    public function test_legacy_admin_retains_historical_access_before_stage_2_enforcement(): void
+    {
+        $admin = $this->makeAdmin();
+        // Genuinely zero managed permissions AND zero sentinel — the
+        // Stage-1-shipped listener still grants baseline on assignRole(),
+        // so simulate the real pre-feature legacy state explicitly.
+        $admin->syncPermissions([]);
+        $this->assertFalse(AdminAccessService::isInitialized($admin->fresh()));
+        Sanctum::actingAs($admin->fresh());
+
+        // Configurable modules — historical role-based access, unaffected
+        // by having zero admin.module.* permissions, because Stage 2
+        // hasn't shipped.
+        $this->getJson('/api/admin/organizations')->assertStatus(200);
+        $this->getJson('/api/admin/projects')->assertStatus(200);
+        $this->getJson('/api/admin/pricing/settings')->assertStatus(200);
+        $this->getJson('/api/admin/ai-credits/summary')->assertStatus(200);
+        $this->getJson('/api/admin/google/diagnostics')->assertStatus(200);
+        $this->getJson('/api/admin/dashboard')->assertStatus(200);
+
+        // Permanently-Super-Admin-only modules — already denied, since
+        // this tightening is a plain role check, independent of the
+        // admin.module.* mechanism entirely.
+        $this->getJson('/api/admin/storage')->assertStatus(403);
+        $this->getJson('/api/admin/system-logs')->assertStatus(403);
+        $this->getJson('/api/admin/audit-log')->assertStatus(403);
+        $this->getJson('/api/admin/support-tickets')->assertStatus(403);
+        $this->putJson('/api/admin/suresign-settings/ai', ['ai_enabled' => true])->assertStatus(403);
+    }
+
+    public function test_new_admin_via_invite_receives_full_baseline(): void
+    {
+        Http::fake(['api.brevo.com/*' => Http::response(['messageId' => 'x'], 201)]);
+        \App\Models\SuresignSetting::instance()->update([
+            'brevo_api_key' => 'fake-brevo-key', 'email_sender_email' => 'noreply@suresigncontracts.app',
+            'support_email' => 'support@suresigncontracts.app', 'admin_email' => 'admin@suresigncontracts.app',
+        ]);
+        $superAdmin = $this->makeSuperAdmin();
+        Sanctum::actingAs($superAdmin);
+
+        $this->postJson('/api/users/invite', ['email' => 'newadmin@example.com', 'role' => 'Admin'])
+            ->assertStatus(201);
+
+        $newAdmin = User::where('email', 'newadmin@example.com')->first();
+        $this->assertSame(count(AdminAccess::keys()), $newAdmin->getPermissionNames()->intersect(AdminAccess::keys())->count());
+        $this->assertTrue(AdminAccessService::isInitialized($newAdmin));
+    }
+
+    public function test_role_change_to_admin_receives_full_baseline(): void
+    {
+        $superAdmin = $this->makeSuperAdmin();
+        $client = $this->makeClient();
+        Sanctum::actingAs($superAdmin);
+
+        $this->putJson("/api/users/{$client->id}", ['role' => 'Admin'])->assertStatus(200);
+
+        $fresh = $client->fresh();
+        $this->assertTrue($fresh->hasRole('Admin'));
+        $this->assertSame(count(AdminAccess::keys()), $fresh->getPermissionNames()->intersect(AdminAccess::keys())->count());
+        $this->assertTrue(AdminAccessService::isInitialized($fresh));
+    }
+
+    public function test_restricted_admin_retains_restrictions_after_unrelated_profile_update(): void
+    {
+        $superAdmin = $this->makeSuperAdmin();
+        $admin = $this->makeAdmin();
+        AdminAccessService::grantFullAccess($admin);
+        Sanctum::actingAs($superAdmin);
+
+        $this->putJson("/api/users/{$admin->id}/permissions", ['permissions' => ['admin.module.pricing']])
+            ->assertStatus(200);
+
+        // Unrelated field-only update — no 'role' key submitted at all.
+        $this->putJson("/api/users/{$admin->id}", ['name' => 'New Name'])->assertStatus(200);
+
+        $this->assertSame(['admin.module.pricing'], $admin->fresh()->getPermissionNames()->intersect(AdminAccess::keys())->values()->all());
+    }
+
+    public function test_restricted_admin_retains_restrictions_when_role_resubmitted_unchanged(): void
+    {
+        $superAdmin = $this->makeSuperAdmin();
+        $admin = $this->makeAdmin();
+        AdminAccessService::grantFullAccess($admin);
+        Sanctum::actingAs($superAdmin);
+
+        // Restrict via the real endpoint, which preserves the sentinel —
+        // never a raw syncPermissions() call, which would wipe it and
+        // make this test model an impossible state.
+        $this->putJson("/api/users/{$admin->id}/permissions", ['permissions' => ['admin.module.pricing']])
+            ->assertStatus(200);
+
+        // Resubmitting the SAME role ('Admin' -> 'Admin') must never reset
+        // the restriction back to full, whether via the explicit
+        // before/after check in UserController::update() or via the
+        // catch-all RoleAttachedEvent listener (which now keys off sentinel
+        // presence, not permission count — this admin holds the sentinel).
+        $this->putJson("/api/users/{$admin->id}", ['role' => 'Admin'])->assertStatus(200);
+
+        $this->assertSame(['admin.module.pricing'], $admin->fresh()->getPermissionNames()->intersect(AdminAccess::keys())->values()->all());
+    }
+
+    public function test_role_change_away_from_admin_removes_admin_permissions(): void
+    {
+        $superAdmin = $this->makeSuperAdmin();
+        $admin = $this->makeAdmin();
+        AdminAccessService::grantFullAccess($admin);
+        Sanctum::actingAs($superAdmin);
+
+        $this->putJson("/api/users/{$admin->id}", ['role' => 'Client'])->assertStatus(200);
+
+        // Both the catalogue permissions AND the initialisation sentinel
+        // are removed on a genuine transition away from Admin — a later
+        // transition back into Admin must be a fresh start, never a
+        // silent restoration of whatever was configured before.
+        $this->assertCount(0, $admin->fresh()->permissions);
+        $this->assertFalse(AdminAccessService::isInitialized($admin->fresh()));
+    }
+
+    public function test_admin_to_super_admin_transition_also_removes_sentinel(): void
+    {
+        $superAdmin = $this->makeSuperAdmin();
+        $admin = $this->makeAdmin();
+        AdminAccessService::grantFullAccess($admin);
+        Sanctum::actingAs($superAdmin);
+
+        $this->putJson("/api/users/{$admin->id}", ['role' => 'Super Admin'])->assertStatus(200);
+
+        $this->assertCount(0, $admin->fresh()->permissions);
+        $this->assertFalse(AdminAccessService::isInitialized($admin->fresh()));
+    }
+
+    public function test_transition_back_into_admin_after_a_prior_restriction_is_a_fresh_start(): void
+    {
+        $superAdmin = $this->makeSuperAdmin();
+        $admin = $this->makeAdmin();
+        AdminAccessService::grantFullAccess($admin);
+        Sanctum::actingAs($superAdmin);
+
+        // Restrict, then move away from Admin (removes managed access +
+        // sentinel), then back into Admin — must be full baseline again,
+        // never a silent restoration of the earlier restriction.
+        $this->putJson("/api/users/{$admin->id}/permissions", ['permissions' => ['admin.module.pricing']])->assertStatus(200);
+        $this->putJson("/api/users/{$admin->id}", ['role' => 'Client'])->assertStatus(200);
+        $this->putJson("/api/users/{$admin->id}", ['role' => 'Admin'])->assertStatus(200);
+
+        $fresh = $admin->fresh();
+        $this->assertSame(count(AdminAccess::keys()), $fresh->getPermissionNames()->intersect(AdminAccess::keys())->count());
+        $this->assertTrue(AdminAccessService::isInitialized($fresh));
+    }
+
+    // ── Super Admin bypass ───────────────────────────────────────────────
+
+    public function test_super_admin_bypasses_every_module_check_with_zero_stored_permissions(): void
+    {
+        $superAdmin = $this->makeSuperAdmin();
+        $this->assertCount(0, $superAdmin->permissions);
+        Sanctum::actingAs($superAdmin);
+
+        $this->getJson('/api/admin/pricing/settings')->assertStatus(200);
+        $this->getJson('/api/admin/dashboard')->assertStatus(200);
+    }
+
+    // ── Configuration endpoints ──────────────────────────────────────────
+
+    public function test_super_admin_can_read_and_write_an_admins_access(): void
+    {
+        $superAdmin = $this->makeSuperAdmin();
+        $admin = $this->makeAdmin();
+        AdminAccessService::grantFullAccess($admin);
+        Sanctum::actingAs($superAdmin);
+
+        $this->getJson("/api/users/{$admin->id}/permissions")
+            ->assertStatus(200)
+            ->assertJsonCount(count(AdminAccess::keys()), 'data.granted');
+
+        $this->putJson("/api/users/{$admin->id}/permissions", ['permissions' => ['admin.module.pricing', 'admin.module.projects']])
+            ->assertStatus(200)
+            ->assertJsonPath('data.granted', ['admin.module.pricing', 'admin.module.projects']);
+
+        // The sentinel remains held (this is an ordinary configuration
+        // call, not a role transition) but is never returned by the
+        // catalogue-scoped query below or by the endpoint's own response.
+        $this->assertEqualsCanonicalizing(
+            ['admin.module.pricing', 'admin.module.projects'],
+            $admin->fresh()->getPermissionNames()->intersect(AdminAccess::keys())->all(),
+        );
+        $this->assertTrue(AdminAccessService::isInitialized($admin->fresh()));
+    }
+
+    public function test_admin_cannot_configure_permissions(): void
+    {
+        $admin = $this->makeAdmin();
+        $target = $this->makeAdmin('target@example.com');
+        Sanctum::actingAs($admin);
+
+        $this->getJson("/api/users/{$target->id}/permissions")->assertStatus(403);
+        $this->putJson("/api/users/{$target->id}/permissions", ['permissions' => []])->assertStatus(403);
+    }
+
+    public function test_client_cannot_configure_permissions(): void
+    {
+        $client = $this->makeClient();
+        $target = $this->makeAdmin();
+        Sanctum::actingAs($client);
+
+        $this->getJson("/api/users/{$target->id}/permissions")->assertStatus(403);
+    }
+
+    public function test_target_must_be_admin_not_client(): void
+    {
+        $superAdmin = $this->makeSuperAdmin();
+        $client = $this->makeClient();
+        Sanctum::actingAs($superAdmin);
+
+        $this->getJson("/api/users/{$client->id}/permissions")->assertStatus(422);
+        $this->putJson("/api/users/{$client->id}/permissions", ['permissions' => []])->assertStatus(422);
+    }
+
+    public function test_target_must_be_admin_not_super_admin(): void
+    {
+        $superAdmin = $this->makeSuperAdmin();
+        $otherSuperAdmin = $this->makeSuperAdmin('sa2@example.com');
+        Sanctum::actingAs($superAdmin);
+
+        $this->getJson("/api/users/{$otherSuperAdmin->id}/permissions")->assertStatus(422);
+    }
+
+    public function test_super_admin_cannot_configure_their_own_access(): void
+    {
+        $superAdmin = $this->makeSuperAdmin();
+        Sanctum::actingAs($superAdmin);
+
+        // Self-target is rejected before the role check even runs (this
+        // Super Admin isn't an Admin anyway, but the self-check is the
+        // more specific, correctly-ordered guard).
+        $this->putJson("/api/users/{$superAdmin->id}/permissions", ['permissions' => []])->assertStatus(422);
+    }
+
+    public function test_unknown_permission_key_is_rejected(): void
+    {
+        $superAdmin = $this->makeSuperAdmin();
+        $admin = $this->makeAdmin();
+        $before = $admin->fresh()->getPermissionNames()->all();
+        Sanctum::actingAs($superAdmin);
+
+        $this->putJson("/api/users/{$admin->id}/permissions", ['permissions' => ['admin.module.pricing', 'not-a-real-permission']])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['permissions.1']);
+
+        // Zero mutation on a rejected update — permissions remain exactly
+        // whatever they were before this request (the auto-granted
+        // baseline from makeAdmin()'s own role assignment), not wiped.
+        $this->assertEqualsCanonicalizing($before, $admin->fresh()->getPermissionNames()->all());
+    }
+
+    public function test_sentinel_never_appears_in_catalogue_or_show_response_and_cannot_be_submitted(): void
+    {
+        $this->assertFalse(AdminAccess::isValidKey(AdminAccess::INITIALIZED_SENTINEL));
+        $this->assertNotContains(AdminAccess::INITIALIZED_SENTINEL, AdminAccess::keys());
+
+        $superAdmin = $this->makeSuperAdmin();
+        $admin = $this->makeAdmin();
+        AdminAccessService::grantFullAccess($admin); // holds the sentinel
+        Sanctum::actingAs($superAdmin);
+
+        $response = $this->getJson("/api/users/{$admin->id}/permissions")->assertStatus(200);
+        $this->assertNotContains(AdminAccess::INITIALIZED_SENTINEL, $response->json('data.granted'));
+        foreach ($response->json('data.modules') as $module) {
+            $this->assertNotSame(AdminAccess::INITIALIZED_SENTINEL, $module['key']);
+        }
+
+        // The PUT payload cannot submit it — Rule::in(AdminAccess::keys())
+        // rejects it, structurally, the same as any other unknown key.
+        $this->putJson("/api/users/{$admin->id}/permissions", ['permissions' => [AdminAccess::INITIALIZED_SENTINEL]])
+            ->assertStatus(422);
+    }
+
+    public function test_super_admin_only_capability_cannot_be_granted_through_this_endpoint(): void
+    {
+        $superAdmin = $this->makeSuperAdmin();
+        $admin = $this->makeAdmin();
+        Sanctum::actingAs($superAdmin);
+
+        // Neither 'admin.module.storage' nor any Super-Admin-only surface
+        // exists in the catalogue at all — the only way this could grant
+        // one is if it existed as a valid key, which it structurally does
+        // not (Rule::in(AdminAccess::keys()) rejects anything else).
+        $this->putJson("/api/users/{$admin->id}/permissions", ['permissions' => ['admin.module.storage']])
+            ->assertStatus(422);
+        $this->assertFalse(AdminAccess::isValidKey('admin.module.storage'));
+    }
+
+    public function test_activity_log_records_granted_and_revoked_diff(): void
+    {
+        $superAdmin = $this->makeSuperAdmin();
+        $admin = $this->makeAdmin();
+        $admin->syncPermissions(['admin.module.pricing', 'admin.module.projects']);
+        Sanctum::actingAs($superAdmin);
+
+        $this->putJson("/api/users/{$admin->id}/permissions", ['permissions' => ['admin.module.pricing', 'admin.module.documents']])
+            ->assertStatus(200);
+
+        $log = ActivityLog::where('action', 'admin.permissions.updated')->latest('id')->first();
+        $this->assertNotNull($log);
+        $this->assertEqualsCanonicalizing(['admin.module.documents'], $log->metadata['granted']);
+        $this->assertEqualsCanonicalizing(['admin.module.projects'], $log->metadata['revoked']);
+    }
+
+    public function test_no_activity_log_written_when_update_produces_no_change(): void
+    {
+        $superAdmin = $this->makeSuperAdmin();
+        $admin = $this->makeAdmin();
+        $admin->syncPermissions(['admin.module.pricing']);
+        Sanctum::actingAs($superAdmin);
+
+        $this->putJson("/api/users/{$admin->id}/permissions", ['permissions' => ['admin.module.pricing']])
+            ->assertStatus(200);
+
+        $this->assertDatabaseMissing('activity_logs', ['action' => 'admin.permissions.updated', 'subject_id' => $admin->id]);
+    }
+
+    // ── Backend enforcement (permanently-Super-Admin-only only — see
+    // AdminAccessEnforcementTest.php, held for Stage 2, for the
+    // configurable-module `admin.module.*` enforcement tests) ───────────
+
+    public function test_permanently_super_admin_only_api_remains_blocked_from_admin_even_with_full_catalogue(): void
+    {
+        $admin = $this->makeAdmin();
+        AdminAccessService::grantFullAccess($admin); // every configurable module granted
+        Sanctum::actingAs($admin);
+
+        // Storage/System Logs/Audit Log/Support/Announcements/AI Config are
+        // not in the catalogue at all — granting everything that IS in it
+        // must never reach these.
+        $this->getJson('/api/admin/storage')->assertStatus(403);
+        $this->getJson('/api/admin/system-logs')->assertStatus(403);
+        $this->getJson('/api/admin/audit-log')->assertStatus(403);
+        $this->getJson('/api/admin/support-tickets')->assertStatus(403);
+        $this->putJson('/api/admin/suresign-settings/ai', ['ai_enabled' => true])->assertStatus(403);
+    }
+
+    /**
+     * Phase 14 — even a manually-inserted fake permission matching a
+     * permanently-Super-Admin-only surface's naming convention must not
+     * grant access, since these routes are gated by role:Super Admin
+     * alone, never by a permission check that a permission row could
+     * satisfy.
+     */
+    public function test_permanently_super_admin_only_modules_resist_fake_matching_permissions(): void
+    {
+        $admin = $this->makeAdmin();
+        foreach (['admin.module.storage', 'admin.module.support', 'admin.module.announcements', 'admin.module.system_logs', 'admin.module.audit_log', 'admin.module.ai_config'] as $fakeName) {
+            $admin->givePermissionTo(Permission::firstOrCreate(['name' => $fakeName, 'guard_name' => 'web']));
+        }
+        Sanctum::actingAs($admin->fresh());
+
+        $this->getJson('/api/admin/storage')->assertStatus(403);
+        $this->getJson('/api/admin/support-tickets')->assertStatus(403);
+        $this->getJson('/api/admin/platform-announcements')->assertStatus(403);
+        $this->getJson('/api/admin/system-logs')->assertStatus(403);
+        $this->getJson('/api/admin/audit-log')->assertStatus(403);
+        $this->putJson('/api/admin/suresign-settings/ai', ['ai_enabled' => true])->assertStatus(403);
+    }
+
+    public function test_admin_cannot_access_super_admin_only_api_by_faking_a_permission_name(): void
+    {
+        $admin = $this->makeAdmin();
+        // Directly attach a permission that happens to share the naming
+        // convention, proving the route itself (role:Super Admin) is what
+        // blocks this — no permission name could ever satisfy a role check.
+        $fake = Permission::firstOrCreate(['name' => 'admin.module.storage', 'guard_name' => 'web']);
+        $admin->givePermissionTo($fake);
+        Sanctum::actingAs($admin);
+
+        $this->getJson('/api/admin/storage')->assertStatus(403);
+    }
+
+    // ── Client regression (sampled here; full suite in Batch1ClientPermissionsTest) ──
+
+    public function test_client_routes_are_entirely_unaffected(): void
+    {
+        $client = $this->makeClient();
+        Sanctum::actingAs($client);
+
+        $this->getJson('/api/projects')->assertStatus(200);
+    }
+}

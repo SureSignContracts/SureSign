@@ -97,6 +97,16 @@ class DatabaseSeeder extends Seeder
         );
         $graham->assignRole($adminRole);
 
+        // Super Admin Configurable Admin Access — an explicit call here
+        // for the same reason UserController::inviteOneUser()/update() call
+        // it: a genuine transition into the Admin role always starts with
+        // the full configurable baseline. GrantBaselineAdminAccessOnRoleAttached
+        // would also catch this via the assignRole() call above, but this
+        // seeder is a real, non-test production path, so it gets the same
+        // explicit treatment as the other two rather than relying solely
+        // on the event listener.
+        \App\Services\Admin\AdminAccessService::grantFullAccess($graham);
+
         $this->command->info('✓ Seeded: roles, permissions, super admin');
 
         // Only ever print a password once, right after the account is first

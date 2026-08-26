@@ -276,7 +276,14 @@ class SupportTicketControllerTest extends TestCase
         Sanctum::actingAs($user);
         $ticketId = $this->postJson('/api/support-tickets', ['subject' => 'Test', 'message' => 'Test message'])->json('data.id');
 
-        $admin = $this->makeUser('Admin');
+        // Super Admin Configurable Admin Access tightened /admin/support-tickets*
+        // to role:Super Admin ONLY (matching the frontend's own pre-existing
+        // superAdminOnly flag — see routes/api.php's own comment on this
+        // mismatch) — Admin is no longer a valid actor for these admin
+        // ticket-management assertions, only for the platform-operator
+        // ticket-detail/screenshot checks elsewhere in this file (which
+        // Super Admin also satisfies).
+        $admin = $this->makeUser('Super Admin');
         Sanctum::actingAs($admin);
 
         $this->getJson('/api/admin/support-tickets')->assertStatus(200)
@@ -531,7 +538,14 @@ class SupportTicketControllerTest extends TestCase
         Storage::fake('local');
         $ticket = $this->createTicketWithScreenshot($this->makeUser());
 
-        $admin = $this->makeUser('Admin');
+        // Super Admin Configurable Admin Access tightened /admin/support-tickets*
+        // to role:Super Admin ONLY (matching the frontend's own pre-existing
+        // superAdminOnly flag — see routes/api.php's own comment on this
+        // mismatch) — Admin is no longer a valid actor for these admin
+        // ticket-management assertions, only for the platform-operator
+        // ticket-detail/screenshot checks elsewhere in this file (which
+        // Super Admin also satisfies).
+        $admin = $this->makeUser('Super Admin');
         Sanctum::actingAs($admin);
 
         $this->getJson("/api/support-tickets/{$ticket->id}/screenshot")->assertStatus(200);
@@ -721,7 +735,14 @@ class SupportTicketControllerTest extends TestCase
             'screenshot' => $this->fakeImage('bug.png', self::PNG_B64),
         ])->assertStatus(201)->json('data.id');
 
-        $admin = $this->makeUser('Admin');
+        // Super Admin Configurable Admin Access tightened /admin/support-tickets*
+        // to role:Super Admin ONLY (matching the frontend's own pre-existing
+        // superAdminOnly flag — see routes/api.php's own comment on this
+        // mismatch) — Admin is no longer a valid actor for these admin
+        // ticket-management assertions, only for the platform-operator
+        // ticket-detail/screenshot checks elsewhere in this file (which
+        // Super Admin also satisfies).
+        $admin = $this->makeUser('Super Admin');
         Sanctum::actingAs($admin);
 
         // Full context/diagnostics live on the admin detail endpoint, not the
@@ -887,7 +908,14 @@ class SupportTicketControllerTest extends TestCase
         Sanctum::actingAs($owner);
         $id = $this->postJson('/api/support-tickets', ['subject' => 'Test', 'message' => 'msg'])->json('data.id');
 
-        $admin = $this->makeUser('Admin');
+        // Super Admin Configurable Admin Access tightened /admin/support-tickets*
+        // to role:Super Admin ONLY (matching the frontend's own pre-existing
+        // superAdminOnly flag — see routes/api.php's own comment on this
+        // mismatch) — Admin is no longer a valid actor for these admin
+        // ticket-management assertions, only for the platform-operator
+        // ticket-detail/screenshot checks elsewhere in this file (which
+        // Super Admin also satisfies).
+        $admin = $this->makeUser('Super Admin');
         Sanctum::actingAs($admin);
 
         $this->getJson("/api/support-tickets/{$id}")->assertStatus(200);
@@ -927,7 +955,14 @@ class SupportTicketControllerTest extends TestCase
     {
         $this->enableBrevoAndSupportEmail();
         $user = $this->makeUser();
-        $admin = $this->makeUser('Admin');
+        // Super Admin Configurable Admin Access tightened /admin/support-tickets*
+        // to role:Super Admin ONLY (matching the frontend's own pre-existing
+        // superAdminOnly flag — see routes/api.php's own comment on this
+        // mismatch) — Admin is no longer a valid actor for these admin
+        // ticket-management assertions, only for the platform-operator
+        // ticket-detail/screenshot checks elsewhere in this file (which
+        // Super Admin also satisfies).
+        $admin = $this->makeUser('Super Admin');
         $superAdmin = $this->makeUser('Super Admin');
         $unrelatedClient = $this->makeUser('Client');
         Sanctum::actingAs($user);
@@ -951,7 +986,14 @@ class SupportTicketControllerTest extends TestCase
         Sanctum::actingAs($user);
         $this->postJson('/api/support-tickets', ['subject' => 'Test', 'message' => 'msg'])->assertStatus(201);
 
-        $admin = $this->makeUser('Admin');
+        // Super Admin Configurable Admin Access tightened /admin/support-tickets*
+        // to role:Super Admin ONLY (matching the frontend's own pre-existing
+        // superAdminOnly flag — see routes/api.php's own comment on this
+        // mismatch) — Admin is no longer a valid actor for these admin
+        // ticket-management assertions, only for the platform-operator
+        // ticket-detail/screenshot checks elsewhere in this file (which
+        // Super Admin also satisfies).
+        $admin = $this->makeUser('Super Admin');
         Sanctum::actingAs($admin);
 
         $response = $this->getJson('/api/admin/support-tickets/counts')->assertStatus(200);
@@ -974,7 +1016,14 @@ class SupportTicketControllerTest extends TestCase
         Sanctum::actingAs($owner);
         $id = $this->postJson('/api/support-tickets', ['subject' => 'Test', 'message' => 'msg'])->json('data.id');
 
-        $admin = $this->makeUser('Admin');
+        // Super Admin Configurable Admin Access tightened /admin/support-tickets*
+        // to role:Super Admin ONLY (matching the frontend's own pre-existing
+        // superAdminOnly flag — see routes/api.php's own comment on this
+        // mismatch) — Admin is no longer a valid actor for these admin
+        // ticket-management assertions, only for the platform-operator
+        // ticket-detail/screenshot checks elsewhere in this file (which
+        // Super Admin also satisfies).
+        $admin = $this->makeUser('Super Admin');
         Sanctum::actingAs($admin);
         $this->putJson("/api/admin/support-tickets/{$id}", ['status' => 'resolved'])->assertStatus(200);
 
@@ -996,7 +1045,14 @@ class SupportTicketControllerTest extends TestCase
         Sanctum::actingAs($owner);
         $id = $this->postJson('/api/support-tickets', ['subject' => 'Test', 'message' => 'msg'])->json('data.id');
 
-        $admin = $this->makeUser('Admin');
+        // Super Admin Configurable Admin Access tightened /admin/support-tickets*
+        // to role:Super Admin ONLY (matching the frontend's own pre-existing
+        // superAdminOnly flag — see routes/api.php's own comment on this
+        // mismatch) — Admin is no longer a valid actor for these admin
+        // ticket-management assertions, only for the platform-operator
+        // ticket-detail/screenshot checks elsewhere in this file (which
+        // Super Admin also satisfies).
+        $admin = $this->makeUser('Super Admin');
         Sanctum::actingAs($admin);
         // Ticket is created directly into WAITING_FOR_SUPPORT (Batch 5) — a
         // re-save of the same status is the idempotent no-op this test is
@@ -1012,7 +1068,14 @@ class SupportTicketControllerTest extends TestCase
         Sanctum::actingAs($owner);
         $id = $this->postJson('/api/support-tickets', ['subject' => 'Test', 'message' => 'msg'])->json('data.id');
 
-        $admin = $this->makeUser('Admin');
+        // Super Admin Configurable Admin Access tightened /admin/support-tickets*
+        // to role:Super Admin ONLY (matching the frontend's own pre-existing
+        // superAdminOnly flag — see routes/api.php's own comment on this
+        // mismatch) — Admin is no longer a valid actor for these admin
+        // ticket-management assertions, only for the platform-operator
+        // ticket-detail/screenshot checks elsewhere in this file (which
+        // Super Admin also satisfies).
+        $admin = $this->makeUser('Super Admin');
         Sanctum::actingAs($admin);
         // A ticket in WAITING_FOR_SUPPORT can move to RESOLVED, but not
         // straight to CLOSED->...  actually verify a genuinely disallowed

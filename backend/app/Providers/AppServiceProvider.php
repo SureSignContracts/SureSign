@@ -53,6 +53,34 @@ class AppServiceProvider extends ServiceProvider
         // — never a per-controller Password::min(...) call again.
         SureSignPasswordPolicy::configureDefaults();
 
+        // Super Admin Configurable Admin Access — the ONE authoritative
+        // Super Admin bypass for every permission check platform-wide
+        // (Gate::allows(), @can, the `permission:` middleware — all of
+        // them route through Gate under the hood). Deliberately a Gate
+        // bypass, never a stored permission grant: Super Admin access must
+        // never depend on any row in the admin.module.* catalogue, or on
+        // that catalogue ever being seeded at all. Returning null (never
+        // false) for every other user lets normal Spatie evaluation
+        // proceed unchanged — this can only ever WIDEN access for Super
+        // Admin, never narrow it for anyone else. Does not affect
+        // `role:Super Admin`-gated routes at all — those never consult
+        // Gate/Spatie permissions in the first place, so this bypass
+        // cannot turn a permanently Super-Admin-only route into an
+        // Admin-reachable one.
+        \Illuminate\Support\Facades\Gate::before(function ($user, string $ability) {
+            return $user->hasRole('Super Admin') ? true : null;
+        });
+
+        // Super Admin Configurable Admin Access — the catch-all safety net
+        // for every code path that assigns the Admin role. See
+        // GrantBaselineAdminAccessOnRoleAttached's own docblock for why
+        // this is registered here rather than relying solely on the two
+        // explicit UserController call sites.
+        \Illuminate\Support\Facades\Event::listen(
+            \Spatie\Permission\Events\RoleAttachedEvent::class,
+            \App\Listeners\GrantBaselineAdminAccessOnRoleAttached::class,
+        );
+
         $this->configureRateLimiters();
     }
 
