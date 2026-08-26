@@ -284,6 +284,12 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
         Route::put('/notification-sound', [AuthController::class, 'updateNotificationSound']);
         Route::put('/force-password-change', [AuthController::class, 'forcePasswordChange'])->middleware('throttle:force-password-change')->name('auth.force-password-change');
         Route::post('/email/verification-notification', [AuthController::class, 'sendEmailVerification'])->middleware('throttle:email-verification-resend');
+        // Self-Service Account Deletion — always targets $request->user();
+        // never accepts another user's id. Sits in the standard
+        // authenticated group (auth:sanctum/account.status/password.current/
+        // track.usage) like every other /auth/* action here — deliberately
+        // NOT inside the Super-Admin-only user-management route group.
+        Route::post('/delete-account', [AuthController::class, 'deleteAccount'])->middleware('throttle:delete-account')->name('auth.delete-account');
     });
 
     // Dashboard

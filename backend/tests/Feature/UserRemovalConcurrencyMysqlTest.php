@@ -293,4 +293,86 @@ class UserRemovalConcurrencyMysqlTest extends TestCase
         $this->assertTrue($this->isSoftDeleted($clientB->id));
         $this->assertSame(0, $this->remainingNonDeletedClients($org->id));
     }
+
+    // ── Self-Service Account Deletion vs admin-initiated detach ──────────
+
+    /**
+     * Self-Service Account Deletion (AuthController::deleteAccount()'s
+     * Client branch) shares the EXACT SAME lock primitive
+     * (OrganizationRemovalLock — extracted from UserController's own
+     * withOrganizationLock()) and the identical last-Client counting query
+     * as UserController::removeAndDetach(). The 'detach' mode of
+     * attempt_client_removal.php already exercises that precise lock/
+     * decision code path — this test uses it to stand in for a concurrent
+     * self-delete, since the thing genuinely at risk here (the last-Client
+     * race) is proven by the lock/query shape, not by which HTTP endpoint
+     * happens to be calling it. What's novel here versus the detach+detach
+     * test above is that the two racing operations are conceptually two
+     * DIFFERENT entry points (a user self-deleting, an admin detaching a
+     * sibling) sharing one lock for the first time.
+     */
+    public function test_self_delete_racing_an_admin_initiated_detach_never_both_succeed_unconfirmed(): void
+    {
+        [$org, $clients] = $this->makeOrgWithClients('self-vs-admin', 2);
+        [$selfDeletingClient, $adminDetachedClient] = $clients;
+
+        $pdo = \DB::connection(self::CONNECTION)->getPdo();
+        $pdo->beginTransaction();
+
+        // Execution A: the self-deleting Client locks the organisation row
+        // first, in-process.
+        $lockStmt = $pdo->prepare('SELECT id FROM organizations WHERE id = :id FOR UPDATE');
+        $lockStmt->execute(['id' => $org->id]);
+        $lockStmt->fetch();
+
+        // Execution B: an admin concurrently detaches the OTHER Client —
+        // must block on the same organisation row.
+        [$host, $port, $database, $username, $password] = $this->connectionArgs();
+        $script = base_path('tests/mysql_concurrency_helpers/attempt_client_removal.php');
+        $process = proc_open(
+            ['php', $script, $host, (string) $port, $database, $username, $password, 'detach', (string) $org->id, (string) $adminDetachedClient->id, '0'],
+            [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+            $pipes
+        );
+
+        usleep((int) (self::HOLD_SECONDS * 1_000_000));
+
+        $othersForA = $pdo->query(
+            "SELECT COUNT(*) AS c FROM users u
+             JOIN model_has_roles mhr ON mhr.model_id = u.id
+             JOIN roles r ON r.id = mhr.role_id AND r.name = 'Client'
+             WHERE u.organization_id = {$org->id} AND u.id != {$selfDeletingClient->id} AND u.deleted_at IS NULL"
+        )->fetch(PDO::FETCH_ASSOC)['c'];
+        $this->assertSame(1, (int) $othersForA, 'The self-deleting Client must still see the sibling as non-deleted while holding the lock.');
+
+        // A proceeds with self-deletion (token revocation + soft-delete —
+        // the anonymising field overwrite is irrelevant to this race and
+        // omitted here, same as normal_remove mode does for its own
+        // mutation).
+        $pdo->prepare('DELETE FROM personal_access_tokens WHERE tokenable_id = :id')->execute(['id' => $selfDeletingClient->id]);
+        $pdo->prepare('UPDATE users SET organization_id = NULL, deleted_at = NOW() WHERE id = :id')->execute(['id' => $selfDeletingClient->id]);
+        $pdo->commit();
+
+        $stdout = stream_get_contents($pipes[1]);
+        $stderr = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        proc_close($process);
+
+        $bResult = json_decode($stdout, true);
+        $this->assertIsArray($bResult, "attempt_client_removal.php produced non-JSON output. stdout={$stdout} stderr={$stderr}");
+        $this->assertNull($bResult['error']);
+        $this->assertGreaterThanOrEqual(self::HOLD_SECONDS * 0.5, $bResult['wait_seconds']);
+
+        // The admin's detach of the sibling must be REJECTED once it
+        // observes the self-deletion's committed effect — never silently
+        // succeed alongside it.
+        $this->assertTrue($bResult['rejected']);
+        $this->assertFalse($bResult['mutated']);
+        $this->assertSame(0, $bResult['remaining_clients']);
+
+        $this->assertTrue($this->isSoftDeleted($selfDeletingClient->id));
+        $this->assertFalse($this->isSoftDeleted($adminDetachedClient->id));
+        $this->assertSame(1, $this->remainingNonDeletedClients($org->id));
+    }
 }

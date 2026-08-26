@@ -72,6 +72,15 @@ interface AuthState {
   setToken: (token: string) => void;
   login: (email: string, password: string, remember?: boolean) => Promise<void>;
   logout: () => Promise<void>;
+  /**
+   * Self-Service Account Deletion — clears local auth state WITHOUT calling
+   * POST /auth/logout. Use this only right after a successful
+   * POST /auth/delete-account, whose own backend work already revokes every
+   * Sanctum token — an extra authenticated logout call would just 401
+   * against a token that's already dead. logout() above remains the normal
+   * path for every other case.
+   */
+  logoutLocally: () => void;
   fetchUser: () => Promise<void>;
   hasRole: (role: string) => boolean;
   hasPermission: (permission: string) => boolean;
@@ -133,6 +142,12 @@ export const useAuthStore = create<AuthState>()(
 
       logout: async () => {
         try { await api.post('/auth/logout'); } catch {}
+        clearStoredToken();
+        clearStoredAuthBlob();
+        set({ user: null, token: null });
+      },
+
+      logoutLocally: () => {
         clearStoredToken();
         clearStoredAuthBlob();
         set({ user: null, token: null });

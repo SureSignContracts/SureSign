@@ -7,7 +7,13 @@
  * to acquire the SAME organisation-row lock ("SELECT ... FOR UPDATE") the
  * main test process ("Execution A") is holding, proving real MySQL/InnoDB
  * row-level lock contention for the Remove & Detach Concurrency Hardening
- * fix (UserController::withOrganizationLock()).
+ * fix (UserController::withOrganizationLock(), now extracted to
+ * App\Support\Users\OrganizationRemovalLock). `detach` mode's lock/decision
+ * query shape is identical to AuthController::deleteAccount()'s Client
+ * branch (Self-Service Account Deletion) — both now call the exact same
+ * shared lock class and last-Client counting query — so this same mode also
+ * stands in for a concurrent self-delete in
+ * test_self_delete_racing_an_admin_initiated_detach_never_both_succeed_unconfirmed().
  *
  * Usage:
  *   php attempt_client_removal.php <host> <port> <database> <username> <password> \

@@ -11,6 +11,7 @@ use App\Services\Entitlements\SubscriptionAccessPolicy;
 use App\Services\InvitationService;
 use App\Services\Intelligence\SubscriptionIntelligenceService;
 use App\Support\Auth\PasswordSecurityNotifier;
+use App\Support\Auth\SuperAdminGuard;
 use App\Support\Auth\SureSignPasswordPolicy;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Request;
@@ -473,58 +474,83 @@ class UserController extends Controller
             'is_active' => 'sometimes|boolean',
         ]);
 
-        if (isset($validated['is_active']) && ! $validated['is_active'] && $this->isLastActiveSuperAdmin($user)) {
-            return response()->json(['message' => 'Cannot deactivate the last Super Admin.'], 422);
-        }
+        // Last Active Super Admin Concurrency Hardening — only THIS
+        // request's own intended change (deactivating, or changing role
+        // away from Super Admin) is a reduction worth locking for; a plain
+        // name edit on a Super Admin never takes the lock at all, per
+        // SuperAdminGuard::guardedMutate()'s own "no-op for a non-reducing
+        // case" contract. Precedence matches the original sequential
+        // checks this replaces: a deactivation attempt is reported as such
+        // even if a role change was also requested in the same call.
+        $deactivatesSuperAdmin = isset($validated['is_active']) && ! $validated['is_active'];
+        $changesRoleAwayFromSuperAdmin = isset($validated['role']) && $validated['role'] !== 'Super Admin';
+        $wouldReduceSuperAdminCount = $user->hasRole('Super Admin') && ($deactivatesSuperAdmin || $changesRoleAwayFromSuperAdmin);
 
-        if (isset($validated['role']) && $validated['role'] !== 'Super Admin' && $this->isLastActiveSuperAdmin($user)) {
-            return response()->json(['message' => 'Cannot change the role of the last Super Admin.'], 422);
-        }
+        $applyUpdate = function (User $target) use ($validated) {
+            $before = $target->only(['name', 'is_active']);
 
-        $before = $user->only(['name', 'is_active']);
+            if (isset($validated['name']))      $target->name      = $validated['name'];
+            if (isset($validated['is_active'])) $target->is_active = $validated['is_active'];
+            $target->save();
 
-        if (isset($validated['name']))      $user->name      = $validated['name'];
-        if (isset($validated['is_active'])) $user->is_active = $validated['is_active'];
-        $user->save();
-
-        if (isset($validated['role'])) {
-            $beforeRoles = $user->roles->pluck('name')->all();
-            $user->syncRoles([]);
-            $role = Role::firstOrCreate(['name' => $validated['role'], 'guard_name' => 'web']);
-            $user->assignRole($role);
-
-            ActivityLog::record(
-                'user.role_changed',
-                "Changed {$user->email}'s role from " . (implode(', ', $beforeRoles) ?: 'none') . " to {$validated['role']}",
-                Auth::user(),
-                $user,
-                ['from' => $beforeRoles, 'to' => $validated['role']],
-            );
-        }
-
-        if (isset($validated['is_active']) && $before['is_active'] !== $user->is_active) {
-            ActivityLog::record(
-                $user->is_active ? 'user.activated' : 'user.deactivated',
-                ($user->is_active ? 'Activated ' : 'Deactivated ') . $user->email,
-                Auth::user(),
-                $user,
-            );
-
-            // Only revoke on the true -> false transition, not merely because
-            // is_active was present in the request (e.g. re-submitting the
-            // same value, or reactivating someone) — reactivation must not
-            // hand back a working session either; a fresh login is required
-            // (see UserController::unban for the same rule on bans).
-            if ($before['is_active'] === true && $user->is_active === false) {
-                $user->tokens()->delete();
+            if (isset($validated['role'])) {
+                $beforeRoles = $target->roles->pluck('name')->all();
+                $target->syncRoles([]);
+                $role = Role::firstOrCreate(['name' => $validated['role'], 'guard_name' => 'web']);
+                $target->assignRole($role);
 
                 ActivityLog::record(
-                    'user.tokens_revoked',
-                    "Revoked all active session(s) for {$user->email} due to deactivation",
+                    'user.role_changed',
+                    "Changed {$target->email}'s role from " . (implode(', ', $beforeRoles) ?: 'none') . " to {$validated['role']}",
                     Auth::user(),
-                    $user,
+                    $target,
+                    ['from' => $beforeRoles, 'to' => $validated['role']],
                 );
             }
+
+            if (isset($validated['is_active']) && $before['is_active'] !== $target->is_active) {
+                ActivityLog::record(
+                    $target->is_active ? 'user.activated' : 'user.deactivated',
+                    ($target->is_active ? 'Activated ' : 'Deactivated ') . $target->email,
+                    Auth::user(),
+                    $target,
+                );
+
+                // Only revoke on the true -> false transition, not merely
+                // because is_active was present in the request (e.g.
+                // re-submitting the same value, or reactivating someone) —
+                // reactivation must not hand back a working session
+                // either; a fresh login is required (see
+                // UserController::unban for the same rule on bans).
+                if ($before['is_active'] === true && $target->is_active === false) {
+                    $target->tokens()->delete();
+
+                    ActivityLog::record(
+                        'user.tokens_revoked',
+                        "Revoked all active session(s) for {$target->email} due to deactivation",
+                        Auth::user(),
+                        $target,
+                    );
+                }
+            }
+
+            return $target;
+        };
+
+        if ($wouldReduceSuperAdminCount) {
+            $outcome = SuperAdminGuard::guardedMutate($user, $applyUpdate);
+
+            if ($outcome['blocked']) {
+                $message = $deactivatesSuperAdmin
+                    ? 'Cannot deactivate the last Super Admin.'
+                    : 'Cannot change the role of the last Super Admin.';
+
+                return response()->json(['message' => $message], 422);
+            }
+
+            $user = $outcome['result'];
+        } else {
+            $user = $applyUpdate($user);
         }
 
         return response()->json(['data' => $this->formatUser($user->fresh('roles'))]);
@@ -538,22 +564,34 @@ class UserController extends Controller
 
         $user = User::findOrFail($id);
 
-        if ($this->isLastActiveSuperAdmin($user)) {
+        // Last Active Super Admin Concurrency Hardening — see
+        // SuperAdminGuard::guardedMutate()'s own docblock. A no-op lock for
+        // any non-Super-Admin target (the overwhelmingly common case);
+        // for a Super Admin target, the last-active decision and the
+        // removal itself now happen inside the same shared lock, so a
+        // concurrent operation reducing a DIFFERENT Super Admin's active
+        // status can never be decided against simultaneously.
+        $outcome = SuperAdminGuard::guardedMutate($user, function (User $target) {
+            // Remove & Detach Concurrency Hardening — a Client's own
+            // removal must be serialized on their organisation's row (see
+            // withOrganizationLock()'s docblock) so a concurrent
+            // removeAndDetach() request for a DIFFERENT Client in the SAME
+            // organisation can never decide "another Client still exists"
+            // against a stale, pre-commit view. This does not change
+            // Remove User's own behaviour or add any confirmation step
+            // here — a plain Client/Admin/Super Admin removal never itself
+            // requires last-Client confirmation (see that method's own
+            // docblock for the exact, narrower invariant this protects).
+            $this->removeUserWithinOrganizationLock($target);
+
+            return $target;
+        });
+
+        if ($outcome['blocked']) {
             return response()->json(['message' => 'Cannot remove the last Super Admin.'], 422);
         }
 
-        // Remove & Detach Concurrency Hardening — a Client's own removal
-        // must be serialized on their organisation's row (see
-        // withOrganizationLock()'s docblock) so a concurrent
-        // removeAndDetach() request for a DIFFERENT Client in the SAME
-        // organisation can never decide "another Client still exists"
-        // against a stale, pre-commit view. This does not change Remove
-        // User's own behaviour or add any confirmation step here — a plain
-        // Client/Admin/Super Admin removal never itself requires
-        // last-Client confirmation (see that method's docblock for the
-        // exact, narrower invariant this protects).
-        $this->removeUserWithinOrganizationLock($user);
-
+        $user = $outcome['result'];
         ActivityLog::record('user.removed', "Removed {$user->email}", Auth::user(), $user);
 
         return response()->json(['message' => 'User removed.']);
@@ -626,11 +664,10 @@ class UserController extends Controller
      */
     private function withOrganizationLock(int $organizationId, callable $callback): mixed
     {
-        return DB::transaction(function () use ($organizationId, $callback) {
-            Organization::where('id', $organizationId)->lockForUpdate()->first();
-
-            return $callback();
-        });
+        // Delegates to the shared, authoritative implementation — see
+        // OrganizationRemovalLock's own docblock. Kept as a thin wrapper so
+        // every existing call site in this controller is unaffected.
+        return \App\Support\Users\OrganizationRemovalLock::run($organizationId, $callback);
     }
 
     /**
@@ -816,28 +853,39 @@ class UserController extends Controller
                 continue;
             }
 
-            // Re-checked per row (not just once up front) — removing one
-            // Super Admin in this same batch can make the next one in the
-            // list newly "the last" active Super Admin.
-            if ($this->isLastActiveSuperAdmin($user)) {
+            // Last Active Super Admin Concurrency Hardening — re-evaluated
+            // per row (not just once up front), same reason the comment
+            // above always gave, now made authoritative under concurrency
+            // too: removing one Super Admin in this same batch (or in a
+            // concurrent request entirely) can make the next row newly
+            // "the last" active Super Admin. Each row acquires/releases
+            // its OWN short Super-Admin-role-row lock independently — see
+            // SuperAdminGuard::guardedMutate()'s docblock — never held
+            // across the whole batch.
+            $outcome = SuperAdminGuard::guardedMutate($user, function (User $target) {
+                // Remove & Detach Concurrency Hardening — same per-row
+                // organisation-row lock destroy() takes, scoped to only
+                // THIS row's own short transaction (see
+                // removeUserWithinOrganizationLock()'s docblock). Each row
+                // acquires, mutates, and releases its own organisation's
+                // lock independently — never holds more than one
+                // organisation's lock at a time, so a batch spanning
+                // several organisations never contends across them, and
+                // partial-success semantics (a later row's failure never
+                // undoes an earlier row's already-committed removal) are
+                // unchanged. A row rejected above (not found / self) never
+                // reaches this line, so its tokens are never touched.
+                $this->removeUserWithinOrganizationLock($target);
+
+                return $target;
+            });
+
+            if ($outcome['blocked']) {
                 $failed[] = ['id' => $id, 'email' => $user->email, 'reason' => 'Cannot remove the last Super Admin.'];
                 continue;
             }
 
-            // Remove & Detach Concurrency Hardening — same per-row
-            // organisation-row lock destroy() takes, scoped to only THIS
-            // row's own short transaction (see
-            // removeUserWithinOrganizationLock()'s docblock). Each row
-            // acquires, mutates, and releases its own organisation's lock
-            // independently — never holds more than one organisation's
-            // lock at a time, so a batch spanning several organisations
-            // never contends across them, and partial-success semantics
-            // (a later row's failure never undoes an earlier row's already
-            // -committed removal) are unchanged. A row rejected above
-            // (last Super Admin / not found / self) never reaches this
-            // line, so its tokens are never touched.
-            $this->removeUserWithinOrganizationLock($user);
-
+            $user = $outcome['result'];
             ActivityLog::record('user.removed', "Removed {$user->email}", Auth::user(), $user);
 
             $removed[] = ['id' => $user->id, 'email' => $user->email];
@@ -884,15 +932,22 @@ class UserController extends Controller
 
         $user = User::findOrFail($id);
 
-        if ($this->isLastActiveSuperAdmin($user)) {
+        $validated = $request->validate(['reason' => 'required|string|max:500']);
+
+        // Last Active Super Admin Concurrency Hardening — see
+        // SuperAdminGuard::guardedMutate()'s docblock.
+        $outcome = SuperAdminGuard::guardedMutate($user, function (User $target) use ($validated) {
+            $target->update(['banned_at' => now(), 'banned_reason' => $validated['reason']]);
+            $target->tokens()->delete();
+
+            return $target;
+        });
+
+        if ($outcome['blocked']) {
             return response()->json(['message' => 'Cannot ban the last Super Admin.'], 422);
         }
 
-        $validated = $request->validate(['reason' => 'required|string|max:500']);
-
-        $user->update(['banned_at' => now(), 'banned_reason' => $validated['reason']]);
-        $user->tokens()->delete();
-
+        $user = $outcome['result'];
         ActivityLog::record('user.banned', "Banned {$user->email}", Auth::user(), $user, ['reason' => $validated['reason']]);
 
         return response()->json(['data' => $this->formatUser($user->fresh('roles'))]);
@@ -1021,19 +1076,6 @@ class UserController extends Controller
         return SureSignPasswordPolicy::generateTemporarySecret();
     }
 
-    private function isLastActiveSuperAdmin(User $user): bool
-    {
-        if (! $user->hasRole('Super Admin')) {
-            return false;
-        }
-
-        $activeSuperAdmins = User::role('Super Admin')
-            ->where('is_active', true)
-            ->whereNull('banned_at')
-            ->count();
-
-        return $activeSuperAdmins <= 1;
-    }
 
     /**
      * @param array<string, mixed>|null $organizationSubscription G4A — only

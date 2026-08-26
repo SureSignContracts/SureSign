@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, Save, Upload, Palette, Building2, KeyRound, ScrollText, Lock, BookOpen, Globe, Eye, Play } from 'lucide-react';
+import { Settings, Save, Upload, Palette, Building2, KeyRound, ScrollText, Lock, BookOpen, Globe, Eye, Play, UserX } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/lib/api';
 import toast from '@/lib/toast';
@@ -20,6 +21,7 @@ import Select from '@/components/ui/Select';
 import Toggle from '@/components/ui/Toggle';
 import Checkbox from '@/components/ui/Checkbox';
 import { getErrorMessage } from '@/lib/getErrorMessage';
+import { normalizeApiError } from '@/lib/normalizeApiError';
 import { useNotificationSound } from '@/hooks/useNotificationSound';
 
 type Tab = 'branding' | 'preview' | 'information' | 'preferences' | 'password';
@@ -256,7 +258,8 @@ export default function SettingsPage() {
   ];
 
   // ── My Preferences (personal timezone override) ──
-  const { user, fetchUser } = useAuthStore();
+  const { user, fetchUser, logoutLocally } = useAuthStore();
+  const router = useRouter();
   const [useOrgTimezone, setUseOrgTimezone] = useState(true);
   const [ownTimezone, setOwnTimezone] = useState('Europe/London');
 
@@ -318,6 +321,47 @@ export default function SettingsPage() {
       if (!Object.keys(errs).length) {
         toast.error(getErrorMessage(err, 'Failed to update password.'));
       }
+    },
+  });
+
+  // ── Self-Service Account Deletion — Danger Zone ──────────────────────
+  // Deliberately its own small state block, separate from pwForm/pwMutation
+  // above — a different action, different failure modes, and (per the
+  // approved product decision) a stronger, two-stage confirmation than any
+  // other action on this page.
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteAcknowledged, setDeleteAcknowledged] = useState(false);
+  const [deleteConfirming, setDeleteConfirming] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deletePasswordError, setDeletePasswordError] = useState<string | null>(null);
+  const [lastClientMessage, setLastClientMessage] = useState<string | null>(null);
+  const [lastClientAcknowledged, setLastClientAcknowledged] = useState(false);
+
+  const deleteAccountMutation = useMutation({
+    mutationFn: (confirmLastClient: boolean) => api.post('/auth/delete-account', {
+      current_password: deletePassword,
+      confirmed: true,
+      ...(confirmLastClient ? { confirm_last_client: true } : {}),
+    }),
+    onSuccess: () => {
+      // The backend already revoked every Sanctum token — no further
+      // authenticated call is made from this point on.
+      logoutLocally();
+      qc.clear();
+      router.push('/login');
+    },
+    onError: (err: unknown) => {
+      const normalized = normalizeApiError(err, 'Failed to delete your account.');
+      if (normalized.code === 'LAST_CLIENT_ACCOUNT_DELETE_REQUIRES_CONFIRMATION') {
+        setLastClientMessage(normalized.message);
+        return;
+      }
+      const passwordFieldError = normalized.fieldErrors?.current_password?.[0];
+      if (passwordFieldError) {
+        setDeletePasswordError(passwordFieldError);
+        return;
+      }
+      setDeleteError(normalized.message);
     },
   });
 
@@ -693,6 +737,105 @@ export default function SettingsPage() {
                 <KeyRound size={15} />
                 {pwMutation.isPending ? 'Updating…' : 'Update Password'}
               </button>
+            </div>
+
+            {/* ── Danger Zone — Self-Service Account Deletion ── */}
+            <div style={{ borderTop: '1px solid var(--border)', marginTop: '1.5rem', paddingTop: '1.5rem' }}>
+              <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: '#ef4444' }}>Danger Zone</p>
+              <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Delete my account</p>
+              <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
+                Permanently removes your access to SureSign. This cannot be undone through normal account
+                recovery. Your organisation and its projects, contracts, documents, and billing are not
+                automatically deleted.
+              </p>
+
+              {lastClientMessage ? (
+                <div className="flex flex-col gap-3 p-3 rounded-xl" style={{ border: '1px solid #ef4444' }}>
+                  <p className="text-xs font-medium" style={{ color: '#ef4444' }}>{lastClientMessage}</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    The organisation, its projects, billing and data will remain intact. No Client user will be
+                    able to access it after this action.
+                  </p>
+                  <Checkbox
+                    checked={lastClientAcknowledged}
+                    onChange={setLastClientAcknowledged}
+                    label="I understand no Client user will be able to access this organisation after this action."
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => deleteAccountMutation.mutate(true)}
+                      disabled={deleteAccountMutation.isPending || !lastClientAcknowledged}
+                      className="text-xs px-3 py-1.5 rounded-lg font-medium disabled:opacity-50"
+                      style={{ backgroundColor: '#ef4444', color: '#fff' }}
+                    >
+                      {deleteAccountMutation.isPending ? 'Deleting…' : 'Delete my account anyway'}
+                    </button>
+                    <button
+                      onClick={() => { setLastClientMessage(null); setLastClientAcknowledged(false); }}
+                      className="text-xs px-3 py-1.5 rounded-lg font-medium"
+                      style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : deleteConfirming ? (
+                <div className="flex flex-col gap-3 p-3 rounded-xl max-w-sm" style={{ border: '1px solid var(--border)' }}>
+                  <div>
+                    <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                      Current Password
+                    </label>
+                    <input
+                      type="password"
+                      autoComplete="current-password"
+                      value={deletePassword}
+                      onChange={e => { setDeletePassword(e.target.value); setDeletePasswordError(null); }}
+                      placeholder="Enter your current password"
+                      className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
+                      style={{ backgroundColor: 'var(--bg-elevated)', border: `1px solid ${deletePasswordError ? '#ef4444' : 'var(--border)'}`, color: 'var(--text-primary)' }}
+                    />
+                    {deletePasswordError && <p className="mt-1 text-xs" style={{ color: '#ef4444' }}>{deletePasswordError}</p>}
+                  </div>
+                  <Checkbox
+                    checked={deleteAcknowledged}
+                    onChange={setDeleteAcknowledged}
+                    label="I understand that deleting my account will permanently remove my access to SureSign."
+                  />
+                  {deleteError && <p className="text-xs" style={{ color: '#ef4444' }}>{deleteError}</p>}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => deleteAccountMutation.mutate(false)}
+                      disabled={deleteAccountMutation.isPending || !deleteAcknowledged || !deletePassword}
+                      className="text-xs px-3 py-1.5 rounded-lg font-medium disabled:opacity-50"
+                      style={{ backgroundColor: '#ef4444', color: '#fff' }}
+                    >
+                      {deleteAccountMutation.isPending ? 'Deleting…' : 'Delete my account'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setDeleteConfirming(false);
+                        setDeletePassword('');
+                        setDeleteAcknowledged(false);
+                        setDeleteError(null);
+                        setDeletePasswordError(null);
+                      }}
+                      className="text-xs px-3 py-1.5 rounded-lg font-medium"
+                      style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setDeleteConfirming(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-colors"
+                  style={{ color: '#ef4444', border: '1px solid var(--border)' }}
+                >
+                  <UserX size={14} />
+                  Delete my account
+                </button>
+              )}
             </div>
           </div>
         ) : null}

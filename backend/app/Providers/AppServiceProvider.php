@@ -185,6 +185,19 @@ class AppServiceProvider extends ServiceProvider
             ];
         });
 
+        // Self-Service Account Deletion (POST /auth/delete-account) —
+        // requires current_password, same threat model and shape as
+        // 'password-change' above (an already-authenticated attacker with a
+        // stolen-but-not-fully-compromised token guessing the current
+        // password), kept as its own bucket since a successful attempt here
+        // is far more consequential than a password change.
+        RateLimiter::for('delete-account', function (Request $request) {
+            return [
+                Limit::perMinutes(15, 5)->by($request->user()?->id ?: $request->ip()),
+                Limit::perMinutes(15, 20)->by($request->ip()),
+            ];
+        });
+
         // AI analysis initiation (contract + trade package) — a single call
         // here dispatches a real, billed Anthropic API request, orders of
         // magnitude more expensive than a normal CRUD request, so it gets

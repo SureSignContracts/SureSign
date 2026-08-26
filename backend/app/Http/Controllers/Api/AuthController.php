@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\DeleteAccountRequest;
 use App\Models\ActivityLog;
 use App\Models\AuditLog;
 use App\Models\User;
@@ -14,9 +15,12 @@ use App\Services\Organizations\AuthenticatedWorkspaceContextService;
 use App\Services\TimezoneResolver;
 use App\Support\Auth\PasswordSecurityNotifier;
 use App\Support\Auth\SureSignPasswordPolicy;
+use App\Support\Users\OrganizationRemovalLock;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password as PasswordBroker;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -189,6 +193,174 @@ class AuthController extends Controller
         PasswordSecurityNotifier::notifyChanged($user);
 
         return response()->json(['message' => 'Password updated.']);
+    }
+
+    /**
+     * Self-Service Account Deletion — POST /auth/delete-account. Always
+     * targets $request->user() — never a client-supplied id, email,
+     * organization_id, or role.
+     *
+     * CLIENT ONLY, by explicit product decision — Admin and Super Admin
+     * are platform operators, not customers, and must never be able to
+     * close their own account through this endpoint, enforced server-side
+     * (see the role check immediately below) rather than left to the
+     * Settings UI simply never showing the action for them. Because a
+     * Super Admin can never reach the mutation here, this method never
+     * touches the Last Active Super Admin invariant/lock at all — that
+     * invariant is fully owned by UserController's admin-management
+     * mutators (destroy()/bulkRemove()/ban()/update()) via
+     * SuperAdminGuard::guardedMutate().
+     *
+     * Deliberately NOT the same operation as UserController::destroy()
+     * ("Remove User", identity preserved, organisation preserved, fully
+     * restorable via re-invite) or ::removeAndDetach() ("Remove & Detach",
+     * identity preserved, organisation cleared, restorable as a null-org
+     * account): self-delete is a permanent identity closure. See the
+     * Self-Service Account Deletion audit + implementation notes —
+     * anonymising the row's email is what makes a later invite of the same
+     * real address create a genuinely NEW User row (inviteOneUser()'s
+     * onlyTrashed()->where('email', $email) match can never find this
+     * tombstoned row again), without needing any change to that method.
+     *
+     * Never hard-deletes — the Phase 0 audit found many historical
+     * users.id foreign keys are RESTRICT (would block a real delete
+     * outright) and several tenant-record tables CASCADE on created_by
+     * (would silently destroy real Snag/QA/Closeout/Adjudication rows).
+     * Soft-delete + anonymisation is what keeps every existing
+     * created_by/assigned_to/ActivityLog reference intact while still
+     * genuinely closing the account.
+     */
+    public function deleteAccount(DeleteAccountRequest $request)
+    {
+        $user = $request->user();
+
+        // Self-Service Account Deletion is Client-only, by explicit
+        // product decision — Admin/Super Admin are platform operators and
+        // must never be able to self-delete, enforced here (not merely by
+        // the Settings UI never showing the action for them) so a direct
+        // API call is rejected identically. Checked before any lock/
+        // transaction/mutation, zero mutation on rejection. This is also
+        // why this method never consults SuperAdminGuard/participates in
+        // the Last Active Super Admin Concurrency Hardening lock at all —
+        // a Super Admin can never reach this far, so there is no Super
+        // Admin count for this endpoint to ever reduce.
+        if (! $user->hasRole('Client')) {
+            return response()->json([
+                'message' => 'Self-service account deletion is only available to Client accounts.',
+            ], 403);
+        }
+
+        if ($user->organization_id !== null) {
+            // Sole-Client guard — same organisation-row lock
+            // (OrganizationRemovalLock, extracted from UserController's own
+            // Remove & Detach Concurrency Hardening) so this decision is
+            // never made against a stale, pre-commit view of who else is a
+            // non-deleted Client in this organisation. Re-fetches the
+            // target inside the lock rather than trusting the $user
+            // instance captured above.
+            $result = OrganizationRemovalLock::run($user->organization_id, function () use ($request, $user) {
+                $fresh = User::find($user->id);
+
+                if (! $fresh) {
+                    return ['status' => 404, 'body' => ['message' => 'Account not found.']];
+                }
+
+                $organizationId = $fresh->organization_id;
+
+                $isLastClient = $organizationId !== null && ! User::role('Client')
+                    ->where('organization_id', $organizationId)
+                    ->where('id', '!=', $fresh->id)
+                    ->exists();
+
+                if ($isLastClient && ! $request->boolean('confirm_last_client')) {
+                    return [
+                        'status' => 409,
+                        'body'   => [
+                            'message' => 'You are the last Client user attached to this organisation. Deleting your account will leave the organisation with no Client users who can log in. The organisation, its projects, billing and data will remain intact.',
+                            'code'    => 'LAST_CLIENT_ACCOUNT_DELETE_REQUIRES_CONFIRMATION',
+                        ],
+                    ];
+                }
+
+                $meta = ['role_at_deletion' => 'Client', 'was_last_client' => $isLastClient, 'organization_id' => $organizationId];
+                $this->anonymiseAndDeleteAccount($fresh);
+
+                return ['status' => 200, 'body' => ['message' => 'Your account has been deleted.'], 'meta' => $meta];
+            });
+        } else {
+            // A Client with no organisation yet (pre-onboarding) — no
+            // sole-Client concern applies since they are not counted as a
+            // member of any organisation, but the mutation is still
+            // all-or-nothing.
+            $result = DB::transaction(function () use ($user) {
+                $meta = ['role_at_deletion' => 'Client', 'was_last_client' => false, 'organization_id' => null];
+                $this->anonymiseAndDeleteAccount($user);
+
+                return ['status' => 200, 'body' => ['message' => 'Your account has been deleted.'], 'meta' => $meta];
+            });
+        }
+
+        if ($result['status'] === 200) {
+            // Neutral, non-identifying description — the account's real
+            // email/name are already gone by the time this runs (or, for
+            // the Client branch, gone by the time the lock's transaction
+            // committed). Never logs the original email.
+            ActivityLog::record(
+                'user.self_deleted',
+                'User deleted their own account',
+                null,
+                $user,
+                $result['meta'],
+                null,
+                $result['meta']['organization_id'],
+            );
+        }
+
+        return response()->json($result['body'], $result['status']);
+    }
+
+    /**
+     * Self-Service Account Deletion — the actual mutation, shared by both
+     * branches of deleteAccount() above. Order matters: tokens revoked
+     * first (same rationale as UserController's Remove/Detach hardening —
+     * a failure partway through must never leave old tokens live), then
+     * role/permission cleanup, then the anonymising field overwrite, then
+     * soft-delete. Both callers already run this inside a transaction, so a
+     * failure anywhere in here rolls back the whole thing rather than
+     * leaving a half-anonymised active account.
+     */
+    private function anonymiseAndDeleteAccount(User $user): void
+    {
+        $user->tokens()->delete();
+
+        // Defense-in-depth (Self-Service Account Deletion, decision 3): if
+        // this tombstoned row were ever manually restored outside the
+        // normal product flow, it must not silently regain its previous
+        // Client/Admin/Super Admin role or any direct permission — unlike
+        // admin-initiated Remove User/Remove & Detach, which deliberately
+        // keep role assignments intact for their own, different,
+        // recoverable-by-design restore semantics.
+        $user->syncRoles([]);
+        $user->syncPermissions([]);
+
+        $tombstoneEmail = 'deleted-' . (string) Str::uuid() . '@deleted.invalid';
+
+        $user->update([
+            'name'            => 'Deleted User',
+            'first_name'      => null,
+            'last_name'       => null,
+            'email'           => $tombstoneEmail,
+            'phone'           => null,
+            'avatar'          => null,
+            'address'         => null,
+            'city'            => null,
+            'province'        => null,
+            'postal_code'     => null,
+            'country'         => null,
+            'organization_id' => null,
+        ]);
+
+        $user->delete();
     }
 
     /**
