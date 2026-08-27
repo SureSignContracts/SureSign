@@ -561,6 +561,7 @@ function ManageUserModal({
   onCancelLastClientDetach,
   lastClientDetachMessage,
   canRemoveAndDetach,
+  viewerIsSuperAdmin,
 }: {
   user: AdminUser;
   onClose: () => void;
@@ -571,6 +572,7 @@ function ManageUserModal({
   onBan: (reason: string) => void;
   onUnban: () => void;
   actionLoading: boolean;
+  viewerIsSuperAdmin: boolean;
   onForcePasswordReset: () => void;
   onSetPassword: () => void;
   onRevokeTokens: () => void;
@@ -590,6 +592,16 @@ function ManageUserModal({
   const nameDirty = name.trim() !== user.name && name.trim().length > 0;
   const roleDirty = role !== (user.roles[0] ?? 'Client');
   const initials = user.name?.split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase() || '?';
+
+  // Full Parity Access Expansion (2026-08-26) — the Users module's one
+  // carve-out, mirrored here so an Admin never sees a control they'd only
+  // get a 403 for: an Admin (even with admin.module.users) can never
+  // mutate an existing Super Admin account in any way (see
+  // App\Support\Auth\SuperAdminGuard::assertActorMayActOnTarget() on the
+  // backend, which is the real, authoritative boundary regardless of this
+  // frontend check).
+  const targetIsSuperAdmin = user.roles.includes('Super Admin');
+  const restricted = targetIsSuperAdmin && !viewerIsSuperAdmin;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md" style={{ backgroundColor: 'rgba(9,14,12,0.76)' }} onClick={onClose}>
@@ -614,7 +626,7 @@ function ManageUserModal({
                   <p className="text-sm font-medium">Account access</p>
                   <p className="mt-0.5 text-[11px] text-white/40">Allow this user to sign in</p>
                 </div>
-                <Toggle checked={user.is_active} onChange={onToggleActive} disabled={actionLoading} />
+                <Toggle checked={user.is_active} onChange={onToggleActive} disabled={actionLoading || restricted} />
               </div>
               <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl bg-white/10">
                 <div className="bg-[#18211d] p-3">
@@ -679,7 +691,7 @@ function ManageUserModal({
             description="Deactivated users cannot log in."
             checked={user.is_active}
             onChange={onToggleActive}
-            disabled={actionLoading}
+            disabled={actionLoading || restricted}
           /></div>
         </section>
 
@@ -693,11 +705,33 @@ function ManageUserModal({
 
         <div style={{ borderTop: '1px solid var(--border)', margin: '0 0 20px' }} />
 
+        {restricted && (
+          <section className="mb-6">
+            <div
+              className="rounded-xl px-4 py-3 text-sm"
+              style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+            >
+              Only a Super Admin can manage another Super Admin&rsquo;s account.
+              You can view this account&rsquo;s identity information above, but
+              role, status, security, session, and removal controls are not
+              available to you here.
+            </div>
+          </section>
+        )}
+
+        {!restricted && <>
         {/* ── Permissions ── */}
         <section className="mb-6">
           <SectionHeader>Permissions</SectionHeader>
           <div className="flex gap-2 flex-wrap">
-            {ALL_ROLES.map(r => (
+            {/* Full Parity Access Expansion — an Admin viewer (target here
+                is confirmed NOT already Super Admin, since `restricted`
+                above already excluded that case) must never be offered
+                'Super Admin' as a selectable destination role; the
+                backend would 403 it anyway (SuperAdminGuard::
+                assertActorMayAssignRole()), but it should never be
+                selectable here in the first place. */}
+            {ALL_ROLES.filter(r => viewerIsSuperAdmin || r !== 'Super Admin').map(r => (
               <button
                 key={r}
                 onClick={() => setRole(r)}
@@ -727,7 +761,11 @@ function ManageUserModal({
           )}
         </section>
 
-        {user.roles.includes('Admin') && (
+        {/* Full Parity Access Expansion — Access configuration stays
+            role:Super Admin ONLY regardless of admin.module.users, so this
+            never renders for an Admin viewer, even one managing another
+            Admin's account. */}
+        {user.roles.includes('Admin') && viewerIsSuperAdmin && (
           <>
             <div style={{ borderTop: '1px solid var(--border)', margin: '0 0 20px' }} />
             {/* ── Access — Super Admin Configurable Admin Access ── */}
@@ -873,6 +911,7 @@ function ManageUserModal({
             )}
           </div>
         </section>
+        </>}
         </main>
       </div>
     </div>
@@ -984,6 +1023,15 @@ export default function AdminUsersPage() {
   const router = useRouter();
   const currentUser = useAuthStore(s => s.user);
   const isSuperAdmin = currentUser?.roles?.includes('Super Admin') ?? false;
+  // Full Parity Access Expansion (2026-08-26) — Users is now a
+  // configurable module like any other; an Admin granted
+  // admin.module.users may reach this page. The one carve-out (never
+  // touching/creating a Super Admin account, never configuring anyone's
+  // Access) is enforced further down, closer to where those specific
+  // actions render — see the Access section and the per-row action logic
+  // below, and App\Support\Auth\SuperAdminGuard on the backend, which is
+  // the real, authoritative boundary regardless of what this page shows.
+  const canAccessUsersModule = isSuperAdmin || (currentUser?.permissions?.includes('admin.module.users') ?? false);
 
   const [search, setSearch]             = useState('');
   const [debouncedSearch, setDebounced] = useState('');
@@ -1004,14 +1052,16 @@ export default function AdminUsersPage() {
   const [confirmingBulkRemove, setConfirmingBulkRemove] = useState(false);
   const qc = useQueryClient();
 
-  // Defense-in-depth: nav hiding already keeps non-Super-Admins from seeing
-  // the link, but a direct URL visit should not render this page either.
-  // The API itself is the real boundary (role:Super Admin middleware).
+  // Defense-in-depth: nav hiding already keeps a viewer without
+  // admin.module.users from seeing the link, but a direct URL visit
+  // should not render this page either. The API itself is the real
+  // boundary (permission:admin.module.users middleware — see
+  // routes/api.php).
   useEffect(() => {
-    if (currentUser && !isSuperAdmin) {
+    if (currentUser && !canAccessUsersModule) {
       router.replace('/admin');
     }
-  }, [currentUser, isSuperAdmin, router]);
+  }, [currentUser, canAccessUsersModule, router]);
 
   // Debounce search to avoid request-per-keystroke
   useEffect(() => {
@@ -1203,7 +1253,7 @@ export default function AdminUsersPage() {
   const lastPage: number     = data?.last_page       ?? 1;
   const currentPage: number  = data?.current_page    ?? 1;
 
-  if (currentUser && !isSuperAdmin) return null;
+  if (currentUser && !canAccessUsersModule) return null;
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-4 pb-12 sm:p-6 lg:p-8">
@@ -1458,6 +1508,7 @@ export default function AdminUsersPage() {
           onCancelLastClientDetach={() => setLastClientDetachMessage(null)}
           lastClientDetachMessage={lastClientDetachMessage}
           canRemoveAndDetach={!manageUser.is_platform_operator && manageUser.organization_id !== null}
+          viewerIsSuperAdmin={isSuperAdmin}
         />
       )}
 

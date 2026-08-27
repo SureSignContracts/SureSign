@@ -102,4 +102,50 @@ class SuperAdminGuard
             return ['blocked' => false, 'result' => $mutate($fresh)];
         });
     }
+
+    /**
+     * Full Parity Access Expansion (2026-08-26) — the Users module carve-
+     * out. Once admin.module.users became a grantable permission (Users
+     * was previously permanently Super-Admin-only at the route level), an
+     * Admin holding it could reach every UserController mutation —
+     * including one targeting an existing Super Admin account. This is
+     * the one place that still refuses that, independent of the
+     * admin.module.users permission check: the route/permission layer
+     * only decides whether an Admin can reach the Users module AT ALL;
+     * this decides whether the SPECIFIC target is off-limits regardless.
+     * A genuine Super Admin actor always passes (the check is a no-op for
+     * them). Aborts with the same generic, tenant-safe 403 message this
+     * codebase's authorize()/authorizeProject() convention already uses
+     * (see AGENTS.md's Authorization section) — never reveals that the
+     * target specifically is a Super Admin.
+     */
+    public static function actorMayActOnTarget(User $actor, User $target): bool
+    {
+        return ! ($target->hasRole('Super Admin') && ! $actor->hasRole('Super Admin'));
+    }
+
+    public static function assertActorMayActOnTarget(User $actor, User $target): void
+    {
+        if (! self::actorMayActOnTarget($actor, $target)) {
+            abort(403, 'Access denied.');
+        }
+    }
+
+    /**
+     * The invite()/bulk-invite()/role-change counterpart of
+     * actorMayActOnTarget() above — refuses an Admin (even one holding
+     * admin.module.users) from ever creating a NEW Super Admin account or
+     * promoting an existing one, regardless of target.
+     */
+    public static function actorMayAssignRole(User $actor, string $role): bool
+    {
+        return ! ($role === 'Super Admin' && ! $actor->hasRole('Super Admin'));
+    }
+
+    public static function assertActorMayAssignRole(User $actor, string $role): void
+    {
+        if (! self::actorMayAssignRole($actor, $role)) {
+            abort(403, 'Access denied.');
+        }
+    }
 }

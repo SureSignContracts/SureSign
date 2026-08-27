@@ -893,48 +893,69 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
     // faster than a human clicking through the Users page ever would.
     //
     // organization.team (Feature Availability, Phase C): the /app/team
-    // page's own "Send Invite" action posts here (users/invite), but this
-    // entire route group already requires role:Super Admin — a genuine
-    // Client/Admin customer can never reach it regardless of Feature
-    // Availability (and Super Admin bypasses Feature Availability anyway).
-    // Gating it would be a pure no-op, so it's deliberately left ungated —
-    // see feature-availability.md's Phase C section.
-    Route::middleware(['role:Super Admin', 'throttle:30,1'])->group(function () {
-        Route::post('users/invite', [UserController::class, 'invite']);
-        Route::post('users/bulk-invite', [UserController::class, 'bulkInvite']);
-        Route::post('users/bulk-remove', [UserController::class, 'bulkRemove']);
-        // Two User Removal Modes — "Remove & Detach" (UserController::
-        // removeAndDetach()). A separate action from DELETE /users/{id}
-        // ("Remove User"), not a mode flag on it — see that method's own
-        // docblock. Sits inside this same role:Super Admin group, same as
-        // every other user-management action here; bulk removal
-        // deliberately still only offers "Remove User" (see bulkRemove()).
-        Route::post('users/{id}/remove-and-detach', [UserController::class, 'removeAndDetach']);
-        Route::apiResource('users', UserController::class)->except(['store']);
-        Route::post('users/{id}/verify-email',         [UserController::class, 'verifyEmail']);
-        Route::post('users/{id}/unverify-email',       [UserController::class, 'unverifyEmail']);
-        Route::post('users/{id}/ban',                  [UserController::class, 'ban']);
-        Route::post('users/{id}/unban',                [UserController::class, 'unban']);
-        Route::post('users/{id}/force-password-reset', [UserController::class, 'forcePasswordReset']);
-        Route::post('users/{id}/set-password',         [UserController::class, 'setPassword']);
-        Route::post('users/{id}/revoke-tokens',        [UserController::class, 'revokeTokens']);
-        Route::post('users/{id}/reset-tours',          [UserController::class, 'resetTours']);
-        // G4A — read-only inherited organisation subscription detail (see
-        // internal-docs/super-admin/subscription-billing.md).
-        Route::get('users/{id}/subscription',          [UserController::class, 'subscription']);
+    // page's own "Send Invite" action posts here (users/invite) — this
+    // group is now role:Super Admin|Admin (Full Parity Access Expansion,
+    // 2026-08-26), gated per-action below by admin.module.users, so the
+    // Feature-Availability no-op reasoning above no longer applies to the
+    // whole group; a genuine Client customer still can never reach it.
+    Route::middleware(['role:Super Admin|Admin', 'throttle:30,1'])->group(function () {
+        // Super Admin Configurable Admin Access — Full Parity Access
+        // Expansion (2026-08-26). Users is now a configurable module like
+        // any other, EXCEPT for the one deliberate carve-out: an Admin —
+        // even one granted admin.module.users — can never act on an
+        // existing Super Admin account in any way, and can never create
+        // one (invite/bulk-invite/role-change to 'Super Admin'). Enforced
+        // at the controller level via
+        // App\Support\Auth\SuperAdminGuard::assertActorMayActOnTarget()/
+        // assertActorMayAssignRole() — never expressible as route
+        // middleware alone, since the target/intended-role is only known
+        // once the request body and route-bound model are available. The
+        // Access-configuration endpoints at the bottom of this group
+        // remain role:Super Admin ONLY regardless of admin.module.users —
+        // an Admin can never configure any Admin's (including their own)
+        // Access, full parity or not.
+        Route::middleware(['permission:admin.module.users'])->group(function () {
+            Route::post('users/invite', [UserController::class, 'invite']);
+            Route::post('users/bulk-invite', [UserController::class, 'bulkInvite']);
+            Route::post('users/bulk-remove', [UserController::class, 'bulkRemove']);
+            // Two User Removal Modes — "Remove & Detach" (UserController::
+            // removeAndDetach()). A separate action from DELETE /users/{id}
+            // ("Remove User"), not a mode flag on it — see that method's own
+            // docblock. Client-only target (enforced in the controller), so
+            // the Super Admin carve-out above never applies here in practice.
+            Route::post('users/{id}/remove-and-detach', [UserController::class, 'removeAndDetach']);
+            Route::apiResource('users', UserController::class)->except(['store']);
+            Route::post('users/{id}/verify-email',         [UserController::class, 'verifyEmail']);
+            Route::post('users/{id}/unverify-email',       [UserController::class, 'unverifyEmail']);
+            Route::post('users/{id}/ban',                  [UserController::class, 'ban']);
+            Route::post('users/{id}/unban',                [UserController::class, 'unban']);
+            Route::post('users/{id}/force-password-reset', [UserController::class, 'forcePasswordReset']);
+            Route::post('users/{id}/set-password',         [UserController::class, 'setPassword']);
+            Route::post('users/{id}/revoke-tokens',        [UserController::class, 'revokeTokens']);
+            Route::post('users/{id}/reset-tours',          [UserController::class, 'resetTours']);
+            // G4A — read-only inherited organisation subscription detail (see
+            // internal-docs/super-admin/subscription-billing.md).
+            Route::get('users/{id}/subscription',          [UserController::class, 'subscription']);
+        });
 
-        // Super Admin Configurable Admin Access — sits in this same
-        // role:Super Admin ONLY group as every other user-management
-        // mutation above; an Admin can never reach this controller at
-        // all (see AdminUserAccessController's own docblock).
-        Route::get('users/{id}/permissions',            [AdminUserAccessController::class, 'show']);
-        Route::put('users/{id}/permissions',            [AdminUserAccessController::class, 'update']);
+        // Super Admin Configurable Admin Access — deliberately OUTSIDE the
+        // admin.module.users group above and still role:Super Admin ONLY
+        // (via this group's own outer role check plus an explicit,
+        // redundant role middleware here for defense-in-depth): an Admin
+        // can never reach this controller at all, full Users parity or
+        // not (see AdminUserAccessController's own docblock).
+        Route::middleware(['role:Super Admin'])->group(function () {
+            Route::get('users/{id}/permissions',            [AdminUserAccessController::class, 'show']);
+            Route::put('users/{id}/permissions',            [AdminUserAccessController::class, 'update']);
+        });
 
-        // Application Monitoring — cross-organization presence/usage/operational
-        // data. Super Admin only; deliberately not in the 'Super Admin|Admin'
-        // group below (see internal-docs/super-admin/application-monitoring.md).
-        Route::get('/admin/application-monitoring', [ApplicationMonitoringController::class, 'index']);
-
+        // Application Monitoring — cross-organization presence/usage/
+        // operational data. Super Admin Configurable Admin Access — Full
+        // Parity Access Expansion (2026-08-26); see
+        // internal-docs/super-admin/application-monitoring.md.
+        Route::middleware(['permission:admin.module.application_monitoring'])->group(function () {
+            Route::get('/admin/application-monitoring', [ApplicationMonitoringController::class, 'index']);
+        });
     });
 
     // Pricing Management — controls the public marketing Pricing page and
@@ -1383,32 +1404,42 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
                 Route::get('/companies-house/{companyNumber}', [CompaniesHouseController::class, 'show']);
             });
 
-            // Permanently Super-Admin-only — tightened from the previous
-            // 'Super Admin|Admin' gating. Confirmed via AdminSidebar.tsx's
-            // own existing `superAdminOnly: true` flags for Storage,
-            // Support, Announcements, System Logs, and Audit Log (with no
-            // code-comment evidence anywhere of a deliberate widening
-            // decision, unlike Pricing below), and for AI Config
-            // (suresign-settings/ai) which controls the platform's
-            // Anthropic API key and AI-enabled toggle — the same "hide on
-            // frontend, reachable by Admin on backend" gap Pricing had,
-            // just never previously identified. None of these become
-            // admin.module.* permissions; Gate::before()'s Super Admin
-            // bypass cannot weaken this since it never touches `role:`
-            // middleware at all.
-            Route::middleware(['role:Super Admin'])->group(function () {
+            // Super Admin Configurable Admin Access — Storage, Support,
+            // Announcements, System Logs, Audit Log, and AI Config were
+            // permanently Super-Admin-only until the Full Parity Access
+            // Expansion (2026-08-26), which made every module a Super
+            // Admin has independently configurable for Admin (with the one
+            // deliberate exception: Users' Super-Admin-touching actions —
+            // see the Users group's own docblock). Each below is now its
+            // own admin.module.* permission, never bundled under a shared
+            // role:Super Admin-only group.
+            Route::middleware(['permission:admin.module.storage'])->group(function () {
                 Route::get('/storage', [AdminController::class, 'storage']);
+            });
+
+            Route::middleware(['permission:admin.module.support'])->group(function () {
                 Route::get('/support-tickets', [SupportTicketController::class, 'index']);
                 // Registered before the {supportTicket} wildcard below so this
                 // literal path is matched first, not treated as a ticket id.
                 Route::get('/support-tickets/counts', [SupportTicketController::class, 'counts']);
                 Route::get('/support-tickets/{supportTicket}', [SupportTicketController::class, 'adminShow']);
                 Route::put('/support-tickets/{id}', [SupportTicketController::class, 'updateStatus']);
+            });
 
+            Route::middleware(['permission:admin.module.announcements'])->group(function () {
                 // Platform-wide emergency / known-issue banner management
                 Route::apiResource('platform-announcements', PlatformAnnouncementController::class)->except(['show']);
+            });
+
+            Route::middleware(['permission:admin.module.system_logs'])->group(function () {
                 Route::get('/system-logs', [AdminController::class, 'systemLogs']);
+            });
+
+            Route::middleware(['permission:admin.module.audit_log'])->group(function () {
                 Route::get('/audit-log', [AdminController::class, 'auditLog']);
+            });
+
+            Route::middleware(['permission:admin.module.ai_config'])->group(function () {
                 Route::put('/suresign-settings/ai', [SuresignSettingController::class, 'updateAi']);
             });
         });

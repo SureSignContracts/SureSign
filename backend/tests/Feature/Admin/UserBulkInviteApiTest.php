@@ -121,13 +121,41 @@ class UserBulkInviteApiTest extends TestCase
         $response->assertJsonValidationErrors(['role']);
     }
 
-    public function test_bulk_invite_is_forbidden_for_non_super_admins(): void
+    /**
+     * Full Parity Access Expansion (2026-08-26) — bulk-invite is reachable
+     * by an Admin holding admin.module.users (Users is no longer
+     * permanently Super-Admin-only); an Admin WITHOUT it is still
+     * forbidden. Client is forbidden regardless, matching this endpoint's
+     * unchanged role boundary (role:Super Admin|Admin).
+     */
+    public function test_bulk_invite_is_forbidden_for_an_admin_without_the_users_module(): void
     {
         Queue::fake();
 
         $admin = User::factory()->create(['organization_id' => null]);
         $admin->assignRole(Role::firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']));
+        // assignRole()'s own listener auto-grants the full baseline —
+        // strip it to exercise the genuinely-restricted case.
+        $admin->syncPermissions([]);
         Sanctum::actingAs($admin);
+
+        $response = $this->postJson('/api/users/bulk-invite', [
+            'emails' => ['someone@example.com'],
+            'role'   => 'Client',
+        ]);
+
+        $response->assertStatus(403);
+        Queue::assertNothingPushed();
+    }
+
+    public function test_bulk_invite_is_forbidden_for_client(): void
+    {
+        Queue::fake();
+
+        $org = \App\Models\Organization::create(['name' => 'Org', 'slug' => 'org-' . uniqid()]);
+        $client = User::factory()->create(['organization_id' => $org->id]);
+        $client->assignRole(Role::firstOrCreate(['name' => 'Client', 'guard_name' => 'web']));
+        Sanctum::actingAs($client);
 
         $response = $this->postJson('/api/users/bulk-invite', [
             'emails' => ['someone@example.com'],

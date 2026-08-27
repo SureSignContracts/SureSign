@@ -56,6 +56,15 @@ class UserController extends Controller
         // organisation (never one query per user).
         $query = User::with(['roles', 'organization.liveSubscription.pricingPlan'])->orderBy($sort, $dir);
 
+        // Users Module Super Admin Exclusion (2026-08-27) — a Super Admin
+        // account is entirely outside the ordinary Admin user-management
+        // surface, not merely non-mutable. An Admin (reaching this via
+        // admin.module.users) never sees a Super Admin row in this list
+        // at all; only a genuine Super Admin actor does.
+        if (! $request->user()->hasRole('Super Admin')) {
+            $query->whereDoesntHave('roles', fn($q) => $q->where('name', 'Super Admin'));
+        }
+
         if ($search = $request->input('search')) {
             $query->where(fn($q) => $q->where('name', 'like', "%{$search}%")
                                       ->orWhere('email', 'like', "%{$search}%"));
@@ -117,6 +126,9 @@ class UserController extends Controller
     public function subscription(string $id)
     {
         $user = User::findOrFail($id);
+        // Users Module Super Admin Exclusion (2026-08-27) — an Admin can
+        // never fetch a Super Admin's (even minimal) detail here either.
+        SuperAdminGuard::assertActorMayActOnTarget(Auth::user(), $user);
 
         if ($user->organization_id === null) {
             // No organisation means there's nothing to fetch intelligence
@@ -150,6 +162,10 @@ class UserController extends Controller
             'include_beta_notice' => 'sometimes|boolean',
         ]);
 
+        // Full Parity Access Expansion — an Admin (even with
+        // admin.module.users) can never create a new Super Admin account.
+        SuperAdminGuard::assertActorMayAssignRole(Auth::user(), $validated['role']);
+
         $result = $this->inviteOneUser($validated['email'], $validated['role'], $validated['include_beta_notice'] ?? false);
 
         return response()->json([
@@ -177,6 +193,10 @@ class UserController extends Controller
             'role'     => 'required|string|in:' . implode(',', self::ALLOWED_ROLES),
             'include_beta_notice' => 'sometimes|boolean',
         ]);
+
+        // Full Parity Access Expansion — one shared role for the whole
+        // batch, so this is checked once, the same as invite().
+        SuperAdminGuard::assertActorMayAssignRole(Auth::user(), $validated['role']);
 
         $role = $validated['role'];
         $includeBetaNotice = $validated['include_beta_notice'] ?? false;
@@ -435,15 +455,18 @@ class UserController extends Controller
         $user->assignRole($roleModel);
 
         // Super Admin Configurable Admin Access — a fresh or restored
-        // invite that assigns the Admin role always starts with the FULL
-        // configurable baseline (never "zero rows"), per the approved
-        // backward-compatible default. This is the ONE place a brand-new
-        // Admin identity is created via invite, so it's also the one place
-        // that baseline needs to be granted — see AdminAccessService's own
-        // docblock for why this must never run on an ordinary Admin
+        // invite that assigns the Admin role always starts with the
+        // DEFAULT admin.module.* baseline (never "zero rows", and never
+        // the full 23-key catalogue either — see
+        // AdminAccessService::grantDefaultAccess()'s own docblock for why
+        // the eight formerly-permanently-Super-Admin-only modules require
+        // an explicit Super Admin grant regardless). This is the ONE
+        // place a brand-new Admin identity is created via invite, so it's
+        // also the one place that baseline needs to be granted — see that
+        // same docblock for why this must never run on an ordinary Admin
         // profile edit instead.
         if ($role === 'Admin') {
-            AdminAccessService::grantFullAccess($user);
+            AdminAccessService::grantDefaultAccess($user);
         }
 
         $this->invitations->send($user, $includeBetaNotice);
@@ -466,6 +489,11 @@ class UserController extends Controller
     public function show(string $id)
     {
         $user = User::with('roles')->findOrFail($id);
+        // Users Module Super Admin Exclusion (2026-08-27) — an Admin can
+        // never fetch a Super Admin's detail, same generic 403 as every
+        // other guarded action in this controller — never a distinct
+        // message that would confirm the target's role.
+        SuperAdminGuard::assertActorMayActOnTarget(Auth::user(), $user);
         return response()->json(['data' => $this->formatUser($user)]);
     }
 
@@ -486,6 +514,14 @@ class UserController extends Controller
             'name'      => 'sometimes|string|max:255',
             'is_active' => 'sometimes|boolean',
         ]);
+
+        // Full Parity Access Expansion — an Admin (even with
+        // admin.module.users) can never mutate an existing Super Admin
+        // account in any way, and can never promote anyone TO Super Admin.
+        SuperAdminGuard::assertActorMayActOnTarget(Auth::user(), $user);
+        if (isset($validated['role'])) {
+            SuperAdminGuard::assertActorMayAssignRole(Auth::user(), $validated['role']);
+        }
 
         // Last Active Super Admin Concurrency Hardening — only THIS
         // request's own intended change (deactivating, or changing role
@@ -522,7 +558,7 @@ class UserController extends Controller
                 // must never leave dormant admin.module.* grants on a
                 // Client/Super Admin account.
                 if ($validated['role'] === 'Admin' && ! $wasAdmin) {
-                    AdminAccessService::grantFullAccess($target);
+                    AdminAccessService::grantDefaultAccess($target);
                 } elseif ($validated['role'] !== 'Admin' && $wasAdmin) {
                     AdminAccessService::removeManagedAccess($target);
                 }
@@ -591,6 +627,10 @@ class UserController extends Controller
         }
 
         $user = User::findOrFail($id);
+
+        // Full Parity Access Expansion — an Admin can never remove an
+        // existing Super Admin account.
+        SuperAdminGuard::assertActorMayActOnTarget(Auth::user(), $user);
 
         // Last Active Super Admin Concurrency Hardening — see
         // SuperAdminGuard::guardedMutate()'s own docblock. A no-op lock for
@@ -881,6 +921,16 @@ class UserController extends Controller
                 continue;
             }
 
+            // Full Parity Access Expansion — an Admin can never remove an
+            // existing Super Admin account. Reported as a per-row failure
+            // (never a hard abort) to preserve this method's own
+            // partial-success contract — a Super Admin target in the
+            // batch must not prevent every other row from being processed.
+            if (! SuperAdminGuard::actorMayActOnTarget(Auth::user(), $user)) {
+                $failed[] = ['id' => $id, 'email' => $user->email, 'reason' => 'Access denied.'];
+                continue;
+            }
+
             // Last Active Super Admin Concurrency Hardening — re-evaluated
             // per row (not just once up front), same reason the comment
             // above always gave, now made authoritative under concurrency
@@ -933,6 +983,7 @@ class UserController extends Controller
     public function verifyEmail(string $id)
     {
         $user = User::findOrFail($id);
+        SuperAdminGuard::assertActorMayActOnTarget(Auth::user(), $user);
         $user->update(['email_verified_at' => now()]);
 
         ActivityLog::record('user.email_verified', "Marked {$user->email} as verified", Auth::user(), $user);
@@ -943,6 +994,7 @@ class UserController extends Controller
     public function unverifyEmail(string $id)
     {
         $user = User::findOrFail($id);
+        SuperAdminGuard::assertActorMayActOnTarget(Auth::user(), $user);
         $user->update(['email_verified_at' => null]);
 
         ActivityLog::record('user.email_unverified', "Marked {$user->email} as unverified", Auth::user(), $user);
@@ -959,6 +1011,7 @@ class UserController extends Controller
         }
 
         $user = User::findOrFail($id);
+        SuperAdminGuard::assertActorMayActOnTarget(Auth::user(), $user);
 
         $validated = $request->validate(['reason' => 'required|string|max:500']);
 
@@ -984,6 +1037,7 @@ class UserController extends Controller
     public function unban(string $id)
     {
         $user = User::findOrFail($id);
+        SuperAdminGuard::assertActorMayActOnTarget(Auth::user(), $user);
         $user->update(['banned_at' => null, 'banned_reason' => null]);
 
         ActivityLog::record('user.unbanned', "Unbanned {$user->email}", Auth::user(), $user);
@@ -996,6 +1050,7 @@ class UserController extends Controller
     public function forcePasswordReset(string $id)
     {
         $user = User::findOrFail($id);
+        SuperAdminGuard::assertActorMayActOnTarget(Auth::user(), $user);
         $user->update(['must_change_password' => true]);
 
         // Forcing a password change is meaningless as a security action if
@@ -1017,6 +1072,7 @@ class UserController extends Controller
     public function setPassword(Request $request, string $id)
     {
         $user = User::findOrFail($id);
+        SuperAdminGuard::assertActorMayActOnTarget(Auth::user(), $user);
 
         $validated = $request->validate([
             // Consistency with every other password-write path in this
@@ -1061,6 +1117,7 @@ class UserController extends Controller
     public function revokeTokens(string $id)
     {
         $user = User::findOrFail($id);
+        SuperAdminGuard::assertActorMayActOnTarget(Auth::user(), $user);
         $count = $user->tokens()->count();
         $user->tokens()->delete();
 
@@ -1074,6 +1131,7 @@ class UserController extends Controller
     public function resetTours(string $id)
     {
         $user = User::findOrFail($id);
+        SuperAdminGuard::assertActorMayActOnTarget(Auth::user(), $user);
         $user->update(['tours_reset_at' => now()]);
 
         ActivityLog::record('user.tours_reset', "Reset onboarding tour progress for {$user->email}", Auth::user(), $user);

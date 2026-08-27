@@ -132,10 +132,17 @@ class UserBulkRemoveApiTest extends TestCase
         $this->assertSame($org->id, User::withTrashed()->find($client->id)->organization_id);
     }
 
-    public function test_bulk_remove_is_forbidden_for_non_super_admins(): void
+    /**
+     * Full Parity Access Expansion (2026-08-26) — bulk-remove is reachable
+     * by an Admin holding admin.module.users; an Admin WITHOUT it is
+     * still forbidden.
+     */
+    public function test_bulk_remove_is_forbidden_for_an_admin_without_the_users_module(): void
     {
         $admin = User::factory()->create(['organization_id' => null]);
         $admin->assignRole(Role::firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']));
+        $admin->syncPermissions([]); // strip the listener's own auto-grant
+
         Sanctum::actingAs($admin);
 
         $target = User::factory()->create();

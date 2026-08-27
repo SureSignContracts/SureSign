@@ -11,7 +11,7 @@ use Spatie\Permission\Events\RoleAttachedEvent;
  * safety net for "every path a user can become an Admin" (Phase 7's own
  * requirement). UserController::inviteOneUser()/update() and
  * DatabaseSeeder (the platform's own initial Admin seed) already call
- * AdminAccessService::grantFullAccess() explicitly for every real,
+ * AdminAccessService::grantDefaultAccess() explicitly for every real,
  * non-test production code path this phase's audit found; this listener
  * exists as a structural safety net for any OTHER path that assigns the
  * Admin role — including one this phase's own regression run empirically
@@ -58,7 +58,7 @@ class GrantBaselineAdminAccessOnRoleAttached
         }
 
         if (! AdminAccessService::isInitialized($model)) {
-            AdminAccessService::grantFullAccess($model);
+            AdminAccessService::grantDefaultAccess($model);
         }
     }
 }

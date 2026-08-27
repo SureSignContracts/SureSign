@@ -100,12 +100,14 @@ class DatabaseSeeder extends Seeder
         // Super Admin Configurable Admin Access — an explicit call here
         // for the same reason UserController::inviteOneUser()/update() call
         // it: a genuine transition into the Admin role always starts with
-        // the full configurable baseline. GrantBaselineAdminAccessOnRoleAttached
-        // would also catch this via the assignRole() call above, but this
-        // seeder is a real, non-test production path, so it gets the same
-        // explicit treatment as the other two rather than relying solely
-        // on the event listener.
-        \App\Services\Admin\AdminAccessService::grantFullAccess($graham);
+        // the default admin.module.* baseline (never the full 23-key
+        // catalogue — see AdminAccessService::grantDefaultAccess()'s own
+        // docblock). GrantBaselineAdminAccessOnRoleAttached would also
+        // catch this via the assignRole() call above, but this seeder is
+        // a real, non-test production path, so it gets the same explicit
+        // treatment as the other two rather than relying solely on the
+        // event listener.
+        \App\Services\Admin\AdminAccessService::grantDefaultAccess($graham);
 
         $this->command->info('✓ Seeded: roles, permissions, super admin');
 

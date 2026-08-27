@@ -11,14 +11,31 @@ namespace App\Support\Admin;
  * invented independently — see internal-docs/super-admin/admin-access.md
  * for the full per-module route/frontend map this catalogue was built from.
  *
- * Deliberately EXCLUDES every module that is permanently Super-Admin-only
- * today (Users, Application Monitoring, AI Config, Storage, Support,
- * Announcements, System Logs, Audit Log — see that same doc for which of
- * these were already correctly Super-Admin-only at the route level, and
- * which had a real backend/frontend mismatch tightened as part of this
- * phase). Gate::before() in AppServiceProvider makes Super Admin bypass
- * every permission check here — Super Admin access never depends on any
- * row in this catalogue, or on any row ever being granted.
+ * Full Parity Access Expansion (2026-08-26): every module a Super Admin
+ * has is now in this catalogue, including the eight that were previously
+ * permanently Super-Admin-only (Users, Application Monitoring, AI Config,
+ * Storage, Support, Announcements, System Logs, Audit Log). The ONE
+ * deliberate exception is not a missing catalogue key at all — it's a
+ * carve-out INSIDE the Users module: granting `admin.module.users` lets
+ * an Admin manage ordinary Admin/Client accounts, but an Admin can never
+ * act on, or even see/list, an existing Super Admin account, and can
+ * never create one (see App\Support\Auth\SuperAdminGuard's
+ * assertActorMayActOnTarget()/assertActorMayAssignRole(), enforced in
+ * UserController — this cannot be expressed as a route-level permission
+ * check, since it depends on the specific target/intended role, not just
+ * the module). The Access configuration endpoints themselves (GET/PUT
+ * /users/{id}/permissions) remain role:Super Admin ONLY regardless of
+ * admin.module.users — an Admin can never configure any Admin's Access,
+ * full parity or not. Gate::before() in AppServiceProvider makes Super
+ * Admin bypass every permission check here — Super Admin access never
+ * depends on any row in this catalogue, or on any row ever being granted.
+ *
+ * Default-Baseline Correction (2026-08-27): `catalogue()`/`keys()` is the
+ * CONFIGURABLE surface (what a Super Admin may choose to grant) — it is
+ * deliberately NOT what a new Admin receives automatically. See
+ * `defaultKeys()` below for the DEFAULT baseline (the original 15
+ * modules); the eight modules the Full Parity Access Expansion added are
+ * configurable but never default-granted.
  *
  * guard_name is always 'web' — the same single guard every Role in this
  * codebase already uses (Spatie's config('permission.teams') is false; no
@@ -66,6 +83,16 @@ class AdminAccess
             ['key' => 'admin.module.ai_credits',          'label' => 'AI Credits',            'group' => 'AI Credits'],
             ['key' => 'admin.module.ai_usage',             'label' => 'AI Usage & Cost',        'group' => 'System'],
             ['key' => 'admin.module.google_integration',  'label' => 'Google Integration',    'group' => 'System'],
+            // Full Parity Access Expansion (2026-08-26) — see this class's
+            // own docblock for the Users module's Super Admin carve-out.
+            ['key' => 'admin.module.users',                'label' => 'Users',                 'group' => 'System'],
+            ['key' => 'admin.module.application_monitoring', 'label' => 'Application Monitoring', 'group' => 'System'],
+            ['key' => 'admin.module.ai_config',           'label' => 'AI Config',             'group' => 'System'],
+            ['key' => 'admin.module.storage',              'label' => 'Storage',                'group' => 'System'],
+            ['key' => 'admin.module.support',              'label' => 'Support',                'group' => 'System'],
+            ['key' => 'admin.module.announcements',       'label' => 'Announcements',          'group' => 'System'],
+            ['key' => 'admin.module.system_logs',          'label' => 'System Logs',            'group' => 'System'],
+            ['key' => 'admin.module.audit_log',            'label' => 'Audit Log',              'group' => 'System'],
         ];
     }
 
@@ -73,6 +100,48 @@ class AdminAccess
     public static function keys(): array
     {
         return array_column(self::catalogue(), 'key');
+    }
+
+    /**
+     * Default-Baseline Correction (2026-08-27): the set a newly-created,
+     * restored, or promoted-to-Admin user actually receives —
+     * deliberately NOT `catalogue()`/`keys()`, and deliberately NOT
+     * derived by slicing/filtering that list. The Full Parity Access
+     * Expansion made 23 modules configurable, but "configurable" was
+     * never meant to mean "granted by default" — that conflation was a
+     * real oversight this correction fixes:
+     * `AdminAccessService::grantDefaultAccess()` (renamed from
+     * `grantFullAccess()`) now grants exactly this list, never
+     * `keys()`, so a new Admin gets the same 15-module baseline they
+     * always did, and the eight formerly-permanently-Super-Admin-only
+     * modules (Users, AI Config, Application Monitoring, Storage,
+     * Support, Announcements, System Logs, Audit Log) require an
+     * explicit Super Admin grant regardless of how new the Admin is.
+     * Listed explicitly, one by one, rather than computed from
+     * `catalogue()` minus the expansion set — so this list can never
+     * silently drift just because the catalogue changes again later.
+     *
+     * @return string[]
+     */
+    public static function defaultKeys(): array
+    {
+        return [
+            'admin.module.dashboard',
+            'admin.module.companies',
+            'admin.module.projects',
+            'admin.module.documents',
+            'admin.module.appointments',
+            'admin.module.consultancy',
+            'admin.module.templates',
+            'admin.module.prompt_library',
+            'admin.module.find_company',
+            'admin.module.pricing',
+            'admin.module.product_updates',
+            'admin.module.branding',
+            'admin.module.ai_credits',
+            'admin.module.ai_usage',
+            'admin.module.google_integration',
+        ];
     }
 
     public static function isValidKey(string $key): bool

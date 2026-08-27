@@ -70,6 +70,63 @@ class AdminAccessTest extends TestCase
         $this->assertSame(count(AdminAccess::keys()), $count);
     }
 
+    /**
+     * Default-Baseline Correction (2026-08-27) — the authoritative counts,
+     * hardcoded rather than compared to themselves, so a future accidental
+     * change to either list is caught here explicitly rather than only by
+     * every other test's dynamic count() call silently moving together.
+     */
+    public function test_configurable_catalogue_is_23_and_default_baseline_is_15(): void
+    {
+        $this->assertCount(23, AdminAccess::keys());
+        $this->assertCount(15, AdminAccess::defaultKeys());
+
+        // Every default key must also be a valid catalogue key — the
+        // default baseline is a subset of the configurable catalogue, not
+        // a parallel, potentially-divergent list.
+        foreach (AdminAccess::defaultKeys() as $key) {
+            $this->assertTrue(AdminAccess::isValidKey($key));
+        }
+
+        // The eight modules the Full Parity Access Expansion added are
+        // configurable but must never appear in the default baseline.
+        $sensitive = [
+            'admin.module.users',
+            'admin.module.ai_config',
+            'admin.module.application_monitoring',
+            'admin.module.storage',
+            'admin.module.support',
+            'admin.module.announcements',
+            'admin.module.system_logs',
+            'admin.module.audit_log',
+        ];
+        foreach ($sensitive as $key) {
+            $this->assertTrue(AdminAccess::isValidKey($key), "{$key} should be a valid configurable key");
+            $this->assertNotContains($key, AdminAccess::defaultKeys(), "{$key} should not be in the default baseline");
+        }
+    }
+
+    /**
+     * An Admin already initialised under the default baseline (holds the
+     * sentinel + exactly the 15 default keys) must not be silently
+     * upgraded to include the eight sensitive modules merely because the
+     * backfill command runs again — the sentinel alone is what skips
+     * them, regardless of which keys they currently hold.
+     */
+    public function test_existing_initialized_admin_is_not_silently_upgraded_by_backfill(): void
+    {
+        $admin = $this->makeAdmin();
+        AdminAccessService::grantDefaultAccess($admin);
+        $this->assertTrue(AdminAccessService::isInitialized($admin->fresh()));
+
+        Artisan::call('admin:permissions:backfill');
+
+        $fresh = $admin->fresh();
+        $this->assertEqualsCanonicalizing(AdminAccess::defaultKeys(), $fresh->getPermissionNames()->intersect(AdminAccess::keys())->values()->all());
+        $this->assertFalse($fresh->hasPermissionTo('admin.module.users'));
+        $this->assertFalse($fresh->hasPermissionTo('admin.module.storage'));
+    }
+
     // ── Cold-start backfill (Final Deployment / Cold-Start Hardening) ────
 
     /**
@@ -102,19 +159,22 @@ class AdminAccessTest extends TestCase
         $this->assertSame(0, Permission::whereIn('name', array_merge(AdminAccess::keys(), [AdminAccess::INITIALIZED_SENTINEL]))->count());
         $this->assertSame(0, $admin->fresh()->permissions()->count());
 
-        // 5-7. The real run bootstraps the catalogue AND the sentinel,
-        // then grants the legacy Admin the full baseline.
+        // 5-7. The real run bootstraps the entire catalogue's permission
+        // ROWS (ensurePermissionsExist() always creates all 23 + the
+        // sentinel, regardless of default-vs-configurable), then GRANTS
+        // the legacy Admin only the default baseline (Default-Baseline
+        // Correction, 2026-08-27) — never the full 23-key catalogue.
         Artisan::call('admin:permissions:backfill');
         $this->assertSame(count(AdminAccess::keys()) + 1, Permission::whereIn('name', array_merge(AdminAccess::keys(), [AdminAccess::INITIALIZED_SENTINEL]))->count());
         $fresh = $admin->fresh();
         $this->assertTrue(AdminAccessService::isInitialized($fresh));
-        foreach (AdminAccess::keys() as $key) {
+        foreach (AdminAccess::defaultKeys() as $key) {
             $this->assertTrue($fresh->hasPermissionTo($key));
         }
 
         // 8-9. Re-running changes nothing.
         Artisan::call('admin:permissions:backfill');
-        $this->assertSame(count(AdminAccess::keys()) + 1, $admin->fresh()->permissions->count());
+        $this->assertSame(count(AdminAccess::defaultKeys()) + 1, $admin->fresh()->permissions->count());
     }
 
     /**
@@ -157,7 +217,7 @@ class AdminAccessTest extends TestCase
     {
         $superAdmin = $this->makeSuperAdmin();
         $admin = $this->makeAdmin();
-        AdminAccessService::grantFullAccess($admin);
+        AdminAccessService::grantDefaultAccess($admin);
         Sanctum::actingAs($superAdmin);
         $this->putJson("/api/users/{$admin->id}/permissions", ['permissions' => []])->assertStatus(200);
 
@@ -174,15 +234,17 @@ class AdminAccessTest extends TestCase
         Artisan::call('admin:permissions:backfill');
         $this->assertSame(0, $admin->fresh()->getPermissionNames()->intersect(AdminAccess::keys())->count());
 
-        // Only a genuine transition away and back resets to full baseline.
+        // Only a genuine transition away and back resets to the default
+        // baseline (Default-Baseline Correction, 2026-08-27 — never the
+        // full 23-key catalogue).
         $this->putJson("/api/users/{$admin->id}", ['role' => 'Client'])->assertStatus(200);
         $this->putJson("/api/users/{$admin->id}", ['role' => 'Admin'])->assertStatus(200);
-        $this->assertSame(count(AdminAccess::keys()), $admin->fresh()->getPermissionNames()->intersect(AdminAccess::keys())->count());
+        $this->assertSame(count(AdminAccess::defaultKeys()), $admin->fresh()->getPermissionNames()->intersect(AdminAccess::keys())->count());
     }
 
     // ── Baseline lifecycle ───────────────────────────────────────────────
 
-    public function test_existing_admin_receives_full_baseline_via_backfill(): void
+    public function test_existing_admin_receives_default_baseline_via_backfill(): void
     {
         $admin = $this->makeAdmin();
         // Simulates a genuinely legacy/never-initialised Admin row — no
@@ -198,8 +260,14 @@ class AdminAccessTest extends TestCase
 
         $fresh = $admin->fresh();
         $this->assertTrue(AdminAccessService::isInitialized($fresh));
-        foreach (AdminAccess::keys() as $key) {
+        // Default-Baseline Correction (2026-08-27) — only the original 15
+        // modules, never the eight formerly-permanently-Super-Admin-only
+        // ones the Full Parity Access Expansion made configurable.
+        foreach (AdminAccess::defaultKeys() as $key) {
             $this->assertTrue($fresh->hasPermissionTo($key));
+        }
+        foreach (['admin.module.users', 'admin.module.ai_config', 'admin.module.application_monitoring', 'admin.module.storage', 'admin.module.support', 'admin.module.announcements', 'admin.module.system_logs', 'admin.module.audit_log'] as $sensitiveKey) {
+            $this->assertFalse($fresh->hasPermissionTo($sensitiveKey));
         }
     }
 
@@ -207,7 +275,7 @@ class AdminAccessTest extends TestCase
     {
         $superAdmin = $this->makeSuperAdmin();
         $admin = $this->makeAdmin();
-        AdminAccessService::grantFullAccess($admin);
+        AdminAccessService::grantDefaultAccess($admin);
         Sanctum::actingAs($superAdmin);
 
         // Restrict via the REAL configuration endpoint — the only
@@ -240,22 +308,22 @@ class AdminAccessTest extends TestCase
         $legacy = $this->makeAdmin('legacy@example.com');
         $legacy->syncPermissions([]); // never initialised
 
-        $full = $this->makeAdmin('full@example.com');
-        AdminAccessService::grantFullAccess($full); // initialised, full
+        $defaulted = $this->makeAdmin('defaulted@example.com');
+        AdminAccessService::grantDefaultAccess($defaulted); // initialised, default baseline
 
         $partial = $this->makeAdmin('partial@example.com');
         $this->putJson("/api/users/{$partial->id}/permissions", ['permissions' => ['admin.module.pricing']])
             ->assertStatus(200);
 
         $zero = $this->makeAdmin('zero@example.com');
-        AdminAccessService::grantFullAccess($zero);
+        AdminAccessService::grantDefaultAccess($zero);
         $this->putJson("/api/users/{$zero->id}/permissions", ['permissions' => []])
             ->assertStatus(200); // Clear All — deliberately initialised to zero modules
 
         Artisan::call('admin:permissions:backfill');
 
         $this->assertTrue($legacy->fresh()->hasPermissionTo('admin.module.pricing'));
-        $this->assertSame(count(AdminAccess::keys()), $full->fresh()->getPermissionNames()->intersect(AdminAccess::keys())->count());
+        $this->assertSame(count(AdminAccess::defaultKeys()), $defaulted->fresh()->getPermissionNames()->intersect(AdminAccess::keys())->count());
         $this->assertSame(['admin.module.pricing'], $partial->fresh()->getPermissionNames()->intersect(AdminAccess::keys())->values()->all());
         // The critical assertion: zero stays zero after backfill.
         $this->assertCount(0, $zero->fresh()->getPermissionNames()->intersect(AdminAccess::keys()));
@@ -279,7 +347,7 @@ class AdminAccessTest extends TestCase
     {
         $superAdmin = $this->makeSuperAdmin();
         $admin = $this->makeAdmin();
-        AdminAccessService::grantFullAccess($admin); // 1. Admin gets baseline
+        AdminAccessService::grantDefaultAccess($admin); // 1. Admin gets baseline
         Sanctum::actingAs($superAdmin);
 
         // 2/3. Super Admin uses the Access API to Clear All.
@@ -319,7 +387,7 @@ class AdminAccessTest extends TestCase
     // / test_admin_cannot_access_super_admin_only_api_by_faking_a_permission_name
     // already cover the permanently-Super-Admin-only denial.
 
-    public function test_new_admin_via_invite_receives_full_baseline(): void
+    public function test_new_admin_via_invite_receives_default_baseline_only(): void
     {
         Http::fake(['api.brevo.com/*' => Http::response(['messageId' => 'x'], 201)]);
         \App\Models\SuresignSetting::instance()->update([
@@ -333,11 +401,19 @@ class AdminAccessTest extends TestCase
             ->assertStatus(201);
 
         $newAdmin = User::where('email', 'newadmin@example.com')->first();
-        $this->assertSame(count(AdminAccess::keys()), $newAdmin->getPermissionNames()->intersect(AdminAccess::keys())->count());
+        // Default-Baseline Correction (2026-08-27) — a new Admin gets
+        // exactly AdminAccess::defaultKeys() (15), never the full 23-key
+        // catalogue; the eight sensitive modules require an explicit
+        // Super Admin grant.
+        $this->assertEqualsCanonicalizing(AdminAccess::defaultKeys(), $newAdmin->getPermissionNames()->intersect(AdminAccess::keys())->values()->all());
+        $this->assertFalse($newAdmin->hasPermissionTo('admin.module.users'));
+        $this->assertFalse($newAdmin->hasPermissionTo('admin.module.ai_config'));
+        $this->assertFalse($newAdmin->hasPermissionTo('admin.module.storage'));
+        $this->assertFalse($newAdmin->hasPermissionTo('admin.module.audit_log'));
         $this->assertTrue(AdminAccessService::isInitialized($newAdmin));
     }
 
-    public function test_role_change_to_admin_receives_full_baseline(): void
+    public function test_role_change_to_admin_receives_default_baseline_only(): void
     {
         $superAdmin = $this->makeSuperAdmin();
         $client = $this->makeClient();
@@ -347,7 +423,7 @@ class AdminAccessTest extends TestCase
 
         $fresh = $client->fresh();
         $this->assertTrue($fresh->hasRole('Admin'));
-        $this->assertSame(count(AdminAccess::keys()), $fresh->getPermissionNames()->intersect(AdminAccess::keys())->count());
+        $this->assertEqualsCanonicalizing(AdminAccess::defaultKeys(), $fresh->getPermissionNames()->intersect(AdminAccess::keys())->values()->all());
         $this->assertTrue(AdminAccessService::isInitialized($fresh));
     }
 
@@ -355,7 +431,7 @@ class AdminAccessTest extends TestCase
     {
         $superAdmin = $this->makeSuperAdmin();
         $admin = $this->makeAdmin();
-        AdminAccessService::grantFullAccess($admin);
+        AdminAccessService::grantDefaultAccess($admin);
         Sanctum::actingAs($superAdmin);
 
         $this->putJson("/api/users/{$admin->id}/permissions", ['permissions' => ['admin.module.pricing']])
@@ -371,7 +447,7 @@ class AdminAccessTest extends TestCase
     {
         $superAdmin = $this->makeSuperAdmin();
         $admin = $this->makeAdmin();
-        AdminAccessService::grantFullAccess($admin);
+        AdminAccessService::grantDefaultAccess($admin);
         Sanctum::actingAs($superAdmin);
 
         // Restrict via the real endpoint, which preserves the sentinel —
@@ -394,7 +470,7 @@ class AdminAccessTest extends TestCase
     {
         $superAdmin = $this->makeSuperAdmin();
         $admin = $this->makeAdmin();
-        AdminAccessService::grantFullAccess($admin);
+        AdminAccessService::grantDefaultAccess($admin);
         Sanctum::actingAs($superAdmin);
 
         $this->putJson("/api/users/{$admin->id}", ['role' => 'Client'])->assertStatus(200);
@@ -411,7 +487,7 @@ class AdminAccessTest extends TestCase
     {
         $superAdmin = $this->makeSuperAdmin();
         $admin = $this->makeAdmin();
-        AdminAccessService::grantFullAccess($admin);
+        AdminAccessService::grantDefaultAccess($admin);
         Sanctum::actingAs($superAdmin);
 
         $this->putJson("/api/users/{$admin->id}", ['role' => 'Super Admin'])->assertStatus(200);
@@ -424,18 +500,19 @@ class AdminAccessTest extends TestCase
     {
         $superAdmin = $this->makeSuperAdmin();
         $admin = $this->makeAdmin();
-        AdminAccessService::grantFullAccess($admin);
+        AdminAccessService::grantDefaultAccess($admin);
         Sanctum::actingAs($superAdmin);
 
         // Restrict, then move away from Admin (removes managed access +
-        // sentinel), then back into Admin — must be full baseline again,
-        // never a silent restoration of the earlier restriction.
+        // sentinel), then back into Admin — must be the default baseline
+        // again (never the full 23-key catalogue, and never a silent
+        // restoration of the earlier restriction).
         $this->putJson("/api/users/{$admin->id}/permissions", ['permissions' => ['admin.module.pricing']])->assertStatus(200);
         $this->putJson("/api/users/{$admin->id}", ['role' => 'Client'])->assertStatus(200);
         $this->putJson("/api/users/{$admin->id}", ['role' => 'Admin'])->assertStatus(200);
 
         $fresh = $admin->fresh();
-        $this->assertSame(count(AdminAccess::keys()), $fresh->getPermissionNames()->intersect(AdminAccess::keys())->count());
+        $this->assertEqualsCanonicalizing(AdminAccess::defaultKeys(), $fresh->getPermissionNames()->intersect(AdminAccess::keys())->values()->all());
         $this->assertTrue(AdminAccessService::isInitialized($fresh));
     }
 
@@ -457,12 +534,12 @@ class AdminAccessTest extends TestCase
     {
         $superAdmin = $this->makeSuperAdmin();
         $admin = $this->makeAdmin();
-        AdminAccessService::grantFullAccess($admin);
+        AdminAccessService::grantDefaultAccess($admin);
         Sanctum::actingAs($superAdmin);
 
         $this->getJson("/api/users/{$admin->id}/permissions")
             ->assertStatus(200)
-            ->assertJsonCount(count(AdminAccess::keys()), 'data.granted');
+            ->assertJsonCount(count(AdminAccess::defaultKeys()), 'data.granted');
 
         $this->putJson("/api/users/{$admin->id}/permissions", ['permissions' => ['admin.module.pricing', 'admin.module.projects']])
             ->assertStatus(200)
@@ -551,7 +628,7 @@ class AdminAccessTest extends TestCase
 
         $superAdmin = $this->makeSuperAdmin();
         $admin = $this->makeAdmin();
-        AdminAccessService::grantFullAccess($admin); // holds the sentinel
+        AdminAccessService::grantDefaultAccess($admin); // holds the sentinel
         Sanctum::actingAs($superAdmin);
 
         $response = $this->getJson("/api/users/{$admin->id}/permissions")->assertStatus(200);
@@ -566,19 +643,25 @@ class AdminAccessTest extends TestCase
             ->assertStatus(422);
     }
 
-    public function test_super_admin_only_capability_cannot_be_granted_through_this_endpoint(): void
+    /**
+     * Full Parity Access Expansion (2026-08-26): 'admin.module.storage' is
+     * now a genuine, valid catalogue key (Storage is no longer permanently
+     * Super-Admin-only) — this endpoint correctly accepts it. The
+     * remaining, still-genuinely-inaccessible-through-this-endpoint
+     * surface is the initialisation sentinel itself, covered by
+     * test_sentinel_never_appears_in_catalogue_or_show_response_and_cannot_be_submitted
+     * above. This test now proves the opposite of its pre-expansion self —
+     * kept (renamed) rather than deleted, to make the change explicit.
+     */
+    public function test_storage_capability_can_now_be_granted_through_this_endpoint(): void
     {
         $superAdmin = $this->makeSuperAdmin();
         $admin = $this->makeAdmin();
         Sanctum::actingAs($superAdmin);
 
-        // Neither 'admin.module.storage' nor any Super-Admin-only surface
-        // exists in the catalogue at all — the only way this could grant
-        // one is if it existed as a valid key, which it structurally does
-        // not (Rule::in(AdminAccess::keys()) rejects anything else).
         $this->putJson("/api/users/{$admin->id}/permissions", ['permissions' => ['admin.module.storage']])
-            ->assertStatus(422);
-        $this->assertFalse(AdminAccess::isValidKey('admin.module.storage'));
+            ->assertStatus(200);
+        $this->assertTrue(AdminAccess::isValidKey('admin.module.storage'));
     }
 
     public function test_activity_log_records_granted_and_revoked_diff(): void
@@ -610,60 +693,84 @@ class AdminAccessTest extends TestCase
         $this->assertDatabaseMissing('activity_logs', ['action' => 'admin.permissions.updated', 'subject_id' => $admin->id]);
     }
 
-    // ── Backend enforcement (permanently-Super-Admin-only only — see
-    // AdminAccessEnforcementTest.php, held for Stage 2, for the
-    // configurable-module `admin.module.*` enforcement tests) ───────────
+    // ── Backend enforcement (permanently-Super-Admin-only surfaces that
+    // remain outside the catalogue even after the Full Parity Access
+    // Expansion — see AdminAccessEnforcementTest.php, for the
+    // configurable-module `admin.module.*` enforcement tests, including
+    // the eight formerly-permanent modules Storage/Support/Announcements/
+    // System Logs/Audit Log/AI Config/Users/Application Monitoring now
+    // are) ─────────────────────────────────────────────────────────────
 
-    public function test_permanently_super_admin_only_api_remains_blocked_from_admin_even_with_full_catalogue(): void
+    /**
+     * Full Parity Access Expansion (2026-08-26): granting the ENTIRE
+     * catalogue (now including Storage/System Logs/Audit Log/Support/
+     * Announcements/AI Config) genuinely unlocks all of them for an
+     * Admin — proving the opposite of what this test proved before the
+     * expansion, kept (renamed) rather than deleted to make the change
+     * explicit. What remains permanently Super-Admin-only regardless of
+     * catalogue grants is the Access-configuration endpoint itself (see
+     * test_admin_cannot_configure_permissions above) and a handful of
+     * high-consequence surfaces never brought into this catalogue at all
+     * (AI Credits grant/adjust/expire, the AI Credit operating-mode
+     * switch, Google OAuth connect/disconnect, manual/complimentary
+     * subscription assignment) — see the next test for that boundary.
+     */
+    public function test_full_catalogue_grant_now_unlocks_the_eight_expanded_modules(): void
     {
         $admin = $this->makeAdmin();
-        AdminAccessService::grantFullAccess($admin); // every configurable module granted
+        // Explicit grant of the full 23-key catalogue — never
+        // grantDefaultAccess(), which (Default-Baseline Correction,
+        // 2026-08-27) grants only the 15-key default baseline. This test
+        // is specifically about what happens when a Super Admin
+        // deliberately grants everything, including the eight sensitive
+        // modules.
+        $admin->givePermissionTo(AdminAccess::keys());
         Sanctum::actingAs($admin);
 
-        // Storage/System Logs/Audit Log/Support/Announcements/AI Config are
-        // not in the catalogue at all — granting everything that IS in it
-        // must never reach these.
-        $this->getJson('/api/admin/storage')->assertStatus(403);
-        $this->getJson('/api/admin/system-logs')->assertStatus(403);
-        $this->getJson('/api/admin/audit-log')->assertStatus(403);
-        $this->getJson('/api/admin/support-tickets')->assertStatus(403);
-        $this->putJson('/api/admin/suresign-settings/ai', ['ai_enabled' => true])->assertStatus(403);
+        $this->getJson('/api/admin/storage')->assertStatus(200);
+        $this->getJson('/api/admin/system-logs')->assertStatus(200);
+        $this->getJson('/api/admin/audit-log')->assertStatus(200);
+        $this->getJson('/api/admin/support-tickets')->assertStatus(200);
+        $this->putJson('/api/admin/suresign-settings/ai', ['ai_enabled' => true])->assertStatus(200);
+        $this->getJson('/api/admin/application-monitoring')->assertStatus(200);
+        $this->postJson('/api/users/bulk-invite', ['emails' => [], 'role' => 'Client'])->assertStatus(422); // reaches admin.module.users-gated validation, not 403
     }
 
     /**
-     * Phase 14 — even a manually-inserted fake permission matching a
-     * permanently-Super-Admin-only surface's naming convention must not
-     * grant access, since these routes are gated by role:Super Admin
-     * alone, never by a permission check that a permission row could
-     * satisfy.
+     * The Access-configuration endpoint remains role:Super Admin ONLY
+     * regardless of admin.module.users or any other catalogue grant — an
+     * Admin can never reach it, full parity or not.
      */
-    public function test_permanently_super_admin_only_modules_resist_fake_matching_permissions(): void
+    public function test_access_configuration_endpoint_remains_super_admin_only_even_with_full_catalogue(): void
     {
         $admin = $this->makeAdmin();
-        foreach (['admin.module.storage', 'admin.module.support', 'admin.module.announcements', 'admin.module.system_logs', 'admin.module.audit_log', 'admin.module.ai_config'] as $fakeName) {
-            $admin->givePermissionTo(Permission::firstOrCreate(['name' => $fakeName, 'guard_name' => 'web']));
-        }
-        Sanctum::actingAs($admin->fresh());
-
-        $this->getJson('/api/admin/storage')->assertStatus(403);
-        $this->getJson('/api/admin/support-tickets')->assertStatus(403);
-        $this->getJson('/api/admin/platform-announcements')->assertStatus(403);
-        $this->getJson('/api/admin/system-logs')->assertStatus(403);
-        $this->getJson('/api/admin/audit-log')->assertStatus(403);
-        $this->putJson('/api/admin/suresign-settings/ai', ['ai_enabled' => true])->assertStatus(403);
-    }
-
-    public function test_admin_cannot_access_super_admin_only_api_by_faking_a_permission_name(): void
-    {
-        $admin = $this->makeAdmin();
-        // Directly attach a permission that happens to share the naming
-        // convention, proving the route itself (role:Super Admin) is what
-        // blocks this — no permission name could ever satisfy a role check.
-        $fake = Permission::firstOrCreate(['name' => 'admin.module.storage', 'guard_name' => 'web']);
-        $admin->givePermissionTo($fake);
+        $target = $this->makeAdmin('target@example.com');
+        $admin->givePermissionTo(AdminAccess::keys()); // the full 23-key catalogue, deliberately not just the default baseline
         Sanctum::actingAs($admin);
 
-        $this->getJson('/api/admin/storage')->assertStatus(403);
+        $this->getJson("/api/users/{$target->id}/permissions")->assertStatus(403);
+        $this->putJson("/api/users/{$target->id}/permissions", ['permissions' => []])->assertStatus(403);
+    }
+
+    /**
+     * A handful of high-consequence surfaces were never brought into the
+     * catalogue at all, even after the Full Parity Access Expansion —
+     * confirms a manually-inserted fake permission matching one of their
+     * naming conventions still cannot grant access, since these routes
+     * are gated by role:Super Admin alone.
+     */
+    public function test_surfaces_outside_the_catalogue_resist_fake_matching_permissions(): void
+    {
+        $admin = $this->makeAdmin();
+        $org = Organization::create(['name' => 'Fake Target Org', 'slug' => 'fake-target-org-' . uniqid()]);
+        foreach (['admin.module.ai_credits_grant', 'admin.module.google_oauth'] as $fakeName) {
+            $admin->givePermissionTo(Permission::firstOrCreate(['name' => $fakeName, 'guard_name' => 'web']));
+        }
+        AdminAccessService::grantDefaultAccess($admin);
+        Sanctum::actingAs($admin->fresh());
+
+        $this->postJson("/api/admin/ai-credits/organizations/{$org->id}/grant", ['amount' => 10, 'reason' => 'test reason here', 'confirmed' => 'accepted'])->assertStatus(403);
+        $this->postJson('/api/admin/google/oauth/connect')->assertStatus(403);
     }
 
     // ── Client regression (sampled here; full suite in Batch1ClientPermissionsTest) ──

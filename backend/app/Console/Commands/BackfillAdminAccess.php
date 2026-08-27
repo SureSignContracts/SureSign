@@ -13,7 +13,7 @@ use Illuminate\Console\Command;
  * ai:credits:backfill-simulations / domains:verify-pending — never run
  * automatically from a migration, seeder, or application boot).
  *
- * Grants the FULL configurable admin.module.* baseline to every existing
+ * Grants the DEFAULT admin.module.* baseline (App\Support\Admin\AdminAccess::defaultKeys(), never the full 23-key catalogue) to every existing
  * Admin who has never been explicitly initialised (i.e. does not hold
  * AdminAccess::INITIALIZED_SENTINEL) — this is what preserves today's
  * broad Admin access unchanged the moment this feature ships, rather than
@@ -48,14 +48,14 @@ use Illuminate\Console\Command;
  * catalogue-bootstrap call of its own before evaluating initialisation —
  * see Phase 3 below (--dry-run semantics) for why bootstrapping the
  * catalogue is deliberately NOT done here, only inside the real
- * (non-dry-run) grant path via grantFullAccess()'s own
+ * (non-dry-run) grant path via grantDefaultAccess()'s own
  * ensurePermissionsExist() call.
  */
 class BackfillAdminAccess extends Command
 {
     protected $signature = 'admin:permissions:backfill {--dry-run}';
 
-    protected $description = 'One-time backfill: grants the full configurable admin.module.* baseline to existing Admin users who have never been explicitly initialised.';
+    protected $description = 'One-time backfill: grants the default admin.module.* baseline to existing Admin users who have never been explicitly initialised.';
 
     public function handle(): int
     {
@@ -79,10 +79,10 @@ class BackfillAdminAccess extends Command
             }
 
             if ($dryRun) {
-                $this->line("Would grant full baseline to {$admin->email} (id {$admin->id}).");
+                $this->line("Would grant default baseline to {$admin->email} (id {$admin->id}).");
             } else {
-                AdminAccessService::grantFullAccess($admin);
-                $this->line("Granted full baseline to {$admin->email} (id {$admin->id}).");
+                AdminAccessService::grantDefaultAccess($admin);
+                $this->line("Granted default baseline to {$admin->email} (id {$admin->id}).");
             }
 
             $granted++;
@@ -90,7 +90,7 @@ class BackfillAdminAccess extends Command
 
         $this->info(
             ($dryRun ? '[dry run] ' : '')
-            . "{$granted} Admin(s) granted the full baseline; {$skipped} already initialised and were left unchanged."
+            . "{$granted} Admin(s) granted the default baseline; {$skipped} already initialised and were left unchanged."
         );
 
         return self::SUCCESS;

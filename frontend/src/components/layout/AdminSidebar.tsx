@@ -28,11 +28,17 @@ const COLLAPSED_KEY = 'suresign_sidebar_collapsed';
 // admin.module.* permission (see App\Support\Admin\AdminAccess, the
 // authoritative backend catalogue this list must stay in sync with) an
 // Admin needs to see/use that item; Super Admin always sees it regardless
-// (see isVisible() below). `superAdminOnly` items are UNRELATED to this —
-// they're permanently Super-Admin-only and never became configurable
-// (Users, AI Config, Application Monitoring, Storage, Support,
-// Announcements, System Logs, Audit Log — see routes/api.php's own
-// tightened-mismatch comments for why). An item never has both.
+// (see isVisible() below). Full Parity Access Expansion (2026-08-26): every
+// module a Super Admin has is now configurable, including Users, AI
+// Config, Application Monitoring, Storage, Support, Announcements, System
+// Logs, and Audit Log — none of them is `superAdminOnly` any more. Users
+// carries the one deliberate exception, enforced entirely on the backend
+// (App\Support\Auth\SuperAdminGuard), never here: granting
+// admin.module.users lets an Admin manage ordinary Admin/Client accounts,
+// but never touch or create a Super Admin account, and the Access
+// configuration screen itself stays role:Super Admin ONLY regardless.
+// `superAdminOnly` no longer appears on any item — kept as a supported
+// field shape for isVisible() in case a future module genuinely needs it.
 const NAV_GROUPS = [
   {
     label: null,
@@ -48,7 +54,7 @@ const NAV_GROUPS = [
       { href: '/admin/documents', label: 'Documents',      icon: FileText,     pageKey: 'documents',    permissionKey: 'admin.module.documents' },
       { href: '/admin/appointments', label: 'Appointments', icon: CalendarClock, pageKey: 'appointments', permissionKey: 'admin.module.appointments' },
       { href: '/admin/consultancy/dashboard', label: 'Consultancy', icon: HeartHandshake, pageKey: 'consultancy', activePrefix: '/admin/consultancy', permissionKey: 'admin.module.consultancy' },
-      { href: '/admin/users',     label: 'Users',          icon: Users,        pageKey: 'users',     superAdminOnly: true },
+      { href: '/admin/users',     label: 'Users',          icon: Users,        pageKey: 'users',     permissionKey: 'admin.module.users' },
     ],
   },
   {
@@ -79,17 +85,16 @@ const NAV_GROUPS = [
   },
   {
     label: 'System',
-    superAdminOnly: true,
     items: [
-      { href: '/admin/ai-configurations', label: 'AI Config',   icon: Brain,         pageKey: 'ai-configurations', superAdminOnly: true },
+      { href: '/admin/ai-configurations', label: 'AI Config',   icon: Brain,         pageKey: 'ai-configurations', permissionKey: 'admin.module.ai_config' },
       { href: '/admin/ai-usage', label: 'AI Usage & Cost', icon: Brain, pageKey: 'ai-usage', permissionKey: 'admin.module.ai_usage' },
       { href: '/admin/google-integration', label: 'Google Integration', icon: Link2, pageKey: 'google-integration', permissionKey: 'admin.module.google_integration' },
-      { href: '/admin/application-monitoring', label: 'Application Monitoring', icon: Activity, pageKey: 'application-monitoring', superAdminOnly: true },
-      { href: '/admin/storage',           label: 'Storage',     icon: HardDrive,     pageKey: 'storage',           superAdminOnly: true },
-      { href: '/admin/support',           label: 'Support',     icon: LifeBuoy,      pageKey: 'support',           superAdminOnly: true },
-      { href: '/admin/announcements',     label: 'Announcements', icon: Megaphone,   pageKey: 'announcements',     superAdminOnly: true },
-      { href: '/admin/system-logs',       label: 'System Logs', icon: ScrollText,    pageKey: 'system-logs',       superAdminOnly: true },
-      { href: '/admin/audit-log',         label: 'Audit Log',   icon: ClipboardList, pageKey: 'audit-log',         superAdminOnly: true },
+      { href: '/admin/application-monitoring', label: 'Application Monitoring', icon: Activity, pageKey: 'application-monitoring', permissionKey: 'admin.module.application_monitoring' },
+      { href: '/admin/storage',           label: 'Storage',     icon: HardDrive,     pageKey: 'storage',           permissionKey: 'admin.module.storage' },
+      { href: '/admin/support',           label: 'Support',     icon: LifeBuoy,      pageKey: 'support',           permissionKey: 'admin.module.support' },
+      { href: '/admin/announcements',     label: 'Announcements', icon: Megaphone,   pageKey: 'announcements',     permissionKey: 'admin.module.announcements' },
+      { href: '/admin/system-logs',       label: 'System Logs', icon: ScrollText,    pageKey: 'system-logs',       permissionKey: 'admin.module.system_logs' },
+      { href: '/admin/audit-log',         label: 'Audit Log',   icon: ClipboardList, pageKey: 'audit-log',         permissionKey: 'admin.module.audit_log' },
     ],
   },
 ];
@@ -502,12 +507,14 @@ export default function AdminSidebar({
   // Support inbox badge — "needs attention" count (Waiting for Support,
   // including legacy pre-Batch-5 Open rows folded in by the backend).
   // Lightweight dedicated endpoint (no ticket list), polled every 60s to
-  // match the notification bell's own cadence. Super Admin only, since the
-  // Support nav item itself is superAdminOnly.
+  // match the notification bell's own cadence. Full Parity Access
+  // Expansion (2026-08-26): gated on admin.module.support, same pattern
+  // as the Consultancy badge below, since Support is now configurable
+  // rather than permanently Super-Admin-only.
   const { data: supportCounts } = useQuery({
     queryKey: ['admin-support-ticket-counts'],
     queryFn: () => api.get('/admin/support-tickets/counts').then(r => r.data.counts as Record<string, number>),
-    enabled: !!isSuperAdmin,
+    enabled: hasModulePermission('admin.module.support'),
     refetchInterval: 60000,
   });
   const supportBadge = supportCounts?.waiting_for_support ?? 0;

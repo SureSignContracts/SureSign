@@ -40,25 +40,37 @@ class AdminAccessService
     }
 
     /**
-     * The full configurable Admin baseline — called ONLY when a user
-     * actually transitions INTO the Admin role (a fresh invite, a restored
-     * invite, or an existing user's role being changed TO Admin). Never
-     * called on an ordinary profile edit of an already-Admin user — doing
-     * so would silently undo any restriction a Super Admin had previously
+     * The DEFAULT Admin baseline — called ONLY when a user actually
+     * transitions INTO the Admin role (a fresh invite, a restored invite,
+     * or an existing user's role being changed TO Admin). Never called on
+     * an ordinary profile edit of an already-Admin user — doing so would
+     * silently undo any restriction a Super Admin had previously
      * configured for them (see UserController::update()'s own guard for
      * why "role stays Admin" and "role becomes Admin" are handled
      * differently).
      *
-     * Always grants the full catalogue AND the initialisation sentinel
+     * Renamed from grantFullAccess() (Default-Baseline Correction,
+     * 2026-08-27) — this deliberately grants `AdminAccess::defaultKeys()`,
+     * NEVER `AdminAccess::keys()`/`catalogue()`. Granting the full 23-key
+     * catalogue here was a real oversight the Full Parity Access
+     * Expansion introduced: it would have silently handed every
+     * newly-created Admin the eight formerly-permanently-Super-Admin-only
+     * modules (Users, AI Config, Application Monitoring, Storage,
+     * Support, Announcements, System Logs, Audit Log) with no Super Admin
+     * decision involved at all. Those eight are configurable but never
+     * default-granted — a Super Admin must explicitly turn them on via
+     * the Access screen.
+     *
+     * Always grants the default baseline AND the initialisation sentinel
      * together, in the same call — a genuine transition into Admin is
      * always a fresh start, never a restoration of any previous
      * configuration this same account might have held before an earlier
      * departure from the Admin role (see removeManagedAccess()).
      */
-    public static function grantFullAccess(User $user): void
+    public static function grantDefaultAccess(User $user): void
     {
         self::ensurePermissionsExist();
-        $user->givePermissionTo([...AdminAccess::keys(), AdminAccess::INITIALIZED_SENTINEL]);
+        $user->givePermissionTo([...AdminAccess::defaultKeys(), AdminAccess::INITIALIZED_SENTINEL]);
     }
 
     /**

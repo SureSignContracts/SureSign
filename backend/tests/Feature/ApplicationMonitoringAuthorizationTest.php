@@ -11,8 +11,11 @@ use Tests\TestCase;
 
 /**
  * Super Admin Application Monitoring — GET /api/admin/application-monitoring
- * must be reachable only by Super Admin, matching the tighter
- * 'role:Super Admin' group in routes/api.php (not 'Super Admin|Admin').
+ * requires Super Admin OR Admin with admin.module.application_monitoring
+ * (Full Parity Access Expansion, 2026-08-26 — Application Monitoring was
+ * permanently Super-Admin-only before this; see AdminAccessTest.php's own
+ * coverage for the general catalogue behaviour, this file stays focused on
+ * this one endpoint's role/permission boundary).
  */
 class ApplicationMonitoringAuthorizationTest extends TestCase
 {
@@ -34,11 +37,25 @@ class ApplicationMonitoringAuthorizationTest extends TestCase
         $this->getJson('/api/admin/application-monitoring')->assertStatus(200);
     }
 
-    public function test_admin_cannot_access_monitoring_endpoint(): void
+    public function test_admin_without_the_permission_cannot_access_monitoring_endpoint(): void
     {
-        Sanctum::actingAs($this->makeUser('Admin'));
+        $admin = $this->makeUser('Admin');
+        // makeUser()'s own assignRole('Admin') auto-grants the full
+        // baseline via GrantBaselineAdminAccessOnRoleAttached — strip it
+        // to exercise the genuinely-restricted case.
+        $admin->syncPermissions([]);
+        Sanctum::actingAs($admin);
 
         $this->getJson('/api/admin/application-monitoring')->assertStatus(403);
+    }
+
+    public function test_admin_with_the_permission_can_access_monitoring_endpoint(): void
+    {
+        $admin = $this->makeUser('Admin');
+        $admin->syncPermissions(['admin.module.application_monitoring']);
+        Sanctum::actingAs($admin);
+
+        $this->getJson('/api/admin/application-monitoring')->assertStatus(200);
     }
 
     public function test_client_cannot_access_monitoring_endpoint(): void

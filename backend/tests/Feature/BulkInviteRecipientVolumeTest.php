@@ -300,16 +300,30 @@ class BulkInviteRecipientVolumeTest extends TestCase
             ->assertJsonValidationErrors(['emails']);
     }
 
-    public function test_super_admin_only_authorization_is_unchanged(): void
+    /**
+     * Full Parity Access Expansion (2026-08-26) — bulk-invite is now
+     * reachable by an Admin holding admin.module.users (previously
+     * permanently Super-Admin-only), not blocked outright. The volume
+     * limiter's own authorization boundary is otherwise unchanged: an
+     * Admin WITHOUT that permission is still refused.
+     */
+    public function test_authorization_reflects_the_configurable_users_module(): void
     {
         Queue::fake();
         $this->setLimits(500, 2000, 1500);
         $admin = User::factory()->create(['organization_id' => null]);
         $admin->assignRole(Role::firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']));
+        $admin->syncPermissions([]); // strip the listener's own auto-grant to exercise the restricted case
         Sanctum::actingAs($admin);
 
         $this->postJson('/api/users/bulk-invite', ['emails' => ['someone@example.com'], 'role' => 'Client'])
             ->assertStatus(403);
+
+        $admin->givePermissionTo('admin.module.users');
+        Sanctum::actingAs($admin->fresh());
+
+        $this->postJson('/api/users/bulk-invite', ['emails' => ['someone@example.com'], 'role' => 'Client'])
+            ->assertStatus(201);
     }
 
     public function test_send_invitation_email_job_is_dispatched_once_per_accepted_recipient(): void

@@ -113,16 +113,44 @@ that previously got this wrong by checking permission count instead.
 
 ## Default access policy
 
-- **Existing Admins** (as of this feature shipping): granted full access to
-  every configurable module via `admin:permissions:backfill`, run once at
-  rollout. Never re-run automatically; safe to re-run (skips any Admin who
-  has already been initialised — including one restricted all the way to
-  zero modules).
+**Default-Baseline Correction (2026-08-27) — read this before assuming "full
+access" means the whole catalogue.** `App\Support\Admin\AdminAccess` exposes
+two explicit, separately-defined sets:
+
+- **`catalogue()`/`keys()`** — the entire CONFIGURABLE surface, 23 keys. What
+  a Super Admin may choose to grant.
+- **`defaultKeys()`** — the DEFAULT baseline, 15 keys (the original catalogue,
+  before the Full Parity Access Expansion). What a new Admin actually
+  receives with no Super Admin decision involved.
+
+The Full Parity Access Expansion (below) made eight formerly-permanently-
+Super-Admin-only modules (Users, AI Config, Application Monitoring,
+Storage, Support, Announcements, System Logs, Audit Log) configurable —
+but "configurable" was never meant to mean "granted by default," and an
+earlier version of that expansion conflated the two: `AdminAccessService::
+grantFullAccess()` granted the ENTIRE 23-key catalogue to every new Admin,
+which would have silently handed all eight sensitive modules to any newly
+invited/restored/promoted Admin with no explicit Super Admin action at
+all. This was caught and fixed before ever reaching production — the
+method was renamed to `grantDefaultAccess()` and now grants
+`defaultKeys()` only. `defaultKeys()` is hardcoded, listed key-by-key —
+never derived by slicing/filtering `catalogue()` — so it can never
+silently drift just because the catalogue changes again later.
+
+- **Existing Admins** (as of the original feature shipping): granted the
+  default baseline via `admin:permissions:backfill`, run once at rollout.
+  Never re-run automatically; safe to re-run (skips any Admin who has
+  already been initialised — including one restricted all the way to zero
+  modules, and including one already sitting on exactly the default
+  baseline — the sentinel is what's checked, never the permission count or
+  contents).
 - **New Admins** (invite, restore-via-reinvite, or a role change TO Admin):
-  granted the full baseline AND the initialisation sentinel automatically
-  the moment they become Admin — never start locked out.
-- **An Admin whose access has been restricted, including to zero modules**:
-  stays restricted through any ordinary profile edit, through
+  granted `defaultKeys()` AND the initialisation sentinel automatically the
+  moment they become Admin — never start locked out of the ordinary
+  modules, and never start with any of the eight sensitive ones either.
+- **An Admin whose access has been restricted, including to zero modules,
+  or explicitly granted one or more of the eight sensitive modules**: stays
+  exactly as configured through any ordinary profile edit, through
   re-submitting the same role unchanged, and through a re-run of the
   backfill command. Only an explicit `PUT /users/{id}/permissions` call
   changes it. `PUT /users/{id}/permissions` uses a scoped
@@ -136,29 +164,112 @@ that previously got this wrong by checking permission count instead.
   Super Admin never needs these permissions anyway — `Gate::before()`
   bypasses everything.
 - **A later transition back into Admin**, after any prior departure, is
-  always treated as a fresh start — full baseline + sentinel again, never
-  a silent restoration of whatever was configured before the departure.
+  always treated as a fresh start — the default baseline + sentinel again,
+  never a silent restoration of whatever was configured (including any of
+  the eight sensitive modules) before the departure.
+- **No migration and no new production backfill were required for this
+  correction** — it only changes what future `grantDefaultAccess()` calls
+  grant; no already-stored permission row was touched, and no existing
+  Admin's access changed as a result of this fix.
 
 ## The catalogue
 
-See `App\Support\Admin\AdminAccess::catalogue()` for the current list
-(Dashboard, Companies, Projects, Documents, Appointments, Consultancy,
-Templates, Prompt Library, Find Company, Pricing, Product Updates, SureSign
-Branding, AI Credits, AI Usage & Cost, Google Integration).
+See `App\Support\Admin\AdminAccess::catalogue()` for the current list.
+Full Parity Access Expansion (2026-08-26) brought the catalogue to 23 keys
+total — every module a Super Admin has: Dashboard, Companies, Projects,
+Documents, Appointments, Consultancy, Templates, Prompt Library, Find
+Company, Pricing, Product Updates, SureSign Branding, AI Credits, AI Usage
+& Cost, Google Integration, **Users, AI Config, Application Monitoring,
+Storage, Support, Announcements, System Logs, Audit Log** (the eight
+bolded keys are the ones this expansion added — see below for their
+history and the one carve-out).
 
-### Permanently Super-Admin-only (never configurable)
+### History: the eight modules that were permanently Super-Admin-only
 
-Users, AI Config, Application Monitoring, Storage, Support, Announcements,
-System Logs, Audit Log. These already had `superAdminOnly: true` on their
-AdminSidebar nav items before this feature. Building the catalogue's own
-route-topology map found that six of them (AI Config, Storage, Support,
-Announcements, System Logs, Audit Log) were actually reachable by any Admin
-on the backend — the exact same class of mismatch Pricing already had — with
-no code-comment evidence anywhere of a deliberate decision to widen them
-(unlike Pricing's own documented Phase G0 decision). These were tightened to
-`role:Super Admin` at the route level as part of this phase, not made
-configurable — the frontend's restriction was correct; the backend's was the
-bug.
+Before the Full Parity Access Expansion, Users, AI Config, Application
+Monitoring, Storage, Support, Announcements, System Logs, and Audit Log
+were deliberately excluded from the catalogue — all had `superAdminOnly:
+true` on their AdminSidebar nav items, and six of them (AI Config,
+Storage, Support, Announcements, System Logs, Audit Log) had also been
+found, during the original catalogue build, to be reachable by any Admin
+on the backend despite the frontend hiding them — the exact same class of
+mismatch Pricing already had, with no code-comment evidence anywhere of a
+deliberate decision to widen them (unlike Pricing's own documented Phase
+G0 decision). They were tightened to `role:Super Admin` at the route
+level as part of that original phase, not made configurable.
+
+**Full Parity Access Expansion (2026-08-26)** reversed that decision at
+the explicit request of the platform owner ("put everything that the
+super admin have also, so I can configure if an admin can have that or
+not") — every one of these eight is now a genuine `admin.module.*`
+catalogue key, each independently gated at the route level
+(`permission:admin.module.storage`, `permission:admin.module.support`,
+etc. — no longer bundled under one shared `role:Super Admin` group).
+
+### The Users module's one deliberate carve-out
+
+Users is the one module where "configurable" does not mean full parity
+with Super Admin in every respect. Before offering this expansion, the
+platform owner was asked explicitly whether granting `admin.module.users`
+should let an Admin create/promote/manage a Super Admin account, and
+chose the safer option: **carve out the risky actions.** A follow-up
+review then went further still: Super Admin accounts are excluded from
+the ordinary Admin user-management surface entirely, not merely
+non-mutable.
+
+- An Admin granted `admin.module.users` can invite, edit, ban/unban,
+  deactivate, force-password-reset, set-password, revoke-tokens,
+  reset-tours, and remove ordinary Admin/Client accounts — the module
+  gate alone governs this, exactly like any other module.
+- An Admin — even one granted `admin.module.users` — can **never** act on
+  an existing Super Admin account in ANY way (update, ban, unban,
+  deactivate, remove, force-password-reset, set-password, revoke-tokens,
+  reset-tours, verify/unverify-email), and can **never** create a new
+  Super Admin account or promote an existing Admin/Client to Super Admin
+  (invite, bulk-invite, or a role-change). A genuine Super Admin actor is
+  completely unaffected — every one of these checks is a no-op for them.
+- **An Admin also cannot SEE a Super Admin account at all** (Users Module
+  Super Admin Exclusion, 2026-08-27): `UserController::index()` excludes
+  any user holding the Super Admin role from the list entirely for a
+  non-Super-Admin actor (`whereDoesntHave('roles', ...)`, not a
+  post-filter — the row is never fetched), and `show()`/`subscription()`
+  both call `SuperAdminGuard::assertActorMayActOnTarget()` (previously
+  only wired into mutating methods) so a direct id fetch fails with this
+  codebase's normal generic 403 (`'Access denied.'`) — never a distinct
+  message, and never a 404, that would confirm to the caller that the
+  target specifically is a Super Admin account. A genuine Super Admin
+  actor sees every row and can fetch any id, unaffected.
+- This is enforced **only** at the controller level
+  (`App\Support\Auth\SuperAdminGuard::assertActorMayActOnTarget()`/
+  `assertActorMayAssignRole()`, called from every mutating method AND now
+  `show()`/`subscription()` in `UserController`, plus the `index()` query
+  scope above) — it cannot be expressed as route middleware alone, since
+  the target user/intended role is only known once the request body
+  and/or route-bound model are available. `bulkRemove()`'s per-row loop
+  uses the boolean form (`actorMayActOnTarget()`) to report a Super Admin
+  target as a normal per-row failure rather than aborting the whole
+  batch, preserving that endpoint's existing partial-success contract;
+  every single-target endpoint uses the hard-aborting
+  `assertActorMayActOnTarget()`/`assertActorMayAssignRole()` instead.
+- The Access-configuration endpoints (`GET`/`PUT /users/{id}/permissions`)
+  remain `role:Super Admin` ONLY regardless of `admin.module.users` — an
+  Admin can never configure any Admin's Access, full parity or not. This
+  was true before the expansion and is unchanged by it.
+- The frontend mirrors this (never as the real boundary — the backend
+  guard above is authoritative): `app/admin/users/page.tsx` gates the
+  whole page on `admin.module.users`, hides the "Super Admin" option from
+  the role picker unless the viewer IS Super Admin, hides the Access
+  section entirely unless the viewer is Super Admin, and renders a
+  read-only notice in place of every mutating control when the target is
+  a Super Admin and the viewer isn't. Since the backend `index()` now
+  excludes Super Admin rows for a non-Super-Admin viewer, that viewer's
+  Users list never contains a Super Admin row to click on in the first
+  place — the modal's own restricted-state rendering remains as
+  defense-in-depth (e.g. a stale client-side row reference), not the
+  primary mechanism.
+- `removeAndDetach()` needs no special handling — its own pre-existing
+  eligibility check already restricts it to a Client target only, so a
+  Super Admin target is structurally impossible there.
 
 ### The Pricing resolution
 
