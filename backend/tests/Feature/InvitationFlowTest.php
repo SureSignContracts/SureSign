@@ -364,6 +364,97 @@ class InvitationFlowTest extends TestCase
             ->assertJsonPath('data.organization_name', null);
     }
 
+    // ── Selective Marketing Website CTA (August 27, 2026) ───────────────
+
+    public function test_invitation_email_contains_marketing_website_cta(): void
+    {
+        $this->fakeBrevo();
+        config(['suresign.marketing_url' => 'https://marketing.example.test']);
+        $this->actingAsSuperAdmin();
+
+        $this->postJson('/api/users/invite', ['email' => 'discover@example.com', 'role' => 'Client'])
+            ->assertStatus(201);
+
+        Http::assertSent(function ($request) {
+            $body = $request->data();
+            return str_contains($body['htmlContent'], 'Want to learn more about SureSign?')
+                && str_contains($body['htmlContent'], 'Explore SureSign')
+                && str_contains($body['htmlContent'], 'https://marketing.example.test');
+        });
+    }
+
+    public function test_invitation_email_primary_cta_remains_unchanged_alongside_marketing_cta(): void
+    {
+        $this->fakeBrevo();
+        config(['suresign.marketing_url' => 'https://marketing.example.test']);
+        $this->actingAsSuperAdmin();
+
+        $this->postJson('/api/users/invite', ['email' => 'primarycheck@example.com', 'role' => 'Client'])
+            ->assertStatus(201);
+
+        Http::assertSent(function ($request) {
+            $body = $request->data();
+            return str_contains($body['htmlContent'], 'Accept Invitation &amp; Set Up Account')
+                && str_contains($body['htmlContent'], 'Explore SureSign');
+        });
+    }
+
+    public function test_invitation_plain_text_alternative_contains_marketing_cta(): void
+    {
+        $this->fakeBrevo();
+        config(['suresign.marketing_url' => 'https://marketing.example.test']);
+        $this->actingAsSuperAdmin();
+
+        $this->postJson('/api/users/invite', ['email' => 'plaintextcheck@example.com', 'role' => 'Client'])
+            ->assertStatus(201);
+
+        Http::assertSent(function ($request) {
+            $body = $request->data();
+            return str_contains($body['textContent'], 'Want to learn more about SureSign?')
+                && str_contains($body['textContent'], 'Explore SureSign: https://marketing.example.test');
+        });
+    }
+
+    public function test_bulk_invitation_email_also_contains_marketing_cta_via_same_path(): void
+    {
+        $this->fakeBrevo();
+        config(['suresign.marketing_url' => 'https://marketing.example.test']);
+        $this->actingAsSuperAdmin();
+
+        $this->postJson('/api/users/bulk-invite', [
+            'emails' => ['bulkone@example.com', 'bulktwo@example.com'],
+            'role'   => 'Client',
+        ])->assertStatus(201);
+
+        Http::assertSent(function ($request) {
+            $body = $request->data();
+            return str_contains($body['to'][0]['email'], 'bulkone@example.com')
+                && str_contains($body['htmlContent'], 'Explore SureSign');
+        });
+        Http::assertSent(function ($request) {
+            $body = $request->data();
+            return str_contains($body['to'][0]['email'], 'bulktwo@example.com')
+                && str_contains($body['htmlContent'], 'Explore SureSign');
+        });
+    }
+
+    public function test_password_reset_email_does_not_contain_marketing_cta(): void
+    {
+        $this->fakeBrevo();
+
+        app(\App\Services\AccountEmailService::class)->sendPasswordReset(
+            'resetcheck@example.com',
+            'Reset Target',
+            'https://app.example.com/reset-password?token=abc',
+        );
+
+        Http::assertSent(function ($request) {
+            $body = $request->data();
+            return !str_contains($body['htmlContent'], 'Explore SureSign')
+                && !str_contains($body['htmlContent'], 'Want to learn more about SureSign?');
+        });
+    }
+
     public function test_normal_login_works_after_invitation_acceptance(): void
     {
         $user = User::factory()->create(['email_verified_at' => null]);

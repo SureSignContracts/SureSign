@@ -75,6 +75,23 @@ class InvitationEmailService
         $textLines[] = '';
         $textLines[] = $expiryLine . " If you weren't expecting this invitation, you can safely ignore this email.";
 
+        // Selective Marketing Website CTA in Emails, August 27, 2026 —
+        // deliberately opt-in per template (see project-context.md), added
+        // only here since InvitationService::send() is the one shared path
+        // for single invite, bulk invite, and re-invite. Kept as inline
+        // primitives rather than a new EmailComponents::marketingCta()
+        // abstraction — this is currently the only approved caller; extract
+        // a shared helper only if a second approved email family needs it.
+        $marketingUrl = rtrim((string) config('suresign.marketing_url'), '/');
+        $htmlParts[] = EmailComponents::paragraph('Want to learn more about SureSign?');
+        $htmlParts[] = EmailComponents::quietNote('Explore the platform, features and solutions available for construction teams.');
+        $htmlParts[] = EmailComponents::button('Explore SureSign →', $marketingUrl, 'secondary');
+
+        $textLines[] = '';
+        $textLines[] = 'Want to learn more about SureSign?';
+        $textLines[] = 'Explore the platform, features and solutions available for construction teams.';
+        $textLines[] = 'Explore SureSign: ' . $marketingUrl;
+
         $supportEmail = SuresignSetting::instance()->support_email;
         $htmlParts[] = EmailComponents::supportBlock($supportEmail);
         $textLines[] = '';
