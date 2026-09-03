@@ -18,6 +18,7 @@ RUN echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula sele
 
 RUN apt-get update && apt-get install -y \
     git curl zip unzip libpng-dev libonig-dev libxml2-dev libzip-dev \
+    libjpeg62-turbo-dev \
     libreoffice \
     poppler-utils \
     ttf-mscorefonts-installer \
@@ -25,6 +26,17 @@ RUN apt-get update && apt-get install -y \
     fonts-dejavu \
     fonts-freefont-ttf \
     fontconfig \
+    # R1G.2 fix — GD was previously configured with its PHP defaults only
+    # (no `docker-php-ext-configure gd` call at all), which since PHP 7.4
+    # means JPEG support is NOT compiled in even with libjpeg's headers
+    # present, unless `--with-jpeg` is explicitly passed at configure time.
+    # Confirmed live: `gd_info()['JPEG Support']` was `false` and both
+    # `imagejpeg()`/`imagecreatefromjpeg()` were undefined — the exact
+    # defect that blocked Friday Pack's own photo-embedding pipeline
+    # (App\Services\FridayPack\FridayPackPhotoPdfOptimisationService) from
+    # being exercised in this environment. `libjpeg62-turbo-dev` above
+    # supplies the headers `--with-jpeg` needs.
+    && docker-php-ext-configure gd --with-jpeg \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip \
     # `REDIS_CLIENT=phpredis` (docker-compose.prod.yml) requires this C
     # extension — it does not ship with the base php image and was
