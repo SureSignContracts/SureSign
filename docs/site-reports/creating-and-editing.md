@@ -28,6 +28,16 @@ treating it as an error — it may simply mean you've only recorded part
 of the picture. This breakdown feeds the Friday Pack's Workforce
 section — see [Friday Packs](../friday-packs/overview.md).
 
+## Photos & evidence
+
+Once you select **Save Diary**, the same window switches into editing
+your new site report and a **Photos & evidence** section becomes
+available immediately — you don't need to close and reopen it. Upload
+photographs and other supporting files there; you can also come back and
+add more evidence any time by reopening the report later. Image
+attachments here can later be selected as Site Photographs in a Friday
+Pack for the same week — see [Friday Packs](../friday-packs/overview.md).
+
 ## Related
 
 - [Statuses and Filters](statuses-and-filters.md)

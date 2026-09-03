@@ -32,6 +32,26 @@ type DiaryForm = {
   visitors: string; status: string;
 };
 
+/**
+ * UX1A — the shape `SiteDiaryController::store()`/`update()` actually
+ * return (raw Eloquent JSON), limited to the fields `SiteDiaryModal`
+ * itself reads. No shared `SiteDiary` API type exists anywhere in this
+ * frontend to reuse (checked before adding this) — kept local and
+ * narrow rather than introducing a wider shared type this one component
+ * doesn't need.
+ */
+type SiteDiaryRecord = {
+  id: number;
+  diary_date: string;
+  weather: string | null;
+  workers_on_site: number | null;
+  works_carried_out: string | null;
+  issues: string | null;
+  materials_delivered: string | null;
+  visitors: string | null;
+  status: string | null;
+};
+
 const emptyForm: DiaryForm = {
   diary_date: effectiveTodayYmd(),
   weather: '', workers_on_site: '', works_carried_out: '', issues: '',
@@ -40,27 +60,49 @@ const emptyForm: DiaryForm = {
 
 function SiteDiaryModal({ projectId, diary, readOnly, onClose }: { projectId: string; diary: any | null; readOnly: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
-  const isEdit = !!diary;
+  // UX1 — the diary a NEW modal opens with is fixed for its lifetime (the
+  // `diary` prop), but a create-then-immediate-evidence-upload flow needs
+  // this same modal instance to become an editing session for the
+  // record the backend just created, without closing/reopening. This
+  // local state — seeded once from the prop, updated only on a
+  // successful CREATE — is the one place `isEdit`/the current record are
+  // derived from from this point on; every other usage below reads
+  // `currentDiary`, never the original `diary` prop directly, so a
+  // pre-existing-diary edit (prop already set) and a freshly-created one
+  // behave identically once this state holds a record.
+  const [currentDiary, setCurrentDiary] = useState<SiteDiaryRecord | null>(diary);
+  const isEdit = !!currentDiary;
   const [form, setForm] = useState<DiaryForm>(isEdit ? {
-    diary_date: String(diary.diary_date).slice(0, 10),
-    weather: diary.weather ?? '',
-    workers_on_site: diary.workers_on_site != null ? String(diary.workers_on_site) : '',
-    works_carried_out: diary.works_carried_out ?? '',
-    issues: diary.issues ?? '',
-    materials_delivered: diary.materials_delivered ?? '',
-    visitors: diary.visitors ?? '',
-    status: diary.status ?? 'draft',
+    diary_date: String(currentDiary.diary_date).slice(0, 10),
+    weather: currentDiary.weather ?? '',
+    workers_on_site: currentDiary.workers_on_site != null ? String(currentDiary.workers_on_site) : '',
+    works_carried_out: currentDiary.works_carried_out ?? '',
+    issues: currentDiary.issues ?? '',
+    materials_delivered: currentDiary.materials_delivered ?? '',
+    visitors: currentDiary.visitors ?? '',
+    status: currentDiary.status ?? 'draft',
   } : emptyForm);
 
   const { mutate, isPending } = useMutation({
     mutationFn: (data: DiaryForm) => isEdit
-      ? api.put(`/projects/${projectId}/site-diaries/${diary.id}`, data).then(r => r.data)
+      ? api.put(`/projects/${projectId}/site-diaries/${currentDiary.id}`, data).then(r => r.data)
       : api.post(`/projects/${projectId}/site-diaries`, data).then(r => r.data),
-    onSuccess: () => {
+    onSuccess: (savedDiary: SiteDiaryRecord) => {
       queryClient.invalidateQueries({ queryKey: ['project-site-diaries', projectId] });
       queryClient.invalidateQueries({ queryKey: ['project-activities', projectId] });
-      toast.success(isEdit ? 'Site diary updated' : 'Site diary added');
-      onClose();
+      if (isEdit) {
+        toast.success('Site diary updated');
+        onClose();
+      } else {
+        // The record now exists — the backend's own response (already
+        // the full created SiteDiary, `id` included) is authoritative;
+        // never inferred from the list. Stay open and switch this same
+        // modal into an editing session so Photos & evidence becomes
+        // immediately reachable, instead of closing and asking the user
+        // to reopen it.
+        setCurrentDiary(savedDiary);
+        toast.success('Site Report created. You can now add photos and evidence.');
+      }
     },
     onError: (e: unknown) => toast.error(getErrorMessage(e, isEdit ? 'Failed to update site diary' : 'Failed to add site diary')),
   });
@@ -74,7 +116,7 @@ function SiteDiaryModal({ projectId, diary, readOnly, onClose }: { projectId: st
           <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{readOnly ? 'Site Diary' : isEdit ? 'Edit Site Diary' : 'New Site Diary'}</h2>
           <button onClick={onClose}><X size={18} style={{ color: 'var(--text-muted)' }} /></button>
         </div>
-        <form onSubmit={e => { e.preventDefault(); mutate(form); }} className="p-5 space-y-4">
+        <form onSubmit={e => { e.preventDefault(); if (isPending) return; mutate(form); }} className="p-5 space-y-4">
           <fieldset disabled={readOnly} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -101,7 +143,7 @@ function SiteDiaryModal({ projectId, diary, readOnly, onClose }: { projectId: st
           {isEdit && (
             <WorkforceBreakdownEditor
               projectId={projectId}
-              siteDiaryId={diary.id}
+              siteDiaryId={currentDiary.id}
               workersOnSite={form.workers_on_site !== '' ? Number(form.workers_on_site) : null}
               readOnly={readOnly}
             />
@@ -139,8 +181,8 @@ function SiteDiaryModal({ projectId, diary, readOnly, onClose }: { projectId: st
         {isEdit && (
           <div className="px-5 pb-5">
             <EvidenceSection
-              attachmentsUrl={`/projects/${projectId}/site-diaries/${diary.id}/attachments`}
-              queryKey={['site-diary-attachments', diary.id]}
+              attachmentsUrl={`/projects/${projectId}/site-diaries/${currentDiary.id}/attachments`}
+              queryKey={['site-diary-attachments', currentDiary.id]}
               label="Photos & evidence"
             />
           </div>
