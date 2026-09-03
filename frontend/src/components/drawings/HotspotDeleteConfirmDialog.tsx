@@ -20,7 +20,7 @@ export default function HotspotDeleteConfirmDialog({ linkCount, deleting, onConf
         role="dialog"
         aria-modal="true"
         aria-label="Remove this drawing location?"
-        className="w-full max-w-sm rounded-xl shadow-xl p-5"
+        className="ss-animate-in w-full max-w-sm rounded-xl shadow-xl p-5"
         style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
       >
         <h2 className="text-sm font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Remove this drawing location?</h2>

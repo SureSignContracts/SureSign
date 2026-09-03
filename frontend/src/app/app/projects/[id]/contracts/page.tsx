@@ -1782,11 +1782,11 @@ function DeleteContractModal({ contract, onClose }: { contract: ProjectContract;
         </div>
 
         <div className="flex justify-end gap-2 pt-1">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ color: 'var(--text-secondary)' }}>Cancel</button>
+          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm transition-all active:scale-[0.98] hover:bg-[var(--bg-hover)]" style={{ color: 'var(--text-secondary)' }}>Cancel</button>
           <button
             onClick={() => doDelete()}
             disabled={typed !== 'DELETE' || isPending}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:opacity-40"
             style={{ backgroundColor: '#dc2626', color: '#fff' }}
           >
             {isPending ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}

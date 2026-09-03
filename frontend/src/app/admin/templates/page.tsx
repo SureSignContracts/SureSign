@@ -341,12 +341,12 @@ function DeleteModal({ template, onClose, onDeleted }: { template: Template; onC
           Are you sure you want to delete <strong>{template.name}</strong>? This cannot be undone.
         </p>
         <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm"
+          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm transition-all active:scale-[0.98] hover:bg-[var(--bg-hover)]"
             style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
             Cancel
           </button>
           <button onClick={confirm} disabled={deleting}
-            className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60"
+            className="px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-60"
             style={{ backgroundColor: '#ef4444', color: '#fff' }}>
             {deleting ? 'Deleting…' : 'Delete'}
           </button>

@@ -1053,8 +1053,8 @@ function DeleteConfirmModal({ pa, projectId, onClose }: { pa: PaymentApplication
           </div>
         </div>
         <div className="flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
-          <button onClick={() => mutate()} disabled={isPending} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium" style={{ backgroundColor: '#f87171', color: '#fff', opacity: isPending ? 0.6 : 1 }}>
+          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm transition-all active:scale-[0.98] hover:bg-[var(--bg-hover)]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
+          <button onClick={() => mutate()} disabled={isPending} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.98] hover:opacity-90" style={{ backgroundColor: '#f87171', color: '#fff', opacity: isPending ? 0.6 : 1 }}>
             <Trash2 size={13} />
             {isPending ? 'Deleting…' : 'Delete Application'}
           </button>

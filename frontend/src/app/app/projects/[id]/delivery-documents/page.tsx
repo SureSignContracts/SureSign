@@ -193,10 +193,10 @@ function DeliveryDocumentsPage() {
               Delete &ldquo;{confirmTarget.title}&rdquo;? This cannot be undone.
             </p>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setConfirmTarget(null)} className="px-3 py-1.5 rounded-lg text-sm transition-all active:scale-[0.98]" style={{ color: 'var(--text-secondary)' }}>Cancel</button>
+              <button onClick={() => setConfirmTarget(null)} className="px-3 py-1.5 rounded-lg text-sm transition-all active:scale-[0.98] hover:bg-[var(--bg-hover)]" style={{ color: 'var(--text-secondary)' }}>Cancel</button>
               <button
                 onClick={() => deleteMutation.mutate(confirmTarget)}
-                className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white transition-all active:scale-[0.98]"
+                className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white transition-all active:scale-[0.98] hover:opacity-90"
                 style={{ backgroundColor: '#a11a1a' }}
               >
                 Delete

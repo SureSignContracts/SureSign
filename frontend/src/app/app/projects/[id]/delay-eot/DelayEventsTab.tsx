@@ -334,21 +334,23 @@ export function DelayEventsTab({ projectId, contracts, tradePackages, canWrite, 
       )}
 
       {confirmTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="w-full max-w-sm rounded-xl p-5" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="ss-animate-in w-full max-w-sm rounded-xl p-5" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
             <p className="text-sm mb-4" style={{ color: 'var(--text-primary)' }}>
               {confirmTarget.action === 'delete'
                 ? `Delete Delay Event #${confirmTarget.event.event_number}? This cannot be undone.`
                 : `Mark Delay Event #${confirmTarget.event.event_number} as ${confirmTarget.action === 'close' ? 'closed' : 'rejected'}?`}
             </p>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setConfirmTarget(null)} className="px-3 py-1.5 rounded-lg text-sm" style={{ color: 'var(--text-secondary)' }}>Cancel</button>
+              <button onClick={() => setConfirmTarget(null)} className="px-3 py-1.5 rounded-lg text-sm transition-all active:scale-[0.98] hover:bg-[var(--bg-hover)]" style={{ color: 'var(--text-secondary)' }}>Cancel</button>
               <button
                 onClick={() => confirmTarget.action === 'delete'
                   ? deleteMutation.mutate(confirmTarget.event)
                   : statusMutation.mutate({ event: confirmTarget.event, status: confirmTarget.action === 'close' ? 'closed' : 'rejected' })}
-                className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white" style={{ backgroundColor: '#a11a1a' }}>
-                Confirm
+                disabled={confirmTarget.action === 'delete' ? deleteMutation.isPending : statusMutation.isPending}
+                className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-70"
+                style={{ backgroundColor: '#a11a1a' }}>
+                {(confirmTarget.action === 'delete' ? deleteMutation.isPending : statusMutation.isPending) ? 'Working…' : 'Confirm'}
               </button>
             </div>
           </div>

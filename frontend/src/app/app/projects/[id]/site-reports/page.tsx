@@ -140,6 +140,29 @@ function SiteDiaryModal({ projectId, diary, readOnly, onClose }: { projectId: st
               </Select>
             </div>
           </div>
+          {!isEdit && (
+            // Sets the expectation up front, in the exact spot Photos &
+            // evidence will occupy once this first save completes — the
+            // section itself can't render yet (no SiteDiary id exists
+            // until then), so this is the cheapest way to signal it's
+            // coming rather than let it feel like a separate, easy-to-miss
+            // afterthought.
+            <p className="text-xs -mt-2" style={{ color: 'var(--text-muted)' }}>
+              You&rsquo;ll be able to add photos and evidence once you save this diary.
+            </p>
+          )}
+          {isEdit && (
+            // Placed right after the core fields, ahead of the remaining
+            // free-text fields and the Save button — evidence upload
+            // should read as part of recording this diary, not as
+            // something that only shows up afterwards at the very
+            // bottom of an already-long form.
+            <EvidenceSection
+              attachmentsUrl={`/projects/${projectId}/site-diaries/${currentDiary.id}/attachments`}
+              queryKey={['site-diary-attachments', currentDiary.id]}
+              label="Photos & evidence"
+            />
+          )}
           {isEdit && (
             <WorkforceBreakdownEditor
               projectId={projectId}
@@ -178,15 +201,6 @@ function SiteDiaryModal({ projectId, diary, readOnly, onClose }: { projectId: st
             )}
           </div>
         </form>
-        {isEdit && (
-          <div className="px-5 pb-5">
-            <EvidenceSection
-              attachmentsUrl={`/projects/${projectId}/site-diaries/${currentDiary.id}/attachments`}
-              queryKey={['site-diary-attachments', currentDiary.id]}
-              label="Photos & evidence"
-            />
-          </div>
-        )}
       </div>
     </div>
   );
@@ -336,19 +350,26 @@ function ProjectSiteReportsPage() {
       )}
 
       {confirmTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="w-full max-w-sm rounded-xl p-5" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="ss-animate-in w-full max-w-sm rounded-xl p-5" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
             <p className="text-sm mb-4" style={{ color: 'var(--text-primary)' }}>
               Delete the site diary for {formatDate(confirmTarget.diary_date)}? This cannot be undone.
             </p>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setConfirmTarget(null)} className="px-3 py-1.5 rounded-lg text-sm" style={{ color: 'var(--text-secondary)' }}>Cancel</button>
+              <button
+                onClick={() => setConfirmTarget(null)}
+                className="px-3 py-1.5 rounded-lg text-sm transition-all active:scale-[0.98] hover:bg-[var(--bg-hover)]"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                Cancel
+              </button>
               <button
                 onClick={() => deleteMutation.mutate(confirmTarget)}
-                className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white"
+                disabled={deleteMutation.isPending}
+                className="px-3 py-1.5 rounded-lg text-sm font-semibold text-white transition-all active:scale-[0.98] hover:opacity-90 disabled:opacity-70"
                 style={{ backgroundColor: '#a11a1a' }}
               >
-                Delete
+                {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
               </button>
             </div>
           </div>
