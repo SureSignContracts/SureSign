@@ -19,6 +19,7 @@ RUN echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula sele
 RUN apt-get update && apt-get install -y \
     git curl zip unzip libpng-dev libonig-dev libxml2-dev libzip-dev \
     libjpeg62-turbo-dev \
+    libwebp-dev \
     libreoffice \
     poppler-utils \
     ttf-mscorefonts-installer \
@@ -36,7 +37,20 @@ RUN apt-get update && apt-get install -y \
     # (App\Services\FridayPack\FridayPackPhotoPdfOptimisationService) from
     # being exercised in this environment. `libjpeg62-turbo-dev` above
     # supplies the headers `--with-jpeg` needs.
-    && docker-php-ext-configure gd --with-jpeg \
+    #
+    # Post-Deploy Photo Hardening P1 — `--with-webp` added the same way,
+    # backed by `libwebp-dev` above. This does NOT change the PDF's own
+    # output format: FridayPackPhotoPdfOptimisationService always decodes
+    # the source image and re-encodes it as JPEG before embedding
+    # (unchanged) — a WebP upload (common from phone cameras) was
+    # previously accepted by upload validation and discoverable/selectable
+    # as Friday Pack evidence, but silently failed to decode at PDF
+    # generation time (`imagecreatefromwebp()` didn't exist), falling back
+    # to the existing "Photo unavailable" placeholder rather than throwing.
+    # This fix is purely "give GD the ability to decode WebP input" — the
+    # decode→resize→JPEG-re-encode pipeline itself is completely
+    # unchanged.
+    && docker-php-ext-configure gd --with-jpeg --with-webp \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip \
     # `REDIS_CLIENT=phpredis` (docker-compose.prod.yml) requires this C
     # extension — it does not ship with the base php image and was
