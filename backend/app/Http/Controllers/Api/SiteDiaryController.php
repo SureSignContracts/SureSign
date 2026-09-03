@@ -148,9 +148,15 @@ class SiteDiaryController extends Controller
         return response()->json($siteDiary->fresh());
     }
 
-    public function destroy(Request $request, Project $project, SiteDiary $siteDiary)
+    public function destroy(Request $request, Project $project, SiteDiary $siteDiary, \App\Services\FridayPack\FridayPackPhotoSelectionService $photoSelectionService)
     {
         $this->authorizeProjectSiteDiary($request, $project, $siteDiary);
+        // Post-Deploy Photo Hardening, P1 — a Site Report is a Friday Pack
+        // photo-evidence source; block deletion while any of its
+        // attachments is currently selected. See
+        // FridayPackPhotoSelectionService::assertSourceRecordCanBeDeleted()'s
+        // own docblock for the full reasoning.
+        $photoSelectionService->assertSourceRecordCanBeDeleted($siteDiary);
 
         $siteDiary->delete();
         return response()->json(null, 204);

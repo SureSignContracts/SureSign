@@ -187,9 +187,15 @@ class ToolboxTalkController extends Controller
         return response()->json($toolboxTalk->fresh()->load(['creator:id,name', 'deliveredByUser:id,name']));
     }
 
-    public function destroy(Request $request, Project $project, ToolboxTalk $toolboxTalk)
+    public function destroy(Request $request, Project $project, ToolboxTalk $toolboxTalk, \App\Services\FridayPack\FridayPackPhotoSelectionService $photoSelectionService)
     {
         $this->authorizeProjectToolboxTalk($request, $project, $toolboxTalk);
+        // Post-Deploy Photo Hardening, P1 — a Toolbox Talk is a Friday
+        // Pack photo-evidence source; block deletion while any of its
+        // attachments is currently selected. See
+        // FridayPackPhotoSelectionService::assertSourceRecordCanBeDeleted()'s
+        // own docblock for the full reasoning.
+        $photoSelectionService->assertSourceRecordCanBeDeleted($toolboxTalk);
 
         $toolboxTalk->delete();
         return response()->json(null, 204);

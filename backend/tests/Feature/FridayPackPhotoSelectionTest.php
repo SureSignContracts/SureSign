@@ -487,6 +487,128 @@ class FridayPackPhotoSelectionTest extends TestCase
         $upload->delete();
     }
 
+    // ── 27. Source RECORD deletion protection (Post-Deploy Photo Hardening, P1) ──
+    // Distinct from 24-26 above, which prove the ATTACHMENT itself cannot be
+    // deleted while selected. These prove the parent SiteDiary/ToolboxTalk
+    // RECORD (DELETE /site-diaries/{id}, DELETE /toolbox-talks/{id}) is
+    // ALSO blocked — previously it was not, since FileUpload's polymorphic
+    // `attachable` relation carries no real foreign key to protect it.
+
+    public function test_site_diary_with_no_selected_photo_can_be_deleted(): void
+    {
+        [, $editor, $project] = $this->makeOrgProjectAndEditor('rec1');
+        $diary = $this->makeSiteDiary($project, $editor, self::FRIDAY);
+        $this->makeFileUpload($project, $diary); // an ordinary, unselected attachment
+
+        Sanctum::actingAs($editor);
+        $this->deleteJson("/api/projects/{$project->id}/site-diaries/{$diary->id}")->assertStatus(204);
+        $this->assertNull(SiteDiary::find($diary->id));
+    }
+
+    public function test_site_diary_deletion_is_blocked_while_one_of_its_photos_is_selected(): void
+    {
+        [, $editor, $project] = $this->makeOrgProjectAndEditor('rec2');
+        $diary = $this->makeSiteDiary($project, $editor, self::FRIDAY);
+        $upload = $this->makeFileUpload($project, $diary);
+        $pack = $this->generateDraft($project, $editor);
+
+        Sanctum::actingAs($editor);
+        $this->postJson("/api/projects/{$project->id}/friday-packs/{$pack->id}/photo-selections", ['file_upload_id' => $upload->id])->assertStatus(201);
+
+        $response = $this->deleteJson("/api/projects/{$project->id}/site-diaries/{$diary->id}");
+        $response->assertStatus(409);
+        $response->assertJsonMissingPath('site_diary');
+        $response->assertJsonMissingPath('SiteDiary');
+
+        $this->assertNotNull(SiteDiary::find($diary->id));
+        $this->assertNotNull(FileUpload::find($upload->id));
+        $this->assertDatabaseHas('friday_pack_photo_selections', ['file_upload_id' => $upload->id]);
+    }
+
+    public function test_site_diary_deletion_succeeds_once_the_photo_is_deselected(): void
+    {
+        [, $editor, $project] = $this->makeOrgProjectAndEditor('rec3');
+        $diary = $this->makeSiteDiary($project, $editor, self::FRIDAY);
+        $upload = $this->makeFileUpload($project, $diary);
+        $pack = $this->generateDraft($project, $editor);
+
+        Sanctum::actingAs($editor);
+        $selectionId = $this->postJson("/api/projects/{$project->id}/friday-packs/{$pack->id}/photo-selections", ['file_upload_id' => $upload->id])->json('id');
+
+        $this->deleteJson("/api/projects/{$project->id}/friday-packs/{$pack->id}/photo-selections/{$selectionId}")->assertStatus(204);
+        $this->deleteJson("/api/projects/{$project->id}/site-diaries/{$diary->id}")->assertStatus(204);
+        $this->assertNull(SiteDiary::find($diary->id));
+    }
+
+    public function test_toolbox_talk_with_no_selected_photo_can_be_deleted(): void
+    {
+        [, $editor, $project] = $this->makeOrgProjectAndEditor('rec4');
+        $talk = $this->makeToolboxTalk($project, $editor, self::FRIDAY);
+        $this->makeFileUpload($project, $talk);
+
+        Sanctum::actingAs($editor);
+        $this->deleteJson("/api/projects/{$project->id}/toolbox-talks/{$talk->id}")->assertStatus(204);
+        $this->assertNull(ToolboxTalk::find($talk->id));
+    }
+
+    public function test_toolbox_talk_deletion_is_blocked_while_one_of_its_photos_is_selected(): void
+    {
+        [, $editor, $project] = $this->makeOrgProjectAndEditor('rec5');
+        $talk = $this->makeToolboxTalk($project, $editor, self::FRIDAY);
+        $upload = $this->makeFileUpload($project, $talk);
+        $pack = $this->generateDraft($project, $editor);
+
+        Sanctum::actingAs($editor);
+        $this->postJson("/api/projects/{$project->id}/friday-packs/{$pack->id}/photo-selections", ['file_upload_id' => $upload->id])->assertStatus(201);
+
+        $this->deleteJson("/api/projects/{$project->id}/toolbox-talks/{$talk->id}")->assertStatus(409);
+
+        $this->assertNotNull(ToolboxTalk::find($talk->id));
+        $this->assertNotNull(FileUpload::find($upload->id));
+        $this->assertDatabaseHas('friday_pack_photo_selections', ['file_upload_id' => $upload->id]);
+    }
+
+    public function test_toolbox_talk_deletion_succeeds_once_the_photo_is_deselected(): void
+    {
+        [, $editor, $project] = $this->makeOrgProjectAndEditor('rec6');
+        $talk = $this->makeToolboxTalk($project, $editor, self::FRIDAY);
+        $upload = $this->makeFileUpload($project, $talk);
+        $pack = $this->generateDraft($project, $editor);
+
+        Sanctum::actingAs($editor);
+        $selectionId = $this->postJson("/api/projects/{$project->id}/friday-packs/{$pack->id}/photo-selections", ['file_upload_id' => $upload->id])->json('id');
+
+        $this->deleteJson("/api/projects/{$project->id}/friday-packs/{$pack->id}/photo-selections/{$selectionId}")->assertStatus(204);
+        $this->deleteJson("/api/projects/{$project->id}/toolbox-talks/{$talk->id}")->assertStatus(204);
+        $this->assertNull(ToolboxTalk::find($talk->id));
+    }
+
+    /**
+     * The guard must hold regardless of the referencing FridayPack's own
+     * lifecycle status — an Approved (or Sent) pack's frozen snapshot
+     * still names this exact source record, so its provenance must not
+     * be allowed to disappear just because the pack has moved past Draft.
+     */
+    public function test_site_diary_deletion_remains_blocked_once_the_friday_pack_is_approved(): void
+    {
+        [, $editor, $project] = $this->makeOrgProjectAndEditor('rec7');
+        $diary = $this->makeSiteDiary($project, $editor, self::FRIDAY);
+        $upload = $this->makeFileUpload($project, $diary);
+        $pack = $this->generateDraft($project, $editor);
+
+        Sanctum::actingAs($editor);
+        $this->postJson("/api/projects/{$project->id}/friday-packs/{$pack->id}/photo-selections", ['file_upload_id' => $upload->id])->assertStatus(201);
+
+        $this->makeReady($pack->fresh(), $editor);
+        $lifecycle = app(FridayPackLifecycleService::class);
+        $lifecycle->submitForReview($pack->fresh(), $editor);
+        $lifecycle->markReviewed($pack->fresh(), $editor);
+        $lifecycle->approve($pack->fresh(), $editor);
+
+        $this->deleteJson("/api/projects/{$project->id}/site-diaries/{$diary->id}")->assertStatus(409);
+        $this->assertNotNull(SiteDiary::find($diary->id));
+    }
+
     // ── 27-28. Physical file integrity ───────────────────────────────────
 
     public function test_selection_of_a_file_upload_with_no_physical_file_is_rejected(): void

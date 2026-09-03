@@ -1003,6 +1003,97 @@ class FridayPackSchemaTwoPdfTest extends TestCase
         return null;
     }
 
+    // ── Post-Deploy Photo Hardening, P1 — WebP source, full real pipeline ──
+
+    /**
+     * The complete real chain for a genuine WebP source photo, through
+     * the ACTUAL public surfaces a user goes through — never a shortcut
+     * that fabricates a FridayPackPhotoSelection row directly (that's
+     * what `makeSelectedPhoto()` above does for JPEG-only tests; this one
+     * deliberately does not reuse it):
+     *
+     *   real WebP FileUpload (stored mime_type stays image/webp)
+     *   → GET photo-candidates (FridayPackPhotoDiscoveryService — proves
+     *     discovery accepts it, since it only ever filters on
+     *     mime_type LIKE 'image/%', never a specific format)
+     *   → POST photo-selections (FridayPackPhotoSelectionService — proves
+     *     selection accepts it)
+     *   → regenerated snapshot contains the frozen selection
+     *   → FridayPackSchemaTwoPdfPresenter resolves a real (non-null)
+     *     image_uri — proving imagecreatefromwebp() decoded it rather
+     *     than falling back to the "Photo unavailable" placeholder
+     *   → the REAL generated PDF's own raw bytes contain a genuine
+     *     embedded JPEG (SOI marker `\xFF\xD8\xFF`) — the same
+     *     dependency-free proof method this codebase established in
+     *     R1G.1-VFIX2 for the original JPEG fix, applied here to prove a
+     *     WebP INPUT still produces real embedded image content, never a
+     *     placeholder and never raw WebP bytes (the PDF's own JPEG output
+     *     format is deliberately unchanged).
+     *
+     * Requires a GD build with WebP encode support to construct the real
+     * fixture — skips (never fakes a pass) on a GD build without it.
+     */
+    public function test_webp_source_photo_is_discovered_selected_and_rendered_as_real_jpeg_in_the_pdf(): void
+    {
+        if (!function_exists('imagewebp')) {
+            $this->markTestSkipped('This environment\'s GD build has no WebP encode support (imagewebp) to construct a real fixture with.');
+        }
+
+        [, $editor, $project] = $this->makeOrgProjectAndEditor('webp-e2e');
+        $pack = $this->generatePack($project, $editor);
+
+        $diary = SiteDiary::create(['project_id' => $project->id, 'organization_id' => $project->organization_id, 'created_by' => $editor->id, 'diary_date' => self::MONDAY, 'status' => 'submitted']);
+
+        $image = imagecreatetruecolor(800, 600);
+        imagefill($image, 0, 0, imagecolorallocate($image, 60, 130, 90));
+        ob_start();
+        imagewebp($image, null, 90);
+        $webpBytes = ob_get_clean();
+        imagedestroy($image);
+        $this->assertStringStartsWith('RIFF', $webpBytes, 'Fixture must be a genuine WebP file, not a fallback format.');
+
+        $path = "projects/{$project->id}/site-diaries/{$diary->id}/" . uniqid() . '.webp';
+        Storage::disk('local')->put($path, $webpBytes);
+        $upload = FileUpload::create([
+            'project_id' => $project->id, 'organization_id' => $project->organization_id, 'uploaded_by' => $editor->id,
+            'attachable_type' => SiteDiary::class, 'attachable_id' => $diary->id,
+            'original_name' => 'evidence.webp', 'stored_name' => basename($path), 'file_path' => $path,
+            'mime_type' => 'image/webp', 'file_size' => strlen($webpBytes), 'disk' => 'local',
+        ]);
+
+        Sanctum::actingAs($editor);
+
+        // 1. Real discovery — the candidates endpoint, not a direct query.
+        $candidates = $this->getJson("/api/projects/{$project->id}/friday-packs/{$pack->id}/photo-candidates")->json('candidates');
+        $webpCandidate = collect($candidates)->firstWhere('file_upload_id', $upload->id);
+        $this->assertNotNull($webpCandidate, 'Expected the WebP attachment to be discovered as a candidate — discovery only filters on mime_type LIKE image/%, never a specific format.');
+
+        // 2. Real selection — the real endpoint.
+        $this->postJson("/api/projects/{$project->id}/friday-packs/{$pack->id}/photo-selections", ['file_upload_id' => $upload->id])->assertStatus(201);
+        $this->assertDatabaseHas('friday_pack_photo_selections', ['file_upload_id' => $upload->id, 'friday_pack_id' => $pack->id]);
+
+        // 3. Frozen snapshot contains it.
+        $pack = $pack->fresh();
+        $this->assertSame(1, $pack->snapshot_json['sections']['site_photographs']['count']);
+
+        // 4. Presenter resolves a real image, not a placeholder — proves
+        // imagecreatefromwebp() genuinely decoded the source.
+        $presented = app(\App\Support\FridayPack\FridayPackSchemaTwoPdfPresenter::class)->present($pack);
+        $rows = $this->photoRows($presented);
+        $this->assertNotEmpty($rows);
+        $imageUri = collect($rows)->flatMap(fn ($row) => $row['photos'] ?? [$row])->pluck('image_uri')->filter()->first();
+        $this->assertNotNull($imageUri, 'Expected a real image_uri — a WebP source falling back to null would mean GD still cannot decode WebP.');
+        $this->assertStringStartsWith('file://', $imageUri);
+        $this->assertStringEndsWith('.jpg', $imageUri, 'The optimised rendition must still be a JPEG file — the PDF output format is unchanged for a WebP source.');
+
+        // 5. The REAL generated PDF's raw bytes contain a genuine embedded
+        // JPEG (not a placeholder, not raw WebP).
+        $bytes = $this->generateSchemaTwoPdfWithChrome($pack, $editor, $project);
+        $this->assertStringContainsString("\xFF\xD8\xFF", $bytes, 'Expected a real embedded JPEG (SOI marker) in the generated PDF — proves the WebP source was genuinely decoded and re-encoded, not rendered as a placeholder.');
+
+        app(\App\Services\FridayPack\FridayPackPhotoPdfOptimisationService::class)->cleanup($presented['temp_files']);
+    }
+
     // ── R1G.1-VFIX5: real PDF coordinate proof for every remaining
     //    content region the checkpoint named (Workforce, H&S, final-page
     //    Statutory Inspections, Sign Off, photo evidence, header/footer)

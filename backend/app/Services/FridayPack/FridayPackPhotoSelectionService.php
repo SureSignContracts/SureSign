@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\ProjectActivityService;
 use App\Support\FridayPack\FridayPackPhotoSelectionPresenter;
 use App\Support\FridayPack\FridayPackPhotoSourceType;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
@@ -176,6 +177,45 @@ class FridayPackPhotoSelectionService
             if (!Storage::disk($upload->disk ?? 'local')->exists($upload->file_path)) {
                 throw new RuntimeException('One or more selected photographs are missing their underlying file and must be removed before this Friday Pack can be submitted for review.');
             }
+        }
+    }
+
+    /**
+     * Post-Deploy Photo Hardening, P1 — the one place a Friday Pack
+     * photo-source record's own deletion is guarded. `FileUpload` uses a
+     * polymorphic `attachable` relation with no real database foreign
+     * key, so a SiteDiary/ToolboxTalk row could previously be deleted
+     * outright even while one of its attachments was currently selected
+     * as Friday Pack evidence — the attachment itself and the
+     * FridayPackPhotoSelection row would both survive (nothing breaks
+     * the PDF), but the record the evidence's provenance actually points
+     * back to would silently disappear.
+     *
+     * Called by SiteDiaryController::destroy()/ToolboxTalkController::
+     * destroy() — the only two current Friday Pack photo-source
+     * controllers — immediately after their own project/tenant
+     * authorization and before the real delete. Deliberately NOT scoped
+     * to any particular pack lifecycle status (Draft/Ready for Review/
+     * Approved/Sent) — a selection frozen into an already-Approved or
+     * Sent pack's snapshot must keep its real provenance just as much as
+     * a Draft's does; this checks for the EXISTENCE of any referencing
+     * FridayPackPhotoSelection row, regardless of which FridayPack or
+     * status it belongs to.
+     *
+     * @param  Model  $sourceRecord  A SiteDiary or ToolboxTalk instance —
+     *   any model exposing the same `fileUploads()` morphMany relation
+     *   every Friday Pack photo source already has.
+     */
+    public function assertSourceRecordCanBeDeleted(Model $sourceRecord): void
+    {
+        $fileUploadIds = $sourceRecord->fileUploads()->pluck('id');
+
+        if ($fileUploadIds->isEmpty()) {
+            return;
+        }
+
+        if (FridayPackPhotoSelection::whereIn('file_upload_id', $fileUploadIds)->exists()) {
+            abort(409, 'This record contains evidence currently selected in a Friday Pack. Remove the selected evidence from the Friday Pack before deleting this record.');
         }
     }
 

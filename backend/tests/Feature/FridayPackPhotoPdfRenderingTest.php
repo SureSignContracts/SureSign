@@ -135,6 +135,49 @@ class FridayPackPhotoPdfRenderingTest extends TestCase
         @unlink($tempPath);
     }
 
+    /**
+     * Post-Deploy Photo Hardening, P1 — proves GD can now DECODE a genuine
+     * WebP source image (`imagecreatefromwebp()`, via Intervention's own
+     * format-detecting `decodePath()`), producing the exact same output
+     * contract as every other source format: a real, decodable JPEG
+     * rendition. The PDF's own output format is deliberately unchanged —
+     * this is "give GD the ability to read WebP input," never "embed WebP
+     * bytes in the PDF." Real WebP fixture bytes via `imagewebp()` —
+     * this test only has meaning in an environment where that function
+     * exists (this repo's production Dockerfile, post-P1); mirrors this
+     * file's own established real-magic-bytes testing convention.
+     */
+    public function test_webp_source_decodes_and_encodes_safely_to_jpeg(): void
+    {
+        if (!function_exists('imagewebp')) {
+            $this->markTestSkipped('This environment\'s GD build has no WebP encode support (imagewebp) to construct a real fixture with.');
+        }
+
+        $image = imagecreatetruecolor(400, 300);
+        imagefill($image, 0, 0, imagecolorallocate($image, 40, 90, 160));
+        ob_start();
+        imagewebp($image, null, 90);
+        $webpBytes = ob_get_clean();
+        imagedestroy($image);
+
+        // Confirm the fixture itself is genuinely WebP (RIFF....WEBP), not
+        // a false-positive from a fallback encoder.
+        $this->assertStringStartsWith('RIFF', $webpBytes);
+        $this->assertStringContainsString('WEBP', substr($webpBytes, 8, 4));
+
+        $upload = $this->makeUpload($webpBytes, 'image/webp');
+        $tempPath = app(FridayPackPhotoPdfOptimisationService::class)->prepare($upload);
+
+        $this->assertNotNull($tempPath, 'Expected a genuine WebP source to decode successfully now that GD has WebP support.');
+        $this->assertFileExists($tempPath);
+        $this->assertStringEndsWith('.jpg', $tempPath, 'The output rendition must still be JPEG — the PDF output format is unchanged.');
+        [$width, $height] = getimagesize($tempPath);
+        $this->assertSame(400, $width);
+        $this->assertSame(300, $height);
+
+        @unlink($tempPath);
+    }
+
     public function test_missing_file_returns_null_not_exception(): void
     {
         $upload = $this->makeUpload($this->largeJpeg(100, 100));
