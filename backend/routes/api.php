@@ -47,6 +47,18 @@ use App\Http\Controllers\Api\TradePackageController;
 use App\Http\Controllers\Api\TradePackagePackageGenerationController;
 use App\Http\Controllers\Api\SnagController;
 use App\Http\Controllers\Api\QaReportController;
+use App\Http\Controllers\Api\ToolboxTalkController;
+use App\Http\Controllers\Api\SiteInductionController;
+use App\Http\Controllers\Api\IncidentController;
+use App\Http\Controllers\Api\HsInspectionController;
+use App\Http\Controllers\Api\PlantItemController;
+use App\Http\Controllers\Api\PlantDeploymentController;
+use App\Http\Controllers\Api\StatutoryInspectionController;
+use App\Http\Controllers\Api\FridayPackController;
+use App\Http\Controllers\Api\FridayPackDeliveryController;
+use App\Http\Controllers\Api\FridayPackPhotoSelectionController;
+use App\Http\Controllers\Api\FridayPackSettingsController;
+use App\Http\Controllers\Api\PublicFridayPackDeliveryController;
 use App\Http\Controllers\Api\CloseoutController;
 use App\Http\Controllers\Api\AdjudicationCaseController;
 use App\Http\Controllers\Api\AdjudicationDocumentController;
@@ -265,6 +277,13 @@ Route::middleware(['signed', 'throttle:public-booking-read'])->group(function ()
     Route::get('/public/consultations/{token}/view', [PublicConsultationViewController::class, 'show'])->name('public.consultations.view');
     Route::get('/public/consultations/{token}/view/ics', [PublicConsultationViewController::class, 'ics'])->name('public.consultations.view.ics');
     Route::get('/public/consultations/{token}/summary', [PublicConsultationViewController::class, 'summary'])->name('public.consultations.summary');
+});
+
+// V1F — the public, no-account Friday Pack delivery download. A dedicated
+// rate limiter (not public-booking-read) since this is an unrelated flow
+// with its own real per-recipient traffic shape.
+Route::middleware(['signed', 'throttle:friday-pack-delivery-download'])->group(function () {
+    Route::get('/public/friday-packs/{token}/download', [PublicFridayPackDeliveryController::class, 'download'])->name('public.friday-packs.download');
 });
 
 // Authenticated routes — account.status re-checks is_active/banned_at on
@@ -606,6 +625,15 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
         // Site Reports — gated by project.site_reports.
         Route::apiResource('site-diaries', SiteDiaryController::class)->shallow()->only(['index', 'show']);
         Route::apiResource('site-diaries', SiteDiaryController::class)->shallow()->only(['store', 'update', 'destroy'])->middleware('feature.available:project.site_reports');
+        // R1B — Site Report evidence attachments, mirrors toolbox-talks' identical routes.
+        Route::get('/site-diaries/{siteDiary}/attachments',    [SiteDiaryController::class, 'attachments']);
+        Route::post('/site-diaries/{siteDiary}/attachments',   [SiteDiaryController::class, 'uploadAttachment'])->middleware('feature.available:project.site_reports');
+        Route::delete('/site-diaries/{siteDiary}/attachments/{fileUpload}', [SiteDiaryController::class, 'deleteAttachment'])->middleware('feature.available:project.site_reports');
+        // R1C — Friday Pack Realignment: optional workforce breakdown, owned by SiteDiary.
+        Route::get('/site-diaries/{siteDiary}/workforce-entries',    [SiteDiaryController::class, 'workforceEntries']);
+        Route::post('/site-diaries/{siteDiary}/workforce-entries',   [SiteDiaryController::class, 'storeWorkforceEntry'])->middleware('feature.available:project.site_reports');
+        Route::put('/site-diaries/{siteDiary}/workforce-entries/{workforceEntry}', [SiteDiaryController::class, 'updateWorkforceEntry'])->middleware('feature.available:project.site_reports');
+        Route::delete('/site-diaries/{siteDiary}/workforce-entries/{workforceEntry}', [SiteDiaryController::class, 'destroyWorkforceEntry'])->middleware('feature.available:project.site_reports');
         // Meetings — gated by project.meetings.
         Route::apiResource('meetings', MeetingMinutesController::class)->shallow()->only(['index', 'show']);
         Route::apiResource('meetings', MeetingMinutesController::class)->shallow()->only(['store', 'update', 'destroy'])->middleware('feature.available:project.meetings');
@@ -713,6 +741,102 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
         Route::get('/qa-reports/{qaReport}/attachments',    [QaReportController::class, 'attachments']);
         Route::post('/qa-reports/{qaReport}/attachments',   [QaReportController::class, 'uploadAttachment'])->middleware('feature.available:project.qa');
         Route::delete('/qa-reports/{qaReport}/attachments/{fileUpload}', [QaReportController::class, 'deleteAttachment'])->middleware('feature.available:project.qa');
+
+        // Toolbox Talks — gated by project.toolbox_talks. Same shallow
+        // resource + ungated-reads/gated-writes shape as Site Reports/QA/
+        // Snagging above.
+        Route::apiResource('toolbox-talks', ToolboxTalkController::class)->shallow()->only(['index', 'show']);
+        Route::apiResource('toolbox-talks', ToolboxTalkController::class)->shallow()->only(['store', 'update', 'destroy'])->middleware('feature.available:project.toolbox_talks');
+        Route::get('/toolbox-talks/{toolboxTalk}/attachments',    [ToolboxTalkController::class, 'attachments']);
+        Route::post('/toolbox-talks/{toolboxTalk}/attachments',   [ToolboxTalkController::class, 'uploadAttachment'])->middleware('feature.available:project.toolbox_talks');
+        Route::delete('/toolbox-talks/{toolboxTalk}/attachments/{fileUpload}', [ToolboxTalkController::class, 'deleteAttachment'])->middleware('feature.available:project.toolbox_talks');
+
+        // R1E.2A — Site Inductions (Health & Safety). Mirrors toolbox-talks'
+        // identical resource + ungated-reads/gated-writes shape.
+        Route::apiResource('site-inductions', SiteInductionController::class)->shallow()->only(['index', 'show']);
+        Route::apiResource('site-inductions', SiteInductionController::class)->shallow()->only(['store', 'update', 'destroy'])->middleware('feature.available:project.site_inductions');
+        Route::get('/site-inductions/{siteInduction}/attachments',    [SiteInductionController::class, 'attachments']);
+        Route::post('/site-inductions/{siteInduction}/attachments',   [SiteInductionController::class, 'uploadAttachment'])->middleware('feature.available:project.site_inductions');
+        Route::delete('/site-inductions/{siteInduction}/attachments/{fileUpload}', [SiteInductionController::class, 'deleteAttachment'])->middleware('feature.available:project.site_inductions');
+
+        // R1E.2B — Incidents / Accidents / Near Misses (Health & Safety).
+        // No attachment routes — deliberately not implemented in V1.
+        Route::apiResource('incidents', IncidentController::class)->shallow()->only(['index', 'show']);
+        Route::apiResource('incidents', IncidentController::class)->shallow()->only(['store', 'update', 'destroy'])->middleware('feature.available:project.incidents');
+
+        // R1E.2C — H&S Inspections (Health & Safety). Mirrors
+        // site-inductions' identical resource + attachment shape.
+        Route::apiResource('hs-inspections', HsInspectionController::class)->shallow()->only(['index', 'show']);
+        Route::apiResource('hs-inspections', HsInspectionController::class)->shallow()->only(['store', 'update', 'destroy'])->middleware('feature.available:project.hs_inspections');
+        Route::get('/hs-inspections/{hsInspection}/attachments',    [HsInspectionController::class, 'attachments']);
+        Route::post('/hs-inspections/{hsInspection}/attachments',   [HsInspectionController::class, 'uploadAttachment'])->middleware('feature.available:project.hs_inspections');
+        Route::delete('/hs-inspections/{hsInspection}/attachments/{fileUpload}', [HsInspectionController::class, 'deleteAttachment'])->middleware('feature.available:project.hs_inspections');
+
+        // R1E.2D — Plant & Equipment (Health & Safety). Deployments
+        // (site-presence periods) are nested under their Plant Item —
+        // deliberately no separate navigation page.
+        Route::apiResource('plant-items', PlantItemController::class)->shallow()->only(['index', 'show']);
+        Route::apiResource('plant-items', PlantItemController::class)->shallow()->only(['store', 'update', 'destroy'])->middleware('feature.available:project.plant_equipment');
+        Route::get('/plant-items/{plantItem}/attachments',    [PlantItemController::class, 'attachments']);
+        Route::post('/plant-items/{plantItem}/attachments',   [PlantItemController::class, 'uploadAttachment'])->middleware('feature.available:project.plant_equipment');
+        Route::delete('/plant-items/{plantItem}/attachments/{fileUpload}', [PlantItemController::class, 'deleteAttachment'])->middleware('feature.available:project.plant_equipment');
+        Route::get('/plant-items/{plantItem}/deployments',    [PlantDeploymentController::class, 'index']);
+        Route::post('/plant-items/{plantItem}/deployments',   [PlantDeploymentController::class, 'store'])->middleware('feature.available:project.plant_equipment');
+        Route::put('/plant-items/{plantItem}/deployments/{deployment}',    [PlantDeploymentController::class, 'update'])->middleware('feature.available:project.plant_equipment');
+        Route::delete('/plant-items/{plantItem}/deployments/{deployment}', [PlantDeploymentController::class, 'destroy'])->middleware('feature.available:project.plant_equipment');
+
+        // R1E.2E — Statutory Inspections (Health & Safety). Mirrors
+        // hs-inspections' identical resource + attachment shape. Optional
+        // plant_item_id link validated server-side via
+        // App\Services\Plant\PlantLinkResolver — never trusted from the
+        // client directly.
+        Route::apiResource('statutory-inspections', StatutoryInspectionController::class)->shallow()->only(['index', 'show']);
+        Route::apiResource('statutory-inspections', StatutoryInspectionController::class)->shallow()->only(['store', 'update', 'destroy'])->middleware('feature.available:project.statutory_inspections');
+        Route::get('/statutory-inspections/{statutoryInspection}/attachments',    [StatutoryInspectionController::class, 'attachments']);
+        Route::post('/statutory-inspections/{statutoryInspection}/attachments',   [StatutoryInspectionController::class, 'uploadAttachment'])->middleware('feature.available:project.statutory_inspections');
+        Route::delete('/statutory-inspections/{statutoryInspection}/attachments/{fileUpload}', [StatutoryInspectionController::class, 'deleteAttachment'])->middleware('feature.available:project.statutory_inspections');
+
+        // Friday Packs (V1B: manual generation + frozen snapshot only) —
+        // gated by project.friday_packs. Not a plain apiResource: store()
+        // also performs generation, and regenerate() is a non-CRUD action —
+        // mirrors TradePackageController's own explicit-route precedent for
+        // the same reason.
+        Route::get('/friday-packs',                          [FridayPackController::class, 'index']);
+        Route::get('/friday-packs/{fridayPack}',              [FridayPackController::class, 'show']);
+        Route::get('/friday-packs/{fridayPack}/weekly-summary-sources', [FridayPackController::class, 'weeklySummarySources']);
+        Route::get('/friday-packs/{fridayPack}/site-issues-sources', [FridayPackController::class, 'siteIssuesSources']);
+        Route::get('/friday-packs/{fridayPack}/look-ahead-sources', [FridayPackController::class, 'lookAheadSources']);
+        Route::post('/friday-packs',                          [FridayPackController::class, 'store'])->middleware('feature.available:project.friday_packs');
+        Route::put('/friday-packs/{fridayPack}',               [FridayPackController::class, 'update'])->middleware('feature.available:project.friday_packs');
+        Route::delete('/friday-packs/{fridayPack}',            [FridayPackController::class, 'destroy'])->middleware('feature.available:project.friday_packs');
+        Route::post('/friday-packs/{fridayPack}/regenerate',   [FridayPackController::class, 'regenerate'])->middleware('feature.available:project.friday_packs');
+        Route::post('/friday-packs/{fridayPack}/pdf',           [FridayPackController::class, 'pdf'])->middleware('feature.available:project.friday_packs');
+        Route::post('/friday-packs/{fridayPack}/submit-for-review', [FridayPackController::class, 'submitForReview'])->middleware('feature.available:project.friday_packs');
+        Route::post('/friday-packs/{fridayPack}/mark-reviewed',     [FridayPackController::class, 'markReviewed'])->middleware('feature.available:project.friday_packs');
+        Route::post('/friday-packs/{fridayPack}/return-to-draft',   [FridayPackController::class, 'returnToDraft'])->middleware('feature.available:project.friday_packs');
+        Route::post('/friday-packs/{fridayPack}/approve',           [FridayPackController::class, 'approve'])->middleware('feature.available:project.friday_packs');
+        // R1F.2 — Content Readiness + Weekly Declarations. Draft-only,
+        // enforced inside FridayPackSectionDeclarationService, not here.
+        Route::post('/friday-packs/{fridayPack}/section-declarations',        [FridayPackController::class, 'declareSection'])->middleware('feature.available:project.friday_packs');
+        Route::delete('/friday-packs/{fridayPack}/section-declarations',      [FridayPackController::class, 'clearSectionDeclaration'])->middleware('feature.available:project.friday_packs');
+        Route::get('/friday-pack-settings',                   [FridayPackSettingsController::class, 'show']);
+        Route::put('/friday-pack-settings',                   [FridayPackSettingsController::class, 'update'])->middleware('feature.available:project.friday_packs');
+
+        // V1F — Approved Pack Delivery. Same feature gate as every other
+        // Friday Pack mutation route above.
+        Route::get('/friday-packs/{fridayPack}/deliveries',              [FridayPackDeliveryController::class, 'index']);
+        Route::post('/friday-packs/{fridayPack}/send',                   [FridayPackDeliveryController::class, 'send'])->middleware('feature.available:project.friday_packs');
+        Route::post('/friday-packs/{fridayPack}/deliveries/retry-failed', [FridayPackDeliveryController::class, 'retryFailed'])->middleware('feature.available:project.friday_packs');
+
+        // R1B — Site Photographs & Evidence Selection. Discovery is
+        // read-only (no mutation gate); every selection mutation is gated
+        // identically to every other Friday Pack mutation route above.
+        Route::get('/friday-packs/{fridayPack}/photo-candidates',        [FridayPackPhotoSelectionController::class, 'candidates']);
+        Route::get('/friday-packs/{fridayPack}/photo-selections',        [FridayPackPhotoSelectionController::class, 'index']);
+        Route::post('/friday-packs/{fridayPack}/photo-selections',       [FridayPackPhotoSelectionController::class, 'store'])->middleware('feature.available:project.friday_packs');
+        Route::put('/friday-packs/{fridayPack}/photo-selections/reorder', [FridayPackPhotoSelectionController::class, 'reorder'])->middleware('feature.available:project.friday_packs');
+        Route::put('/friday-packs/{fridayPack}/photo-selections/{photoSelection}',    [FridayPackPhotoSelectionController::class, 'update'])->middleware('feature.available:project.friday_packs');
+        Route::delete('/friday-packs/{fridayPack}/photo-selections/{photoSelection}', [FridayPackPhotoSelectionController::class, 'destroy'])->middleware('feature.available:project.friday_packs');
 
         // Closeout — gated by project.closeout.
         Route::get('/closeout',              [CloseoutController::class, 'show']);

@@ -19,6 +19,8 @@ layout. In summary, a project workspace contains:
 | QA Reports | Quality inspections |
 | Snagging | Defect tracking |
 | Site Reports | Site diaries |
+| Toolbox Talks | Site safety briefing records |
+| Friday Packs | Weekly site progress, workforce & H&S reports |
 | Delivery Documents | Compliance/delivery document register |
 | Closeout | Project closeout checklist |
 | Adjudication | Adjudication case management (if enabled for your organisation) |

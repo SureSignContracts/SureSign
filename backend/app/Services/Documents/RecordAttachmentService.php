@@ -120,6 +120,10 @@ class RecordAttachmentService
             abort(404, 'Attachment not found.');
         }
 
+        // R1B: a controlled 409 rather than a raw DB constraint error —
+        // see FridayPackPhotoProtectionGuard's own docblock.
+        \App\Support\FridayPack\FridayPackPhotoProtectionGuard::assertDeletable($fileUpload);
+
         $fileName = $fileUpload->original_name;
 
         // Matches DocumentController::destroyFile()'s exact convention:

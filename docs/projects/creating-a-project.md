@@ -207,8 +207,9 @@ confirmation — it will never be set automatically.
 - The project appears in your project list with the status you chose.
 - A project workspace is created with all the standard sections (Overview,
   Contracts, Commercial, Variations, Notices, Programme, Delay & EOT, Risk
-  Register, RFIs, Meetings, QA Reports, Snagging, Site Reports, Delivery
-  Documents, Closeout, Documents, Calendar, and Adjudication if enabled).
+  Register, RFIs, Meetings, QA Reports, Snagging, Site Reports, Toolbox
+  Talks, Friday Packs, Delivery Documents, Closeout, Documents, Calendar,
+  and Adjudication if enabled).
 - The project appears in relevant dashboard tiles (Active Projects) for users
   in your organisation.
 

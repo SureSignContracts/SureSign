@@ -48,6 +48,20 @@ export function useProjectPermissions() {
   const canManageMeetings = canOperate;
   /** Site Reports: create/edit/delete/photos. */
   const canManageSiteReports = canOperate;
+  /** Toolbox Talks: create/edit/delete/evidence attachments. */
+  const canManageToolboxTalks = canOperate;
+  /** Site Inductions (R1E.2A): create/edit/delete/evidence attachments. */
+  const canManageSiteInductions = canOperate;
+  /** Incidents (R1E.2B): create/edit/delete. No attachments in V1. */
+  const canManageIncidents = canOperate;
+  /** H&S Inspections (R1E.2C): create/edit/delete/evidence attachments. */
+  const canManageHsInspections = canOperate;
+  /** Plant & Equipment (R1E.2D): create/edit/delete plant items + site presence periods, evidence attachments. */
+  const canManagePlantEquipment = canOperate;
+  /** Statutory Inspections (R1E.2E): create/edit/delete inspection/check event records, optional plant link, evidence attachments. */
+  const canManageStatutoryInspections = canOperate;
+  /** Friday Packs (V1B): view history, generate/regenerate draft, edit draft commentary/settings. Review/Approve/Send are not yet exposed to any role. */
+  const canManageFridayPacks = canOperate;
   /** Programme: full CRUD on milestones/activities/dependencies. */
   const canManageProgramme = canOperate;
   /** Delay Events: full CRUD. */
@@ -75,6 +89,7 @@ export function useProjectPermissions() {
     canWrite, readOnly, canOperate,
     canManageContracts, canManageTradePackages,
     canManageVariations, canManageRfis, canManageMeetings, canManageSiteReports,
+    canManageToolboxTalks, canManageSiteInductions, canManageIncidents, canManageHsInspections, canManagePlantEquipment, canManageStatutoryInspections, canManageFridayPacks,
     canManageProgramme, canManageDelayEvents, canManageEotRequests,
     canManageLossAndExpenseClaims, canManageAdjudication,
     canManageRisks, canManageDeliveryDocuments,

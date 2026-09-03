@@ -103,6 +103,14 @@ class DocumentController extends Controller
     {
         $this->authorizeProject($request, $document->project);
 
+        // V1F — a Document that has already been distributed via Friday
+        // Pack delivery (a recipient's signed link points at it) must
+        // never be deleted, soft or otherwise — the smallest targeted
+        // guard, not a broader Document-subsystem redesign.
+        if (\App\Models\FridayPackDelivery::where('document_id', $document->id)->exists()) {
+            abort(409, 'This document has been sent to Friday Pack recipients and cannot be deleted.');
+        }
+
         $fileName = $document->file_name ?? $document->title;
         $project  = $document->project;
 
@@ -375,6 +383,10 @@ class DocumentController extends Controller
         ) {
             abort(403, 'Access denied.');
         }
+
+        // R1B: a controlled 409 rather than a raw DB constraint error —
+        // see FridayPackPhotoProtectionGuard's own docblock.
+        \App\Support\FridayPack\FridayPackPhotoProtectionGuard::assertDeletable($fileUpload);
 
         $fileName = $fileUpload->original_name;
         $project  = $fileUpload->project;

@@ -12,7 +12,8 @@ import {
   LayoutDashboard, FileText, DollarSign, MessageSquare, GitBranch,
   ClipboardList, Users2, Bell, CheckSquare, FolderOpen, Package, Archive,
   ArrowLeft, FolderKanban, Scale, CalendarDays, ShieldAlert, BarChart2,
-  ChevronRight, Briefcase, HardHat, Clock, FileStack, Ruler,
+  ChevronRight, Briefcase, HardHat, Clock, FileStack, Ruler, ShieldCheck,
+  FileBarChart, UserCheck, ClipboardCheck,
 } from 'lucide-react';
 
 interface ProjectSidebarProps {
@@ -82,9 +83,27 @@ const groups = (id: string): NavGroup[] => [
       { href: `/app/projects/${id}/qa`,                    label: 'QA Reports',         icon: CheckSquare,   featureKey: 'project.qa' },
       { href: `/app/projects/${id}/snagging`,              label: 'Snagging',           icon: Package,       featureKey: 'project.snagging' },
       { href: `/app/projects/${id}/site-reports`,          label: 'Site Reports',       icon: ClipboardList, featureKey: 'project.site_reports' },
+      { href: `/app/projects/${id}/toolbox-talks`,         label: 'Toolbox Talks',      icon: ShieldCheck,   featureKey: 'project.toolbox_talks' },
+      { href: `/app/projects/${id}/friday-packs`,          label: 'Friday Packs',       icon: FileBarChart,  featureKey: 'project.friday_packs' },
       { href: `/app/projects/${id}/delivery-documents`,    label: 'Delivery Documents', icon: FileStack,     featureKey: 'project.delivery_documents' },
       { href: `/app/projects/${id}/drawings`,              label: 'Drawings',           icon: Ruler,         featureKey: 'project.drawings' },
       { href: `/app/projects/${id}/closeout`,              label: 'Closeout',           icon: Archive,       featureKey: 'project.closeout' },
+    ],
+  },
+  {
+    // R1E.2A-E — the full approved Health & Safety module set (Site
+    // Inductions, Incidents, H&S Inspections, Plant & Equipment,
+    // Statutory Inspections) is now implemented. RAMS/Permits
+    // deliberately remain under Delivery Documents (one source of
+    // truth — never a duplicate editable page here).
+    label: 'Health & Safety',
+    icon: ShieldCheck,
+    items: [
+      { href: `/app/projects/${id}/site-inductions`, label: 'Site Inductions', icon: UserCheck, featureKey: 'project.site_inductions' },
+      { href: `/app/projects/${id}/incidents`, label: 'Incidents', icon: ShieldAlert, featureKey: 'project.incidents' },
+      { href: `/app/projects/${id}/hs-inspections`, label: 'H&S Inspections', icon: CheckSquare, featureKey: 'project.hs_inspections' },
+      { href: `/app/projects/${id}/plant-equipment`, label: 'Plant & Equipment', icon: HardHat, featureKey: 'project.plant_equipment' },
+      { href: `/app/projects/${id}/statutory-inspections`, label: 'Statutory Inspections', icon: ClipboardCheck, featureKey: 'project.statutory_inspections' },
     ],
   },
   {

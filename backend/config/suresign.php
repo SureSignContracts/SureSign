@@ -39,6 +39,11 @@ return [
 
     'deadline_reminder_local_hour' => env('SURESIGN_DEADLINE_REMINDER_LOCAL_HOUR', 8),
 
+    // V1F — Friday Pack delivery public download link TTL, in days. Mirrors
+    // AppointmentPublicLinkService's flat-TTL-from-now() pattern (see
+    // FridayPackDeliveryLinkService).
+    'friday_pack_delivery_link_ttl_days' => env('SURESIGN_FRIDAY_PACK_DELIVERY_LINK_TTL_DAYS', 7),
+
     /*
     |--------------------------------------------------------------------------
     | Marketing site base URL

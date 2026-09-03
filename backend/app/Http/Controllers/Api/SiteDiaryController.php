@@ -9,7 +9,11 @@ use App\Models\SuresignNotification;
 use App\Services\NotificationService;
 use App\Services\ProjectActivityService;
 use App\Services\TradePackages\WorkspaceNavigationResolver;
+use App\Services\Documents\RecordAttachmentService;
+use App\Models\FileUpload;
+use App\Models\SiteDiaryWorkforceEntry;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class SiteDiaryController extends Controller
 {
@@ -150,6 +154,148 @@ class SiteDiaryController extends Controller
 
         $siteDiary->delete();
         return response()->json(null, 204);
+    }
+
+    // ── Evidence attachments (R1B) ───────────────────────────────────────
+    // See App\Services\Documents\RecordAttachmentService — the same shared
+    // service backs ToolboxTalk/Snag/Rfi/QaReport's identical methods. No
+    // new attachment mechanism; a Site Report photo is later discoverable
+    // as Friday Pack evidence via FridayPackPhotoDiscoveryService.
+
+    public function attachments(Request $request, Project $project, SiteDiary $siteDiary)
+    {
+        $this->authorizeProjectSiteDiary($request, $project, $siteDiary);
+
+        return response()->json(
+            (new RecordAttachmentService())->list($siteDiary)
+        );
+    }
+
+    public function uploadAttachment(Request $request, Project $project, SiteDiary $siteDiary)
+    {
+        $this->authorizeProjectSiteDiary($request, $project, $siteDiary);
+
+        $upload = (new RecordAttachmentService())->upload(
+            $request, $project, $siteDiary, $request->user(),
+            'site_reports', 'Site Report: ' . \Carbon\Carbon::parse($siteDiary->diary_date)->format('d M Y'), 'site_diary_evidence_uploaded',
+        );
+
+        return response()->json($upload, 201);
+    }
+
+    public function deleteAttachment(Request $request, Project $project, SiteDiary $siteDiary, FileUpload $fileUpload)
+    {
+        $this->authorizeProjectSiteDiary($request, $project, $siteDiary);
+
+        (new RecordAttachmentService())->delete(
+            $fileUpload, $siteDiary, $project, $request->user(),
+            'Site Report: ' . \Carbon\Carbon::parse($siteDiary->diary_date)->format('d M Y'), 'site_diary_evidence_removed',
+        );
+
+        return response()->json(null, 204);
+    }
+
+    // ── Workforce Breakdown (R1C — Friday Pack Realignment) ──────────────
+    // Owned by SiteDiary — capture once, reused by Friday Pack via
+    // App\Services\FridayPack\FridayPackWorkforceService. Supplementary
+    // only: SiteDiary::$workers_on_site remains the authoritative overall
+    // daily headcount and is never derived or overwritten from these rows.
+
+    private function authorizeSiteDiaryWorkforceEntry(Request $request, Project $project, SiteDiary $siteDiary, SiteDiaryWorkforceEntry $workforceEntry): void
+    {
+        $this->authorizeProjectSiteDiary($request, $project, $siteDiary);
+        if ($workforceEntry->site_diary_id !== $siteDiary->id) {
+            abort(404, 'Workforce entry not found for this site diary.');
+        }
+    }
+
+    public function workforceEntries(Request $request, Project $project, SiteDiary $siteDiary)
+    {
+        $this->authorizeProjectSiteDiary($request, $project, $siteDiary);
+
+        return response()->json($siteDiary->workforceEntries()->get());
+    }
+
+    public function storeWorkforceEntry(Request $request, Project $project, SiteDiary $siteDiary)
+    {
+        $this->authorizeProjectSiteDiary($request, $project, $siteDiary);
+
+        $validated = $request->validate([
+            'trade_or_role'   => 'required|string|max:255',
+            'operative_count' => 'required|integer|min:1',
+        ]);
+
+        $tradeOrRole = trim($validated['trade_or_role']);
+
+        $this->assertNoDuplicateRole($siteDiary, $tradeOrRole);
+
+        $entry = SiteDiaryWorkforceEntry::create([
+            'site_diary_id'    => $siteDiary->id,
+            'project_id'       => $project->id,
+            'organization_id'  => $project->organization_id,
+            'trade_or_role'    => $tradeOrRole,
+            'operative_count'  => $validated['operative_count'],
+            'sort_order'       => $siteDiary->workforceEntries()->max('sort_order') + 1,
+        ]);
+
+        return response()->json($entry, 201);
+    }
+
+    public function updateWorkforceEntry(Request $request, Project $project, SiteDiary $siteDiary, SiteDiaryWorkforceEntry $workforceEntry)
+    {
+        $this->authorizeSiteDiaryWorkforceEntry($request, $project, $siteDiary, $workforceEntry);
+
+        $validated = $request->validate([
+            'trade_or_role'   => 'required|string|max:255',
+            'operative_count' => 'required|integer|min:1',
+        ]);
+
+        $tradeOrRole = trim($validated['trade_or_role']);
+
+        $this->assertNoDuplicateRole($siteDiary, $tradeOrRole, excludingId: $workforceEntry->id);
+
+        $workforceEntry->update([
+            'trade_or_role'   => $tradeOrRole,
+            'operative_count' => $validated['operative_count'],
+        ]);
+
+        return response()->json($workforceEntry->fresh());
+    }
+
+    public function destroyWorkforceEntry(Request $request, Project $project, SiteDiary $siteDiary, SiteDiaryWorkforceEntry $workforceEntry)
+    {
+        $this->authorizeSiteDiaryWorkforceEntry($request, $project, $siteDiary, $workforceEntry);
+
+        $workforceEntry->delete();
+
+        return response()->json(null, 204);
+    }
+
+    /**
+     * Application-level duplicate check — trimmed, case-insensitive
+     * (`LOWER()`, so this behaves identically on SQLite and MySQL
+     * regardless of the connection's actual collation), matching the DB's
+     * own `sdwe_diary_role_unique` constraint exactly. Confirmed via a
+     * real isolated MySQL schema that the DB constraint alone already
+     * rejects a case-variant duplicate (this codebase's real MySQL
+     * collation, utf8mb4_0900_ai_ci, is case-insensitive) — this check
+     * exists to surface a friendly 422 instead of a raw DB error, not
+     * because the constraint is insufficient.
+     */
+    private function assertNoDuplicateRole(SiteDiary $siteDiary, string $tradeOrRole, ?int $excludingId = null): void
+    {
+        $query = SiteDiaryWorkforceEntry::where('site_diary_id', $siteDiary->id)
+            ->whereRaw('LOWER(trade_or_role) = ?', [mb_strtolower($tradeOrRole)]);
+
+        if ($excludingId !== null) {
+            $query->where('id', '!=', $excludingId);
+        }
+
+        if ($query->exists()) {
+            throw ValidationException::withMessages([
+                'trade_or_role' => 'This trade/role has already been recorded for this site diary.',
+            ]);
+        }
     }
 
     private function notifySiteDiary(Request $request, Project $project, SiteDiary $siteDiary, string $kind, string $sourceField, string $message): void

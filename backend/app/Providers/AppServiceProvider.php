@@ -188,6 +188,10 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('invitation-view', function (Request $request) {
             return Limit::perMinutes(15, 30)->by($request->ip());
         });
+        // V1F — Friday Pack delivery download links, mirrors invitation-view's shape.
+        RateLimiter::for('friday-pack-delivery-download', function (Request $request) {
+            return Limit::perMinutes(15, 30)->by($request->ip());
+        });
         RateLimiter::for('invitation-accept', function (Request $request) {
             return Limit::perMinutes(15, 5)->by($request->ip());
         });

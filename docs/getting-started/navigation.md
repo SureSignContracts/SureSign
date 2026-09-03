@@ -31,8 +31,8 @@ Opening a project shows a project-specific sidebar with:
 - **Contract group** — Contracts, Commercial, Variations,
   [Notices](../notices/overview.md), Programme, Delay & EOT, Risk Register.
 - **Communications group** — RFIs, Meetings.
-- **Delivery group** — QA Reports, Snagging, Site Reports, Delivery Documents,
-  Closeout.
+- **Delivery group** — QA Reports, Snagging, Site Reports, Toolbox Talks,
+  Friday Packs, Delivery Documents, Closeout.
 - **Disputes group** — Adjudication (if enabled for your organisation).
 - **Documents** and **Calendar** (always shown at the bottom of the project menu).
 

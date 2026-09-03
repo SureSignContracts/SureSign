@@ -26,6 +26,7 @@ class DocumentNumberService
         'SNG' => 'Snagging',
         'CLS' => 'Closeout',
         'ADJ' => 'Adjudication',
+        'FPK' => 'Friday Pack',
     ];
 
     /**
@@ -108,5 +109,43 @@ class DocumentNumberService
             ->where('package_id', $package?->id)
             ->where('document_type', $documentType)
             ->value('current_sequence') ?? 0;
+    }
+
+    /**
+     * Friday Pack Realignment, R1D — allocates the next Friday Pack report
+     * number for a project. Reuses the exact same `document_number_sequences`
+     * row-locking primitive `generate()` uses above (same transaction/lock
+     * semantics, `document_type = 'FPK'`, `package_id = null`) — a
+     * genuinely new sibling method rather than a duplicated lock, because
+     * unlike `generate()` this deliberately does NOT write a
+     * `DocumentRegister` row (a Friday Pack is not a project document in
+     * that sense) and does NOT compose the project/package-prefixed
+     * composite string `format()` produces — the business Friday Pack
+     * reference is a plain zero-padded sequence ("001"), not
+     * "SP-COL-001-FPK-001".
+     *
+     * The caller (App\Services\FridayPack\FridayPackGenerationService) is
+     * responsible for calling this exactly once, at first-time creation
+     * only — never on regeneration. This method itself has no "already
+     * allocated" concept; it always allocates the next sequence value,
+     * exactly like `generate()`/`peek()` do for every other document type.
+     */
+    public function allocateFridayPackSequence(Project $project): string
+    {
+        return DB::transaction(function () use ($project) {
+            $seq = DocumentNumberSequence::lockForUpdate()->firstOrCreate(
+                [
+                    'project_id'    => $project->id,
+                    'package_id'    => null,
+                    'document_type' => 'FPK',
+                ],
+                ['current_sequence' => 0]
+            );
+
+            $seq->increment('current_sequence');
+            $seq->refresh();
+
+            return str_pad((string) $seq->current_sequence, 3, '0', STR_PAD_LEFT);
+        });
     }
 }

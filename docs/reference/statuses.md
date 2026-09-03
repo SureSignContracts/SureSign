@@ -56,6 +56,16 @@ Draft, Issued, Approved. See [Meetings](../meetings/overview.md).
 
 Draft, Submitted, Approved. See [Site Reports](../site-reports/overview.md).
 
+## Toolbox Talks
+
+Draft, Submitted, Approved. See [Toolbox Talks](../toolbox-talks/overview.md).
+
+## Friday Packs
+
+Draft, Ready for Review, Approved, Sent — reachable via Submit for
+Review/Mark Reviewed/Approve/Send. See
+[Friday Packs](../friday-packs/overview.md).
+
 ## Delivery Documents
 
 Required → Pending → Submitted → Under Review → Approved / Rejected →

@@ -164,6 +164,71 @@ final class FeatureAvailabilityRegistry
             'maintenance_supported' => true,
             'coming_soon_supported' => false,
         ],
+        'project.toolbox_talks' => [
+            'label' => 'Toolbox Talks',
+            'description' => 'Construction site safety briefing records for a project.',
+            'category' => self::CATEGORY_PROJECT,
+            'frontend_routes' => ['/app/projects/{id}/toolbox-talks'],
+            'maintenance_supported' => true,
+            // A genuinely shipped, fully functional module at launch —
+            // "recently shipped" alone is not sufficient justification for
+            // Coming Soon (Phase A instruction, reaffirmed for Drawings).
+            'coming_soon_supported' => false,
+        ],
+        'project.site_inductions' => [
+            'label' => 'Site Inductions',
+            'description' => 'Site induction session records for a project.',
+            'category' => self::CATEGORY_PROJECT,
+            'frontend_routes' => ['/app/projects/{id}/site-inductions'],
+            'maintenance_supported' => true,
+            // A genuinely shipped, fully functional module at launch —
+            // "recently shipped" alone is not sufficient justification for
+            // Coming Soon (Phase A instruction, reaffirmed for Toolbox
+            // Talks/Drawings).
+            'coming_soon_supported' => false,
+        ],
+        'project.incidents' => [
+            'label' => 'Incidents',
+            'description' => 'Accident, incident, and near miss records for a project.',
+            'category' => self::CATEGORY_PROJECT,
+            'frontend_routes' => ['/app/projects/{id}/incidents'],
+            'maintenance_supported' => true,
+            'coming_soon_supported' => false,
+        ],
+        'project.hs_inspections' => [
+            'label' => 'H&S Inspections',
+            'description' => 'Health & safety inspection records for a project.',
+            'category' => self::CATEGORY_PROJECT,
+            'frontend_routes' => ['/app/projects/{id}/hs-inspections'],
+            'maintenance_supported' => true,
+            'coming_soon_supported' => false,
+        ],
+        'project.plant_equipment' => [
+            'label' => 'Plant & Equipment',
+            'description' => 'Plant and equipment register and site-presence records for a project.',
+            'category' => self::CATEGORY_PROJECT,
+            'frontend_routes' => ['/app/projects/{id}/plant-equipment'],
+            'maintenance_supported' => true,
+            'coming_soon_supported' => false,
+        ],
+        'project.statutory_inspections' => [
+            'label' => 'Statutory Inspections',
+            'description' => 'Statutory inspection/check event records for a project, optionally linked to a Plant & Equipment item.',
+            'category' => self::CATEGORY_PROJECT,
+            'frontend_routes' => ['/app/projects/{id}/statutory-inspections'],
+            'maintenance_supported' => true,
+            'coming_soon_supported' => false,
+        ],
+        'project.friday_packs' => [
+            'label' => 'Friday Packs',
+            'description' => 'Weekly project reporting snapshots for a project.',
+            'category' => self::CATEGORY_PROJECT,
+            'frontend_routes' => ['/app/projects/{id}/friday-packs'],
+            'maintenance_supported' => true,
+            // V1B ships manual generation as a real, functional capability —
+            // not a placeholder for unreleased functionality.
+            'coming_soon_supported' => false,
+        ],
         'project.delivery_documents' => [
             'label' => 'Delivery Documents',
             'description' => 'Delivery/handover documents for a project.',
@@ -282,6 +347,13 @@ final class FeatureAvailabilityRegistry
         'project.qa',
         'project.snagging',
         'project.site_reports',
+        'project.toolbox_talks',
+        'project.site_inductions',
+        'project.incidents',
+        'project.hs_inspections',
+        'project.plant_equipment',
+        'project.statutory_inspections',
+        'project.friday_packs',
         'project.delivery_documents',
         'project.drawings',
         'project.closeout',

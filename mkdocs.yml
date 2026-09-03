@@ -138,6 +138,20 @@ nav:
       - site-reports/overview.md
       - site-reports/creating-and-editing.md
       - site-reports/statuses-and-filters.md
+  - Toolbox Talks:
+      - toolbox-talks/overview.md
+  - Site Inductions:
+      - site-inductions/overview.md
+  - Incidents:
+      - incidents/overview.md
+  - H&S Inspections:
+      - hs-inspections/overview.md
+  - Plant & Equipment:
+      - plant-equipment/overview.md
+  - Statutory Inspections:
+      - statutory-inspections/overview.md
+  - Friday Packs:
+      - friday-packs/overview.md
   - Quality:
       - quality/qa-reports.md
       - quality/inspections.md

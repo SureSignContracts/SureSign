@@ -124,3 +124,18 @@ Schedule::command('billing:subscriptions:process-automation')
     ->hourly()
     ->withoutOverlapping()
     ->runInBackground();
+
+// Automated Friday Pack, V1E — same UTC-hourly-tick dispatcher pattern as
+// SendDeadlineReminders: this command only decides which opted-in
+// project/week is currently due (organisation-local Friday, local hour >=
+// configured generation_hour_local) and dispatches one queued job per due
+// project; GenerateScheduledFridayPackJob owns the actual durable
+// per-project/week checkpoint (friday_pack_generation_runs) that makes
+// duplicate/overlapping ticks safe. withoutOverlapping() alone (no
+// onOneServer()) matches every other scheduled command here — the DB
+// unique constraints on friday_pack_generation_runs/friday_packs, not the
+// scheduler, are what actually prevent duplicate work.
+Schedule::command('suresign:generate-friday-packs')
+    ->hourly()
+    ->withoutOverlapping()
+    ->runInBackground();

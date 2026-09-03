@@ -13,6 +13,8 @@ import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PageTourButton from '@/components/tours/PageTourButton';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
+import EvidenceSection from '@/components/documents/EvidenceSection';
+import WorkforceBreakdownEditor from '@/components/siteReports/WorkforceBreakdownEditor';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import { ProjectModuleHeader } from '@/components/projects/ProjectModuleHeader';
 
@@ -96,6 +98,14 @@ function SiteDiaryModal({ projectId, diary, readOnly, onClose }: { projectId: st
               </Select>
             </div>
           </div>
+          {isEdit && (
+            <WorkforceBreakdownEditor
+              projectId={projectId}
+              siteDiaryId={diary.id}
+              workersOnSite={form.workers_on_site !== '' ? Number(form.workers_on_site) : null}
+              readOnly={readOnly}
+            />
+          )}
           <div>
             <label className="block text-xs mb-1" style={labelStyle}>Works carried out</label>
             <textarea value={form.works_carried_out} onChange={e => set('works_carried_out', e.target.value)} rows={3} className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none" style={inputStyle} />
@@ -126,6 +136,15 @@ function SiteDiaryModal({ projectId, diary, readOnly, onClose }: { projectId: st
             )}
           </div>
         </form>
+        {isEdit && (
+          <div className="px-5 pb-5">
+            <EvidenceSection
+              attachmentsUrl={`/projects/${projectId}/site-diaries/${diary.id}/attachments`}
+              queryKey={['site-diary-attachments', diary.id]}
+              label="Photos & evidence"
+            />
+          </div>
+        )}
       </div>
     </div>
   );
