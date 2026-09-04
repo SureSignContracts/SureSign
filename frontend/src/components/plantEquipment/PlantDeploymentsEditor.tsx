@@ -7,6 +7,7 @@ import api from '@/lib/api';
 import toast from '@/lib/toast';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import { formatDate } from '@/lib/utils';
+import DatePicker from '@/components/ui/DatePicker';
 
 /**
  * Friday Pack Realignment, R1E.2D — Plant & Equipment site-presence
@@ -91,13 +92,14 @@ export default function PlantDeploymentsEditor({ projectId, plantItemId, readOnl
         <div className="flex flex-wrap items-end gap-2">
           <div>
             <label className="block text-[10px] mb-0.5" style={{ color: 'var(--text-muted)' }}>On Site From</label>
-            <input type="date" value={onSiteFrom} onChange={e => setOnSiteFrom(e.target.value)}
-              className="px-2.5 py-1.5 rounded-lg text-xs outline-none" style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
+            <DatePicker value={onSiteFrom} onChange={setOnSiteFrom} className="w-36" clearable />
           </div>
           <div>
             <label className="block text-[10px] mb-0.5" style={{ color: 'var(--text-muted)' }}>Off Site At</label>
-            <input type="date" value={offSiteAt} onChange={e => setOffSiteAt(e.target.value)}
-              className="px-2.5 py-1.5 rounded-lg text-xs outline-none" style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
+            {/* No minDate here — backend (PlantDeploymentService) remains the sole authority on
+                overlap/ordering validation, matching the pre-existing native-input behaviour exactly;
+                see this file's own docblock. */}
+            <DatePicker value={offSiteAt} onChange={setOffSiteAt} className="w-36" clearable />
           </div>
           <div className="flex-1 min-w-[120px]">
             <label className="block text-[10px] mb-0.5" style={{ color: 'var(--text-muted)' }}>Notes</label>

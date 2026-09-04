@@ -6,10 +6,11 @@ import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
-import { parseDateOnly, formatDateOnly, effectiveTodayYmd } from '@/lib/dateTime';
+import { parseDateOnly, formatDateOnly, toDateOnlyString, effectiveTodayYmd } from '@/lib/dateTime';
 import { FileBarChart, Plus, Settings2, RefreshCw } from 'lucide-react';
 import toast from '@/lib/toast';
 import Button from '@/components/ui/Button';
+import DatePicker from '@/components/ui/DatePicker';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import { ProjectModuleHeader } from '@/components/projects/ProjectModuleHeader';
@@ -39,16 +40,6 @@ interface FridayPackListItem {
  * deliberate automation event, not a data gap. */
 function generatedByLabel(p: Pick<FridayPackListItem, 'generation_source' | 'generated_by'>): string {
   return p.generation_source === 'scheduled' ? 'SureSign Automation' : (p.generated_by?.name ?? '—');
-}
-
-/** Local-safe date-only formatting — never routes through toISOString()
- * (which converts to UTC and can shift the calendar day near a local
- * midnight boundary), matching this codebase's date-only convention. */
-function toDateOnlyString(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
 }
 
 /**
@@ -95,13 +86,16 @@ function GenerateFridayPackModal({ projectId, onClose }: { projectId: string; on
         <div className="p-6 space-y-4">
           <div>
             <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Week ending (Friday)</label>
-            <input
-              type="date"
+            <DatePicker
               value={weekEnding}
-              onChange={e => setWeekEnding(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-              style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+              onChange={setWeekEnding}
+              isDateDisabled={date => date.getDay() !== 5}
+              aria-label="Week ending (Friday)"
+              helperText="Only Fridays are selectable."
             />
+            {/* Defensive only — the picker above already disables every non-Friday day, so this
+                should never actually render; kept as a safety net (e.g. a future default that
+                isn't computed via mostRecentFriday()). */}
             {!isFriday && (
               <p className="mt-1 text-[11px]" style={{ color: '#f87171' }}>Week ending must fall on a Friday.</p>
             )}

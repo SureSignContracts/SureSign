@@ -18,6 +18,7 @@ import { ProjectModuleHeader } from '@/components/projects/ProjectModuleHeader';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
 import Checkbox from '@/components/ui/Checkbox';
+import DatePicker from '@/components/ui/DatePicker';
 
 /** One hour after `time` (HH:MM), wrapping past midnight if needed — used
  * only as a starting suggestion when a user first switches a meeting to
@@ -178,7 +179,12 @@ function NewMeetingModal({ projectId, onClose }: { projectId: string; onClose: (
           <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>New meeting</h2>
           <button onClick={onClose}><X size={18} style={{ color: 'var(--text-muted)' }} /></button>
         </div>
-        <form onSubmit={e => { e.preventDefault(); setError(''); mutate(form); }} className="p-5 space-y-4">
+        <form onSubmit={e => {
+          e.preventDefault();
+          if (!form.meeting_date) return;
+          setError('');
+          mutate(form);
+        }} className="p-5 space-y-4">
           <div>
             <label className="block text-xs mb-1" style={labelStyle}>Title *</label>
             <input value={form.title} onChange={e => set('title', e.target.value)} required className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
@@ -186,7 +192,7 @@ function NewMeetingModal({ projectId, onClose }: { projectId: string; onClose: (
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Date *</label>
-              <input type="date" value={form.meeting_date} onChange={e => set('meeting_date', e.target.value)} required className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+              <DatePicker value={form.meeting_date} onChange={v => set('meeting_date', v)} required error={!form.meeting_date ? 'Required' : undefined} />
             </div>
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Location</label>
@@ -219,8 +225,8 @@ function NewMeetingModal({ projectId, onClose }: { projectId: string; onClose: (
           {error && <p className="text-xs" style={{ color: '#f87171' }}>{error}</p>}
 
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
-            <button type="submit" disabled={isPending} className="px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: isPending ? 0.7 : 1 }}>
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
+            <button type="submit" disabled={isPending} className="px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98] hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: isPending ? 0.7 : 1 }}>
               {isPending ? 'Creating…' : 'Create meeting'}
             </button>
           </div>
@@ -287,9 +293,9 @@ function MeetingDetailModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-2xl rounded-2xl ss-animate-in shadow-[var(--shadow-pop)] max-h-[90vh] overflow-y-auto"
+      <div className="w-full max-w-2xl max-h-[90vh] rounded-2xl ss-animate-in shadow-[var(--shadow-pop)] overflow-hidden flex flex-col"
         style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
-        <div className="flex items-center justify-between p-5" style={{ borderBottom: '1px solid var(--border)' }}>
+        <div className="flex items-center justify-between p-5 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
           <div>
             <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
               <span className="font-mono text-xs">#{meeting.meeting_number}</span> — {meeting.title}
@@ -301,7 +307,7 @@ function MeetingDetailModal({
           <div className="flex items-center gap-2">
             {canWrite && !editMode && (
               <button onClick={() => setEditMode(true)}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                className="px-3 py-1.5 rounded-lg text-xs font-medium hover:brightness-95 transition-[filter]"
                 style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
                 Edit
               </button>
@@ -311,7 +317,12 @@ function MeetingDetailModal({
         </div>
 
         {editMode ? (
-          <form onSubmit={e => { e.preventDefault(); mutate(form); }} className="p-5 space-y-4">
+          <form onSubmit={e => {
+            e.preventDefault();
+            if (!form.meeting_date) return;
+            mutate(form);
+          }} className="flex flex-col flex-1 min-h-0">
+          <div className="p-5 space-y-4 flex-1 min-h-0 overflow-y-auto ss-scrollbar">
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
                 <label className="block text-xs mb-1" style={labelStyle}>Title *</label>
@@ -320,8 +331,7 @@ function MeetingDetailModal({
               </div>
               <div>
                 <label className="block text-xs mb-1" style={labelStyle}>Date *</label>
-                <input type="date" value={form.meeting_date} onChange={e => set('meeting_date', e.target.value)} required
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+                <DatePicker value={form.meeting_date} onChange={v => set('meeting_date', v)} required error={!form.meeting_date ? 'Required' : undefined} />
               </div>
               <div>
                 <label className="block text-xs mb-1" style={labelStyle}>Location</label>
@@ -375,17 +385,18 @@ function MeetingDetailModal({
                 className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none" style={inputStyle} />
             </div>
             {error && <p className="text-xs" style={{ color: '#f87171' }}>{error}</p>}
-            <div className="flex justify-end gap-3 pt-2">
-              <button type="button" onClick={() => setEditMode(false)} className="px-4 py-2 rounded-lg text-sm"
+          </div>
+          <div className="flex justify-end gap-3 p-5 pt-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
+              <button type="button" onClick={() => setEditMode(false)} className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]"
                 style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
-              <button type="submit" disabled={isPending} className="px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]"
+              <button type="submit" disabled={isPending} className="px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98] hover:brightness-95 transition-[filter]"
                 style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: isPending ? 0.7 : 1 }}>
                 {isPending ? 'Saving…' : 'Save Changes'}
               </button>
-            </div>
+          </div>
           </form>
         ) : (
-          <div className="p-5 space-y-5">
+          <div className="p-5 space-y-5 flex-1 min-h-0 overflow-y-auto ss-scrollbar">
             <div className="grid grid-cols-2 gap-4 text-sm">
               {[
                 { label: meeting.is_timed ? 'Date & time' : 'Date', value: formatMeetingWhen(meeting) },
@@ -404,7 +415,7 @@ function MeetingDetailModal({
                 <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Attendees</p>
                 <div className="flex flex-wrap gap-2">
                   {(Array.isArray(meeting.attendees) ? meeting.attendees : [meeting.attendees]).map((a: string) => (
-                    <span key={a} className="text-xs px-2 py-0.5 rounded-full"
+                    <span key={a} className="text-xs px-2 py-0.5 rounded-full hover:brightness-95 transition-[filter]"
                       style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>{a}</span>
                   ))}
                 </div>
@@ -428,7 +439,7 @@ function MeetingDetailModal({
                 <ul className="space-y-1">
                   {(Array.isArray(meeting.action_items) ? meeting.action_items : [meeting.action_items]).map((item: string, i: number) => (
                     <li key={i} className="flex items-start gap-2 text-sm" style={{ color: 'var(--text-primary)' }}>
-                      <span className="mt-1 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--gold)' }} />
+                      <span className="mt-1 w-1.5 h-1.5 rounded-full flex-shrink-0 hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--gold)' }} />
                       {item}
                     </li>
                   ))}
@@ -488,7 +499,7 @@ function ProjectMeetingsPage() {
             style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-primary)', minWidth: '220px', boxShadow: 'var(--shadow-card)' }}
           />
         </div>
-        <div className="flex gap-1 p-1 rounded-full" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+        <div className="flex gap-1 p-1 rounded-full hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
           {['all', 'progress', 'design', 'commercial', 'safety'].map(t => (
             <button
               key={t}

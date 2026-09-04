@@ -21,6 +21,7 @@ import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PageTourButton from '@/components/tours/PageTourButton';
 import { ProjectModuleHeader, ProjectModuleMetric } from '@/components/projects/ProjectModuleHeader';
 import Select from '@/components/ui/Select';
+import DatePicker from '@/components/ui/DatePicker';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -247,6 +248,28 @@ function InputField({ label, name, type = 'text', required = false, value, onCha
   value: string; onChange?: (e: FormChangeEvent) => void;
   step?: string; readOnly?: boolean; hint?: string;
 }) {
+  if (type === 'date') {
+    return (
+      <div>
+        <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{label}{required && ' *'}</label>
+        {/* DatePicker's onChange is `(value: string) => void`, not a real DOM
+            event — synthesized into the same `.target.name`/`.value` shape
+            `handleChange` already reads. Only the widget changes here — this
+            never recomputes a statutory payment date; every date entered
+            through this field is exactly what the caller submits, same as
+            the native input it replaces (see CLAUDE.md's commercial-date
+            guardrails). */}
+        <DatePicker
+          value={value}
+          onChange={v => onChange?.({ target: { name, value: v } } as unknown as FormChangeEvent)}
+          required={required}
+          disabled={readOnly}
+          clearable={!required}
+        />
+        {hint && <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{hint}</p>}
+      </div>
+    );
+  }
   return (
     <div>
       <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{label}{required && ' *'}</label>
@@ -303,7 +326,7 @@ function TextareaField({ label, name, required = false, value, onChange, rows = 
 function ModalWrap({ children, wide }: { children: React.ReactNode; wide?: boolean }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className={`w-full ${wide ? 'max-w-2xl' : 'max-w-lg'} rounded-2xl max-h-[92vh] overflow-y-auto ss-animate-in`}
+      <div className={`w-full ${wide ? 'max-w-2xl' : 'max-w-lg'} max-h-[92vh] rounded-2xl overflow-hidden flex flex-col ss-animate-in`}
         style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
         {children}
       </div>
@@ -311,9 +334,12 @@ function ModalWrap({ children, wide }: { children: React.ReactNode; wide?: boole
   );
 }
 
+/** Fixed within `ModalWrap`'s flex column — never scrolls. Every caller's own body content
+ * must supply its own `flex-1 min-h-0 overflow-y-auto ss-scrollbar` region and a separate
+ * `flex-shrink-0` footer, matching the Site Report scroll-container standard. */
 function ModalHeader({ title, sub, onClose }: { title: string; sub?: string; onClose: () => void }) {
   return (
-    <div className="flex items-start justify-between p-5" style={{ borderBottom: '1px solid var(--border)' }}>
+    <div className="flex items-start justify-between p-5 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
       <div>
         <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{title}</h2>
         {sub && <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{sub}</p>}
@@ -372,7 +398,7 @@ function RowActions({ items }: { items: ActionItem[] }) {
             const Icon = item.icon;
             return (
               <button key={i} onClick={() => { item.onClick(); setOpen(false); }}
-                className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-left hover:bg-[var(--bg-hover)] transition-colors"
+                className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-left"
                 style={{ color: item.color ?? 'var(--text-secondary)' }}>
                 <Icon size={13} />
                 {item.label}
@@ -532,24 +558,32 @@ function NewPaymentAppModal({ projectId, onClose, initialTradePackageId, initial
   return (
     <ModalWrap wide>
       <ModalHeader title="New Payment Application" sub={step === 1 ? 'Step 1: Choose source' : `Step 2: ${sourceType === 'contract' ? 'Main Contract' : 'Trade Package'}`} onClose={onClose} />
-      <div className="p-5 space-y-4">
-        {step === 1 && (
-          <>
-            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Which contract is this application for?</p>
-            <div className="grid grid-cols-2 gap-3">
-              {([{ type: 'contract' as const, label: 'Main Contract', icon: FileText }, { type: 'trade_package' as const, label: 'Trade Package', icon: Package }]).map(opt => (
-                <button key={opt.type} onClick={() => { setSourceType(opt.type); setStep(2); }}
-                  className="flex flex-col items-start gap-2 p-4 rounded-xl text-left transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md"
-                  style={{ backgroundColor: 'var(--bg-elevated)', border: '2px solid rgba(0,0,0,0.08)' }}>
-                  <opt.icon size={20} style={{ color: 'var(--gold)' }} />
-                  <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{opt.label}</span>
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-        {step === 2 && (
-          <form onSubmit={e => { e.preventDefault(); mutate(); }} className="space-y-4">
+      {step === 1 && (
+        <div className="p-5 space-y-4 flex-1 min-h-0 overflow-y-auto ss-scrollbar">
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Which contract is this application for?</p>
+          <div className="grid grid-cols-2 gap-3">
+            {([{ type: 'contract' as const, label: 'Main Contract', icon: FileText }, { type: 'trade_package' as const, label: 'Trade Package', icon: Package }]).map(opt => (
+              <button key={opt.type} type="button" onClick={() => { setSourceType(opt.type); setStep(2); }}
+                className="flex flex-col items-start gap-2 p-4 rounded-xl text-left transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:brightness-95 transition-[filter]"
+                style={{ backgroundColor: 'var(--bg-elevated)', border: '2px solid rgba(0,0,0,0.08)' }}>
+                <opt.icon size={20} style={{ color: 'var(--gold)' }} />
+                <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{opt.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {step === 2 && (
+        <form onSubmit={e => {
+          e.preventDefault();
+          // DatePicker has no native form control to drive HTML5's own
+          // `required` validation for Application Date — this preserves
+          // that behaviour explicitly (the only field here that previously
+          // had a real enclosing <form> to enforce it via the browser).
+          if (!form.application_date) return;
+          mutate();
+        }} className="flex flex-col flex-1 min-h-0">
+        <div className="p-5 space-y-4 flex-1 min-h-0 overflow-y-auto ss-scrollbar">
             {sourceType === 'contract' ? (
               <div>
                 <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Contract *</label>
@@ -627,7 +661,7 @@ function NewPaymentAppModal({ projectId, onClose, initialTradePackageId, initial
               <InputField label="Pay Less Notice Deadline" name="pay_less_notice_deadline" type="date" value={form.pay_less_notice_deadline} onChange={handleChange} />
             </div>
 
-            <div className="rounded-xl p-4 space-y-3" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+            <div className="rounded-xl p-4 space-y-3 hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)' }}>
               <p className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>FINANCIAL SUMMARY</p>
               <InputField label={`Current Gross Valuation (${currencySymbol})`} name="gross_valuation" type="number" step="0.01" value={form.gross_valuation} onChange={handleChange} required />
               <InputField label={`Less: Retention (${currencySymbol})`} name="less_retention" type="number" step="0.01" value={form.less_retention} onChange={handleChange} />
@@ -641,18 +675,18 @@ function NewPaymentAppModal({ projectId, onClose, initialTradePackageId, initial
               </div>
             </div>
             <TextareaField label="Notes" name="notes" value={form.notes} onChange={handleChange} />
-            <div className="flex justify-between gap-3 pt-2">
-              <button type="button" onClick={() => setStep(1)} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>← Back</button>
+        </div>
+        <div className="flex justify-between gap-3 p-5 pt-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
+              <button type="button" onClick={() => setStep(1)} className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>← Back</button>
               <div className="flex gap-3">
-                <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
-                <button type="submit" disabled={isPending || !canSubmit} className="px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: (!canSubmit || isPending) ? 0.6 : 1 }}>
+                <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
+                <button type="submit" disabled={isPending || !canSubmit} className="px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98] hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: (!canSubmit || isPending) ? 0.6 : 1 }}>
                   {isPending ? 'Creating…' : 'Create Application'}
                 </button>
               </div>
-            </div>
-          </form>
-        )}
-      </div>
+        </div>
+        </form>
+      )}
     </ModalWrap>
   );
 }
@@ -702,8 +736,8 @@ function CertifyModal({ pa, projectId, onClose }: { pa: PaymentApplication; proj
   return (
     <ModalWrap wide>
       <ModalHeader title={`Certify Application #${pa.application_number}`} sub="Review the application and enter certified amount" onClose={onClose} />
-      <div className="p-5 space-y-5">
-        <div className="rounded-xl p-4 space-y-1" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+      <div className="p-5 space-y-5 flex-1 min-h-0 overflow-y-auto ss-scrollbar">
+        <div className="rounded-xl p-4 space-y-1 hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)' }}>
           <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>APPLICATION SUMMARY</p>
           <FinancialRow label="Application Number" value={`#${pa.application_number}`} />
           <FinancialRow label="Commercial Source" value={source} />
@@ -729,9 +763,7 @@ function CertifyModal({ pa, projectId, onClose }: { pa: PaymentApplication; proj
           </div>
           <div>
             <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Certification Date *</label>
-            <input type="date" value={certifiedDate} onChange={e => setCertifiedDate(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-              style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
+            <DatePicker value={certifiedDate} onChange={setCertifiedDate} required />
           </div>
         </div>
         <InputField label="Certificate Reference (optional)" name="cert_ref" value={certRef} onChange={e => setCertRef(e.target.value)} />
@@ -746,13 +778,13 @@ function CertifyModal({ pa, projectId, onClose }: { pa: PaymentApplication; proj
           </div>
         )}
 
-        <div className="flex justify-end gap-3 pt-2">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
-          <button onClick={() => mutate()} disabled={isPending || !certifiedAmount} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium" style={{ backgroundColor: '#4ade80', color: '#000', opacity: (isPending || !certifiedAmount) ? 0.6 : 1 }}>
+      </div>
+      <div className="flex justify-end gap-3 p-5 pt-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
+          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
+          <button onClick={() => mutate()} disabled={isPending || !certifiedAmount} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium hover:brightness-95 transition-[filter]" style={{ backgroundColor: '#4ade80', color: '#000', opacity: (isPending || !certifiedAmount) ? 0.6 : 1 }}>
             <CheckCircle size={14} />
             {isPending ? 'Certifying…' : 'Certify Application'}
           </button>
-        </div>
       </div>
     </ModalWrap>
   );
@@ -788,20 +820,20 @@ function MarkPaidModal({ pa, projectId, onClose }: { pa: PaymentApplication; pro
   return (
     <ModalWrap>
       <ModalHeader title={`Mark Application #${pa.application_number} as Paid`} sub={`Certified: ${formatCurrency(fmt(pa.certified_amount))}`} onClose={onClose} />
-      <div className="p-5 space-y-4">
+      <div className="p-5 space-y-4 flex-1 min-h-0 overflow-y-auto ss-scrollbar">
         <div className="grid grid-cols-2 gap-4">
           <InputField label={`Paid Amount (${currencySymbol}) *`} name="paid_amount" type="number" step="0.01" value={form.paid_amount} onChange={handleChange} required />
           <InputField label="Payment Date *" name="payment_date" type="date" value={form.payment_date} onChange={handleChange} required />
         </div>
         <InputField label="Payment Reference" name="payment_reference" value={form.payment_reference} onChange={handleChange} />
         <TextareaField label="Notes" name="notes" value={form.notes} onChange={handleChange} />
-        <div className="flex justify-end gap-3 pt-2">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
-          <button onClick={() => mutate()} disabled={isPending || !form.paid_amount} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium" style={{ backgroundColor: '#60a5fa', color: '#000', opacity: (isPending || !form.paid_amount) ? 0.6 : 1 }}>
+      </div>
+      <div className="flex justify-end gap-3 p-5 pt-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
+          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
+          <button onClick={() => mutate()} disabled={isPending || !form.paid_amount} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium hover:brightness-95 transition-[filter]" style={{ backgroundColor: '#60a5fa', color: '#000', opacity: (isPending || !form.paid_amount) ? 0.6 : 1 }}>
             <CreditCard size={14} />
             {isPending ? 'Saving…' : 'Mark as Paid'}
           </button>
-        </div>
       </div>
     </ModalWrap>
   );
@@ -855,8 +887,8 @@ function PaymentNoticeModal({ pa, projectId, onClose }: { pa: PaymentApplication
   return (
     <ModalWrap wide>
       <ModalHeader title={`Payment Notice: Application #${pa.application_number}`} sub="Issue a formal Payment Notice" onClose={onClose} />
-      <div className="p-5 space-y-5">
-        <div className="rounded-xl p-4 space-y-1" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+      <div className="p-5 space-y-5 flex-1 min-h-0 overflow-y-auto ss-scrollbar">
+        <div className="rounded-xl p-4 space-y-1 hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)' }}>
           <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>APPLICATION DETAILS</p>
           <FinancialRow label="Application Number" value={`#${pa.application_number}`} />
           <FinancialRow label="Commercial Source" value={source} />
@@ -903,15 +935,15 @@ function PaymentNoticeModal({ pa, projectId, onClose }: { pa: PaymentApplication
           </div>
         )}
 
-        <div className="flex justify-end gap-3 pt-2">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
+      </div>
+      <div className="flex justify-end gap-3 p-5 pt-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
+          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
           <button onClick={() => mutate()} disabled={isPending || !form.notified_sum}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98] hover:brightness-95 transition-[filter]"
             style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: (isPending || !form.notified_sum) ? 0.6 : 1 }}>
             <FileCheck size={14} />
             {isPending ? 'Issuing…' : 'Issue Payment Notice'}
           </button>
-        </div>
       </div>
     </ModalWrap>
   );
@@ -967,8 +999,8 @@ function PayLessNoticeModal({ pa, projectId, onClose }: { pa: PaymentApplication
   return (
     <ModalWrap wide>
       <ModalHeader title={`Pay Less Notice: Application #${pa.application_number}`} sub="Issue a formal Pay Less Notice" onClose={onClose} />
-      <div className="p-5 space-y-5">
-        <div className="rounded-xl p-4 space-y-1" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+      <div className="p-5 space-y-5 flex-1 min-h-0 overflow-y-auto ss-scrollbar">
+        <div className="rounded-xl p-4 space-y-1 hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)' }}>
           <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>APPLICATION DETAILS</p>
           <FinancialRow label="Application Number" value={`#${pa.application_number}`} />
           <FinancialRow label="Commercial Source" value={source} />
@@ -1012,15 +1044,15 @@ function PayLessNoticeModal({ pa, projectId, onClose }: { pa: PaymentApplication
           </div>
         )}
 
-        <div className="flex justify-end gap-3 pt-2">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
+      </div>
+      <div className="flex justify-end gap-3 p-5 pt-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
+          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
           <button onClick={() => mutate()} disabled={isPending || !form.total_deductions || !form.deduction_reason}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium hover:brightness-95 transition-[filter]"
             style={{ backgroundColor: '#f87171', color: '#000', opacity: (isPending || !form.total_deductions || !form.deduction_reason) ? 0.6 : 1 }}>
             <AlertTriangle size={14} />
             {isPending ? 'Issuing…' : 'Issue Pay Less Notice'}
           </button>
-        </div>
       </div>
     </ModalWrap>
   );
@@ -1044,7 +1076,7 @@ function DeleteConfirmModal({ pa, projectId, onClose }: { pa: PaymentApplication
   return (
     <ModalWrap>
       <ModalHeader title="Delete Payment Application" onClose={onClose} />
-      <div className="p-5 space-y-4">
+      <div className="p-5 space-y-4 flex-1 min-h-0 overflow-y-auto ss-scrollbar">
         <div className="rounded-xl p-4 flex gap-3" style={{ backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)' }}>
           <AlertTriangle size={18} className="shrink-0 mt-0.5" style={{ color: '#f87171' }} />
           <div>
@@ -1053,8 +1085,8 @@ function DeleteConfirmModal({ pa, projectId, onClose }: { pa: PaymentApplication
           </div>
         </div>
         <div className="flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm transition-all active:scale-[0.98] hover:bg-[var(--bg-hover)]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
-          <button onClick={() => mutate()} disabled={isPending} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.98] hover:opacity-90" style={{ backgroundColor: '#f87171', color: '#fff', opacity: isPending ? 0.6 : 1 }}>
+          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm transition-all active:scale-[0.98] hover:bg-[var(--bg-hover)] hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
+          <button onClick={() => mutate()} disabled={isPending} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.98] hover:opacity-90 hover:brightness-95 transition-[filter]" style={{ backgroundColor: '#f87171', color: '#fff', opacity: isPending ? 0.6 : 1 }}>
             <Trash2 size={13} />
             {isPending ? 'Deleting…' : 'Delete Application'}
           </button>
@@ -1146,7 +1178,7 @@ function ReleaseRetentionModal({
   return (
     <ModalWrap>
       <ModalHeader title="Release Retention" sub={`Current retention balance: ${formatCurrency(maxRelease)}`} onClose={onClose} />
-      <div className="p-5 space-y-4">
+      <div className="p-5 space-y-4 flex-1 min-h-0 overflow-y-auto ss-scrollbar">
 
         {/* Moiety selector */}
         <div>
@@ -1200,15 +1232,15 @@ function ReleaseRetentionModal({
           {RETENTION_RELEASE_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
         </SelectField>
         <TextareaField label="Notes (optional)" name="notes" value={form.notes} onChange={handleChange} />
-        <div className="flex justify-end gap-3 pt-2">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
+      </div>
+      <div className="flex justify-end gap-3 p-5 pt-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
+          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
           <button onClick={() => mutate()} disabled={!canSubmit}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium hover:brightness-95 transition-[filter]"
             style={{ backgroundColor: '#4ade80', color: '#000', opacity: canSubmit ? 1 : 0.6 }}>
             <Banknote size={14} />
             {isPending ? 'Releasing…' : 'Release Retention'}
           </button>
-        </div>
       </div>
     </ModalWrap>
   );
@@ -1222,7 +1254,7 @@ function PaymentDetailsModal({ pa, onClose }: { pa: PaymentApplication; onClose:
   return (
     <ModalWrap>
       <ModalHeader title={`Payment Details: Application #${pa.application_number}`} onClose={onClose} />
-      <div className="p-5 space-y-1">
+      <div className="p-5 space-y-1 flex-1 min-h-0 overflow-y-auto ss-scrollbar">
         <FinancialRow label="Status" value={badge.label} />
         {fmt(pa.paid_amount) > 0 && <FinancialRow label="Paid Amount" value={formatCurrency(fmt(pa.paid_amount))} highlight />}
         {pa.payment_date && <FinancialRow label="Payment Date" value={formatDate(pa.payment_date)} />}
@@ -1230,7 +1262,7 @@ function PaymentDetailsModal({ pa, onClose }: { pa: PaymentApplication; onClose:
         {fmt(pa.certified_amount) > 0 && <FinancialRow label="Certified Amount" value={formatCurrency(fmt(pa.certified_amount))} />}
         {pa.certified_date && <FinancialRow label="Certified Date" value={formatDate(pa.certified_date)} />}
         <div className="flex justify-end pt-3">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Close</button>
+          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Close</button>
         </div>
       </div>
     </ModalWrap>
@@ -1301,7 +1333,7 @@ function ApplicationsTable({
         <table className="w-full text-sm"><tbody style={{ backgroundColor: 'var(--bg-surface)' }}>
           {[...Array(4)].map((_, i) => (
             <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
-              {cols.map((_, j) => <td key={j} className="px-4 py-4"><div className="h-4 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)', width: '70%' }} /></td>)}
+              {cols.map((_, j) => <td key={j} className="px-4 py-4"><div className="h-4 rounded animate-pulse hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', width: '70%' }} /></td>)}
             </tr>
           ))}
         </tbody></table>
@@ -1589,7 +1621,7 @@ function OverviewTab({ paymentApps, contracts, tradePackages, formatCurrency, ca
                       <td className="px-4 py-3 font-mono text-sm" style={{ color: 'var(--gold)' }}>{apps.length}</td>
                       <td className="px-4 py-3 text-sm tabular-nums" style={{ color: '#4ade80' }}>{formatCurrency(certified)}</td>
                       <td className="px-4 py-3 text-sm tabular-nums" style={{ color: 'var(--text-secondary)' }}>{c.retention_percentage ? `${c.retention_percentage}%` : '—'}</td>
-                      <td className="px-4 py-3"><span className="text-xs px-2 py-0.5 rounded-full capitalize" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>{c.status ?? 'draft'}</span></td>
+                      <td className="px-4 py-3"><span className="text-xs px-2 py-0.5 rounded-full capitalize hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>{c.status ?? 'draft'}</span></td>
                       <td className="px-4 py-3">
                         {canWrite && (
                           <button onClick={() => onNewApp({ contractId: c.id })} className="inline-flex items-center gap-2 rounded-full px-2 py-1 text-xs font-semibold" style={{ backgroundColor: 'var(--gold-15)', color: 'var(--gold)' }}>
@@ -1632,7 +1664,7 @@ function OverviewTab({ paymentApps, contracts, tradePackages, formatCurrency, ca
                       <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-secondary)' }}>{tp.contractor_name ?? '—'}</td>
                       <td className="px-4 py-3 font-mono text-sm" style={{ color: '#a78bfa' }}>{apps.length}</td>
                       <td className="px-4 py-3 text-sm tabular-nums" style={{ color: apps.length > 0 ? '#4ade80' : 'var(--text-muted)' }}>{apps.length > 0 ? formatCurrency(certified) : '—'}</td>
-                      <td className="px-4 py-3"><span className="text-xs px-2 py-0.5 rounded-full capitalize" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>{tp.status ?? 'active'}</span></td>
+                      <td className="px-4 py-3"><span className="text-xs px-2 py-0.5 rounded-full capitalize hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>{tp.status ?? 'active'}</span></td>
                       <td className="px-4 py-3">
                         {canWrite && (
                           <button onClick={() => onNewApp({ tradePackageId: tp.id })} className="inline-flex items-center gap-2 rounded-full px-2 py-1 text-xs font-semibold" style={{ backgroundColor: 'rgba(167,139,250,0.12)', color: '#8b5cf6' }}>
@@ -1685,7 +1717,7 @@ function TradePackagesTab({ tradePackages, paymentApps, formatCurrency, canWrite
                 <div className="flex items-center gap-2">
                   <Package size={15} style={{ color: '#a78bfa' }} />
                   <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{tp.name}</span>
-                  {tp.package_reference && <span className="text-[11px] font-mono px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>{tp.package_reference}</span>}
+                  {tp.package_reference && <span className="text-[11px] font-mono px-1.5 py-0.5 rounded hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>{tp.package_reference}</span>}
                 </div>
                 {tp.contractor_name && <p className="text-xs mt-1 ml-5" style={{ color: 'var(--text-muted)' }}>{tp.contractor_name}</p>}
               </div>
@@ -1703,7 +1735,7 @@ function TradePackagesTab({ tradePackages, paymentApps, formatCurrency, canWrite
                   {apps.slice(0, 3).map(a => {
                     const badge = PA_STATUS[a.status ?? ''] ?? { bg: 'var(--bg-elevated)', text: 'var(--text-muted)', label: a.status ?? '—' };
                     return (
-                      <div key={a.id} className="flex items-center justify-between text-xs py-1.5 px-2 rounded-lg" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+                      <div key={a.id} className="flex items-center justify-between text-xs py-1.5 px-2 rounded-lg hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)' }}>
                         <span style={{ color: 'var(--gold)' }}>#{a.application_number}</span>
                         <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>{a.application_date ? formatDate(a.application_date) : '—'}</span>
                         <span className="tabular-nums" style={{ color: 'var(--text-secondary)' }}>{formatCurrency(fmt(a.amount_due))}</span>
@@ -1738,9 +1770,9 @@ function NoticesTab({ paymentNotices, payLessNotices, isLoading, formatCurrency 
         {[...Array(2)].map((_, i) => (
           <div key={i} className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
             <div className="p-3" style={{ backgroundColor: 'var(--bg-surface)' }}>
-              <div className="h-4 w-32 rounded animate-pulse mb-3" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+              <div className="h-4 w-32 rounded animate-pulse mb-3 hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)' }} />
               {[...Array(2)].map((_, j) => (
-                <div key={j} className="h-10 rounded-lg animate-pulse mb-2" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+                <div key={j} className="h-10 rounded-lg animate-pulse mb-2 hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)' }} />
               ))}
             </div>
           </div>
@@ -2067,7 +2099,7 @@ function RetentionTab({ contracts, paymentApps, retentionReleases, formatCurrenc
               { label: 'Current Balance',     value: formatCurrency(row.balance),            color: row.balance > 0 ? '#fb923c' : 'var(--text-muted)' },
               { label: 'Max Retention',       value: row.maxRetention > 0 ? formatCurrency(row.maxRetention) : '—', color: 'var(--text-secondary)' },
             ].map(card => (
-              <div key={card.label} className="rounded-xl p-3" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+              <div key={card.label} className="rounded-xl p-3 hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)' }}>
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{card.label}</p>
                 <p className="text-base font-bold mt-1 tabular-nums" style={{ color: card.color }}>{card.value}</p>
               </div>
@@ -2101,7 +2133,7 @@ function RetentionTab({ contracts, paymentApps, retentionReleases, formatCurrenc
               <div className="flex justify-between text-xs mb-1.5" style={{ color: 'var(--text-muted)' }}>
                 <span>Retention utilisation</span><span className="tabular-nums">{row.pctUsed.toFixed(1)}%</span>
               </div>
-              <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+              <div className="h-2 rounded-full overflow-hidden hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)' }}>
                 <div className="h-full rounded-full transition-all" style={{ width: `${row.pctUsed}%`, backgroundColor: row.pctUsed > 80 ? '#f87171' : '#facc15' }} />
               </div>
             </div>
@@ -2113,7 +2145,7 @@ function RetentionTab({ contracts, paymentApps, retentionReleases, formatCurrenc
               <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>RELEASE HISTORY</p>
               <div className="space-y-1">
                 {row.contractReleases.map(r => (
-                  <div key={r.id} className="flex items-center gap-2 text-xs py-1.5 px-3 rounded-lg" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+                  <div key={r.id} className="flex items-center gap-2 text-xs py-1.5 px-3 rounded-lg hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)' }}>
                     {/* Moiety badge */}
                     {r.moiety && r.moiety !== 'other' && (
                       <span className="px-1.5 py-0.5 rounded text-xs font-bold shrink-0" style={{
@@ -2271,7 +2303,7 @@ function ProjectCommercialPage() {
       </ProjectModuleHeader>
 
       <div className="ss-animate-in flex flex-col gap-3 rounded-2xl p-2 sm:flex-row sm:items-center sm:justify-between" data-tour="commercial-tabs" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '110ms' }}>
-        <div className="flex gap-1 overflow-x-auto rounded-xl p-1" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+        <div className="flex gap-1 overflow-x-auto rounded-xl p-1 hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)' }}>
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
               className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-200 hover:-translate-y-px active:translate-y-0"

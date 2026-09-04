@@ -9,6 +9,7 @@ import api from '@/lib/api';
 import { CheckCircle2, Circle, Lock, Plus, X, Loader2, AlertTriangle } from 'lucide-react';
 import PageTourButton from '@/components/tours/PageTourButton';
 import Select from '@/components/ui/Select';
+import DatePicker from '@/components/ui/DatePicker';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -60,8 +61,7 @@ function AddItemModal({ projectId, onClose }: { projectId: string; onClose: () =
           </div>
           <div>
             <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Due Date</label>
-            <input type="date" value={form.due_date} onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))}
-              className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+            <DatePicker value={form.due_date} onChange={v => setForm(f => ({ ...f, due_date: v }))} clearable />
           </div>
           {mutation.isError && (
             <p className="text-xs text-red-400">{getErrorMessage(mutation.error, 'Failed to add item.')}</p>

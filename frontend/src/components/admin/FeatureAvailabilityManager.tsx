@@ -95,11 +95,11 @@ function EditDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm p-4" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }} onClick={onClose}>
       <div
-        className="w-full max-w-md rounded-2xl p-6 ss-animate-in max-h-[90vh] overflow-y-auto"
+        className="w-full max-w-md max-h-[90vh] rounded-2xl ss-animate-in overflow-hidden flex flex-col"
         style={{ backgroundColor: 'var(--bg-panel)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between mb-5">
+        <div className="flex items-start justify-between p-6 pb-0 flex-shrink-0">
           <div>
             <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{label}</h2>
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Currently {STATUS_META[currentStatus].label}</p>
@@ -107,7 +107,7 @@ function EditDialog({
           <button onClick={onClose} aria-label="Close"><X size={16} style={{ color: 'var(--text-muted)' }} /></button>
         </div>
 
-        <div className="space-y-4">
+        <div className="p-6 space-y-4 flex-1 min-h-0 overflow-y-auto ss-scrollbar">
           <div>
             <label htmlFor={`fa-status-${featureKey}`} className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Status</label>
             <Select id={`fa-status-${featureKey}`} value={status} onChange={e => setStatus(e.target.value as FeatureAvailabilityStatus)} className="w-full">
@@ -128,7 +128,7 @@ function EditDialog({
                   rows={2}
                   maxLength={2000}
                   placeholder="Shown to customers in addition to the default copy…"
-                  className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none resize-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none resize-none hover:brightness-95 transition-[filter]"
                   style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                 />
               </div>
@@ -142,7 +142,7 @@ function EditDialog({
                   type="datetime-local"
                   value={availableAt}
                   onChange={e => setAvailableAt(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none hover:brightness-95 transition-[filter]"
                   style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                 />
               </div>
@@ -166,7 +166,7 @@ function EditDialog({
               onChange={e => setReason(e.target.value)}
               rows={3}
               placeholder="Explain the reason for this change…"
-              className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none resize-none"
+              className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none resize-none hover:brightness-95 transition-[filter]"
               style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
             />
             {!reasonValid && reason.length > 0 && (
@@ -184,8 +184,8 @@ function EditDialog({
           />
         </div>
 
-        <div className="flex gap-3 mt-6">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-medium" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
+        <div className="flex gap-3 p-6 pt-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-medium hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
             Cancel
           </button>
           <button
@@ -197,7 +197,7 @@ function EditDialog({
               confirmed: true,
             })}
             disabled={!canSubmit}
-            className="flex-1 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
+            className="flex-1 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50 hover:brightness-95 transition-[filter]"
             style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
           >
             {submitting ? 'Saving…' : 'Save'}
@@ -292,7 +292,7 @@ export default function FeatureAvailabilityManager() {
                 </div>
                 <button
                   onClick={() => setEditingKey(key)}
-                  className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+                  className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium hover:brightness-95 transition-[filter]"
                   style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
                 >
                   <Pencil size={12} /> Edit

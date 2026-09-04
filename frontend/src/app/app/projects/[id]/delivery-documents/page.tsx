@@ -13,6 +13,7 @@ import { getErrorMessage, INPUT_STYLE, CATEGORY_LABELS, StatusBadge, Field } fro
 import PageTourButton from '@/components/tours/PageTourButton';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
+import DatePicker from '@/components/ui/DatePicker';
 import { ProjectModuleHeader, ProjectModuleMetric } from '@/components/projects/ProjectModuleHeader';
 
 type DeliveryDoc = {
@@ -96,7 +97,7 @@ function DeliveryDocumentsPage() {
       </ProjectModuleHeader>
 
       <div className="ss-animate-in flex flex-col gap-3 rounded-2xl p-2 sm:flex-row sm:items-center sm:justify-between" data-tour="delivery-documents-filters" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '80ms' }}>
-        <div className="flex gap-1 overflow-x-auto rounded-xl p-1" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+        <div className="flex gap-1 overflow-x-auto rounded-xl p-1 hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)' }}>
           {(['all', 'required', 'pending', 'submitted', 'under_review', 'approved', 'rejected', 'expired', 'superseded'] as const).map(s => (
             <button
               key={s}
@@ -148,7 +149,7 @@ function DeliveryDocumentsPage() {
               const isOverdue = !!doc.due_date && doc.due_date < today && !['approved', 'superseded'].includes(doc.status);
               const isExpired = !!doc.expiry_date && doc.expiry_date < today;
               return (
-                <tr key={doc.id} className="ss-animate-in hover:bg-[var(--bg-hover)] transition-colors" style={{ borderBottom: '1px solid var(--border)', animationDelay: `${Math.min(index * 45, 360)}ms` }}>
+                <tr key={doc.id} className="ss-animate-in" style={{ borderBottom: '1px solid var(--border)', animationDelay: `${Math.min(index * 45, 360)}ms` }}>
                   <td className="px-3 py-2.5">
                     <button
                       onClick={() => doc.action_url && router.push(doc.action_url)}
@@ -256,12 +257,12 @@ function CreateDeliveryDocumentModal({ projectId, invalidateKey, onClose }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-      <div className="ss-animate-in w-full max-w-lg rounded-xl p-6 max-h-[90vh] overflow-y-auto" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
-        <div className="flex items-center justify-between mb-4">
+      <div className="ss-animate-in w-full max-w-lg max-h-[90vh] rounded-xl overflow-hidden flex flex-col" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
+        <div className="flex items-center justify-between p-6 pb-4 flex-shrink-0">
           <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Add delivery document</h2>
           <button onClick={onClose}><X size={18} style={{ color: 'var(--text-muted)' }} /></button>
         </div>
-        <div className="space-y-3">
+        <div className="px-6 pb-6 space-y-3 flex-1 min-h-0 overflow-y-auto ss-scrollbar">
           <div className="grid grid-cols-2 gap-3">
             <Field label="Applies to" required>
               <Select className="w-full"
@@ -309,12 +310,10 @@ function CreateDeliveryDocumentModal({ projectId, invalidateKey, onClose }: {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Due date">
-              <input type="date" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE}
-                value={form.due_date} onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))} />
+              <DatePicker value={form.due_date} onChange={v => setForm(f => ({ ...f, due_date: v }))} clearable />
             </Field>
             <Field label="Expiry date">
-              <input type="date" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE}
-                value={form.expiry_date} onChange={e => setForm(f => ({ ...f, expiry_date: e.target.value }))} />
+              <DatePicker value={form.expiry_date} onChange={v => setForm(f => ({ ...f, expiry_date: v }))} clearable />
             </Field>
           </div>
           <Field label="Revision">
@@ -322,12 +321,12 @@ function CreateDeliveryDocumentModal({ projectId, invalidateKey, onClose }: {
               value={form.revision} onChange={e => setForm(f => ({ ...f, revision: e.target.value }))} />
           </Field>
         </div>
-        <div className="flex justify-end gap-2 mt-5">
+        <div className="flex justify-end gap-2 p-6 pt-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
           <button onClick={onClose} className="px-3 py-1.5 rounded-lg text-sm transition-all active:scale-[0.98]" style={{ color: 'var(--text-secondary)' }}>Cancel</button>
           <button
             onClick={() => mutation.mutate()}
             disabled={!form.title || !parentId || mutation.isPending}
-            className="px-3 py-1.5 rounded-lg text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50"
+            className="px-3 py-1.5 rounded-lg text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 hover:brightness-95 transition-[filter]"
             style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
           >
             {mutation.isPending ? 'Saving…' : 'Add document'}

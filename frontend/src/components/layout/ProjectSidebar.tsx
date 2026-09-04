@@ -282,8 +282,8 @@ function NavGroupSection({
                     style={{
                       width: '12px',
                       height: 'calc(50% + 1px)',
-                      borderLeft: '1.5px solid var(--border)',
-                      borderBottom: '1.5px solid var(--border)',
+                      borderLeft: '1.5px solid var(--border-light)',
+                      borderBottom: '1.5px solid var(--border-light)',
                       borderBottomLeftRadius: '8px',
                     }}
                   />
@@ -294,7 +294,7 @@ function NavGroupSection({
                       style={{
                         width: '1.5px',
                         top: '50%',
-                        backgroundColor: 'var(--border)',
+                        backgroundColor: 'var(--border-light)',
                       }}
                     />
                   )}

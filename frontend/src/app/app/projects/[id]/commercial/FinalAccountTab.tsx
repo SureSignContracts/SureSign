@@ -321,7 +321,7 @@ function FACommercialSummary({ totals, isSnapshotted }: { totals: FATotals; isSn
   const fc = (v: number) => formatCurrency(v);
 
   return (
-    <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+    <div className="rounded-xl p-4 hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
       <div className="flex items-center justify-between mb-3">
         <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
           Commercial Summary
@@ -401,7 +401,7 @@ function FAItemsSection({ items, isLocked, onAdd, onEdit, onDelete }: {
           return (
             <div key={cat} className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
               <button
-                className="flex items-center justify-between w-full px-4 py-2.5 text-left"
+                className="flex items-center justify-between w-full px-4 py-2.5 text-left hover:brightness-95 transition-[filter]"
                 style={{ backgroundColor: 'var(--bg-elevated)' }}
                 onClick={() => setCollapsed(c => ({ ...c, [cat]: !isOpen }))}
               >
@@ -435,7 +435,7 @@ function FAItemsSection({ items, isLocked, onAdd, onEdit, onDelete }: {
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         {item.is_auto_seeded && (
-                          <span className="px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)', fontSize: '10px' }}>
+                          <span className="px-1.5 py-0.5 rounded hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)', fontSize: '10px' }}>
                             Auto
                           </span>
                         )}
@@ -506,16 +506,17 @@ function FAItemModal({ faId, item, onClose, onSaved }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-md rounded-2xl max-h-[92vh] overflow-y-auto ss-animate-in"
+      <div className="w-full max-w-md max-h-[92vh] rounded-2xl ss-animate-in overflow-hidden flex flex-col"
         style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
-        <div className="flex items-start justify-between p-5" style={{ borderBottom: '1px solid var(--border)' }}>
+        <div className="flex items-start justify-between p-5 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
           <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
             {item ? 'Edit Item' : 'Add Line Item'}
           </h2>
           <button onClick={onClose}><X size={18} style={{ color: 'var(--text-muted)' }} /></button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+        <div className="p-5 space-y-4 flex-1 min-h-0 overflow-y-auto ss-scrollbar">
           {/* Category — only shown on add; edit shows read-only */}
           {!item ? (
             <div>
@@ -536,7 +537,7 @@ function FAItemModal({ faId, item, onClose, onSaved }: {
               <input
                 value={FA_CATEGORY_LABELS[item.category] ?? item.category}
                 readOnly
-                className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                className="w-full px-3 py-2 rounded-lg text-sm outline-none hover:brightness-95 transition-[filter]"
                 style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-muted)', cursor: 'default' }}
               />
             </div>
@@ -578,18 +579,19 @@ function FAItemModal({ faId, item, onClose, onSaved }: {
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
+        </div>
+        <div className="flex justify-end gap-2 p-5 pt-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
             <button type="button" onClick={onClose}
-              className="px-4 py-2 rounded-lg text-sm"
+              className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]"
               style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
               Cancel
             </button>
             <button type="submit" disabled={saving}
-              className="px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]"
+              className="px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98] hover:brightness-95 transition-[filter]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: saving ? 0.6 : 1 }}>
               {saving ? 'Saving...' : item ? 'Save Changes' : 'Add Item'}
             </button>
-          </div>
+        </div>
         </form>
       </div>
     </div>
@@ -746,18 +748,18 @@ function FinalAccountCard({ name, subtitle, contractId, tradePackageId, fa, proj
             <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{name}</p>
             {subtitle && <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{subtitle}</p>}
           </div>
-          <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
+          <span className="text-xs px-2 py-0.5 rounded-full hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
             Not created
           </span>
         </div>
-        <div className="mt-4 rounded-xl p-6 text-center" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px dashed var(--border)' }}>
+        <div className="mt-4 rounded-xl p-6 text-center hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px dashed var(--border)' }}>
           <FileCheck size={24} className="mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
           <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>No Final Account has been created for this {contractId ? 'contract' : 'trade package'}.</p>
           {canWrite && (
             <button
               onClick={() => createMutation.mutate()}
               disabled={createMutation.isPending}
-              className="px-4 py-2 rounded-lg text-xs font-medium active:scale-[0.98]"
+              className="px-4 py-2 rounded-lg text-xs font-medium active:scale-[0.98] hover:brightness-95 transition-[filter]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: createMutation.isPending ? 0.6 : 1 }}
             >
               {createMutation.isPending ? 'Creating...' : 'Create Final Account'}
@@ -774,7 +776,7 @@ function FinalAccountCard({ name, subtitle, contractId, tradePackageId, fa, proj
 
       {/* Clickable header — expands/collapses the card */}
       <button
-        className="flex items-start justify-between w-full p-5 text-left hover:bg-[var(--bg-hover)] transition-colors"
+        className="flex items-start justify-between w-full p-5 text-left"
         onClick={() => setExpanded(v => !v)}
       >
         <div className="flex-1 min-w-0">
@@ -785,7 +787,7 @@ function FinalAccountCard({ name, subtitle, contractId, tradePackageId, fa, proj
             )}
             <FAStatusBadge status={fa.status} />
             {fa.is_locked && (
-              <span className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
+              <span className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
                 <Lock size={9} /> Locked
               </span>
             )}
@@ -854,7 +856,7 @@ function FinalAccountCard({ name, subtitle, contractId, tradePackageId, fa, proj
           {displayTotals ? (
             <FACommercialSummary totals={displayTotals} isSnapshotted={activeFa?.is_snapshotted ?? false} />
           ) : (
-            <div className="rounded-xl p-4 text-center" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+            <div className="rounded-xl p-4 text-center hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)' }}>
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Loading commercial totals...</p>
             </div>
           )}
@@ -869,7 +871,7 @@ function FinalAccountCard({ name, subtitle, contractId, tradePackageId, fa, proj
           />
 
           {/* Documents */}
-          <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+          <div className="rounded-xl p-4 hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
                 Documents
@@ -917,7 +919,7 @@ function FinalAccountCard({ name, subtitle, contractId, tradePackageId, fa, proj
                     </div>
                     <button
                       onClick={() => downloadDocument(doc)}
-                      className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium shrink-0"
+                      className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium shrink-0 hover:brightness-95 transition-[filter]"
                       style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}
                     >
                       <Download size={11} /> Download
@@ -939,14 +941,14 @@ function FinalAccountCard({ name, subtitle, contractId, tradePackageId, fa, proj
                     <button
                       onClick={handleConfirm}
                       disabled={lifecycleMutation.isPending}
-                      className="px-2 py-0.5 rounded text-xs font-semibold"
+                      className="px-2 py-0.5 rounded text-xs font-semibold hover:brightness-95 transition-[filter]"
                       style={{ backgroundColor: '#ef4444', color: '#fff' }}
                     >
                       Yes
                     </button>
                     <button
                       onClick={() => setConfirmPending(null)}
-                      className="px-2 py-0.5 rounded text-xs"
+                      className="px-2 py-0.5 rounded text-xs hover:brightness-95 transition-[filter]"
                       style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)' }}
                     >
                       Cancel
@@ -978,14 +980,14 @@ function FinalAccountCard({ name, subtitle, contractId, tradePackageId, fa, proj
                 </span>
                 <button
                   onClick={() => { deleteItemMutation.mutate(itemId); setConfirmPending(null); }}
-                  className="px-2.5 py-1 rounded text-xs font-semibold shrink-0"
+                  className="px-2.5 py-1 rounded text-xs font-semibold shrink-0 hover:brightness-95 transition-[filter]"
                   style={{ backgroundColor: '#ef4444', color: '#fff' }}
                 >
                   Remove
                 </button>
                 <button
                   onClick={() => setConfirmPending(null)}
-                  className="px-2.5 py-1 rounded text-xs shrink-0"
+                  className="px-2.5 py-1 rounded text-xs shrink-0 hover:brightness-95 transition-[filter]"
                   style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)' }}
                 >
                   Cancel
@@ -997,7 +999,7 @@ function FinalAccountCard({ name, subtitle, contractId, tradePackageId, fa, proj
           {/* Commercially closed state */}
           {fa.status === 'commercially_closed' && (
             <div className="flex items-center gap-2 pt-1">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#4ade80' }} />
+              <div className="w-2 h-2 rounded-full hover:brightness-95 transition-[filter]" style={{ backgroundColor: '#4ade80' }} />
               <p className="text-xs" style={{ color: '#4ade80' }}>
                 This Final Account is commercially closed.
                 {fa.closed_at ? ` Closed on ${formatDate(fa.closed_at)}.` : ''}
@@ -1007,7 +1009,7 @@ function FinalAccountCard({ name, subtitle, contractId, tradePackageId, fa, proj
 
           {/* Dispute window */}
           {fa.dispute_window_expires_at && fa.status !== 'commercially_closed' && (
-            <div className="rounded-xl p-3" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+            <div className="rounded-xl p-3 hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)' }}>
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                 JCT dispute window expires:{' '}
                 <span className="tabular-nums" style={{ color: 'var(--text-secondary)' }}>{formatDate(fa.dispute_window_expires_at)}</span>

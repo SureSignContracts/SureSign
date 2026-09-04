@@ -152,6 +152,50 @@ select:focus-visible, [tabindex]:focus-visible {
   background-color: rgba(128, 128, 128, 0.46);
 }
 
+/* ── Shared SureSign scroll container standard ──────────────────────────────
+   The authoritative, opt-in scrollbar treatment for any scrollable modal
+   body / card / panel — distinct from the two rules above:
+     - the bare `::-webkit-scrollbar` rule is a WebKit-only, unscoped legacy
+       default (applies to every scrollable element that doesn't opt into
+       something else) — left exactly as-is, still in effect for anything
+       that never adopts `.ss-scrollbar` below;
+     - `.ss-sidebar-scroll` is a deliberately different, auto-hide-until-
+       scrolling variant purpose-built for nav rails (driven by a JS
+       `.is-scrolling` class toggle) — not reused here, since a modal/card
+       body should read as scrollable at rest, not appear scroll-less until
+       the user happens to scroll it.
+
+   Native scrolling only — no JS thumb, no wheel interception, no library.
+   Thin (6px), fully rounded, transparent track (so no rectangular track
+   shows through a rounded card's corners), a low-opacity neutral-grey thumb
+   at rest, a slightly higher-opacity thumb on hover — never the SureSign
+   accent colour as a permanent scrollbar treatment, since this is chrome,
+   not an action. Theme-aware by construction: `rgba(128,128,128,...)` reads
+   correctly against both this app's light and dark `--bg-surface` values,
+   the same neutral tone `.ss-sidebar-scroll` already uses. */
+.ss-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(128, 128, 128, 0.32) transparent;
+}
+
+.ss-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.ss-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ss-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(128, 128, 128, 0.32);
+  border-radius: 999px;
+}
+
+.ss-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(128, 128, 128, 0.52);
+}
+
 ::selection { background: var(--gold-30); color: var(--text-primary); }
 
 /* Keep browser autofill consistent with the neutral login fields instead of

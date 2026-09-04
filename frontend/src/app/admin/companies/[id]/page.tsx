@@ -11,6 +11,7 @@ import OrganisationUrlBrandingSection from '@/components/admin/OrganisationUrlBr
 import OrganisationDomainsSection from '@/components/admin/OrganisationDomainsSection';
 import toast from '@/lib/toast';
 import Select from '@/components/ui/Select';
+import DatePicker from '@/components/ui/DatePicker';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import {
   ArrowLeft, FolderKanban, Search, Plus, X,
@@ -423,23 +424,11 @@ export default function AdminCompanyDetailPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Start Date</label>
-                  <input
-                    type="date"
-                    value={form.start_date}
-                    onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                    style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-                  />
+                  <DatePicker value={form.start_date} onChange={v => setForm(f => ({ ...f, start_date: v }))} clearable />
                 </div>
                 <div>
                   <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>End Date</label>
-                  <input
-                    type="date"
-                    value={form.end_date}
-                    onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                    style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-                  />
+                  <DatePicker value={form.end_date} onChange={v => setForm(f => ({ ...f, end_date: v }))} clearable />
                 </div>
               </div>
 

@@ -90,8 +90,8 @@ export default function IncidentModal({ projectId, incident, onClose }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="ss-animate-in w-full max-w-lg rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
-        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
+      <div className="ss-animate-in w-full max-w-lg max-h-[90vh] rounded-2xl overflow-hidden flex flex-col" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
+        <div className="flex items-center justify-between px-6 py-4 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
           <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
             {isEdit ? 'Edit Incident' : 'Record Incident'}
           </h2>
@@ -99,7 +99,8 @@ export default function IncidentModal({ projectId, incident, onClose }: {
             <X size={16} style={{ color: 'var(--text-muted)' }} />
           </button>
         </div>
-        <form onSubmit={e => { e.preventDefault(); mutation.mutate(form); }} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+        <form onSubmit={e => { e.preventDefault(); mutation.mutate(form); }} className="flex flex-col flex-1 min-h-0">
+        <div className="p-6 space-y-4 flex-1 min-h-0 overflow-y-auto ss-scrollbar">
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
             Record the event and site circumstances only. Avoid unnecessary personal or medical information.
           </p>
@@ -158,15 +159,16 @@ export default function IncidentModal({ projectId, incident, onClose }: {
           {mutation.isError && (
             <p className="text-xs text-red-400">{getErrorMessage(mutation.error, 'Failed to save. Please try again.')}</p>
           )}
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm"
+        </div>
+        <div className="flex justify-end gap-3 p-6 pt-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]"
               style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
             <button type="submit" disabled={mutation.isPending}
-              className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60"
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60 hover:brightness-95 transition-[filter]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
               {mutation.isPending ? 'Saving…' : isEdit ? 'Save Changes' : 'Record Incident'}
             </button>
-          </div>
+        </div>
         </form>
       </div>
     </div>

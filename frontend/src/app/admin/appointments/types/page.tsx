@@ -143,12 +143,12 @@ export default function AppointmentTypesPage() {
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm p-4" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }} onClick={closeModal}>
-          <div onClick={e => e.stopPropagation()} className="w-full max-w-md rounded-2xl p-5 space-y-3 max-h-[90vh] overflow-y-auto" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
-            <div className="flex items-center justify-between">
+          <div onClick={e => e.stopPropagation()} className="w-full max-w-md max-h-[90vh] rounded-2xl overflow-hidden flex flex-col" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+            <div className="flex items-center justify-between p-5 pb-0 flex-shrink-0">
               <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{editing ? 'Edit Appointment Type' : 'New Appointment Type'}</h2>
               <button onClick={closeModal}><X size={18} style={{ color: 'var(--text-muted)' }} /></button>
             </div>
-
+            <div className="p-5 space-y-3 flex-1 min-h-0 overflow-y-auto ss-scrollbar">
             <Input placeholder="Name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} error={formErrors.name?.[0]} />
             <Input placeholder="Slug (e.g. product-walkthrough)" value={form.slug} onChange={e => setForm(f => ({ ...f, slug: e.target.value }))} error={formErrors.slug?.[0]} />
             <textarea
@@ -195,7 +195,8 @@ export default function AppointmentTypesPage() {
               label="Active"
             />
 
-            <div className="flex gap-2 pt-2">
+          </div>
+            <div className="flex gap-2 p-5 pt-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
               <Button variant="secondary" className="flex-1" onClick={closeModal}>Cancel</Button>
               <Button className="flex-1" disabled={saveMutation.isPending} onClick={() => saveMutation.mutate(form)}>
                 {saveMutation.isPending ? 'Saving…' : 'Save'}

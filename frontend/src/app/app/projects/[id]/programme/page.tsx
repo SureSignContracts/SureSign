@@ -10,6 +10,7 @@ import { effectiveTodayYmd } from '@/lib/dateTime';
 import CountUp from '@/components/ui/CountUp';
 import Select from '@/components/ui/Select';
 import Button from '@/components/ui/Button';
+import DatePicker from '@/components/ui/DatePicker';
 import {
   CalendarDays, Plus, Sparkles, X, ChevronDown, Check,
   AlertTriangle, Clock, BarChart2, List, Info,
@@ -790,7 +791,7 @@ function AiSourcePanel({ milestone }: { milestone: Milestone }) {
       </button>
       {open && (
         <div
-          className="mt-1 text-xs rounded-lg p-2 leading-relaxed"
+          className="mt-1 text-xs rounded-lg p-2 leading-relaxed hover:brightness-95 transition-[filter]"
           style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)', maxWidth: 320 }}
         >
           <p className="font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
@@ -855,14 +856,15 @@ function MilestoneModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="ss-animate-in w-full max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
-        <div className="flex items-center justify-between p-5" style={{ borderBottom: '1px solid var(--border)' }}>
+      <div className="ss-animate-in w-full max-w-lg max-h-[90vh] rounded-2xl overflow-hidden flex flex-col" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
+        <div className="flex items-center justify-between p-5 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
           <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
             {isEdit ? 'Edit Milestone' : 'New Milestone'}
           </h2>
           <button onClick={onClose}><X size={18} style={{ color: 'var(--text-muted)' }} /></button>
         </div>
-        <form onSubmit={e => { e.preventDefault(); mutate(form); }} className="p-5 space-y-4">
+        <form onSubmit={e => { e.preventDefault(); mutate(form); }} className="flex flex-col flex-1 min-h-0">
+        <div className="p-5 space-y-4 flex-1 min-h-0 overflow-y-auto ss-scrollbar">
           {!isEdit && (
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Contract *</label>
@@ -902,18 +904,15 @@ function MilestoneModal({
             </div>
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Planned date</label>
-              <input type="date" value={form.planned_date} onChange={e => set('planned_date', e.target.value)}
-                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+              <DatePicker value={form.planned_date} onChange={v => set('planned_date', v)} clearable />
             </div>
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Forecast date</label>
-              <input type="date" value={form.forecast_date} onChange={e => set('forecast_date', e.target.value)}
-                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+              <DatePicker value={form.forecast_date} onChange={v => set('forecast_date', v)} clearable />
             </div>
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Actual date</label>
-              <input type="date" value={form.actual_date} onChange={e => set('actual_date', e.target.value)}
-                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+              <DatePicker value={form.actual_date} onChange={v => set('actual_date', v)} clearable />
             </div>
           </div>
           <div>
@@ -921,15 +920,16 @@ function MilestoneModal({
             <textarea value={form.notes} onChange={e => set('notes', e.target.value)} rows={2}
               className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none" style={inputStyle} />
           </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm"
+        </div>
+        <div className="flex justify-end gap-3 p-5 pt-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]"
               style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
             <button type="submit" disabled={isPending || (!isEdit && !form.contract_id)}
-              className="px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.98]"
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.98] hover:brightness-95 transition-[filter]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: isPending ? 0.7 : 1 }}>
               {isPending ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Milestone'}
             </button>
-          </div>
+        </div>
         </form>
       </div>
     </div>
@@ -956,7 +956,7 @@ function SeedButton({ projectId, contracts }: { projectId: string; contracts: Co
   if (contracts.length === 1) {
     return (
       <button onClick={() => mutate(contracts[0].id)} disabled={isPending}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+        className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 hover:brightness-95 transition-[filter]"
         style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
         <Sparkles size={14} style={{ color: 'var(--gold)' }} />
         {isPending ? 'Seeding…' : 'Seed from AI'}
@@ -967,7 +967,7 @@ function SeedButton({ projectId, contracts }: { projectId: string; contracts: Co
   return (
     <div className="relative">
       <button onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.98]"
+        className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.98] hover:brightness-95 transition-[filter]"
         style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
         <Sparkles size={14} style={{ color: 'var(--gold)' }} />
         Seed from AI <ChevronDown size={13} />
@@ -1060,7 +1060,7 @@ function ProjectProgrammePage() {
 
       {/* Filter + View toggle row */}
       <div className="ss-animate-in flex flex-wrap items-center justify-between gap-3 rounded-2xl p-2" data-tour="programme-filters" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '190ms' }}>
-        <div className="flex gap-1 overflow-x-auto rounded-xl p-1" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+        <div className="flex gap-1 overflow-x-auto rounded-xl p-1 hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)' }}>
           {(['all', 'not_started', 'in_progress', 'complete', 'delayed', 'at_risk'] as const).map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
               className="whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-200 hover:-translate-y-px active:translate-y-0"
@@ -1071,7 +1071,7 @@ function ProjectProgrammePage() {
         </div>
 
         {/* View toggle */}
-        <div className="flex gap-1 rounded-xl p-1" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+        <div className="flex gap-1 rounded-xl p-1 hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)' }}>
           {(['table', 'timeline'] as const).map(v => (
             <button key={v} onClick={() => setViewMode(v)}
               className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-200 hover:-translate-y-px active:translate-y-0"
@@ -1116,7 +1116,7 @@ function ProjectProgrammePage() {
                   <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
                     {[...Array(9)].map((_, j) => (
                       <td key={j} className="px-4 py-4">
-                        <div className="h-3.5 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)', width: '70%' }} />
+                        <div className="h-3.5 rounded animate-pulse hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', width: '70%' }} />
                       </td>
                     ))}
                   </tr>
@@ -1149,14 +1149,14 @@ function ProjectProgrammePage() {
                             onClick={() => api.post(`/contracts/${contracts[0].id}/programme/seed-from-analysis`)
                               .then(r => { queryClient.invalidateQueries({ queryKey: ['project-programme', id] }); toast.success(r.data.message); })
                               .catch(() => toast.error('No confirmed AI analysis found'))}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium hover:brightness-95 transition-[filter]"
                             style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
                             <Sparkles size={13} style={{ color: 'var(--gold)' }} />
                             Seed from AI
                           </button>
                         )}
                         <button onClick={() => setShowModal(true)}
-                          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
+                          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium hover:brightness-95 transition-[filter]"
                           style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
                           <Plus size={13} />
                           Add Milestone
@@ -1238,7 +1238,7 @@ function ProjectProgrammePage() {
                         </span>
                         {typeof m.progress_pct === 'number' && (
                           <div className="mt-1.5 flex items-center gap-1.5">
-                            <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-elevated)', minWidth: 40 }}>
+                            <div className="flex-1 h-1 rounded-full overflow-hidden hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', minWidth: 40 }}>
                               <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, m.progress_pct))}%`, backgroundColor: 'var(--gold)' }} />
                             </div>
                             <span className="text-[10px] tabular-nums" style={{ color: 'var(--text-muted)' }}>{m.progress_pct}%</span>
@@ -1249,12 +1249,12 @@ function ProjectProgrammePage() {
                         {canWrite && (
                           <div className="flex items-center gap-1">
                             <button onClick={() => setEditMilestone(m)}
-                              className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--bg-hover)] transition-colors"
+                              className="text-xs px-2 py-1 rounded-lg"
                               style={{ color: 'var(--text-muted)' }}>
                               Edit
                             </button>
                             <button onClick={() => { if (confirm('Remove this milestone?')) deleteMilestone(m.id); }}
-                              className="text-xs px-2 py-1 rounded-lg hover:bg-[var(--bg-hover)] transition-colors"
+                              className="text-xs px-2 py-1 rounded-lg"
                               style={{ color: '#f87171' }}>
                               ✕
                             </button>

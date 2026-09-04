@@ -161,7 +161,8 @@ export default function ConsultancyServicesPage() {
       {modalOpen && (
         <Modal title={editing ? 'Edit Consultancy Service' : 'New Consultancy Service'} icon={HeartHandshake} onClose={closeModal} busy={saveMutation.isPending}>
           {(close) => (
-            <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
+            <div className="flex flex-col flex-1 min-h-0">
+            <div className="space-y-3 flex-1 min-h-0 overflow-y-auto ss-scrollbar pr-1">
               <div className="space-y-1">
                 <label htmlFor="cs-code" className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Code</label>
                 <Input
@@ -252,8 +253,8 @@ export default function ConsultancyServicesPage() {
                   label="Introductory service (e.g. Quick Consultation)"
                 />
               </div>
-
-              <div className="flex gap-2 pt-2">
+            </div>
+              <div className="flex gap-2 pt-3 flex-shrink-0">
                 <Button variant="secondary" className="flex-1" onClick={close} disabled={saveMutation.isPending}>Cancel</Button>
                 <Button className="flex-1" disabled={saveMutation.isPending} onClick={handleSave}>
                   {saveMutation.isPending ? 'Saving…' : 'Save'}

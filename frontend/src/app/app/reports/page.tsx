@@ -8,6 +8,7 @@ import toast from '@/lib/toast';
 import { BarChart2, TrendingUp, DollarSign, FileText, AlertCircle, Download, ChevronDown, ChevronUp, FileDown, FileSpreadsheet, Loader2 } from 'lucide-react';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import Button from '@/components/ui/Button';
+import DatePicker from '@/components/ui/DatePicker';
 import { staggerDelay } from '@/lib/motion';
 
 // ── Types (mirrors CommercialReportService::build()) ─────────────────────
@@ -139,14 +140,17 @@ function CommercialSummaryReport() {
 
       {period === 'custom' && (
         <div className="flex items-center gap-3">
-          <label className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            From <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)}
-              className="ml-1.5 px-2 py-1 rounded-lg text-xs" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
-          </label>
-          <label className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            To <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)}
-              className="ml-1.5 px-2 py-1 rounded-lg text-xs" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
-          </label>
+          <div className="flex items-center gap-1.5">
+            <label className="text-xs" style={{ color: 'var(--text-muted)' }}>From</label>
+            {/* No cross-field ordering constraint (e.g. minDate={customTo}) — none existed
+                previously (the query below only gates on both being non-empty), and this
+                migration doesn't invent new validation. */}
+            <DatePicker value={customFrom} onChange={setCustomFrom} className="w-40" clearable />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <label className="text-xs" style={{ color: 'var(--text-muted)' }}>To</label>
+            <DatePicker value={customTo} onChange={setCustomTo} className="w-40" clearable />
+          </div>
         </div>
       )}
 

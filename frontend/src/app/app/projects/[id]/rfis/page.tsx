@@ -18,6 +18,7 @@ import { getErrorMessage } from '@/lib/getErrorMessage';
 import EvidenceSection from '@/components/documents/EvidenceSection';
 import DrawingLocationsSection from '@/components/drawings/DrawingLocationsSection';
 import NewRfiModal from '@/components/rfis/NewRfiModal';
+import DatePicker from '@/components/ui/DatePicker';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   open:             { bg: 'rgba(234,179,8,0.12)',  text: '#facc15' },
@@ -89,8 +90,7 @@ function RfiResponseModal({ rfi, projectId, onClose }: { rfi: any; projectId: st
               this can come back. */}
           <div>
             <label className="block text-xs mb-1" style={labelStyle}>Response date</label>
-            <input type="date" value={form.responded_at} onChange={e => setForm(p => ({ ...p, responded_at: e.target.value }))}
-              className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+            <DatePicker value={form.responded_at} onChange={v => setForm(p => ({ ...p, responded_at: v }))} clearable />
           </div>
           <EvidenceSection
             attachmentsUrl={`/rfis/${rfi.id}/attachments`}

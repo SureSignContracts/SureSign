@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { X } from 'lucide-react';
 import Button from '@/components/ui/Button';
+import DatePicker from '@/components/ui/DatePicker';
 import { normalizeApiError } from '@/lib/normalizeApiError';
 import Select from '@/components/ui/Select';
 import { PROJECT_ORGANIZATION_ROLE_OPTIONS } from '@/lib/projectOrganizationRole';
@@ -272,11 +273,11 @@ export default function EditProjectModal({ project, projectId, onClose }: {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label style={labelStyle}>Start Date</label>
-                  <input className={INPUT_CLS} style={inputStyle} type="date" value={form.start_date} onChange={e => set('start_date', e.target.value)} />
+                  <DatePicker value={form.start_date} onChange={v => set('start_date', v)} clearable />
                 </div>
                 <div>
                   <label style={labelStyle}>Completion Date</label>
-                  <input className={INPUT_CLS} style={inputStyle} type="date" value={form.end_date} onChange={e => set('end_date', e.target.value)} />
+                  <DatePicker value={form.end_date} onChange={v => set('end_date', v)} clearable />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">

@@ -15,6 +15,7 @@ import {
 import toast from '@/lib/toast';
 import Link from 'next/link';
 import Select from '@/components/ui/Select';
+import DatePicker from '@/components/ui/DatePicker';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -200,6 +201,9 @@ function Cell({ value, onChange, type = 'text', readOnly = false, placeholder = 
   value: string; onChange?: (v: string) => void; type?: string;
   readOnly?: boolean; placeholder?: string; className?: string;
 }) {
+  if (type === 'date') {
+    return <DatePicker value={value} onChange={v => onChange?.(v)} disabled={readOnly} className={className || undefined} clearable />;
+  }
   return (
     <input
       type={type}
@@ -273,7 +277,7 @@ function MeasuredWorksTable({ rows, onChange, readOnly }: {
       <div className="overflow-x-auto rounded-xl" style={{ border: '1px solid var(--border)' }}>
         <div style={{ minWidth: 900 }}>
           {/* Header */}
-          <div className="grid" style={{ gridTemplateColumns: readOnly ? widths.join(' ') : [...widths, '36px'].join(' '), backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
+          <div className="grid hover:brightness-95 transition-[filter]" style={{ gridTemplateColumns: readOnly ? widths.join(' ') : [...widths, '36px'].join(' '), backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
             {headers.map(h => <div key={h} className="px-2 py-2 text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>{h}</div>)}
             {!readOnly && <div />}
           </div>
@@ -302,7 +306,7 @@ function MeasuredWorksTable({ rows, onChange, readOnly }: {
             </div>
           )}
           {/* Total */}
-          <div className="grid items-center px-0 py-2" style={{ gridTemplateColumns: readOnly ? widths.join(' ') : [...widths, '36px'].join(' '), backgroundColor: 'var(--bg-elevated)', borderTop: '2px solid var(--border)' }}>
+          <div className="grid items-center px-0 py-2 hover:brightness-95 transition-[filter]" style={{ gridTemplateColumns: readOnly ? widths.join(' ') : [...widths, '36px'].join(' '), backgroundColor: 'var(--bg-elevated)', borderTop: '2px solid var(--border)' }}>
             <div />
             <div className="col-span-6 px-2 text-xs font-bold" style={{ color: 'var(--text-primary)' }}>TOTAL MEASURED WORKS</div>
             <div className="px-2 text-sm font-bold tabular-nums" style={{ color: 'var(--gold)' }}>{formatCurrency(total)}</div>
@@ -357,7 +361,7 @@ function VariationsTable({ rows, onChange, readOnly }: {
     <div>
       <div className="overflow-x-auto rounded-xl" style={{ border: '1px solid var(--border)' }}>
         <div style={{ minWidth: 900 }}>
-          <div className="grid" style={{ gridTemplateColumns: readOnly ? widths.join(' ') : [...widths, '36px'].join(' '), backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
+          <div className="grid hover:brightness-95 transition-[filter]" style={{ gridTemplateColumns: readOnly ? widths.join(' ') : [...widths, '36px'].join(' '), backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
             {headers.map(h => <div key={h} className="px-2 py-2 text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>{h}</div>)}
             {!readOnly && <div />}
           </div>
@@ -384,7 +388,7 @@ function VariationsTable({ rows, onChange, readOnly }: {
               No variations yet
             </div>
           )}
-          <div className="grid items-center px-0 py-2" style={{ gridTemplateColumns: readOnly ? widths.join(' ') : [...widths, '36px'].join(' '), backgroundColor: 'var(--bg-elevated)', borderTop: '2px solid var(--border)' }}>
+          <div className="grid items-center px-0 py-2 hover:brightness-95 transition-[filter]" style={{ gridTemplateColumns: readOnly ? widths.join(' ') : [...widths, '36px'].join(' '), backgroundColor: 'var(--bg-elevated)', borderTop: '2px solid var(--border)' }}>
             <div /><div /><div /><div />
             <div className="col-span-2 px-2 text-xs font-bold" style={{ color: 'var(--text-primary)' }}>TOTAL VARIATIONS</div>
             <div className="px-2 text-sm font-bold tabular-nums" style={{ color: 'var(--gold)' }}>{formatCurrency(total)}</div>
@@ -443,7 +447,7 @@ function MaterialsTable({ rows, onChange, readOnly }: {
     <div>
       <div className="overflow-x-auto rounded-xl" style={{ border: '1px solid var(--border)' }}>
         <div style={{ minWidth: 900 }}>
-          <div className="grid" style={{ gridTemplateColumns: readOnly ? widths.join(' ') : [...widths, '36px'].join(' '), backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
+          <div className="grid hover:brightness-95 transition-[filter]" style={{ gridTemplateColumns: readOnly ? widths.join(' ') : [...widths, '36px'].join(' '), backgroundColor: 'var(--bg-elevated)', borderBottom: '1px solid var(--border)' }}>
             {headers.map(h => <div key={h} className="px-2 py-2 text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>{h}</div>)}
             {!readOnly && <div />}
           </div>
@@ -470,7 +474,7 @@ function MaterialsTable({ rows, onChange, readOnly }: {
               No materials on site yet
             </div>
           )}
-          <div className="grid items-center px-0 py-2" style={{ gridTemplateColumns: readOnly ? widths.join(' ') : [...widths, '36px'].join(' '), backgroundColor: 'var(--bg-elevated)', borderTop: '2px solid var(--border)' }}>
+          <div className="grid items-center px-0 py-2 hover:brightness-95 transition-[filter]" style={{ gridTemplateColumns: readOnly ? widths.join(' ') : [...widths, '36px'].join(' '), backgroundColor: 'var(--bg-elevated)', borderTop: '2px solid var(--border)' }}>
             <div /><div /><div /><div />
             <div className="col-span-2 px-2 text-xs font-bold" style={{ color: 'var(--text-primary)' }}>TOTAL MATERIALS ON SITE</div>
             <div className="px-2 text-sm font-bold tabular-nums" style={{ color: 'var(--gold)' }}>{formatCurrency(total)}</div>
@@ -544,7 +548,7 @@ function LinkedVariationsPanel({ appId, projectId, canEdit, onSaved }: {
     return (
       <div className="space-y-2 py-1">
         {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-10 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+          <div key={i} className="h-10 rounded-xl animate-pulse hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)' }} />
         ))}
       </div>
     );
@@ -552,7 +556,7 @@ function LinkedVariationsPanel({ appId, projectId, canEdit, onSaved }: {
 
   if (eligible.length === 0) {
     return (
-      <div className="rounded-xl p-6 text-center" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+      <div className="rounded-xl p-6 text-center hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
         <Link2Off size={20} className="mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No approved variations found</p>
         <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
@@ -568,7 +572,7 @@ function LinkedVariationsPanel({ appId, projectId, canEdit, onSaved }: {
     <div className="space-y-3">
       <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
         {/* Header */}
-        <div className="grid px-3 py-2 text-xs font-medium"
+        <div className="grid px-3 py-2 text-xs font-medium hover:brightness-95 transition-[filter]"
           style={{ gridTemplateColumns: cols, backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>
           <div />
           <div>Var #</div>
@@ -612,7 +616,7 @@ function LinkedVariationsPanel({ appId, projectId, canEdit, onSaved }: {
           );
         })}
         {/* Total */}
-        <div className="grid px-3 py-2.5 items-center"
+        <div className="grid px-3 py-2.5 items-center hover:brightness-95 transition-[filter]"
           style={{ gridTemplateColumns: cols, backgroundColor: 'var(--bg-elevated)', borderTop: '2px solid var(--border)' }}>
           <div /><div />
           <div className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>LINKED VARIATIONS TOTAL</div>
@@ -627,7 +631,7 @@ function LinkedVariationsPanel({ appId, projectId, canEdit, onSaved }: {
             {selected.size} variation{selected.size !== 1 ? 's' : ''} selected — {formatCurrency(linkedTotal)}
           </p>
           <button onClick={() => syncMutation.mutate()} disabled={syncMutation.isPending}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98] hover:brightness-95 transition-[filter]"
             style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: syncMutation.isPending ? 0.6 : 1 }}>
             {syncMutation.isPending ? <Loader2 size={13} className="animate-spin" /> : <Link2 size={13} />}
             {syncMutation.isPending ? 'Saving…' : 'Save Linked Variations'}
@@ -960,7 +964,7 @@ export default function PaymentApplicationDetailPage() {
       <div className="p-6 max-w-7xl mx-auto space-y-5">
         <div className="flex items-start justify-between flex-wrap gap-3">
           <div className="space-y-2">
-            <div className="h-3 w-32 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+            <div className="h-3 w-32 rounded animate-pulse hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)' }} />
             <div className="h-7 w-52 rounded-lg animate-pulse" style={{ backgroundColor: 'var(--bg-surface)' }} />
           </div>
           <div className="flex items-center gap-2">
@@ -971,12 +975,12 @@ export default function PaymentApplicationDetailPage() {
         </div>
         <div className="flex items-center gap-1 rounded-2xl p-2" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-8 w-24 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+            <div key={i} className="h-8 w-24 rounded-xl animate-pulse hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)' }} />
           ))}
         </div>
         <div className="rounded-2xl p-6 space-y-3" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-12 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+            <div key={i} className="h-12 rounded-xl animate-pulse hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)' }} />
           ))}
         </div>
       </div>
@@ -1096,7 +1100,7 @@ export default function PaymentApplicationDetailPage() {
       )}
 
       {/* ─── Tabs ────────────────────────────────────────────────────────────── */}
-      <div className="flex gap-1 p-1 rounded-lg w-fit overflow-x-auto" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+      <div className="flex gap-1 p-1 rounded-lg w-fit overflow-x-auto hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)' }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className="px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap"
@@ -1200,7 +1204,7 @@ export default function PaymentApplicationDetailPage() {
                 Contract scope valuation. Valuation = Contract Value × % Complete.
               </p>
             </div>
-            <div className="px-4 py-2 rounded-xl font-bold text-sm tabular-nums" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--gold)' }}>
+            <div className="px-4 py-2 rounded-xl font-bold text-sm tabular-nums hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--gold)' }}>
               Total: {formatCurrency(mwTotal)}
             </div>
           </div>
@@ -1221,7 +1225,7 @@ export default function PaymentApplicationDetailPage() {
                   Pull approved variations from the Variations register. Values are snapshotted at inclusion — historically accurate even if a variation is later amended.
                 </p>
               </div>
-              <div className="px-4 py-2 rounded-xl font-bold text-sm tabular-nums" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--gold)' }}>
+              <div className="px-4 py-2 rounded-xl font-bold text-sm tabular-nums hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--gold)' }}>
                 Total: {formatCurrency(linkedVarTotal)}
               </div>
             </div>
@@ -1246,7 +1250,7 @@ export default function PaymentApplicationDetailPage() {
                   Free-text variation line items not yet in the register, or partial-completion valuations. Valuation = Variation Value × % Complete.
                 </p>
               </div>
-              <div className="px-4 py-2 rounded-xl font-bold text-sm tabular-nums" style={{ backgroundColor: 'var(--bg-elevated)', color: '#a78bfa' }}>
+              <div className="px-4 py-2 rounded-xl font-bold text-sm tabular-nums hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: '#a78bfa' }}>
                 Total: {formatCurrency(varTotal)}
               </div>
             </div>
@@ -1265,7 +1269,7 @@ export default function PaymentApplicationDetailPage() {
                 Materials purchased or delivered but not yet installed. Valuation = Material Value × % Claimed.
               </p>
             </div>
-            <div className="px-4 py-2 rounded-xl font-bold text-sm tabular-nums" style={{ backgroundColor: 'var(--bg-elevated)', color: '#4ade80' }}>
+            <div className="px-4 py-2 rounded-xl font-bold text-sm tabular-nums hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: '#4ade80' }}>
               Total: {formatCurrency(matTotal)}
             </div>
           </div>
@@ -1280,7 +1284,7 @@ export default function PaymentApplicationDetailPage() {
             <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Generated Documents</h2>
             <div className="flex gap-2">
               <button onClick={() => pdfMutation.mutate()} disabled={pdfMutation.isPending}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium hover:brightness-95 transition-[filter]"
                 style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-secondary)', opacity: pdfMutation.isPending ? 0.6 : 1 }}>
                 <FileText size={13} /> Generate PDF
               </button>
@@ -1318,7 +1322,7 @@ export default function PaymentApplicationDetailPage() {
                       </td>
                       <td className="px-4 py-3">
                         <button onClick={() => downloadDoc(doc)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium hover:brightness-95 transition-[filter]"
                           style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
                           <Download size={12} /> Download
                         </button>
@@ -1480,7 +1484,7 @@ export default function PaymentApplicationDetailPage() {
               <span className="ml-3">→ Amount Due: <strong style={{ color: '#4ade80' }}>{formatCurrency(amountDue)}</strong></span>
             </div>
             <button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98] hover:brightness-95 transition-[filter]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: saveMutation.isPending ? 0.6 : 1 }}>
               {saveMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
               Save

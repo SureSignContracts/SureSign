@@ -24,6 +24,7 @@ import {
 import toast from '@/lib/toast';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import PageTourButton from '@/components/tours/PageTourButton';
+import DatePicker from '@/components/ui/DatePicker';
 import Modal from '@/components/ui/Modal';
 import Select from '@/components/ui/Select';
 
@@ -190,12 +191,12 @@ export default function TradePackageWorkspacePage() {
         </div>
         <div className="flex items-center gap-2 rounded-2xl p-2" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-8 w-24 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+            <div key={i} className="h-8 w-24 rounded-xl animate-pulse hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)' }} />
           ))}
         </div>
         <div className="rounded-2xl p-6 space-y-3" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-14 rounded-xl animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+            <div key={i} className="h-14 rounded-xl animate-pulse hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)' }} />
           ))}
         </div>
       </div>
@@ -688,7 +689,7 @@ function MilestoneModal({ projectId, tradePackageId, onClose }: { projectId: str
             </div>
             <div>
               <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-muted)' }}>Planned Date</label>
-              <input type="date" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} value={form.planned_date} onChange={e => setForm({ ...form, planned_date: e.target.value })} />
+              <DatePicker value={form.planned_date} onChange={v => setForm({ ...form, planned_date: v })} clearable />
             </div>
             <div>
               <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-muted)' }}>Notes</label>
@@ -697,7 +698,7 @@ function MilestoneModal({ projectId, tradePackageId, onClose }: { projectId: str
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button onClick={close} disabled={mutation.isPending} className="px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-50" style={{ color: 'var(--text-secondary)' }}>Cancel</button>
-            <button onClick={() => mutation.mutate()} disabled={!form.name || mutation.isPending} className="px-4 py-2 rounded-lg text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+            <button onClick={() => mutation.mutate()} disabled={!form.name || mutation.isPending} className="px-4 py-2 rounded-lg text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
               {mutation.isPending ? 'Saving…' : 'Add Milestone'}
             </button>
           </div>
@@ -731,7 +732,7 @@ function ProgrammeTab({ projectId, tradePackageId, canWrite }: { projectId: stri
     <div className="space-y-4">
       {canWrite && (
         <div className="flex justify-end">
-          <button onClick={() => setShowAdd(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+          <button onClick={() => setShowAdd(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
             <Plus size={15} /> Add Milestone
           </button>
         </div>
@@ -874,7 +875,7 @@ function DocumentsTab({ projectId, packageId, onNavigateSource }: {
         <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Standard Folders</h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {STANDARD_FOLDERS.map(f => (
-            <div key={f} className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
+            <div key={f} className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
               <FileStack size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
               {f}
             </div>
@@ -894,7 +895,7 @@ function DocumentsTab({ projectId, packageId, onNavigateSource }: {
         ) : (
           <div className="space-y-2">
             {files.map((f: any) => (
-              <div key={f.id} className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+              <div key={f.id} className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
                 <div className="flex items-center gap-3 min-w-0">
                   <FileText size={15} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
                   <div className="min-w-0">
@@ -924,7 +925,7 @@ function DocumentsTab({ projectId, packageId, onNavigateSource }: {
         ) : (
           <div className="space-y-2">
             {generatedDocuments.map((d: any) => (
-              <div key={d.id} className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+              <div key={d.id} className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
                 <div className="flex items-center gap-3 min-w-0">
                   <FileText size={15} style={{ color: 'var(--gold)', flexShrink: 0 }} />
                   <div className="min-w-0">
@@ -1057,7 +1058,7 @@ function AiAnalysisTab({ pkg, onStartNew }: { pkg: TradePackage; onStartNew: () 
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{analyses.length} analysis run{analyses.length !== 1 ? 's' : ''} for this trade package.</p>
-        <button onClick={onStartNew} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+        <button onClick={onStartNew} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
           <Sparkles size={14} /> New Analysis
         </button>
       </div>
@@ -1075,7 +1076,7 @@ function AiAnalysisTab({ pkg, onStartNew }: { pkg: TradePackage; onStartNew: () 
             <div key={a.id} className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
               <button
                 onClick={() => setExpanded(expanded === a.id ? null : a.id)}
-                className="w-full flex items-center justify-between px-4 py-3 text-left"
+                className="w-full flex items-center justify-between px-4 py-3 text-left hover:brightness-95 transition-[filter]"
                 style={{ backgroundColor: 'var(--bg-elevated)' }}
               >
                 <div className="flex items-center gap-3">
@@ -1111,7 +1112,7 @@ function AiAnalysisTab({ pkg, onStartNew }: { pkg: TradePackage; onStartNew: () 
                   {a.confirmed_data_json && (
                     <div>
                       <p className="text-xs font-semibold mb-1" style={{ color: 'var(--text-muted)' }}>Confirmed Data Summary</p>
-                      <pre className="text-xs p-3 rounded-lg overflow-x-auto" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
+                      <pre className="text-xs p-3 rounded-lg overflow-x-auto hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
                         {JSON.stringify(a.confirmed_data_json, null, 2).slice(0, 800)}
                       </pre>
                     </div>
@@ -1163,7 +1164,7 @@ function ActivityTab({ projectId, packageId, onNavigateSource }: {
         <ul className="space-y-3">
           {items.map((item: any) => (
             <li key={item.id} className="flex items-start gap-3 pb-3" style={{ borderBottom: '1px solid var(--border)' }}>
-              <div className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" style={{ backgroundColor: 'var(--gold)' }} />
+              <div className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--gold)' }} />
               <div className="min-w-0 flex-1">
                 <p className="text-sm" style={{ color: 'var(--text-primary)' }}>{item.description}</p>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
@@ -1215,7 +1216,15 @@ function PkgField({ label, value, onChange, type = 'text' }: {
   return (
     <div>
       <label className="block text-xs mb-1" style={LABEL_STYLE}>{label}</label>
-      <input type={type} value={value} onChange={e => onChange(e.target.value)} className={FIELD_CLS} style={FIELD_STYLE} />
+      {type === 'date' ? (
+        // These six lifecycle dates look sequential (LOI -> Award -> Execution ->
+        // Commencement -> Completion -> Defects Liability End), but no client-side
+        // ordering was ever enforced here — deliberately not inventing one now;
+        // only the widget changes.
+        <DatePicker value={value} onChange={onChange} clearable />
+      ) : (
+        <input type={type} value={value} onChange={e => onChange(e.target.value)} className={FIELD_CLS} style={FIELD_STYLE} />
+      )}
     </div>
   );
 }
@@ -1307,14 +1316,15 @@ function EditPackageModal({ projectId, pkg, onClose }: { projectId: string; pkg:
       onClick={e => { if (e.target === e.currentTarget) close(); }}
     >
       <div
-        className={cn('w-full max-w-3xl rounded-2xl max-h-[90vh] overflow-y-auto', closing ? 'ss-modal-panel-out' : 'ss-modal-panel-in')}
+        className={cn('w-full max-w-3xl max-h-[90vh] rounded-2xl overflow-hidden flex flex-col', closing ? 'ss-modal-panel-out' : 'ss-modal-panel-in')}
         style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}
       >
-        <div className="flex items-center justify-between p-5 sticky top-0" style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-surface)' }}>
+        <div className="flex items-center justify-between p-5 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
           <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Edit Trade Package</h2>
           <button onClick={close}><X size={18} style={{ color: 'var(--text-muted)' }} /></button>
         </div>
-        <form onSubmit={e => { e.preventDefault(); mutate(); }} className="p-5 space-y-6">
+        <form onSubmit={e => { e.preventDefault(); mutate(); }} className="flex flex-col flex-1 min-h-0">
+        <div className="p-5 space-y-6 flex-1 min-h-0 overflow-y-auto ss-scrollbar">
           {/* Package */}
           <section className="space-y-3">
             <h3 className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Package</h3>
@@ -1393,13 +1403,13 @@ function EditPackageModal({ projectId, pkg, onClose }: { projectId: string; pkg:
               <PkgField label="Pay Less Notice offset (days before final date)" type="number" value={form.pay_less_notice_offset_days} onChange={v => set('pay_less_notice_offset_days', v)} />
             </div>
           </section>
-
-          <div className="flex items-center justify-end gap-2 pt-2">
+        </div>
+        <div className="flex items-center justify-end gap-2 p-5 pt-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
             <button type="button" onClick={close} disabled={isPending} className="text-sm px-4 py-2 rounded-xl transition-opacity hover:opacity-80 disabled:opacity-50" style={{ color: 'var(--text-muted)' }}>Cancel</button>
-            <button type="submit" disabled={isPending} className="flex items-center gap-1.5 text-sm px-4 py-2 rounded-xl transition-all active:scale-[0.98] disabled:opacity-50" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+            <button type="submit" disabled={isPending} className="flex items-center gap-1.5 text-sm px-4 py-2 rounded-xl transition-all active:scale-[0.98] disabled:opacity-50 hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
               {isPending && <Loader2 size={14} className="animate-spin" />} Save Changes
             </button>
-          </div>
+        </div>
         </form>
       </div>
     </div>

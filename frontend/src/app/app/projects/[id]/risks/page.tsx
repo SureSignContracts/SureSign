@@ -12,6 +12,7 @@ import { getErrorMessage, INPUT_STYLE, CATEGORY_LABELS, SeverityBadge, StatusBad
 import PageTourButton from '@/components/tours/PageTourButton';
 import { ProjectModuleHeader, ProjectModuleMetric } from '@/components/projects/ProjectModuleHeader';
 import Select from '@/components/ui/Select';
+import DatePicker from '@/components/ui/DatePicker';
 
 type Risk = {
   id: number;
@@ -143,7 +144,7 @@ function RiskRegisterPage() {
               </td></tr>
             )}
             {filtered.map((risk, index) => (
-              <tr key={risk.id} className="ss-animate-in hover:bg-[var(--bg-hover)] transition-colors" style={{ borderBottom: '1px solid var(--border)', animationDelay: `${Math.min(index * 45, 360)}ms` }}>
+              <tr key={risk.id} className="ss-animate-in" style={{ borderBottom: '1px solid var(--border)', animationDelay: `${Math.min(index * 45, 360)}ms` }}>
                 <td className="px-3 py-2.5">
                   <button
                     onClick={() => risk.action_url && router.push(risk.action_url)}
@@ -253,12 +254,12 @@ function CreateRiskModal({ projectId, invalidateKey, onClose }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-      <div className="ss-animate-in w-full max-w-lg rounded-xl p-6 max-h-[90vh] overflow-y-auto" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
-        <div className="flex items-center justify-between mb-4">
+      <div className="ss-animate-in w-full max-w-lg max-h-[90vh] rounded-xl overflow-hidden flex flex-col" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
+        <div className="flex items-center justify-between p-6 pb-4 flex-shrink-0">
           <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Add risk</h2>
           <button onClick={onClose}><X size={18} style={{ color: 'var(--text-muted)' }} /></button>
         </div>
-        <div className="space-y-3">
+        <div className="px-6 pb-6 space-y-3 flex-1 min-h-0 overflow-y-auto ss-scrollbar">
           <div className="grid grid-cols-2 gap-3">
             <Field label="Applies to" required>
               <Select className="w-full"
@@ -327,8 +328,7 @@ function CreateRiskModal({ projectId, invalidateKey, onClose }: {
                 value={form.risk_owner} onChange={e => setForm(f => ({ ...f, risk_owner: e.target.value }))} />
             </Field>
             <Field label="Review date">
-              <input type="date" className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE}
-                value={form.review_date} onChange={e => setForm(f => ({ ...f, review_date: e.target.value }))} />
+              <DatePicker value={form.review_date} onChange={v => setForm(f => ({ ...f, review_date: v }))} clearable />
             </Field>
           </div>
           <Field label="Mitigation">
@@ -340,12 +340,12 @@ function CreateRiskModal({ projectId, invalidateKey, onClose }: {
               value={form.recommended_action} onChange={e => setForm(f => ({ ...f, recommended_action: e.target.value }))} />
           </Field>
         </div>
-        <div className="flex justify-end gap-2 mt-5">
+        <div className="flex justify-end gap-2 p-6 pt-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
           <button onClick={onClose} className="px-3 py-1.5 rounded-lg text-sm transition-all active:scale-[0.98]" style={{ color: 'var(--text-secondary)' }}>Cancel</button>
           <button
             onClick={() => mutation.mutate()}
             disabled={!form.title || !parentId || mutation.isPending}
-            className="px-3 py-1.5 rounded-lg text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50"
+            className="px-3 py-1.5 rounded-lg text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 hover:brightness-95 transition-[filter]"
             style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
           >
             {mutation.isPending ? 'Saving…' : 'Add risk'}

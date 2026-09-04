@@ -38,6 +38,7 @@ import { ProjectModuleHeader } from '@/components/projects/ProjectModuleHeader';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
+import DatePicker from '@/components/ui/DatePicker';
 import ContractAnalysisReview from '@/components/ai/ContractAnalysisReview';
 import { useAiAnalysisPolling } from '@/hooks/useAiAnalysisPolling';
 
@@ -205,12 +206,13 @@ function EditContractModal({ contract, projectId, onClose }: { contract: Project
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-2xl rounded-2xl ss-animate-in shadow-[var(--shadow-pop)] max-h-[90vh] overflow-y-auto" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
-        <div className="flex items-center justify-between p-5" style={{ borderBottom: '1px solid var(--border)' }}>
+      <div className="w-full max-w-2xl max-h-[90vh] rounded-2xl ss-animate-in shadow-[var(--shadow-pop)] overflow-hidden flex flex-col" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+        <div className="flex items-center justify-between p-5 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
           <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Edit Contract</h2>
           <button onClick={onClose}><X size={18} style={{ color: 'var(--text-muted)' }} /></button>
         </div>
-        <form onSubmit={e => { e.preventDefault(); mutate({ ...form, status }); }} className="p-5 space-y-4">
+        <form onSubmit={e => { e.preventDefault(); mutate({ ...form, status }); }} className="flex flex-col flex-1 min-h-0">
+        <div className="p-5 space-y-4 flex-1 min-h-0 overflow-y-auto ss-scrollbar">
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <InputField label="Title" name="title" value={form.title} onChange={handleChange} required />
@@ -264,12 +266,13 @@ function EditContractModal({ contract, projectId, onClose }: { contract: Project
               className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none"
               style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
           </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
-            <button type="submit" disabled={isPending} className="px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: isPending ? 0.7 : 1 }}>
+        </div>
+        <div className="flex justify-end gap-3 p-5 pt-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
+            <button type="submit" disabled={isPending} className="px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98] hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: isPending ? 0.7 : 1 }}>
               {isPending ? 'Saving…' : 'Save Changes'}
             </button>
-          </div>
+        </div>
         </form>
       </div>
     </div>
@@ -308,6 +311,27 @@ function InputField({ label, name, type = 'text', required = false, value, onCha
           <option value="">Select…</option>
           {options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
         </Select>
+      </div>
+    );
+  }
+  if (type === 'date') {
+    return (
+      <div>
+        <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{label}{required && ' *'}</label>
+        {/* DatePicker's onChange is `(value: string) => void`, not a real
+            DOM event — synthesized into the same `.target.name`/`.value`
+            shape `handleChange` already reads, mirroring the `Select`
+            bridge above. This ONLY replaces the widget for Contract dates
+            (execution/commencement/completion) — it never recomputes a
+            contract date, changes AI-confirmed values, or touches
+            `confirmed_data_json`/autofill mapping (see CLAUDE.md's
+            Contract AI Workflow section). */}
+        <DatePicker
+          value={value}
+          onChange={v => onChange({ target: { name, value: v } } as unknown as FormChangeEvent)}
+          required={required}
+          clearable={!required}
+        />
       </div>
     );
   }
@@ -778,7 +802,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated, onAnalysi
               <button
                 type="button"
                 onClick={() => { setPath('new'); setStep('upload'); }}
-                className="w-full text-left rounded-xl p-4 transition-colors hover:border-[var(--gold)]"
+                className="w-full text-left rounded-xl p-4 transition-colors hover:border-[var(--gold)] hover:brightness-95 transition-[filter]"
                 style={{ backgroundColor: 'var(--bg-elevated)', border: '1.5px solid var(--border)' }}
               >
                 <div className="flex items-start gap-3">
@@ -802,7 +826,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated, onAnalysi
               <button
                 type="button"
                 onClick={() => { setPath('existing'); setStep('select'); }}
-                className="w-full text-left rounded-xl p-4 transition-colors hover:border-[var(--gold)]"
+                className="w-full text-left rounded-xl p-4 transition-colors hover:border-[var(--gold)] hover:brightness-95 transition-[filter]"
                 style={{ backgroundColor: 'var(--bg-elevated)', border: '1.5px solid var(--border)' }}
               >
                 <div className="flex items-start gap-3">
@@ -850,7 +874,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated, onAnalysi
                   <button
                     type="button"
                     onClick={() => { setPath('new'); setStep('upload'); }}
-                    className="mt-1 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]"
+                    className="mt-1 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98] hover:brightness-95 transition-[filter]"
                     style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
                   >
                     <Upload size={14} />
@@ -862,7 +886,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated, onAnalysi
                   {completedAnalyses.map((a: any) => (
                     <div
                       key={a.id}
-                      className="rounded-xl p-4"
+                      className="rounded-xl p-4 hover:brightness-95 transition-[filter]"
                       style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -896,7 +920,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated, onAnalysi
                           <button
                             type="button"
                             onClick={() => handleSelectSaved(a)}
-                            className="text-xs px-2.5 py-1.5 rounded-lg font-medium active:scale-[0.98]"
+                            className="text-xs px-2.5 py-1.5 rounded-lg font-medium active:scale-[0.98] hover:brightness-95 transition-[filter]"
                             style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
                           >
                             Use This Analysis
@@ -1007,7 +1031,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated, onAnalysi
                     {stubPriorAnalyses.map((a: any) => (
                       <div
                         key={a.id}
-                        className="flex items-center justify-between gap-3 rounded-xl px-4 py-3"
+                        className="flex items-center justify-between gap-3 rounded-xl px-4 py-3 hover:brightness-95 transition-[filter]"
                         style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}
                       >
                         <div className="flex-1 min-w-0">
@@ -1028,7 +1052,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated, onAnalysi
                         </div>
                         <button
                           onClick={() => { setAnalysis(a); setAnalysisId(a.id); setStubPriorAnalyses([]); }}
-                          className="flex-shrink-0 text-xs px-3 py-1.5 rounded-lg font-medium"
+                          className="flex-shrink-0 text-xs px-3 py-1.5 rounded-lg font-medium hover:brightness-95 transition-[filter]"
                           style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
                         >
                           View This Analysis
@@ -1072,7 +1096,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated, onAnalysi
                   <p className="text-xs text-center max-w-sm" style={{ color: 'var(--text-muted)' }}>
                     {analysis.error_message ?? 'An unexpected error occurred.'}
                   </p>
-                  <button onClick={handleContinueManually} className="mt-1 px-4 py-2 rounded-lg text-sm font-medium" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
+                  <button onClick={handleContinueManually} className="mt-1 px-4 py-2 rounded-lg text-sm font-medium hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
                     Continue Manually
                   </button>
                 </div>
@@ -1347,22 +1371,22 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated, onAnalysi
         <div className="flex items-center justify-between p-5 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
           {/* Left: back or cancel */}
           {step === 'choice' && (
-            <button type="button" onClick={() => { store.clear(); onClose(); }} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
+            <button type="button" onClick={() => { store.clear(); onClose(); }} className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
               Cancel
             </button>
           )}
           {step === 'upload' && (
-            <button type="button" onClick={() => setStep('choice')} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
+            <button type="button" onClick={() => setStep('choice')} className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
               ← Back
             </button>
           )}
           {step === 'select' && (
-            <button type="button" onClick={() => setStep('choice')} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
+            <button type="button" onClick={() => setStep('choice')} className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
               ← Back
             </button>
           )}
           {step === 'analysing' && (
-            <button type="button" onClick={handleCancelAnalysis} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
+            <button type="button" onClick={handleCancelAnalysis} className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
               Cancel
             </button>
           )}
@@ -1370,14 +1394,14 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated, onAnalysi
             <button
               type="button"
               onClick={() => path === 'existing' ? setStep('select') : setStep('upload')}
-              className="px-4 py-2 rounded-lg text-sm"
+              className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]"
               style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}
             >
               ← Back
             </button>
           )}
           {step === 'form' && (
-            <button type="button" onClick={() => setStep('reviewing')} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
+            <button type="button" onClick={() => setStep('reviewing')} className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
               ← Back
             </button>
           )}
@@ -1403,7 +1427,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated, onAnalysi
           )}
 
           {step === 'analysing' && (
-            <button disabled className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium opacity-60" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+            <button disabled className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium opacity-60 hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
               Analysing…
             </button>
           )}
@@ -1413,14 +1437,14 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated, onAnalysi
           {step === 'reviewing' && activeResult && (analysis?.status !== 'failed') && (
             <div className="flex items-center gap-2">
               {path === 'new' && (
-                <button type="button" onClick={handleContinueManually} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
+                <button type="button" onClick={handleContinueManually} className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
                   Skip: Enter Manually
                 </button>
               )}
               <button
                 type="button"
                 onClick={handleConfirmAnalysis}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98] hover:brightness-95 transition-[filter]"
                 style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
               >
                 <CheckCircle size={14} />
@@ -1440,7 +1464,7 @@ function AiContractWizard({ projectId, aiAnalyses, onClose, onCreated, onAnalysi
               // Standard: application/state validation is authoritative for
               // every dropdown, native browser validation is never relied on).
               disabled={saveMutation.isPending || !form.type}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98] hover:brightness-95 transition-[filter]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: (saveMutation.isPending || !form.type) ? 0.7 : 1 }}
             >
               {saveMutation.isPending ? 'Creating…' : 'Create Contract'}
@@ -1510,12 +1534,12 @@ function AttachFileModal({ contract, projectId, onClose }: { contract: ProjectCo
           )}
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Accepted: PDF, DOC, DOCX, TXT. Max 50 MB.</p>
           <div className="flex justify-end gap-3 pt-1">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
             <button
               type="button"
               disabled={!file || isPending}
               onClick={() => mutate()}
-              className="px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]"
+              className="px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98] hover:brightness-95 transition-[filter]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: (!file || isPending) ? 0.5 : 1 }}
             >
               {isPending ? 'Attaching…' : 'Attach File'}
@@ -1561,7 +1585,7 @@ function SubcontractFilesModal({ projectId, packageId, packageName, onClose }: {
             ) : (
               <div className="space-y-2">
                 {files.map((f: any) => (
-                  <div key={f.id} className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+                  <div key={f.id} className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
                     <div className="flex items-center gap-3 min-w-0">
                       <FileText size={15} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
                       <div className="min-w-0">
@@ -1641,12 +1665,13 @@ function NewContractModal({ projectId, onClose }: { projectId: string; onClose: 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-2xl rounded-2xl ss-animate-in shadow-[var(--shadow-pop)] max-h-[90vh] overflow-y-auto" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
-        <div className="flex items-center justify-between p-5" style={{ borderBottom: '1px solid var(--border)' }}>
+      <div className="w-full max-w-2xl max-h-[90vh] rounded-2xl ss-animate-in shadow-[var(--shadow-pop)] overflow-hidden flex flex-col" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+        <div className="flex items-center justify-between p-5 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
           <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>New Contract</h2>
           <button onClick={onClose}><X size={18} style={{ color: 'var(--text-muted)' }} /></button>
         </div>
-        <form onSubmit={e => { e.preventDefault(); mutate(form); }} className="p-5 space-y-4">
+        <form onSubmit={e => { e.preventDefault(); mutate(form); }} className="flex flex-col flex-1 min-h-0">
+        <div className="p-5 space-y-4 flex-1 min-h-0 overflow-y-auto ss-scrollbar">
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <InputField label="Title" name="title" value={form.title} onChange={handleChange} required />
@@ -1716,12 +1741,13 @@ function NewContractModal({ projectId, onClose }: { projectId: string; onClose: 
             </p>
           </div>
 
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
-            <button type="submit" disabled={isPending || !contractFile} className="px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: (isPending || !contractFile) ? 0.5 : 1 }}>
+        </div>
+        <div className="flex justify-end gap-3 p-5 pt-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
+            <button type="submit" disabled={isPending || !contractFile} className="px-4 py-2 rounded-lg text-sm font-medium active:scale-[0.98] hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: (isPending || !contractFile) ? 0.5 : 1 }}>
               {isPending ? 'Creating…' : 'Create Contract'}
             </button>
-          </div>
+        </div>
         </form>
       </div>
     </div>
@@ -1776,7 +1802,7 @@ function DeleteContractModal({ contract, onClose }: { contract: ProjectContract;
             onChange={e => setTyped(e.target.value)}
             placeholder="DELETE"
             autoFocus
-            className="w-full px-3 py-2 rounded-lg text-sm outline-none font-mono"
+            className="w-full px-3 py-2 rounded-lg text-sm outline-none font-mono hover:brightness-95 transition-[filter]"
             style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
           />
         </div>
@@ -1843,7 +1869,7 @@ function ArchiveContractModal({ contract, onClose }: { contract: ProjectContract
           <button
             onClick={() => doArchive()}
             disabled={isPending}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-40 active:scale-[0.98]"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-40 active:scale-[0.98] hover:brightness-95 transition-[filter]"
             style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
           >
             {isPending ? <Loader2 size={13} className="animate-spin" /> : <Archive size={13} />}
@@ -2011,11 +2037,11 @@ function ProjectContractsPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search contracts…"
-            className="w-full rounded-xl py-2.5 pl-9 pr-4 text-sm outline-none transition-shadow duration-200 focus:ring-2 focus:ring-[var(--gold)]/20"
+            className="w-full rounded-xl py-2.5 pl-9 pr-4 text-sm outline-none transition-shadow duration-200 focus:ring-2 focus:ring-[var(--gold)]/20 hover:brightness-95 transition-[filter]"
             style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-primary)' }}
           />
         </div>
-        <div className="flex gap-1 rounded-xl p-1" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+        <div className="flex gap-1 rounded-xl p-1 hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)' }}>
           {(['active', 'archived'] as const).map(f => (
             <button
               key={f}
@@ -2067,7 +2093,7 @@ function ProjectContractsPage() {
                 const primaryFile = c.file_uploads?.[0] ?? null;
                 const hasFile = !!primaryFile;
                 return (
-                  <tr key={c.id} className="ss-animate-in hover:bg-[var(--bg-hover)] transition-colors" style={{ borderBottom: '1px solid var(--border)', animationDelay: `${Math.min(index * 45, 360)}ms` }}>
+                  <tr key={c.id} className="ss-animate-in" style={{ borderBottom: '1px solid var(--border)', animationDelay: `${Math.min(index * 45, 360)}ms` }}>
                     <td className="px-5 py-3 font-mono text-[11px] font-semibold" style={{ color: 'var(--gold)' }}>{c.reference_number ?? `#${c.id}`}</td>
                     <td className="px-5 py-3 font-medium" style={{ color: 'var(--text-primary)' }}>
                       <div>{c.title}</div>
@@ -2232,7 +2258,7 @@ function ProjectContractsPage() {
           {canWrite && (
             <button
               onClick={() => setShowCreatePackageModal(true)}
-              className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 hover:-translate-y-px active:translate-y-0"
+              className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 hover:-translate-y-px active:translate-y-0 hover:brightness-95 transition-[filter]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
             >
               <Plus size={15} />
@@ -2242,7 +2268,7 @@ function ProjectContractsPage() {
         </div>
 
         {tradePackages.length === 0 ? (
-          <div className="border-t p-12 text-center" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-elevated)' }}>
+          <div className="border-t p-12 text-center hover:brightness-95 transition-[filter]" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-elevated)' }}>
             <FileSignature size={32} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No trade packages created yet</p>
             {canWrite && (
@@ -2263,7 +2289,7 @@ function ProjectContractsPage() {
               </thead>
               <tbody style={{ backgroundColor: 'var(--bg-surface)' }}>
                 {tradePackages.map((pkg, index) => (
-                  <tr key={pkg.id} className="ss-animate-in hover:bg-[var(--bg-hover)] transition-colors" style={{ borderBottom: '1px solid var(--border)', animationDelay: `${Math.min(index * 45, 360)}ms` }}>
+                  <tr key={pkg.id} className="ss-animate-in" style={{ borderBottom: '1px solid var(--border)', animationDelay: `${Math.min(index * 45, 360)}ms` }}>
                     <td className="px-5 py-3 font-medium" style={{ color: 'var(--text-primary)' }}>
                       <Link href={`/app/projects/${id}/subcontracts/${pkg.id}`} className="hover:underline">{pkg.name}</Link>
                     </td>
@@ -2362,7 +2388,7 @@ function ProjectContractsPage() {
                   const canView = a.status === 'completed' || a.status === 'confirmed';
                   const contractForRow = data?.data?.find((c: ProjectContract) => c.id === a.contract_id);
                   return (
-                    <tr key={a.id} className="ss-animate-in hover:bg-[var(--bg-hover)] transition-colors" style={{ borderBottom: '1px solid var(--border)', animationDelay: `${Math.min(index * 45, 360)}ms` }}>
+                    <tr key={a.id} className="ss-animate-in" style={{ borderBottom: '1px solid var(--border)', animationDelay: `${Math.min(index * 45, 360)}ms` }}>
                       <td className="px-5 py-3 text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
                         {a.created_at ? formatDate(a.created_at) : '—'}
                       </td>
@@ -2548,7 +2574,7 @@ function ProjectContractsPage() {
                 <Link
                   href={`/app/projects/${id}/subcontracts/${postCreatePackages[0].id}`}
                   onClick={() => setPostCreatePackages(null)}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-opacity hover:opacity-90"
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-opacity hover:opacity-90 hover:brightness-95 transition-[filter]"
                   style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
                 >
                   <ArrowRight size={16} />
@@ -2557,7 +2583,7 @@ function ProjectContractsPage() {
               ) : (
                 <button
                   onClick={() => setPostCreatePackages(null)}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-left transition-opacity hover:opacity-90"
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-left transition-opacity hover:opacity-90 hover:brightness-95 transition-[filter]"
                   style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
                 >
                   <ArrowRight size={16} />

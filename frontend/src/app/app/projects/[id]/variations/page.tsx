@@ -22,6 +22,7 @@ import { ProjectModuleHeader } from '@/components/projects/ProjectModuleHeader';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
 import Checkbox from '@/components/ui/Checkbox';
+import DatePicker from '@/components/ui/DatePicker';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import DrawingLocationsSection from '@/components/drawings/DrawingLocationsSection';
 
@@ -186,12 +187,13 @@ function NewVariationModal({ projectId, onClose }: { projectId: string; onClose:
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="ss-animate-in w-full max-w-xl rounded-2xl max-h-[92vh] overflow-y-auto" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
-        <div className="flex items-center justify-between p-5" style={{ borderBottom: '1px solid var(--border)' }}>
+      <div className="ss-animate-in w-full max-w-xl max-h-[92vh] rounded-2xl overflow-hidden flex flex-col" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
+        <div className="flex items-center justify-between p-5 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
           <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>New variation</h2>
           <button onClick={onClose}><X size={18} style={{ color: 'var(--text-muted)' }} /></button>
         </div>
-        <form onSubmit={e => { e.preventDefault(); mutate(form); }} className="p-5 space-y-5">
+        <form onSubmit={e => { e.preventDefault(); mutate(form); }} className="flex flex-col flex-1 min-h-0">
+        <div className="p-5 space-y-5 flex-1 min-h-0 overflow-y-auto ss-scrollbar">
 
           <div className="space-y-3">
             <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Details</p>
@@ -225,8 +227,7 @@ function NewVariationModal({ projectId, onClose }: { projectId: string; onClose:
               </div>
               <div>
                 <label className="block text-xs mb-1" style={labelStyle}>Variation Date</label>
-                <input type="date" value={form.variation_date} onChange={e => set('variation_date', e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+                <DatePicker value={form.variation_date} onChange={v => set('variation_date', v)} clearable />
               </div>
             </div>
           </div>
@@ -263,15 +264,16 @@ function NewVariationModal({ projectId, onClose }: { projectId: string; onClose:
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm"
+        </div>
+        <div className="flex justify-end gap-3 p-5 pt-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]"
               style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
             <button type="submit" disabled={isPending || !form.contract_id}
-              className="px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.98]"
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.98] hover:brightness-95 transition-[filter]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: (isPending || !form.contract_id) ? 0.7 : 1 }}>
               {isPending ? 'Creating…' : 'Create Variation'}
             </button>
-          </div>
+        </div>
         </form>
       </div>
     </div>
@@ -321,8 +323,8 @@ function EditVariationModal({ variation, projectId, onClose }: { variation: any;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="ss-animate-in w-full max-w-xl rounded-2xl max-h-[92vh] overflow-y-auto" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
-        <div className="flex items-center justify-between p-5" style={{ borderBottom: '1px solid var(--border)' }}>
+      <div className="ss-animate-in w-full max-w-xl max-h-[92vh] rounded-2xl overflow-hidden flex flex-col" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
+        <div className="flex items-center justify-between p-5 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
           <div>
             <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
               Edit Variation #{variation.variation_number}
@@ -335,7 +337,8 @@ function EditVariationModal({ variation, projectId, onClose }: { variation: any;
           </div>
           <button onClick={onClose}><X size={18} style={{ color: 'var(--text-muted)' }} /></button>
         </div>
-        <form onSubmit={e => { e.preventDefault(); mutate(form); }} className="p-5 space-y-5">
+        <form onSubmit={e => { e.preventDefault(); mutate(form); }} className="flex flex-col flex-1 min-h-0">
+        <div className="p-5 space-y-5 flex-1 min-h-0 overflow-y-auto ss-scrollbar">
 
           <div className="space-y-3">
             <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Details</p>
@@ -359,8 +362,7 @@ function EditVariationModal({ variation, projectId, onClose }: { variation: any;
               </div>
               <div>
                 <label className="block text-xs mb-1" style={labelStyle}>Variation Date</label>
-                <input type="date" value={form.variation_date} onChange={e => set('variation_date', e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+                <DatePicker value={form.variation_date} onChange={v => set('variation_date', v)} clearable />
               </div>
               <div>
                 <label className="block text-xs mb-1" style={labelStyle}>Instruction Method</label>
@@ -401,8 +403,7 @@ function EditVariationModal({ variation, projectId, onClose }: { variation: any;
               </div>
               <div>
                 <label className="block text-xs mb-1" style={labelStyle}>Quotation Submitted</label>
-                <input type="date" value={form.quotation_submitted_at} onChange={e => set('quotation_submitted_at', e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+                <DatePicker value={form.quotation_submitted_at} onChange={v => set('quotation_submitted_at', v)} clearable />
               </div>
             </div>
             <Checkbox
@@ -414,16 +415,16 @@ function EditVariationModal({ variation, projectId, onClose }: { variation: any;
           </div>
 
           <DrawingLocationsSection projectId={projectId} type="variation" recordId={variation.id} />
-
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm"
+        </div>
+        <div className="flex justify-end gap-3 p-5 pt-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]"
               style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
             <button type="submit" disabled={isPending}
-              className="px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.98]"
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.98] hover:brightness-95 transition-[filter]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: isPending ? 0.7 : 1 }}>
               {isPending ? 'Saving…' : 'Save Changes'}
             </button>
-          </div>
+        </div>
         </form>
       </div>
     </div>
@@ -554,7 +555,7 @@ function WorkflowActionModal({
           )}
 
           <div className="flex justify-end gap-3 pt-1">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm"
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]"
               style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
             <button type="submit" disabled={isPending}
               className="px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.98]"
@@ -785,7 +786,7 @@ function CommercialSummary({
           <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Change position</p>
           <p className="mt-0.5 text-xs" style={{ color: 'var(--text-muted)' }}>Value and workflow exposure across every variation.</p>
         </div>
-        <span className="rounded-lg px-2.5 py-1 text-xs font-semibold" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>{allVariations.length} live records</span>
+        <span className="rounded-lg px-2.5 py-1 text-xs font-semibold hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>{allVariations.length} live records</span>
       </div>
 
       <div className="grid lg:grid-cols-[0.75fr_1.25fr]">
@@ -914,10 +915,10 @@ function ProjectVariationsPage() {
         <div className="relative min-w-[220px] flex-1">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search variations…"
-            className="w-full rounded-xl py-2.5 pl-9 pr-4 text-sm outline-none transition-shadow duration-200 focus:ring-2 focus:ring-[var(--gold)]/20"
+            className="w-full rounded-xl py-2.5 pl-9 pr-4 text-sm outline-none transition-shadow duration-200 focus:ring-2 focus:ring-[var(--gold)]/20 hover:brightness-95 transition-[filter]"
             style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-primary)' }} />
         </div>
-        <div className="flex flex-wrap gap-1 rounded-xl p-1" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+        <div className="flex flex-wrap gap-1 rounded-xl p-1 hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)' }}>
           <button onClick={() => setStatusFilter('all')}
             className="rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-200 hover:-translate-y-px active:translate-y-0"
             style={statusFilter === 'all' ? { backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', boxShadow: '0 5px 14px rgba(0,0,0,0.08)' } : { color: 'var(--text-secondary)' }}>
@@ -950,7 +951,7 @@ function ProjectVariationsPage() {
                 <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
                   {[...Array(TABLE_COLS)].map((_, j) => (
                     <td key={j} className="px-4 py-4">
-                      <div className="h-4 rounded animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)', width: '70%' }} />
+                      <div className="h-4 rounded animate-pulse hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', width: '70%' }} />
                     </td>
                   ))}
                 </tr>
@@ -1059,7 +1060,7 @@ function ProjectVariationsPage() {
       </div>
 
       {/* Foundation note */}
-      <div className="rounded-xl px-4 py-3 flex items-start gap-3"
+      <div className="rounded-xl px-4 py-3 flex items-start gap-3 hover:brightness-95 transition-[filter]"
         style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
         <Info size={13} style={{ color: 'var(--text-muted)', flexShrink: 0, marginTop: 2 }} />
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>

@@ -12,6 +12,7 @@ import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
+import DatePicker from '@/components/ui/DatePicker';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -131,8 +132,8 @@ function CreateCaseModal({ projectId, onClose }: { projectId: string; onClose: (
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="w-full max-w-2xl rounded-2xl overflow-hidden ss-animate-in" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
-        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
+      <div className="w-full max-w-2xl max-h-[90vh] rounded-2xl overflow-hidden ss-animate-in flex flex-col" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
+        <div className="flex items-center justify-between px-6 py-4 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--gold-15)' }}>
               <Scale size={15} style={{ color: 'var(--gold)' }} />
@@ -146,8 +147,9 @@ function CreateCaseModal({ projectId, onClose }: { projectId: string; onClose: (
 
         <form
           onSubmit={e => { e.preventDefault(); mutation.mutate(form); }}
-          className="p-6 space-y-4 max-h-[80vh] overflow-y-auto"
+          className="flex flex-col flex-1 min-h-0"
         >
+        <div className="p-6 space-y-4 flex-1 min-h-0 overflow-y-auto ss-scrollbar">
           {/* Core details */}
           <div>
             <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Case Title *</label>
@@ -224,28 +226,23 @@ function CreateCaseModal({ projectId, onClose }: { projectId: string; onClose: (
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Notice of Dispute</label>
-                <input type="date" value={form.notice_of_dispute_date} onChange={set('notice_of_dispute_date')}
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+                <DatePicker value={form.notice_of_dispute_date} onChange={v => setForm(f => ({ ...f, notice_of_dispute_date: v }))} clearable />
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Notice of Adjudication</label>
-                <input type="date" value={form.notice_of_adjudication_date} onChange={set('notice_of_adjudication_date')}
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+                <DatePicker value={form.notice_of_adjudication_date} onChange={v => setForm(f => ({ ...f, notice_of_adjudication_date: v }))} clearable />
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Referral Due</label>
-                <input type="date" value={form.referral_due_date} onChange={set('referral_due_date')}
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+                <DatePicker value={form.referral_due_date} onChange={v => setForm(f => ({ ...f, referral_due_date: v }))} clearable />
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Response Due</label>
-                <input type="date" value={form.response_due_date} onChange={set('response_due_date')}
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+                <DatePicker value={form.response_due_date} onChange={v => setForm(f => ({ ...f, response_due_date: v }))} clearable />
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Decision Due</label>
-                <input type="date" value={form.decision_due_date} onChange={set('decision_due_date')}
-                  className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+                <DatePicker value={form.decision_due_date} onChange={v => setForm(f => ({ ...f, decision_due_date: v }))} clearable />
               </div>
             </div>
           </div>
@@ -261,18 +258,19 @@ function CreateCaseModal({ projectId, onClose }: { projectId: string; onClose: (
             <p className="text-xs text-red-400">Failed to create case. Please check all fields and try again.</p>
           )}
 
-          <div className="flex justify-end gap-3 pt-2">
+        </div>
+        <div className="flex justify-end gap-3 p-6 pt-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
             <button type="button" onClick={onClose}
-              className="px-4 py-2 rounded-lg text-sm"
+              className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]"
               style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
               Cancel
             </button>
             <button type="submit" disabled={mutation.isPending}
-              className="px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-60 active:scale-[0.98]"
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-60 active:scale-[0.98] hover:brightness-95 transition-[filter]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
               {mutation.isPending ? 'Creating…' : 'Create Case'}
             </button>
-          </div>
+        </div>
         </form>
       </div>
     </div>
@@ -365,7 +363,7 @@ function ProjectAdjudicationPage() {
         {canWrite && (
           <button
             onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.98]"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.98] hover:brightness-95 transition-[filter]"
             style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
           >
             <Plus size={15} />
@@ -525,7 +523,7 @@ function ProjectAdjudicationPage() {
                           e.stopPropagation();
                           if (confirm(`Archive case ${c.case_number}?`)) deleteMutation.mutate(c.id);
                         }}
-                        className="px-3 py-1.5 rounded-lg text-xs hover:bg-[var(--bg-hover)] transition-colors"
+                        className="px-3 py-1.5 rounded-lg text-xs"
                         style={{ color: '#f87171' }}
                       >
                         Archive

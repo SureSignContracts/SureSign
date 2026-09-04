@@ -138,6 +138,23 @@ export function effectiveTodayYmd(): string {
 }
 
 /**
+ * Serialize a local Date's own calendar day back to "YYYY-MM-DD" — the
+ * exact inverse of `parseDateOnly()`. Never routes through
+ * `toISOString()` (which converts to UTC and can shift the calendar day
+ * near a local midnight boundary); reads the Date's local y/m/d fields
+ * directly, so `parseDateOnly(toDateOnlyString(d))` round-trips for any
+ * `d` constructed the same way, in any browser timezone. This is the one
+ * shared implementation — previously duplicated ad hoc (e.g. the Friday
+ * Pack page's own local `toDateOnlyString()`).
+ */
+export function toDateOnlyString(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
  * Convert a timezone-less wall-clock string (e.g. from an
  * `<input type="datetime-local">`, "2026-07-16T23:47") into a UTC ISO
  * string for the API. `new Date(...)` parses a timezone-less string as

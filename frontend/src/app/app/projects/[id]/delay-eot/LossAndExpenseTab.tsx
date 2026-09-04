@@ -105,13 +105,13 @@ function ClaimModal({ projectId, contracts, tradePackages, delayEvents, eots, cl
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-      <div className="w-full max-w-lg rounded-xl p-6 max-h-[90vh] overflow-y-auto" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
-        <div className="flex items-center justify-between mb-4">
+      <div className="w-full max-w-lg max-h-[90vh] rounded-xl overflow-hidden flex flex-col hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+        <div className="flex items-center justify-between p-6 pb-4 flex-shrink-0">
           <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{isEdit ? 'Edit L&E Claim' : 'Raise L&E Claim'}</h2>
           <button onClick={onClose}><X size={18} style={{ color: 'var(--text-muted)' }} /></button>
         </div>
 
-        <div className="space-y-3">
+        <div className="px-6 pb-6 space-y-3 flex-1 min-h-0 overflow-y-auto ss-scrollbar">
           <Field label="Title" required>
             <input className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={INPUT_STYLE} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
           </Field>
@@ -165,12 +165,12 @@ function ClaimModal({ projectId, contracts, tradePackages, delayEvents, eots, cl
           </Field>
         </div>
 
-        <div className="flex justify-end gap-2 mt-5">
+        <div className="flex justify-end gap-2 p-6 pt-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
           <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Cancel</button>
           <button
             onClick={() => mutation.mutate()}
             disabled={!form.title || mutation.isPending}
-            className="px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
+            className="px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50 hover:brightness-95 transition-[filter]"
             style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
           >
             {mutation.isPending ? 'Saving…' : isEdit ? 'Save Changes' : 'Raise Claim'}
@@ -204,7 +204,7 @@ function DecisionModal({ projectId, claim, decision, onClose, invalidateKey }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-      <div className="w-full max-w-sm rounded-xl p-5" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+      <div className="w-full max-w-sm rounded-xl p-5 hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
         <h2 className="text-base font-bold mb-3" style={{ color: 'var(--text-primary)' }}>
           {decision === 'agreed' ? 'Agree Claim' : 'Reject Claim'}
         </h2>
@@ -299,7 +299,7 @@ export function LossAndExpenseTab({ projectId, contracts, tradePackages, canWrit
           ))}
         </div>
         {canWrite && (
-          <button onClick={() => setModalTarget('new')} className="flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold transition-all hover:-translate-y-0.5 active:translate-y-0" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
+          <button onClick={() => setModalTarget('new')} className="flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold transition-all hover:-translate-y-0.5 active:translate-y-0 hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
             <Plus size={15} /> Raise claim
           </button>
         )}
@@ -386,7 +386,7 @@ export function LossAndExpenseTab({ projectId, contracts, tradePackages, canWrit
 
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="ss-animate-in w-full max-w-sm rounded-xl p-5" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
+          <div className="ss-animate-in w-full max-w-sm rounded-xl p-5 hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
             <p className="text-sm mb-4" style={{ color: 'var(--text-primary)' }}>Delete Claim #{deleteTarget.claim_number}? This cannot be undone.</p>
             <div className="flex justify-end gap-2">
               <button onClick={() => setDeleteTarget(null)} className="px-3 py-1.5 rounded-lg text-sm transition-all active:scale-[0.98] hover:bg-[var(--bg-hover)]" style={{ color: 'var(--text-secondary)' }}>Cancel</button>

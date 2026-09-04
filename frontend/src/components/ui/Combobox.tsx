@@ -218,7 +218,7 @@ export default function Combobox({
             {loading && <Loader2 size={13} className="animate-spin flex-shrink-0" style={{ color: 'var(--text-muted)' }} />}
           </div>
 
-          <div ref={listRef} id={listboxId} role="listbox" className="max-h-64 overflow-y-auto p-1">
+          <div ref={listRef} id={listboxId} role="listbox" className="max-h-64 overflow-y-auto ss-scrollbar p-1">
             {filtered.length === 0 ? (
               <div className="px-2.5 py-4 text-center text-xs" style={{ color: 'var(--text-muted)' }}>
                 {loading ? 'Loading…' : emptyMessage}

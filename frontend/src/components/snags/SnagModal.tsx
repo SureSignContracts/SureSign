@@ -6,6 +6,7 @@ import { X } from 'lucide-react';
 import api from '@/lib/api';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import Select from '@/components/ui/Select';
+import DatePicker from '@/components/ui/DatePicker';
 import EvidenceSection from '@/components/documents/EvidenceSection';
 import DrawingLocationsSection from '@/components/drawings/DrawingLocationsSection';
 import DrawingCreationContextBadge from '@/components/drawings/DrawingCreationContextBadge';
@@ -159,8 +160,7 @@ export default function SnagModal({ projectId, snag, onClose, onCreated, drawing
           </div>
           <div>
             <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Due date</label>
-            <input type="date" value={form.due_date} onChange={set('due_date')}
-              className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+            <DatePicker value={form.due_date} onChange={v => setForm(f => ({ ...f, due_date: v }))} clearable />
           </div>
           <div>
             <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Notes</label>

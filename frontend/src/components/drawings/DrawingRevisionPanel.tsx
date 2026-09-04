@@ -10,6 +10,7 @@ import { formatDateOnly } from '@/lib/dateTime';
 import { normalizeApiError } from '@/lib/normalizeApiError';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
+import DatePicker from '@/components/ui/DatePicker';
 import Combobox, { type ComboboxOption } from '@/components/ui/Combobox';
 import DocumentPreviewModal, { type PreviewTarget } from '@/components/documents/DocumentPreviewModal';
 import { STATUS_OPTIONS, drawingStatusColor } from '@/components/drawings/drawingConstants';
@@ -314,13 +315,7 @@ export default function DrawingRevisionPanel({
 
                 <div className="grid grid-cols-2 gap-4">
                   <Field label="Issued Date">
-                    <input
-                      type="date"
-                      className="w-full rounded-lg px-3 py-2 text-sm outline-none border focus:border-[var(--gold)] transition-colors duration-200"
-                      style={INPUT_STYLE}
-                      value={form.issued_date}
-                      onChange={e => set('issued_date', e.target.value)}
-                    />
+                    <DatePicker value={form.issued_date} onChange={v => set('issued_date', v)} clearable />
                   </Field>
                   <Field label="Issued By">
                     <input

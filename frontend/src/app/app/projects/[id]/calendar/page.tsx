@@ -198,7 +198,7 @@ function CategoryBadge({ category }: { category?: string | null }) {
   if (!category) return null;
   const label = CATEGORY_LABELS[category] ?? category;
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full font-medium"
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full font-medium hover:brightness-95 transition-[filter]"
       style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)', fontSize: '10px' }}>
       {label}
     </span>
@@ -210,7 +210,7 @@ function CategoryBadge({ category }: { category?: string | null }) {
 function EventPill({ event, onClick }: { event: CalendarEvent; onClick: (e: CalendarEvent) => void }) {
   return (
     <div
-      className="group flex cursor-pointer items-center gap-1.5 truncate rounded-md px-1.5 py-1 font-medium leading-tight transition-all duration-150 hover:-translate-y-px hover:shadow-sm"
+      className="group flex cursor-pointer items-center gap-1.5 truncate rounded-md px-1.5 py-1 font-medium leading-tight transition-all duration-150 hover:-translate-y-px hover:shadow-sm hover:brightness-95 transition-[filter]"
       style={{
         backgroundColor: 'var(--bg-elevated)',
         color: 'var(--text-primary)',
@@ -268,11 +268,11 @@ function EventDetailModal({ event, onClose }: { event: CalendarEvent; onClose: (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
       onClick={onClose}>
       <div
-        className="w-full max-w-md rounded-2xl max-h-[88vh] overflow-y-auto ss-animate-in"
+        className="w-full max-w-md max-h-[88vh] rounded-2xl ss-animate-in overflow-hidden flex flex-col"
         style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between p-5" style={{ borderBottom: '1px solid var(--border)' }}>
+        <div className="flex items-start justify-between p-5 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
           <div className="min-w-0 pr-3">
             <p className="text-[10px] font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--text-muted)' }}>
               {moduleLabel}
@@ -284,7 +284,7 @@ function EventDetailModal({ event, onClose }: { event: CalendarEvent; onClose: (
           </button>
         </div>
 
-        <div className="p-5 space-y-4">
+        <div className="p-5 space-y-4 flex-1 min-h-0 overflow-y-auto ss-scrollbar">
           <div className="flex flex-wrap gap-1.5">
             <CategoryBadge category={event.category} />
             <PriorityBadge priority={event.priority} />
@@ -315,7 +315,7 @@ function EventDetailModal({ event, onClose }: { event: CalendarEvent; onClose: (
           {event.action_url && (
             <button
               onClick={() => router.push(event.action_url!)}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.98]"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.98] hover:brightness-95 transition-[filter]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
             >
               View in {moduleLabel} <ArrowUpRight size={14} />
@@ -442,7 +442,7 @@ function OperationalSidebar({ events, todayStr, onEventClick }: {
 
   return (
     <div className="ss-animate-in overflow-hidden rounded-2xl" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', animationDelay: '210ms' }}>
-      <div className="border-b px-5 py-4" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-elevated)' }}>
+      <div className="border-b px-5 py-4 hover:brightness-95 transition-[filter]" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-elevated)' }}>
         <div className="flex items-center gap-2">
           <CalendarClock size={15} style={{ color: 'var(--gold)' }} />
           <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Operational summary</p>
@@ -496,7 +496,7 @@ function AgendaView({ events, todayStr, onEventClick }: { events: CalendarEvent[
         const month = d.toLocaleDateString('en-GB', { month: 'short' });
         return (
           <div key={date} className="grid border-b last:border-b-0 sm:grid-cols-[120px_minmax(0,1fr)]" style={{ borderColor: 'var(--border)' }}>
-            <div className="flex items-center justify-between border-b px-5 py-4 sm:block sm:border-b-0 sm:border-r" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-elevated)' }}>
+            <div className="flex items-center justify-between border-b px-5 py-4 sm:block sm:border-b-0 sm:border-r hover:brightness-95 transition-[filter]" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-elevated)' }}>
               <div className="flex items-baseline gap-2 sm:block">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-muted)' }}>{weekday}</p>
                 <p className="text-2xl font-semibold tabular-nums tracking-[-0.05em]" style={{ color: 'var(--text-primary)' }}>{day}</p>
@@ -847,7 +847,7 @@ export default function ProjectCalendarPage() {
               {view === 'month' && (
                 <>
                   {/* Navigation */}
-                  <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-elevated)' }}>
+                  <div className="flex items-center justify-between px-5 py-4 hover:brightness-95 transition-[filter]" style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-elevated)' }}>
                     <button onClick={prevMonth} aria-label="Previous month"
                       className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-[var(--bg-hover)]"
                       style={{ color: 'var(--text-secondary)' }}>
@@ -889,7 +889,7 @@ export default function ProjectCalendarPage() {
                           borderRight: (i + 1) % 7 === 0 ? 'none' : '1px solid var(--border)',
                           borderBottom: i < 35 ? '1px solid var(--border)' : 'none',
                         }} className="p-2">
-                          <div className="ml-auto w-6 h-6 rounded-full animate-pulse" style={{ backgroundColor: 'var(--bg-elevated)' }} />
+                          <div className="ml-auto w-6 h-6 rounded-full animate-pulse hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)' }} />
                         </div>
                       ))}
                     </div>

@@ -9,6 +9,7 @@ import { effectiveTodayYmd } from '@/lib/dateTime';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import Select from '@/components/ui/Select';
 import Checkbox from '@/components/ui/Checkbox';
+import DatePicker from '@/components/ui/DatePicker';
 import DrawingCreationContextBadge from '@/components/drawings/DrawingCreationContextBadge';
 import type { DrawingCreationContext } from '@/components/drawings/DrawingCreationContext';
 
@@ -83,12 +84,13 @@ export default function NewRfiModal({ projectId, onClose, onCreated, drawingCont
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="ss-animate-in w-full max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
-        <div className="flex items-center justify-between p-5" style={{ borderBottom: '1px solid var(--border)' }}>
+      <div className="ss-animate-in w-full max-w-lg max-h-[90vh] rounded-2xl overflow-hidden flex flex-col" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
+        <div className="flex items-center justify-between p-5 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
           <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>New RFI</h2>
           <button onClick={onClose}><X size={18} style={{ color: 'var(--text-muted)' }} /></button>
         </div>
-        <form onSubmit={e => { e.preventDefault(); mutate(form); }} className="p-5 space-y-4">
+        <form onSubmit={e => { e.preventDefault(); mutate(form); }} className="flex flex-col flex-1 min-h-0">
+        <div className="p-5 space-y-4 flex-1 min-h-0 overflow-y-auto ss-scrollbar">
           {drawingContext && <DrawingCreationContextBadge context={drawingContext} />}
           <div>
             <label className="block text-xs mb-1" style={labelStyle}>Subject *</label>
@@ -111,13 +113,11 @@ export default function NewRfiModal({ projectId, onClose, onCreated, drawingCont
             </div>
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Date raised</label>
-              <input type="date" value={form.raised_date} onChange={e => set('raised_date', e.target.value)}
-                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+              <DatePicker value={form.raised_date} onChange={v => set('raised_date', v)} clearable />
             </div>
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Response required by</label>
-              <input type="date" value={form.response_due_date} onChange={e => set('response_due_date', e.target.value)}
-                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+              <DatePicker value={form.response_due_date} onChange={v => set('response_due_date', v)} clearable />
             </div>
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Cost impact</label>
@@ -138,12 +138,13 @@ export default function NewRfiModal({ projectId, onClose, onCreated, drawingCont
                 className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
             </div>
           )}
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
-            <button type="submit" disabled={isPending} className="px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.98]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: isPending ? 0.7 : 1 }}>
+        </div>
+        <div className="flex justify-end gap-3 p-5 pt-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
+            <button type="submit" disabled={isPending} className="px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.98] hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: isPending ? 0.7 : 1 }}>
               {isPending ? 'Raising…' : 'Raise RFI'}
             </button>
-          </div>
+        </div>
         </form>
       </div>
     </div>

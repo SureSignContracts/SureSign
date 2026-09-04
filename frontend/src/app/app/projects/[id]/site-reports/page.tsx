@@ -13,6 +13,7 @@ import { useProjectPermissions } from '@/hooks/useProjectPermissions';
 import PageTourButton from '@/components/tours/PageTourButton';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
+import DatePicker from '@/components/ui/DatePicker';
 import EvidenceSection from '@/components/documents/EvidenceSection';
 import WorkforceBreakdownEditor from '@/components/siteReports/WorkforceBreakdownEditor';
 import { getErrorMessage } from '@/lib/getErrorMessage';
@@ -111,17 +112,35 @@ function SiteDiaryModal({ projectId, diary, readOnly, onClose }: { projectId: st
   const labelStyle = { color: 'var(--text-muted)' };
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-      <div className="ss-animate-in w-full max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
-        <div className="flex items-center justify-between p-5" style={{ borderBottom: '1px solid var(--border)' }}>
+      <div className="ss-animate-in w-full max-w-lg max-h-[90vh] rounded-2xl overflow-hidden flex flex-col" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
+        <div className="flex items-center justify-between p-5 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
           <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{readOnly ? 'Site Diary' : isEdit ? 'Edit Site Diary' : 'New Site Diary'}</h2>
           <button onClick={onClose}><X size={18} style={{ color: 'var(--text-muted)' }} /></button>
         </div>
-        <form onSubmit={e => { e.preventDefault(); if (isPending) return; mutate(form); }} className="p-5 space-y-4">
+        {/* Scroll-container standard (matches PromptContextModal's established pattern): the outer
+            card owns the rounded corners + overflow-hidden; this <form> is the flex column that
+            fills the remaining height (`min-h-0` is required here — a flex item's default
+            `min-height: auto` would otherwise let its content push past the card and defeat the
+            inner scroll region entirely); the body div below is the one actual scroll container
+            (`.ss-scrollbar`), so the header above and the footer below never scroll away. */}
+        <form onSubmit={e => {
+          e.preventDefault();
+          if (isPending) return;
+          // DatePicker has no real native form control to drive HTML5's own
+          // `required` validation (the same reason the Dropdown Standard
+          // requires app-level validation for Select/Combobox) — this
+          // guard is what actually preserves the previous native-input
+          // required behaviour now that the field is a button trigger.
+          if (!form.diary_date) return;
+          mutate(form);
+        }} className="flex flex-col flex-1 min-h-0">
+        <div className="flex-1 min-h-0 overflow-y-auto ss-scrollbar p-5 space-y-4">
           <fieldset disabled={readOnly} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Date *</label>
-              <input type="date" value={form.diary_date} onChange={e => set('diary_date', e.target.value)} required className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+              <DatePicker value={form.diary_date} onChange={v => set('diary_date', v)} required
+                error={!form.diary_date ? 'Date is required' : undefined} />
             </div>
             <div>
               <label className="block text-xs mb-1" style={labelStyle}>Weather</label>
@@ -188,18 +207,19 @@ function SiteDiaryModal({ projectId, diary, readOnly, onClose }: { projectId: st
             <textarea value={form.issues} onChange={e => set('issues', e.target.value)} rows={2} className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none" style={inputStyle} />
           </div>
           </fieldset>
-          <div className="flex justify-end gap-3 pt-2">
+        </div>
+        <div className="flex justify-end gap-3 p-5 pt-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
             {readOnly ? (
-              <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Close</button>
+              <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-medium hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Close</button>
             ) : (
               <>
-                <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
-                <button type="submit" disabled={isPending} className="px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.98]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: isPending ? 0.7 : 1 }}>
+                <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
+                <button type="submit" disabled={isPending} className="px-4 py-2 rounded-lg text-sm font-medium transition-all active:scale-[0.98] hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: isPending ? 0.7 : 1 }}>
                   {isPending ? 'Saving…' : isEdit ? 'Save Changes' : 'Save Diary'}
                 </button>
               </>
             )}
-          </div>
+        </div>
         </form>
       </div>
     </div>
@@ -351,7 +371,7 @@ function ProjectSiteReportsPage() {
 
       {confirmTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="ss-animate-in w-full max-w-sm rounded-xl p-5" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
+          <div className="ss-animate-in w-full max-w-sm rounded-xl p-5 hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
             <p className="text-sm mb-4" style={{ color: 'var(--text-primary)' }}>
               Delete the site diary for {formatDate(confirmTarget.diary_date)}? This cannot be undone.
             </p>

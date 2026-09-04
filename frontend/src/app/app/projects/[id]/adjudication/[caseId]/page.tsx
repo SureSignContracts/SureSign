@@ -17,6 +17,7 @@ import toast from '@/lib/toast';
 import PromptActionButton from '@/components/prompts/PromptActionButton';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
+import DatePicker from '@/components/ui/DatePicker';
 import Checkbox from '@/components/ui/Checkbox';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 
@@ -292,10 +293,10 @@ function AddDocumentModal({
           )}
           {mutation.isError && <p className="text-xs text-red-400">Failed to save document.</p>}
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm"
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]"
               style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
             <button type="submit" disabled={mutation.isPending}
-              className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60 active:scale-[0.98]"
+              className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60 active:scale-[0.98] hover:brightness-95 transition-[filter]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
               {mutation.isPending ? 'Saving…' : mode === 'upload' ? 'Upload File' : 'Add Document'}
             </button>
@@ -334,6 +335,10 @@ function AddDeadlineModal({ caseId, projectId, caseCreatedAt, onClose }: { caseI
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setDateError('');
+    // DatePicker has no native form control to drive HTML5's own `required`
+    // validation — this preserves that behaviour explicitly, on top of the
+    // pre-existing case-creation-date ordering check below.
+    if (!form.due_date) return;
     if (caseCreatedAt && form.due_date) {
       const caseDate = new Date(caseCreatedAt);
       const dueDate  = new Date(form.due_date);
@@ -374,9 +379,13 @@ function AddDeadlineModal({ caseId, projectId, caseCreatedAt, onClose }: { caseI
             </div>
             <div>
               <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Due Date *</label>
-              <input type="date" value={form.due_date} onChange={set('due_date')} required
-                min={caseCreatedAt ? caseCreatedAt.split('T')[0] : undefined}
-                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+              <DatePicker
+                value={form.due_date}
+                onChange={v => setForm(f => ({ ...f, due_date: v }))}
+                required
+                minDate={caseCreatedAt ? caseCreatedAt.split('T')[0] : undefined}
+                error={!form.due_date ? 'Required' : undefined}
+              />
             </div>
           </div>
           {dateError && <p className="text-xs text-red-400">{dateError}</p>}
@@ -387,10 +396,10 @@ function AddDeadlineModal({ caseId, projectId, caseCreatedAt, onClose }: { caseI
           </div>
           {mutation.isError && <p className="text-xs text-red-400">Failed to save deadline.</p>}
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm"
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]"
               style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
             <button type="submit" disabled={mutation.isPending}
-              className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60 active:scale-[0.98]"
+              className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60 active:scale-[0.98] hover:brightness-95 transition-[filter]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
               {mutation.isPending ? 'Saving…' : 'Add Deadline'}
             </button>
@@ -435,7 +444,7 @@ function AdvanceStepModal({ adjudicationCase, projectId, onClose }: { adjudicati
           </button>
         </div>
         <div className="p-6 space-y-4">
-          <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+          <div className="p-3 rounded-lg hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Current step will be marked complete:</p>
             <p className="text-sm font-medium mt-1" style={{ color: 'var(--text-primary)' }}>
               {STEP_DEFINITIONS[currentIndex]?.title}
@@ -460,10 +469,10 @@ function AdvanceStepModal({ adjudicationCase, projectId, onClose }: { adjudicati
           </div>
           {mutation.isError && <p className="text-xs text-red-400">Failed to advance step.</p>}
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm"
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]"
               style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button>
             <button onClick={() => mutation.mutate()} disabled={mutation.isPending}
-              className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60 active:scale-[0.98]"
+              className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60 active:scale-[0.98] hover:brightness-95 transition-[filter]"
               style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}>
               {mutation.isPending ? 'Advancing…' : 'Advance Step'}
             </button>
@@ -689,14 +698,14 @@ function LinkedRecordsPanel({ adjCase, projectId }: { adjCase: any; projectId: s
       <div className="flex items-center gap-2 px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
         <Link2 size={14} style={{ color: 'var(--text-muted)' }} />
         <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Linked Records</h2>
-        <span className="text-xs ml-auto px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
+        <span className="text-xs ml-auto px-2 py-0.5 rounded-full hover:brightness-95 transition-[filter]" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
           {records.length}
         </span>
       </div>
       <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
         {records.map(r => (
           <a key={r.type} href={r.href}
-            className="flex items-center justify-between px-5 py-3 hover:bg-[var(--bg-hover)] transition-colors">
+            className="flex items-center justify-between px-5 py-3">
             <div>
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{r.type}</p>
               <p className="text-xs font-medium mt-0.5 truncate max-w-[200px]" style={{ color: 'var(--text-primary)' }}>{r.label}</p>
@@ -794,7 +803,7 @@ export default function AdjudicationCaseDetailPage() {
       <div className="p-6 max-w-5xl mx-auto text-center pt-24">
         <Scale size={40} className="mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Adjudication case not found.</p>
-        <button onClick={() => router.back()} className="mt-4 px-4 py-2 rounded-lg text-sm"
+        <button onClick={() => router.back()} className="mt-4 px-4 py-2 rounded-lg text-sm hover:brightness-95 transition-[filter]"
           style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
           Go Back
         </button>
@@ -906,7 +915,7 @@ export default function AdjudicationCaseDetailPage() {
             {canAdvance && (
               <button
                 onClick={() => setShowAdvance(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.98]"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.98] hover:brightness-95 transition-[filter]"
                 style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)' }}
               >
                 <ChevronRight size={14} /> Advance Step
@@ -1012,7 +1021,7 @@ export default function AdjudicationCaseDetailPage() {
               ) : allDocs.map((doc: any) => {
                 const docStatusBadge = DOC_STATUS_COLORS[doc.status] ?? DOC_STATUS_COLORS.draft;
                 return (
-                  <div key={doc.id} className="flex items-center justify-between px-5 py-3 hover:bg-[var(--bg-hover)] transition-colors">
+                  <div key={doc.id} className="flex items-center justify-between px-5 py-3">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
                         style={{ backgroundColor: 'rgba(59,130,246,0.1)' }}>
@@ -1193,7 +1202,7 @@ export default function AdjudicationCaseDetailPage() {
                 <button
                   key={label}
                   disabled
-                  className="w-full text-left px-3 py-2 rounded-lg text-xs transition-colors opacity-50 cursor-not-allowed"
+                  className="w-full text-left px-3 py-2 rounded-lg text-xs transition-colors opacity-50 cursor-not-allowed hover:brightness-95 transition-[filter]"
                   style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)' }}
                 >
                   {label}

@@ -14,6 +14,7 @@ import PageTourButton from '@/components/tours/PageTourButton';
 import { ProjectModuleHeader } from '@/components/projects/ProjectModuleHeader';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
+import DatePicker from '@/components/ui/DatePicker';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 
 // Delay Notices used to be a third tab here, but it fetched the EOT Requests
@@ -74,7 +75,7 @@ function NewEotModal({ projectId, onClose }: { projectId: string; onClose: () =>
         <div className="flex items-center justify-between"><h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>New EOT Request</h2><button onClick={onClose}><X size={16} style={{ color: 'var(--text-muted)' }} /></button></div>
         <form onSubmit={e => { e.preventDefault(); mutate(form); }} className="space-y-3">
           <div><label className="block text-xs mb-1" style={labelStyle}>Title *</label><input value={form.title} onChange={e => set('title', e.target.value)} required className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} /></div>
-          <div><label className="block text-xs mb-1" style={labelStyle}>Notice Date</label><input type="date" value={form.notice_date} onChange={e => set('notice_date', e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} /></div>
+          <div><label className="block text-xs mb-1" style={labelStyle}>Notice Date</label><DatePicker value={form.notice_date} onChange={v => set('notice_date', v)} clearable /></div>
           <div><label className="block text-xs mb-1" style={labelStyle}>Days Claimed</label><input type="number" value={form.days_claimed} onChange={e => set('days_claimed', e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} /></div>
           <div><label className="block text-xs mb-1" style={labelStyle}>Grounds</label><textarea value={form.grounds} onChange={e => set('grounds', e.target.value)} rows={3} className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none" style={inputStyle} /></div>
           <div className="flex justify-end gap-3"><button type="button" onClick={onClose} className="px-3 py-1.5 rounded-lg text-xs" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>Cancel</button><button type="submit" disabled={isPending} className="px-3 py-1.5 rounded-lg text-xs font-medium active:scale-[0.98]" style={{ backgroundColor: 'var(--gold)', color: 'var(--accent-fg)', opacity: isPending ? 0.7 : 1 }}>{isPending ? 'Submitting…' : 'Submit EOT'}</button></div>
@@ -119,7 +120,11 @@ function NewPayLessModal({ projectId, onClose }: { projectId: string; onClose: (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
       <div className="w-full max-w-md rounded-2xl p-5 space-y-4 ss-animate-in" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-pop)' }}>
         <div className="flex items-center justify-between"><h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>New Pay Less Notice</h2><button onClick={onClose}><X size={16} style={{ color: 'var(--text-muted)' }} /></button></div>
-        <form onSubmit={e => { e.preventDefault(); mutate(form); }} className="space-y-3">
+        <form onSubmit={e => {
+          e.preventDefault();
+          if (!form.notice_date) return;
+          mutate(form);
+        }} className="space-y-3">
           <div>
             <label className="block text-xs mb-1" style={labelStyle}>Payment Application</label>
             <Select value={form.payment_application_id} onChange={e => set('payment_application_id', e.target.value)} className="w-full">
@@ -134,7 +139,9 @@ function NewPayLessModal({ projectId, onClose }: { projectId: string; onClose: (
               <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>No payment applications found for this project.</p>
             )}
           </div>
-          <div><label className="block text-xs mb-1" style={labelStyle}>Notice Date *</label><input type="date" value={form.notice_date} onChange={e => set('notice_date', e.target.value)} required className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} /></div>
+          <div><label className="block text-xs mb-1" style={labelStyle}>Notice Date *</label>
+            <DatePicker value={form.notice_date} onChange={v => set('notice_date', v)} required error={!form.notice_date ? 'Required' : undefined} />
+          </div>
           <div><label className="block text-xs mb-1" style={labelStyle}>Notified Sum (£) *</label><input type="number" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)} required className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} /></div>
           <div><label className="block text-xs mb-1" style={labelStyle}>Reference</label><input value={form.reference} onChange={e => set('reference', e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} /></div>
           <div><label className="block text-xs mb-1" style={labelStyle}>Basis / Reason *</label><textarea value={form.reason} onChange={e => set('reason', e.target.value)} required rows={3} className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none" style={inputStyle} /></div>
@@ -203,7 +210,7 @@ function SiteInstructionModal({ projectId, instruction, readOnly, onClose }: { p
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><label className="block text-xs mb-1" style={labelStyle}>Issued Date</label><input type="date" value={form.issued_date} onChange={e => set('issued_date', e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} /></div>
+            <div><label className="block text-xs mb-1" style={labelStyle}>Issued Date</label><DatePicker value={form.issued_date} onChange={v => set('issued_date', v)} clearable /></div>
             <div><label className="block text-xs mb-1" style={labelStyle}>Issued To</label><input value={form.issued_to} onChange={e => set('issued_to', e.target.value)} className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} /></div>
           </div>
           <div><label className="block text-xs mb-1" style={labelStyle}>Description</label><textarea value={form.description} onChange={e => set('description', e.target.value)} rows={3} className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none" style={inputStyle} /></div>
