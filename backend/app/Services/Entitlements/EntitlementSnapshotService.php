@@ -103,6 +103,84 @@ class EntitlementSnapshotService
         return $this->createOrReuse($subscription, 'entitlement_rollout', 'subscription.entitlement_rollout', $effectiveFrom);
     }
 
+    /**
+     * Friday Pack Entitlement Snapshot Capability Rollout — the SAFE,
+     * surgical counterpart to `snapshotForEntitlementRollout()` above.
+     * That method rebuilds a subscription's ENTIRE entitlement payload
+     * from today's live plan defaults — an explicit, approved trade-off
+     * for the `custom_branded_subdomain` rollout it was built for, but one
+     * that can silently overwrite an unrelated entitlement key that has
+     * drifted between the subscription's original snapshot and today's
+     * plan configuration (e.g. a plan default an admin has since changed
+     * in Pricing Management) — exactly what this rollout's own brief
+     * prohibits.
+     *
+     * This method instead takes the subscription's CURRENT snapshot
+     * verbatim and replaces only the ONE named capability's entry —
+     * every other key in `entitlements_json` is carried over byte-for-byte
+     * from the existing snapshot, untouched. This is what makes "existing
+     * snapshot + newly introduced capability only = rolled-forward
+     * snapshot" true in code, not just in the brief's own prose.
+     *
+     * Still produces a brand-new, immutable successor row (never mutates
+     * the existing snapshot — `SubscriptionEntitlementSnapshot` enforces
+     * this at the model level regardless) via the same `createOrReuse()`
+     * idempotency boundary every other snapshot method here uses. Uses a
+     * capability-specific `source_transition`/`lifecycle_reason`
+     * (`subscription.capability_rollout.{capability}` /
+     * `capability_rollout:{capability}`) so a rollout of one capability is
+     * independently idempotent from a rollout of any other, and is never
+     * confused with `snapshotForEntitlementRollout()`'s own
+     * `entitlement_rollout` source_transition in any report or integrity
+     * check. Callers must not exceed the 60-character `source_transition`
+     * column width — `RefreshEntitlementSnapshotsForCapabilityRollout`
+     * enforces this before ever reaching this method.
+     *
+     * @param  array<string, array{value_type: string, value: mixed, is_unlimited: bool, unit: ?string, source: string}>  $existingEntitlementsJson
+     * @param  array{value_type: string, value: mixed, is_unlimited: bool, unit: ?string, source: string}  $newEntry
+     */
+    public function snapshotForCapabilityRollout(
+        Subscription $subscription,
+        string $capability,
+        array $existingEntitlementsJson,
+        array $newEntry,
+        CarbonImmutable $effectiveFrom,
+    ): SubscriptionEntitlementSnapshot {
+        $sourceTransition = "subscription.capability_rollout.{$capability}";
+        $lifecycleReason = "capability_rollout:{$capability}";
+
+        if (strlen($sourceTransition) > 60 || strlen($lifecycleReason) > 60) {
+            throw new \InvalidArgumentException("Capability key \"{$capability}\" is too long to fit this snapshot's source_transition/lifecycle_reason column width.");
+        }
+
+        $mergedEntitlementsJson = $existingEntitlementsJson;
+        $mergedEntitlementsJson[$capability] = $newEntry;
+
+        return DB::transaction(function () use ($subscription, $lifecycleReason, $sourceTransition, $mergedEntitlementsJson, $effectiveFrom) {
+            $existing = SubscriptionEntitlementSnapshot::query()
+                ->where('subscription_id', $subscription->id)
+                ->where('source_transition', $sourceTransition)
+                ->where('effective_from', $effectiveFrom)
+                ->lockForUpdate()
+                ->first();
+
+            if ($existing !== null) {
+                return $existing;
+            }
+
+            return SubscriptionEntitlementSnapshot::create([
+                'subscription_id' => $subscription->id,
+                'organization_id' => $subscription->organization_id,
+                'pricing_plan_id' => $subscription->pricing_plan_id,
+                'plan_code_snapshot' => $subscription->plan_code_snapshot,
+                'entitlements_json' => $mergedEntitlementsJson,
+                'effective_from' => $effectiveFrom,
+                'lifecycle_reason' => $lifecycleReason,
+                'source_transition' => $sourceTransition,
+            ]);
+        });
+    }
+
     private function createOrReuse(Subscription $subscription, string $lifecycleReason, string $sourceTransition, CarbonImmutable $effectiveFrom): SubscriptionEntitlementSnapshot
     {
         return DB::transaction(function () use ($subscription, $lifecycleReason, $sourceTransition, $effectiveFrom) {

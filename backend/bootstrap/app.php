@@ -25,6 +25,11 @@ return Application::configure(basePath: dirname(__DIR__))
             // attached to any production module route. See
             // App\Http\Middleware\EnsureFeatureIsAvailable's own docblock.
             'feature.available' => \App\Http\Middleware\EnsureFeatureIsAvailable::class,
+            // Friday Pack Plan Entitlement Enforcement — the COMMERCIAL
+            // counterpart to 'feature.available' above, deliberately a
+            // separate middleware/key namespace. See
+            // App\Http\Middleware\EnsureFeatureIsEntitled's own docblock.
+            'feature.entitled'  => \App\Http\Middleware\EnsureFeatureIsEntitled::class,
         ]);
 
         // Organisation URL Branding, Phase 5 (Stage 2A) — must be GLOBAL

@@ -373,9 +373,9 @@ class OrganisationUrlBrandingCustomerSelfServiceTest extends TestCase
         // custom_branded_subdomain entry at all).
         SubscriptionEntitlementSnapshot::where('subscription_id', $subscription->id)->update(['entitlements_json' => []]);
 
-        $this->artisan('entitlements:refresh-capability-rollout --dry-run')->assertExitCode(0);
+        $this->artisan('entitlements:refresh-capability-rollout', ['capability' => Feature::CUSTOM_BRANDED_SUBDOMAIN, '--dry-run' => true])->assertExitCode(0);
 
-        $this->assertDatabaseMissing('billing_entitlement_snapshots', ['subscription_id' => $subscription->id, 'source_transition' => 'subscription.entitlement_rollout']);
+        $this->assertDatabaseMissing('billing_entitlement_snapshots', ['subscription_id' => $subscription->id, 'source_transition' => 'subscription.capability_rollout.custom_branded_subdomain']);
     }
 
     public function test_rollout_command_creates_new_snapshot_for_missing_key(): void
@@ -386,10 +386,10 @@ class OrganisationUrlBrandingCustomerSelfServiceTest extends TestCase
         $subscription = $this->makeActiveSubscriptionWithSnapshot($org, 'professional');
         SubscriptionEntitlementSnapshot::where('subscription_id', $subscription->id)->update(['entitlements_json' => []]);
 
-        $this->artisan('entitlements:refresh-capability-rollout --confirm')->assertExitCode(0);
+        $this->artisan('entitlements:refresh-capability-rollout', ['capability' => Feature::CUSTOM_BRANDED_SUBDOMAIN, '--confirm' => true])->assertExitCode(0);
 
         $this->assertDatabaseHas('billing_entitlement_snapshots', [
-            'subscription_id' => $subscription->id, 'source_transition' => 'subscription.entitlement_rollout',
+            'subscription_id' => $subscription->id, 'source_transition' => 'subscription.capability_rollout.custom_branded_subdomain',
         ]);
         $fresh = $subscription->fresh()->currentEntitlementSnapshot;
         $this->assertTrue($fresh->entitlements_json[Feature::CUSTOM_BRANDED_SUBDOMAIN]['value']);
@@ -403,10 +403,10 @@ class OrganisationUrlBrandingCustomerSelfServiceTest extends TestCase
         $subscription = $this->makeActiveSubscriptionWithSnapshot($org, 'professional');
         SubscriptionEntitlementSnapshot::where('subscription_id', $subscription->id)->update(['entitlements_json' => []]);
 
-        $this->artisan('entitlements:refresh-capability-rollout --confirm')->assertExitCode(0);
+        $this->artisan('entitlements:refresh-capability-rollout', ['capability' => Feature::CUSTOM_BRANDED_SUBDOMAIN, '--confirm' => true])->assertExitCode(0);
         $countAfterFirst = SubscriptionEntitlementSnapshot::where('subscription_id', $subscription->id)->count();
 
-        $this->artisan('entitlements:refresh-capability-rollout --confirm')->assertExitCode(0);
+        $this->artisan('entitlements:refresh-capability-rollout', ['capability' => Feature::CUSTOM_BRANDED_SUBDOMAIN, '--confirm' => true])->assertExitCode(0);
         $countAfterSecond = SubscriptionEntitlementSnapshot::where('subscription_id', $subscription->id)->count();
 
         $this->assertSame($countAfterFirst, $countAfterSecond);
@@ -419,13 +419,24 @@ class OrganisationUrlBrandingCustomerSelfServiceTest extends TestCase
         $this->setPlanEntitlement($plan, Feature::CUSTOM_BRANDED_SUBDOMAIN, false);
         $subscription = $this->makeActiveSubscriptionWithSnapshot($org, 'essential');
 
-        $this->artisan('entitlements:refresh-capability-rollout --confirm')->assertExitCode(0);
+        $this->artisan('entitlements:refresh-capability-rollout', ['capability' => Feature::CUSTOM_BRANDED_SUBDOMAIN, '--confirm' => true])->assertExitCode(0);
 
         $this->assertDatabaseMissing('billing_entitlement_snapshots', [
-            'subscription_id' => $subscription->id, 'source_transition' => 'subscription.entitlement_rollout',
+            'subscription_id' => $subscription->id, 'source_transition' => 'subscription.capability_rollout.custom_branded_subdomain',
         ]);
     }
 
+    /**
+     * Updated for the Friday Pack Entitlement Snapshot Capability Rollout
+     * phase's merge-only rewrite: the command used to rebuild a
+     * subscription's ENTIRE entitlement payload from live plan defaults
+     * (so an unrelated key like custom_domain would incidentally appear
+     * too), an explicit, approved trade-off at the time. It now merges in
+     * ONLY the requested capability — proving the stronger, safer
+     * invariant this rewrite exists for: rolling out
+     * custom_branded_subdomain must never add, touch, or infer a value
+     * for any other key, including custom_domain, at all.
+     */
     public function test_rollout_command_never_touches_custom_domain_key(): void
     {
         $org = $this->makeOrg();
@@ -435,10 +446,11 @@ class OrganisationUrlBrandingCustomerSelfServiceTest extends TestCase
         $subscription = $this->makeActiveSubscriptionWithSnapshot($org, 'professional');
         SubscriptionEntitlementSnapshot::where('subscription_id', $subscription->id)->update(['entitlements_json' => []]);
 
-        $this->artisan('entitlements:refresh-capability-rollout --confirm')->assertExitCode(0);
+        $this->artisan('entitlements:refresh-capability-rollout', ['capability' => Feature::CUSTOM_BRANDED_SUBDOMAIN, '--confirm' => true])->assertExitCode(0);
 
         $fresh = $subscription->fresh()->currentEntitlementSnapshot;
-        $this->assertFalse($fresh->entitlements_json[Feature::CUSTOM_DOMAIN]['value']);
+        $this->assertArrayNotHasKey(Feature::CUSTOM_DOMAIN, $fresh->entitlements_json);
+        $this->assertTrue($fresh->entitlements_json[Feature::CUSTOM_BRANDED_SUBDOMAIN]['value']);
     }
 
     public function test_rollout_command_skips_cancelled_subscriptions(): void
@@ -448,10 +460,10 @@ class OrganisationUrlBrandingCustomerSelfServiceTest extends TestCase
         $this->setPlanEntitlement($plan, Feature::CUSTOM_BRANDED_SUBDOMAIN, true);
         $subscription = $this->makeActiveSubscriptionWithSnapshot($org, 'professional', ['status' => SubscriptionStatus::CANCELLED]);
 
-        $this->artisan('entitlements:refresh-capability-rollout --confirm')->assertExitCode(0);
+        $this->artisan('entitlements:refresh-capability-rollout', ['capability' => Feature::CUSTOM_BRANDED_SUBDOMAIN, '--confirm' => true])->assertExitCode(0);
 
         $this->assertDatabaseMissing('billing_entitlement_snapshots', [
-            'subscription_id' => $subscription->id, 'source_transition' => 'subscription.entitlement_rollout',
+            'subscription_id' => $subscription->id, 'source_transition' => 'subscription.capability_rollout.custom_branded_subdomain',
         ]);
     }
 }

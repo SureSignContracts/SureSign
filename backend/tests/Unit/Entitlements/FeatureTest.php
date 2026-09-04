@@ -10,17 +10,20 @@ use Tests\TestCase;
 class FeatureTest extends TestCase
 {
     /**
-     * Thirteen, not eleven: the Entitlement Specification v1 §4a amendment
-     * (2026-07-27) added `ai_credits_per_month`, and the Organisation URL
-     * Branding customer self-service phase added two more
-     * (`custom_branded_subdomain`, `custom_domain`) as a second, equally
-     * deliberate registry amendment — see Feature::CUSTOM_BRANDED_SUBDOMAIN's
-     * own docblock for why they're two separate keys, never merged with
-     * each other or with the pre-existing `custom_branding`.
+     * Fourteen, not thirteen: the Entitlement Specification v1 §4a
+     * amendment (2026-07-27) added `ai_credits_per_month`, the
+     * Organisation URL Branding customer self-service phase added two more
+     * (`custom_branded_subdomain`, `custom_domain`), and the Friday Pack
+     * Plan Entitlement Enforcement phase added a fourteenth,
+     * `friday_packs` — the one deliberate, approved exception to this
+     * registry's module-granularity principle (see Feature::FRIDAY_PACKS'
+     * own docblock). See Feature::CUSTOM_BRANDED_SUBDOMAIN's own docblock
+     * for why the two branding keys are separate, never merged with each
+     * other or with the pre-existing `custom_branding`.
      */
-    public function test_registry_contains_exactly_the_thirteen_approved_keys(): void
+    public function test_registry_contains_exactly_the_fourteen_approved_keys(): void
     {
-        $this->assertCount(13, Feature::ALL);
+        $this->assertCount(14, Feature::ALL);
         $this->assertContains(Feature::MAX_ACTIVE_PROJECTS, Feature::ALL);
         $this->assertContains(Feature::AI_ANALYSES_PER_MONTH, Feature::ALL);
         $this->assertContains(Feature::STORAGE_GB, Feature::ALL);
@@ -34,6 +37,7 @@ class FeatureTest extends TestCase
         $this->assertContains(Feature::AI_CREDITS_PER_MONTH, Feature::ALL);
         $this->assertContains(Feature::CUSTOM_BRANDED_SUBDOMAIN, Feature::ALL);
         $this->assertContains(Feature::CUSTOM_DOMAIN, Feature::ALL);
+        $this->assertContains(Feature::FRIDAY_PACKS, Feature::ALL);
     }
 
     public function test_ai_credits_per_month_is_not_dormant_but_is_not_customer_visible(): void

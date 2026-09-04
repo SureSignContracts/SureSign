@@ -35,6 +35,17 @@ use InvalidArgumentException;
  * this checkpoint's report for the full reconciliation between the
  * broader module inventory requested and this deliberately narrow
  * catalogue.
+ *
+ * **`FRIDAY_PACKS` (Friday Pack Plan Entitlement Enforcement phase) is
+ * the one deliberate, approved exception to the module-granularity
+ * principle above.** Unlike every other platform module, Friday Packs
+ * was made a real commercial differentiator by an explicit product/
+ * pricing decision (Essential excluded, Professional and Enterprise
+ * included) — this key exists because the commercial model itself
+ * changed, not because module-level gating was reconsidered as a general
+ * pattern. Every other module listed above remains uniformly available
+ * regardless of plan; do not treat this key as precedent for gating
+ * another module without an equivalent explicit product decision.
  */
 class Feature
 {
@@ -93,6 +104,14 @@ class Feature
      */
     public const CUSTOM_DOMAIN = 'custom_domain';
 
+    /**
+     * Friday Pack Plan Entitlement Enforcement phase — see the class
+     * docblock's own note on why this is the one deliberate exception to
+     * "no module-granularity gating." A simple boolean availability
+     * entitlement, no quota/usage dimension.
+     */
+    public const FRIDAY_PACKS = 'friday_packs';
+
     public const ALL = [
         self::MAX_ACTIVE_PROJECTS,
         self::AI_ANALYSES_PER_MONTH,
@@ -107,6 +126,7 @@ class Feature
         self::AI_CREDITS_PER_MONTH,
         self::CUSTOM_BRANDED_SUBDOMAIN,
         self::CUSTOM_DOMAIN,
+        self::FRIDAY_PACKS,
     ];
 
     /**
@@ -277,6 +297,17 @@ class Feature
             // yet.
             'sold' => false,
             'customer_visible' => false,
+            'overrideable' => true,
+        ],
+        self::FRIDAY_PACKS => [
+            'display_name' => 'Friday Packs',
+            'description' => 'Weekly structured project reporting (Friday Pack) for a project — Essential excluded; included on Professional and Enterprise.',
+            'category' => EntitlementCategory::FEATURE,
+            'value_type' => EntitlementValueType::BOOLEAN,
+            'unit' => null,
+            'enforcement_level' => EnforcementLevel::HARD_LIMIT,
+            'sold' => true,
+            'customer_visible' => true,
             'overrideable' => true,
         ],
     ];
