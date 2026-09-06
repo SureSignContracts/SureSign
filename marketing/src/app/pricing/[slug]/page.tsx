@@ -10,12 +10,19 @@ interface PricingPlanPageProps {
   params: Promise<{ slug: string }>;
 }
 
-export const dynamicParams = true;
-
-export async function generateStaticParams() {
-  const data = await getPricingData();
-  return data?.plans.map((plan) => ({ slug: plan.slug })) ?? [];
-}
+// Forced dynamic (not statically prerendered via generateStaticParams) so
+// this route can never end up in the inconsistent state that caused a real
+// production incident: a plan page baked fully static at build time, then
+// falling through to notFound() at runtime (e.g. a transient backend
+// hiccup during ISR revalidation) — which needs to render the app's
+// force-dynamic not-found.tsx (it calls headers(), see that file's own
+// comment). Next.js cannot reconcile "this route was static" with "now it
+// needs a dynamic API" and throws instead of gracefully 404ing, per
+// https://nextjs.org/docs/messages/app-static-to-dynamic-error. Forcing
+// dynamic here means the underlying data fetch's own `revalidate: 300`
+// (see lib/pricing.ts) still caches at the fetch layer, so this costs one
+// render per request, not one backend round trip per request.
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: PricingPlanPageProps): Promise<Metadata> {
   const { slug } = await params;
