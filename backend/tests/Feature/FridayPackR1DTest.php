@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\DocumentNumberService;
 use App\Services\FridayPack\FridayPackGenerationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\GivesFridayPackEntitlement;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -29,6 +30,7 @@ use Tests\TestCase;
 class FridayPackR1DTest extends TestCase
 {
     use RefreshDatabase;
+    use GivesFridayPackEntitlement;
 
     private const FRIDAY = '2026-08-21';
     private const MONDAY = '2026-08-17';
@@ -42,6 +44,7 @@ class FridayPackR1DTest extends TestCase
     private function makeOrgProjectAndEditor(string $suffix, string $role = 'Client', array $projectOverrides = []): array
     {
         $org = Organization::create(['name' => "Org {$suffix}", 'slug' => "org-{$suffix}", 'timezone' => 'Europe/London']);
+        $this->giveFridayPackEntitlement($org);
         $editor = User::factory()->create(['organization_id' => $org->id, 'is_active' => true]);
         $editor->assignRole(Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']));
         $project = Project::create(array_merge([

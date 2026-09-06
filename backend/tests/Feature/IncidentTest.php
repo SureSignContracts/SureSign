@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Models\User;
 use App\Services\FridayPack\FridayPackGenerationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\GivesFridayPackEntitlement;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -25,6 +26,7 @@ use Tests\TestCase;
 class IncidentTest extends TestCase
 {
     use RefreshDatabase;
+    use GivesFridayPackEntitlement;
 
     private const FRIDAY = '2026-08-21';
     // Organisation timezone used throughout: Europe/London — BST (UTC+1)
@@ -540,7 +542,11 @@ class IncidentTest extends TestCase
      */
     public function test_schema_2_pdf_now_succeeds(): void
     {
-        [, $editor, $project] = $this->makeOrgProjectAndEditor('fp10');
+        [$org, $editor, $project] = $this->makeOrgProjectAndEditor('fp10');
+        // This scenario crosses into the premium Friday Pack PDF workflow —
+        // Incidents itself remains uncommercial-gated; only this specific
+        // test's organisation needs Friday Pack entitlement.
+        $this->giveFridayPackEntitlement($org);
         $pack = $this->generatePack($project, $editor);
 
         Sanctum::actingAs($editor);

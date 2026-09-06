@@ -801,42 +801,56 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
         // also performs generation, and regenerate() is a non-CRUD action —
         // mirrors TradePackageController's own explicit-route precedent for
         // the same reason.
+        //
+        // Friday Pack Plan Entitlement Enforcement, Deployment B: every
+        // mutation/workflow route below now ALSO carries
+        // 'feature.entitled:friday_packs' (App\Http\Middleware\EnsureFeatureIsEntitled)
+        // alongside its existing 'feature.available:project.friday_packs' —
+        // the two are deliberately independent (operational switch vs.
+        // commercial plan gate) and neither implies the other. The 9
+        // read-only routes below (index/show/the three *-sources
+        // endpoints/settings show/deliveries index/photo-candidates/
+        // photo-selections index) intentionally receive NEITHER gate they
+        // didn't already have — an Essential organisation that loses (or
+        // never had) the Friday Packs entitlement must still be able to
+        // read its own historical Friday Pack records; only creating,
+        // changing, or progressing one requires the entitlement.
         Route::get('/friday-packs',                          [FridayPackController::class, 'index']);
         Route::get('/friday-packs/{fridayPack}',              [FridayPackController::class, 'show']);
         Route::get('/friday-packs/{fridayPack}/weekly-summary-sources', [FridayPackController::class, 'weeklySummarySources']);
         Route::get('/friday-packs/{fridayPack}/site-issues-sources', [FridayPackController::class, 'siteIssuesSources']);
         Route::get('/friday-packs/{fridayPack}/look-ahead-sources', [FridayPackController::class, 'lookAheadSources']);
-        Route::post('/friday-packs',                          [FridayPackController::class, 'store'])->middleware('feature.available:project.friday_packs');
-        Route::put('/friday-packs/{fridayPack}',               [FridayPackController::class, 'update'])->middleware('feature.available:project.friday_packs');
-        Route::delete('/friday-packs/{fridayPack}',            [FridayPackController::class, 'destroy'])->middleware('feature.available:project.friday_packs');
-        Route::post('/friday-packs/{fridayPack}/regenerate',   [FridayPackController::class, 'regenerate'])->middleware('feature.available:project.friday_packs');
-        Route::post('/friday-packs/{fridayPack}/pdf',           [FridayPackController::class, 'pdf'])->middleware('feature.available:project.friday_packs');
-        Route::post('/friday-packs/{fridayPack}/submit-for-review', [FridayPackController::class, 'submitForReview'])->middleware('feature.available:project.friday_packs');
-        Route::post('/friday-packs/{fridayPack}/mark-reviewed',     [FridayPackController::class, 'markReviewed'])->middleware('feature.available:project.friday_packs');
-        Route::post('/friday-packs/{fridayPack}/return-to-draft',   [FridayPackController::class, 'returnToDraft'])->middleware('feature.available:project.friday_packs');
-        Route::post('/friday-packs/{fridayPack}/approve',           [FridayPackController::class, 'approve'])->middleware('feature.available:project.friday_packs');
+        Route::post('/friday-packs',                          [FridayPackController::class, 'store'])->middleware(['feature.available:project.friday_packs', 'feature.entitled:friday_packs']);
+        Route::put('/friday-packs/{fridayPack}',               [FridayPackController::class, 'update'])->middleware(['feature.available:project.friday_packs', 'feature.entitled:friday_packs']);
+        Route::delete('/friday-packs/{fridayPack}',            [FridayPackController::class, 'destroy'])->middleware(['feature.available:project.friday_packs', 'feature.entitled:friday_packs']);
+        Route::post('/friday-packs/{fridayPack}/regenerate',   [FridayPackController::class, 'regenerate'])->middleware(['feature.available:project.friday_packs', 'feature.entitled:friday_packs']);
+        Route::post('/friday-packs/{fridayPack}/pdf',           [FridayPackController::class, 'pdf'])->middleware(['feature.available:project.friday_packs', 'feature.entitled:friday_packs']);
+        Route::post('/friday-packs/{fridayPack}/submit-for-review', [FridayPackController::class, 'submitForReview'])->middleware(['feature.available:project.friday_packs', 'feature.entitled:friday_packs']);
+        Route::post('/friday-packs/{fridayPack}/mark-reviewed',     [FridayPackController::class, 'markReviewed'])->middleware(['feature.available:project.friday_packs', 'feature.entitled:friday_packs']);
+        Route::post('/friday-packs/{fridayPack}/return-to-draft',   [FridayPackController::class, 'returnToDraft'])->middleware(['feature.available:project.friday_packs', 'feature.entitled:friday_packs']);
+        Route::post('/friday-packs/{fridayPack}/approve',           [FridayPackController::class, 'approve'])->middleware(['feature.available:project.friday_packs', 'feature.entitled:friday_packs']);
         // R1F.2 — Content Readiness + Weekly Declarations. Draft-only,
         // enforced inside FridayPackSectionDeclarationService, not here.
-        Route::post('/friday-packs/{fridayPack}/section-declarations',        [FridayPackController::class, 'declareSection'])->middleware('feature.available:project.friday_packs');
-        Route::delete('/friday-packs/{fridayPack}/section-declarations',      [FridayPackController::class, 'clearSectionDeclaration'])->middleware('feature.available:project.friday_packs');
+        Route::post('/friday-packs/{fridayPack}/section-declarations',        [FridayPackController::class, 'declareSection'])->middleware(['feature.available:project.friday_packs', 'feature.entitled:friday_packs']);
+        Route::delete('/friday-packs/{fridayPack}/section-declarations',      [FridayPackController::class, 'clearSectionDeclaration'])->middleware(['feature.available:project.friday_packs', 'feature.entitled:friday_packs']);
         Route::get('/friday-pack-settings',                   [FridayPackSettingsController::class, 'show']);
-        Route::put('/friday-pack-settings',                   [FridayPackSettingsController::class, 'update'])->middleware('feature.available:project.friday_packs');
+        Route::put('/friday-pack-settings',                   [FridayPackSettingsController::class, 'update'])->middleware(['feature.available:project.friday_packs', 'feature.entitled:friday_packs']);
 
         // V1F — Approved Pack Delivery. Same feature gate as every other
         // Friday Pack mutation route above.
         Route::get('/friday-packs/{fridayPack}/deliveries',              [FridayPackDeliveryController::class, 'index']);
-        Route::post('/friday-packs/{fridayPack}/send',                   [FridayPackDeliveryController::class, 'send'])->middleware('feature.available:project.friday_packs');
-        Route::post('/friday-packs/{fridayPack}/deliveries/retry-failed', [FridayPackDeliveryController::class, 'retryFailed'])->middleware('feature.available:project.friday_packs');
+        Route::post('/friday-packs/{fridayPack}/send',                   [FridayPackDeliveryController::class, 'send'])->middleware(['feature.available:project.friday_packs', 'feature.entitled:friday_packs']);
+        Route::post('/friday-packs/{fridayPack}/deliveries/retry-failed', [FridayPackDeliveryController::class, 'retryFailed'])->middleware(['feature.available:project.friday_packs', 'feature.entitled:friday_packs']);
 
         // R1B — Site Photographs & Evidence Selection. Discovery is
         // read-only (no mutation gate); every selection mutation is gated
         // identically to every other Friday Pack mutation route above.
         Route::get('/friday-packs/{fridayPack}/photo-candidates',        [FridayPackPhotoSelectionController::class, 'candidates']);
         Route::get('/friday-packs/{fridayPack}/photo-selections',        [FridayPackPhotoSelectionController::class, 'index']);
-        Route::post('/friday-packs/{fridayPack}/photo-selections',       [FridayPackPhotoSelectionController::class, 'store'])->middleware('feature.available:project.friday_packs');
-        Route::put('/friday-packs/{fridayPack}/photo-selections/reorder', [FridayPackPhotoSelectionController::class, 'reorder'])->middleware('feature.available:project.friday_packs');
-        Route::put('/friday-packs/{fridayPack}/photo-selections/{photoSelection}',    [FridayPackPhotoSelectionController::class, 'update'])->middleware('feature.available:project.friday_packs');
-        Route::delete('/friday-packs/{fridayPack}/photo-selections/{photoSelection}', [FridayPackPhotoSelectionController::class, 'destroy'])->middleware('feature.available:project.friday_packs');
+        Route::post('/friday-packs/{fridayPack}/photo-selections',       [FridayPackPhotoSelectionController::class, 'store'])->middleware(['feature.available:project.friday_packs', 'feature.entitled:friday_packs']);
+        Route::put('/friday-packs/{fridayPack}/photo-selections/reorder', [FridayPackPhotoSelectionController::class, 'reorder'])->middleware(['feature.available:project.friday_packs', 'feature.entitled:friday_packs']);
+        Route::put('/friday-packs/{fridayPack}/photo-selections/{photoSelection}',    [FridayPackPhotoSelectionController::class, 'update'])->middleware(['feature.available:project.friday_packs', 'feature.entitled:friday_packs']);
+        Route::delete('/friday-packs/{fridayPack}/photo-selections/{photoSelection}', [FridayPackPhotoSelectionController::class, 'destroy'])->middleware(['feature.available:project.friday_packs', 'feature.entitled:friday_packs']);
 
         // Closeout — gated by project.closeout.
         Route::get('/closeout',              [CloseoutController::class, 'show']);

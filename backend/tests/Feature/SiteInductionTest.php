@@ -10,6 +10,7 @@ use App\Models\SiteInduction;
 use App\Models\User;
 use App\Services\FridayPack\FridayPackGenerationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\GivesFridayPackEntitlement;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
@@ -26,6 +27,7 @@ use Tests\TestCase;
 class SiteInductionTest extends TestCase
 {
     use RefreshDatabase;
+    use GivesFridayPackEntitlement;
 
     private const FRIDAY = '2026-08-21';
     private const MONDAY = '2026-08-17';
@@ -389,7 +391,11 @@ class SiteInductionTest extends TestCase
      */
     public function test_schema_2_pdf_now_succeeds(): void
     {
-        [, $editor, $project] = $this->makeOrgProjectAndEditor('fp13');
+        [$org, $editor, $project] = $this->makeOrgProjectAndEditor('fp13');
+        // This scenario crosses into the premium Friday Pack PDF workflow —
+        // Site Inductions itself remains uncommercial-gated; only this
+        // specific test's organisation needs Friday Pack entitlement.
+        $this->giveFridayPackEntitlement($org);
         $pack = $this->generatePack($project, $editor);
 
         Sanctum::actingAs($editor);

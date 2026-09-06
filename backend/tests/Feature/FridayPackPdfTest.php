@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\FridayPack\FridayPackGenerationService;
 use App\Services\FridayPack\FridayPackPdfService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\GivesFridayPackEntitlement;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Role;
@@ -25,12 +26,14 @@ use Tests\TestCase;
 class FridayPackPdfTest extends TestCase
 {
     use RefreshDatabase;
+    use GivesFridayPackEntitlement;
 
     private const FRIDAY = '2026-08-21';
 
     private function makeOrgProjectAndEditor(string $suffix, string $role = 'Client'): array
     {
         $org = Organization::create(['name' => "Org {$suffix}", 'slug' => "org-{$suffix}", 'timezone' => 'Europe/London']);
+        $this->giveFridayPackEntitlement($org);
         $editor = User::factory()->create(['organization_id' => $org->id, 'is_active' => true]);
         $editor->assignRole(Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']));
         $project = Project::create([

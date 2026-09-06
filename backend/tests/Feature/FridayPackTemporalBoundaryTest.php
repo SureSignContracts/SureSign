@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\FridayPack\FridayPackGenerationService;
 use App\Support\FridayPack\FridayPackSections;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\GivesFridayPackEntitlement;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -43,6 +44,7 @@ use Tests\TestCase;
 class FridayPackTemporalBoundaryTest extends TestCase
 {
     use RefreshDatabase;
+    use GivesFridayPackEntitlement;
 
     private const FRIDAY = '2026-08-21';
     private const MONDAY = '2026-08-17';
@@ -51,6 +53,7 @@ class FridayPackTemporalBoundaryTest extends TestCase
     private function makeOrgProjectAndEditor(string $suffix, string $timezone = 'Europe/London'): array
     {
         $org = Organization::create(['name' => "Org {$suffix}", 'slug' => "org-{$suffix}", 'timezone' => $timezone]);
+        $this->giveFridayPackEntitlement($org);
         $editor = User::factory()->create(['organization_id' => $org->id, 'is_active' => true]);
         $editor->assignRole(Role::firstOrCreate(['name' => 'Client', 'guard_name' => 'web']));
         $project = Project::create(['organization_id' => $org->id, 'created_by' => $editor->id, 'name' => "Project {$suffix}"]);

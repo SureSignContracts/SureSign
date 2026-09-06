@@ -13,6 +13,7 @@ use App\Services\FridayPack\FridayPackLifecycleService;
 use App\Services\FridayPack\FridayPackPdfService;
 use App\Support\FridayPack\FridayPackImmutableException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\GivesFridayPackEntitlement;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Role;
@@ -27,6 +28,7 @@ use Tests\TestCase;
 class FridayPackLifecycleTest extends TestCase
 {
     use RefreshDatabase;
+    use GivesFridayPackEntitlement;
 
     private const FRIDAY = '2026-08-21';
 
@@ -39,6 +41,7 @@ class FridayPackLifecycleTest extends TestCase
     private function makeOrgProjectAndEditor(string $suffix, string $role = 'Client'): array
     {
         $org = Organization::create(['name' => "Org {$suffix}", 'slug' => "org-{$suffix}", 'timezone' => 'Europe/London']);
+        $this->giveFridayPackEntitlement($org);
         $editor = User::factory()->create(['organization_id' => $org->id, 'is_active' => true]);
         $editor->assignRole(Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']));
         $project = Project::create(['organization_id' => $org->id, 'created_by' => $editor->id, 'name' => "Project {$suffix}"]);

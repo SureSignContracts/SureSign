@@ -24,6 +24,7 @@ use App\Services\FridayPack\FridayPackReadinessService;
 use App\Services\FridayPack\FridayPackSectionDeclarationService;
 use App\Support\FridayPack\FridayPackNotReadyException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\GivesFridayPackEntitlement;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -37,6 +38,7 @@ use Tests\TestCase;
 class FridayPackReadinessTest extends TestCase
 {
     use RefreshDatabase;
+    use GivesFridayPackEntitlement;
 
     private const FRIDAY = '2026-08-21';
     private const MONDAY = '2026-08-17';
@@ -44,6 +46,7 @@ class FridayPackReadinessTest extends TestCase
     private function makeOrgProjectAndEditor(string $suffix): array
     {
         $org = Organization::create(['name' => "Org {$suffix}", 'slug' => "org-{$suffix}", 'timezone' => 'Europe/London']);
+        $this->giveFridayPackEntitlement($org);
         $editor = User::factory()->create(['organization_id' => $org->id, 'is_active' => true]);
         $editor->assignRole(Role::firstOrCreate(['name' => 'Client', 'guard_name' => 'web']));
         $project = Project::create(['organization_id' => $org->id, 'created_by' => $editor->id, 'name' => "Project {$suffix}"]);
