@@ -11,6 +11,8 @@ import toast from '@/lib/toast';
 import Button from '@/components/ui/Button';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
+import { useFridayPackEntitlement } from '@/hooks/useFridayPackEntitlement';
+import { FridayPackUpgradeBanner } from '@/components/fridayPacks/FridayPackUpgradeNotice';
 import SitePhotographsSection from '@/components/fridayPacks/SitePhotographsSection';
 import WeeklySummarySection from '@/components/fridayPacks/WeeklySummarySection';
 import WorkforceSection from '@/components/fridayPacks/WorkforceSection';
@@ -572,6 +574,8 @@ function ProjectFridayPackDetailPage() {
   const { id, fridayPackId } = useParams<{ id: string; fridayPackId: string }>();
   const router = useRouter();
   const { canManageFridayPacks: canWrite } = useProjectPermissions();
+  const { entitled } = useFridayPackEntitlement(id);
+  const canMutate = canWrite && entitled;
 
   const { data: pack, isLoading, isError, error } = useQuery<FridayPackDetail>({
     queryKey: ['friday-pack', id, fridayPackId],
@@ -635,21 +639,23 @@ function ProjectFridayPackDetailPage() {
         </div>
       </div>
 
+      {!entitled && <FridayPackUpgradeBanner />}
+
       {pack.readiness && (
         <FridayPackReadinessPanel projectId={id!} fridayPackId={fridayPackId!} readiness={pack.readiness} isDraft={pack.status === 'draft'} />
       )}
 
-      <LifecycleActions projectId={id!} fridayPackId={fridayPackId!} pack={pack} canWrite={canWrite} />
+      <LifecycleActions projectId={id!} fridayPackId={fridayPackId!} pack={pack} canWrite={canMutate} />
 
       <LifecycleMetadata pack={pack} />
 
-      <PdfActions projectId={id!} fridayPackId={fridayPackId!} pack={pack} canWrite={canWrite} />
+      <PdfActions projectId={id!} fridayPackId={fridayPackId!} pack={pack} canWrite={canMutate} />
 
-      <DeliveryActions projectId={id!} fridayPackId={fridayPackId!} pack={pack} canWrite={canWrite} />
+      <DeliveryActions projectId={id!} fridayPackId={fridayPackId!} pack={pack} canWrite={canMutate} />
 
       {/* Manual commentary — separate from deterministic snapshot content; the
           backend remains authoritative on when editing is actually allowed. */}
-      <ManualCommentaryEditor projectId={id!} fridayPackId={fridayPackId!} pack={pack} canWrite={canWrite} />
+      <ManualCommentaryEditor projectId={id!} fridayPackId={fridayPackId!} pack={pack} canWrite={canMutate} />
 
       {/* R1D — Report Information. Schema-2 packs only: a legacy
           schema-1 pack has no report_information section contract. */}
@@ -668,7 +674,7 @@ function ProjectFridayPackDetailPage() {
         <WeeklySummarySection
           projectId={id!} fridayPackId={fridayPackId!}
           initialText={pack.weekly_summary}
-          isDraft={pack.status === 'draft'} canWrite={canWrite}
+          isDraft={pack.status === 'draft'} canWrite={canMutate}
         />
       )}
 
@@ -682,7 +688,7 @@ function ProjectFridayPackDetailPage() {
       {isSchemaV2 && (
         <SitePhotographsSection
           projectId={id!} fridayPackId={fridayPackId!}
-          isDraft={pack.status === 'draft'} canWrite={canWrite}
+          isDraft={pack.status === 'draft'} canWrite={canMutate}
         />
       )}
 
@@ -697,7 +703,7 @@ function ProjectFridayPackDetailPage() {
         <SiteIssuesSection
           projectId={id!} fridayPackId={fridayPackId!}
           initialText={pack.site_issues_summary}
-          isDraft={pack.status === 'draft'} canWrite={canWrite}
+          isDraft={pack.status === 'draft'} canWrite={canMutate}
         />
       )}
 
@@ -705,7 +711,7 @@ function ProjectFridayPackDetailPage() {
         <LookAheadSection
           projectId={id!} fridayPackId={fridayPackId!}
           initialText={pack.look_ahead}
-          isDraft={pack.status === 'draft'} canWrite={canWrite}
+          isDraft={pack.status === 'draft'} canWrite={canMutate}
         />
       )}
 

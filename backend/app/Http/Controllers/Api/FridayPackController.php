@@ -12,7 +12,9 @@ use App\Services\FridayPack\FridayPackPdfService;
 use App\Services\FridayPack\FridayPackPeriodResolver;
 use App\Services\FridayPack\FridayPackReadinessService;
 use App\Services\FridayPack\FridayPackSectionDeclarationService;
+use App\Services\Entitlements\FeatureGate;
 use App\Services\ProjectActivityService;
+use App\Support\Entitlements\Feature;
 use App\Support\FridayPack\FridayPackNotReadyException;
 use App\Support\FridayPack\FridayPackReadinessMatrix;
 use App\Support\FridayPack\FridayPackSchemaVersion;
@@ -45,6 +47,30 @@ class FridayPackController extends Controller
         if ($fridayPack->project_id !== $project->id) {
             abort(404, 'Friday Pack not found for this project.');
         }
+    }
+
+    /**
+     * Friday Pack Plan Entitlement Enforcement — Entitlement UX phase.
+     * Read-only status check so the frontend can show the upgrade state
+     * on page load rather than only discovering it from a failed
+     * mutation. Deliberately the smallest possible extension: calls the
+     * exact same `FeatureGate::allows()` `EnsureFeatureIsEntitled` itself
+     * uses — this never duplicates entitlement logic, it only exposes
+     * the same answer as a read. Mirrors that middleware's own Super
+     * Admin/Admin bypass (a platform operator is never shown an upgrade
+     * warning for a feature they may legitimately operate).
+     */
+    public function entitlement(Request $request, Project $project, FeatureGate $gate)
+    {
+        $this->authorize($request, $project);
+
+        $user = $request->user();
+        $isPlatformOperator = $user->hasRole('Super Admin') || $user->hasRole('Admin');
+
+        return response()->json([
+            'entitled' => $isPlatformOperator || $gate->allows($project->organization, Feature::FRIDAY_PACKS),
+            'is_platform_operator' => $isPlatformOperator,
+        ]);
     }
 
     public function index(Request $request, Project $project)

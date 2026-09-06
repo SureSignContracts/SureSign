@@ -114,19 +114,25 @@ export default function SubscriptionSummaryCard({
   };
 
   return (
-    <Card className="ss-animate-in transition-shadow duration-300 hover:shadow-[var(--shadow-pop)]">
+    <Card className="ss-animate-in overflow-hidden">
       <CardHeader>
         {/* Phase E4: never label an unactivated subscription "Current" — see Stage 2. */}
         <CardTitle>{isAwaitingPayment ? 'Pending Checkout' : 'Current Subscription'}</CardTitle>
         <Badge tone={subscriptionStatusTone(subscription.status)}>{subscriptionStatusLabel(subscription.status)}</Badge>
       </CardHeader>
       <CardBody className="space-y-5">
-        <div className="flex items-baseline gap-2">
-          <h3 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>{planName}</h3>
-          <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
+        <div className="flex flex-wrap items-center justify-between gap-5 rounded-xl p-5 sm:p-6" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+          <div>
+            <p className="mb-2 text-xs" style={{ color: 'var(--text-secondary)' }}>{isAwaitingPayment ? 'Selected plan' : 'Your workspace plan'}</p>
+            <h3 className="text-3xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>{planName}</h3>
+          </div>
+          <div>
+          <p className="mb-2 text-xs" style={{ color: 'var(--text-secondary)' }}>Subscription price</p>
+          <span className="text-xl font-semibold tabular-nums" style={{ color: 'var(--text-primary)' }}>
             {formatMoney(minorToMajor(subscription.total_amount), subscription.currency)}
             {billingIntervalSuffix(subscription.billing_interval)}
           </span>
+          </div>
         </div>
 
         {isAwaitingPayment && (

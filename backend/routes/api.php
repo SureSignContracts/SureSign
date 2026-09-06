@@ -815,6 +815,11 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
         // never had) the Friday Packs entitlement must still be able to
         // read its own historical Friday Pack records; only creating,
         // changing, or progressing one requires the entitlement.
+        // Entitlement UX phase — read-only status check, deliberately
+        // ungated by either 'feature.available' or 'feature.entitled'
+        // (it exists precisely to answer the question those middleware
+        // would otherwise only reveal via a blocked mutation).
+        Route::get('/friday-packs/entitlement',              [FridayPackController::class, 'entitlement']);
         Route::get('/friday-packs',                          [FridayPackController::class, 'index']);
         Route::get('/friday-packs/{fridayPack}',              [FridayPackController::class, 'show']);
         Route::get('/friday-packs/{fridayPack}/weekly-summary-sources', [FridayPackController::class, 'weeklySummarySources']);

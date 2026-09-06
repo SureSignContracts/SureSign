@@ -363,4 +363,80 @@ class FridayPackEntitlementTest extends TestCase
         $this->postJson("/api/projects/{$project->id}/friday-packs", ['week_ending' => self::FRIDAY])
             ->assertStatus(201);
     }
+
+    // ── Entitlement UX status endpoint (GET /friday-packs/entitlement) ──
+
+    public function test_entitlement_status_reports_false_for_essential(): void
+    {
+        $org = $this->makeOrg('ux1');
+        $this->subscribeOrg($org, 'essential-ux1', fridayPacksEntitled: false);
+        $editor = $this->makeUser('Client', $org);
+        $project = $this->makeProject($org, $editor);
+
+        Sanctum::actingAs($editor);
+        $this->getJson("/api/projects/{$project->id}/friday-packs/entitlement")
+            ->assertStatus(200)
+            ->assertJsonPath('entitled', false)
+            ->assertJsonPath('is_platform_operator', false);
+    }
+
+    public function test_entitlement_status_reports_true_for_professional(): void
+    {
+        $org = $this->makeOrg('ux2');
+        $this->subscribeOrg($org, 'professional-ux2', fridayPacksEntitled: true);
+        $editor = $this->makeUser('Client', $org);
+        $project = $this->makeProject($org, $editor);
+
+        Sanctum::actingAs($editor);
+        $this->getJson("/api/projects/{$project->id}/friday-packs/entitlement")
+            ->assertStatus(200)
+            ->assertJsonPath('entitled', true);
+    }
+
+    public function test_entitlement_status_reports_true_for_enterprise(): void
+    {
+        $org = $this->makeOrg('ux3');
+        $this->subscribeOrg($org, 'enterprise-ux3', fridayPacksEntitled: true);
+        $editor = $this->makeUser('Client', $org);
+        $project = $this->makeProject($org, $editor);
+
+        Sanctum::actingAs($editor);
+        $this->getJson("/api/projects/{$project->id}/friday-packs/entitlement")
+            ->assertStatus(200)
+            ->assertJsonPath('entitled', true);
+    }
+
+    public function test_entitlement_status_reports_true_for_super_admin_regardless_of_plan(): void
+    {
+        $org = $this->makeOrg('ux4');
+        $this->subscribeOrg($org, 'essential-ux4', fridayPacksEntitled: false);
+        $editor = $this->makeUser('Client', $org);
+        $project = $this->makeProject($org, $editor);
+
+        $superAdmin = $this->makeUser('Super Admin');
+        Sanctum::actingAs($superAdmin);
+
+        $this->getJson("/api/projects/{$project->id}/friday-packs/entitlement")
+            ->assertStatus(200)
+            ->assertJsonPath('entitled', true)
+            ->assertJsonPath('is_platform_operator', true);
+    }
+
+    public function test_entitlement_status_endpoint_never_blocks_a_mutation_itself(): void
+    {
+        // The status endpoint is a read — it must never gain a
+        // feature.entitled/feature.available gate itself, or it could
+        // never report "not entitled" in the first place.
+        $org = $this->makeOrg('ux5');
+        $this->subscribeOrg($org, 'essential-ux5', fridayPacksEntitled: false);
+        $editor = $this->makeUser('Client', $org);
+        $project = $this->makeProject($org, $editor);
+
+        FeatureAvailability::create(['feature_key' => 'project.friday_packs', 'status' => 'maintenance']);
+
+        Sanctum::actingAs($editor);
+        $this->getJson("/api/projects/{$project->id}/friday-packs/entitlement")
+            ->assertStatus(200)
+            ->assertJsonPath('entitled', false);
+    }
 }

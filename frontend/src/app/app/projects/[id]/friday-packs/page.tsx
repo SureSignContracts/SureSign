@@ -13,8 +13,10 @@ import Button from '@/components/ui/Button';
 import DatePicker from '@/components/ui/DatePicker';
 import { getErrorMessage } from '@/lib/getErrorMessage';
 import { useProjectPermissions } from '@/hooks/useProjectPermissions';
+import { useFridayPackEntitlement } from '@/hooks/useFridayPackEntitlement';
 import { ProjectModuleHeader } from '@/components/projects/ProjectModuleHeader';
 import FridayPackSettingsModal from '@/components/fridayPacks/FridayPackSettingsModal';
+import { FridayPackUpgradeBanner, FridayPackUpgradeEmptyState } from '@/components/fridayPacks/FridayPackUpgradeNotice';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   draft:             { bg: 'rgba(90,86,82,0.2)',    text: '#9a9490' },
@@ -130,15 +132,20 @@ function ProjectFridayPacksPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { canManageFridayPacks: canWrite } = useProjectPermissions();
+  const { entitled, isLoading: isLoadingEntitlement } = useFridayPackEntitlement(id);
+  const canMutate = canWrite && entitled;
   const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = useState('all');
   const [showGenerate, setShowGenerate] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
-  const { data, isLoading, isError, error, refetch } = useQuery({
+  const { data, isLoading: isLoadingPacks, isError, error, refetch } = useQuery({
     queryKey: ['project-friday-packs', id, statusFilter],
     queryFn: () => api.get(`/projects/${id}/friday-packs`, { params: statusFilter !== 'all' ? { status: statusFilter } : {} }).then(r => r.data),
   });
+  // Combined so the entitlement state is known before any mutation
+  // control renders — never a flash of "Generate" for an Essential org.
+  const isLoading = isLoadingPacks || isLoadingEntitlement;
 
   const regenerateMutation = useMutation({
     mutationFn: (packId: number) => api.post(`/projects/${id}/friday-packs/${packId}/regenerate`).then(r => r.data),
@@ -161,7 +168,7 @@ function ProjectFridayPacksPage() {
         title="Friday packs"
         description="Manually generate a frozen weekly reporting snapshot for this project."
         icon={FileBarChart}
-        action={canWrite ? (
+        action={canMutate ? (
           <div className="flex gap-2">
             <button
               onClick={() => setShowSettings(true)}
@@ -179,6 +186,8 @@ function ProjectFridayPacksPage() {
           </div>
         ) : undefined}
       />
+
+      {!isLoading && !entitled && packs.length > 0 && <FridayPackUpgradeBanner />}
 
       <div className="ss-animate-in flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-2 shadow-[var(--shadow-card)]" style={{ animationDelay: '100ms' }}>
         <div className="flex gap-1 overflow-x-auto rounded-xl bg-[var(--bg-elevated)] p-1">
@@ -209,24 +218,28 @@ function ProjectFridayPacksPage() {
           <Button onClick={() => refetch()} variant="secondary" size="sm" className="mt-4">Try again</Button>
         </div>
       ) : packs.length === 0 ? (
-        <div className="ss-animate-in grid min-h-[270px] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-[var(--shadow-card)] md:grid-cols-[0.8fr_1.2fr]">
-          <div className="flex items-center justify-center bg-[var(--bg-elevated)] p-8">
-            <div className="flex h-24 w-24 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--gold)] shadow-[var(--shadow-card)]">
-              <FileBarChart size={38} strokeWidth={1.5} />
+        entitled ? (
+          <div className="ss-animate-in grid min-h-[270px] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-[var(--shadow-card)] md:grid-cols-[0.8fr_1.2fr]">
+            <div className="flex items-center justify-center bg-[var(--bg-elevated)] p-8">
+              <div className="flex h-24 w-24 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--gold)] shadow-[var(--shadow-card)]">
+                <FileBarChart size={38} strokeWidth={1.5} />
+              </div>
+            </div>
+            <div className="flex flex-col items-start justify-center p-8 sm:p-10">
+              <h2 className="text-xl font-semibold tracking-[-0.02em]" style={{ color: 'var(--text-primary)' }}>Generate the first Friday Pack</h2>
+              <p className="mt-2 max-w-md text-sm leading-6" style={{ color: 'var(--text-muted)' }}>
+                Create a frozen weekly reporting snapshot from this project&rsquo;s current data.
+              </p>
+              {canWrite && (
+                <Button onClick={() => setShowGenerate(true)} size="sm" className="mt-5">
+                  <Plus size={14} /> Generate Friday Pack
+                </Button>
+              )}
             </div>
           </div>
-          <div className="flex flex-col items-start justify-center p-8 sm:p-10">
-            <h2 className="text-xl font-semibold tracking-[-0.02em]" style={{ color: 'var(--text-primary)' }}>Generate the first Friday Pack</h2>
-            <p className="mt-2 max-w-md text-sm leading-6" style={{ color: 'var(--text-muted)' }}>
-              Create a frozen weekly reporting snapshot from this project&rsquo;s current data.
-            </p>
-            {canWrite && (
-              <Button onClick={() => setShowGenerate(true)} size="sm" className="mt-5">
-                <Plus size={14} /> Generate Friday Pack
-              </Button>
-            )}
-          </div>
-        </div>
+        ) : (
+          <FridayPackUpgradeEmptyState />
+        )
       ) : (
         <div className="rounded-2xl overflow-x-auto" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
           <table className="w-full min-w-[720px] text-sm">
@@ -259,7 +272,7 @@ function ProjectFridayPacksPage() {
                       {p.generated_at ? formatDate(p.generated_at) : '—'} · {generatedByLabel(p)}
                     </td>
                     <td className="px-5 py-3">
-                      {canWrite && p.status === 'draft' && (
+                      {canMutate && p.status === 'draft' && (
                         <button
                           onClick={e => { e.stopPropagation(); regenerateMutation.mutate(p.id); }}
                           disabled={regenerateMutation.isPending}

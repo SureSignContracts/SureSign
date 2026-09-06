@@ -165,6 +165,7 @@ export default function PlanComparisonSection({
             {(['monthly', 'annual'] as const).map(i => (
               <button
                 key={i}
+                aria-pressed={interval === i}
                 onClick={() => setInterval(i)}
                 className="px-3.5 py-1.5 rounded-full text-xs font-medium transition-all active:scale-[0.97]"
                 style={interval === i
@@ -271,7 +272,7 @@ export default function PlanComparisonSection({
                   disabled={(!canSubscribe && !canRequestChange) || isCheckoutPending}
                   onClick={onClick}
                   aria-busy={isCheckoutPending}
-                  title={canSubscribe || canRequestChange ? undefined : 'Not yet available in this release'}
+                  title={canSubscribe || canRequestChange ? undefined : actionLabel}
                   className="relative z-10 mt-auto flex w-full items-center justify-center gap-1.5 rounded-xl py-3 text-sm font-medium transition-all duration-200 hover:enabled:-translate-y-0.5 active:scale-[0.98] disabled:cursor-not-allowed"
                   style={(canSubscribe || canRequestChange)
                     ? { backgroundColor: plan.is_popular ? '#9ee5b5' : '#18211d', color: plan.is_popular ? '#18211d' : '#ffffff' }

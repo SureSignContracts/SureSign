@@ -43,7 +43,7 @@ export default function SubscriptionPage() {
   if (overviewLoading) return <Skeleton />;
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6">
       <div className="ss-animate-in">
         <Link href="/app/settings/billing" className="inline-flex items-center gap-1.5 text-xs mb-4 transition-all duration-200 hover:opacity-70 hover:-translate-x-0.5" style={{ color: 'var(--text-muted)' }}>
           <ArrowLeft size={13} /> Back to Billing
@@ -119,12 +119,8 @@ export default function SubscriptionPage() {
             <PendingPlanChangeCard planChange={overview.pending_plan_change} timeZone={timeZone} />
           )}
 
-          {overview.has_subscription && !overview.subscription?.is_abandoned_checkout && (
-            <SubscriptionIntelligenceSection timeZone={timeZone} />
-          )}
-
           {!plansLoading && plansData && (
-            <div id="plans">
+            <div id="plans" className="scroll-mt-8 pt-3">
               <PlanComparisonSection
                 plans={plansData.plans}
                 hasSubscription={!overview.can_start_new_checkout}
@@ -132,6 +128,11 @@ export default function SubscriptionPage() {
                 hasPendingChange={!!overview.pending_plan_change}
                 pendingCheckout={overview.subscription?.pending_checkout ?? null}
               />
+            </div>
+          )}
+          {overview.has_subscription && !overview.subscription?.is_abandoned_checkout && (
+            <div className="border-t pt-6" style={{ borderColor: 'var(--border)' }}>
+              <SubscriptionIntelligenceSection timeZone={timeZone} />
             </div>
           )}
         </>

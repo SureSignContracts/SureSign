@@ -76,7 +76,10 @@ export default function SubscriptionIntelligenceSection({ timeZone }: { timeZone
         <StripeInfoCard stripe={intelligence.stripe} timeZone={timeZone} />
       </div>
 
-      <SubscriptionTimeline timeline={intelligence.timeline} timeZone={timeZone} />
+      <details className="rounded-xl border p-4" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-surface)' }}>
+        <summary className="cursor-pointer text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Subscription activity</summary>
+        <div className="mt-4"><SubscriptionTimeline timeline={intelligence.timeline} timeZone={timeZone} /></div>
+      </details>
     </section>
   );
 }
