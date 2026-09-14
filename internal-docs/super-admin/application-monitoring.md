@@ -6,8 +6,9 @@ background operations (queue, AI analyses, document generation) are healthy.
 
 This is **application monitoring, not infrastructure observability** — it
 answers "how is SureSign being used and is it working correctly," not
-"is the server up." For container/CPU/disk/MySQL/Redis health, see
-[production-operations.md](../../production-operations.md#monitoring).
+"is the server up." Container/CPU/disk/MySQL/Redis health is not covered
+by this page or by any document in this tree yet — no infrastructure
+observability doc currently exists.
 
 Only Super Admin can see this page and its API — regular Admins and Client
 users receive a 403 (`GET /api/admin/application-monitoring` sits in the same

@@ -100,5 +100,6 @@ The configured default recipient is `tech@suresigncontracts.com`.
 ## Sitemap
 
 `marketing/src/app/sitemap.ts` is the source for the public XML sitemap. It
-includes the homepage, Product, Security, Pricing overview, every current
-public plan page, Compare Plans, Adjudication, Contact, and Book a Demo.
+includes the homepage, Product, Pricing overview, every current public plan
+page, Compare Plans, Services, Consultancy, Adjudication, Contact, Security,
+Privacy, Terms, and Book a Demo.

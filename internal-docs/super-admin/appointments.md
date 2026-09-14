@@ -13,7 +13,7 @@ Booking), and Phase 4 (Communications & Appointment Experience —
 confirmation/reminder emails, signed cancel/reschedule links, ICS, and the
 marketing-site confirmation/cancel/reschedule pages that call it)**. Every
 phase listed is complete end to end, backend and frontend — see
-[Marketing site](#marketing-site-marketing-a-separate-nextjs-appdeployment)
+[Marketing-site integration](#marketing-site-integration)
 below for the actual pages. Calendar-provider integrations (Google/Outlook/
 Teams/Zoom), round-robin assignment, and dashboards/reporting are all
 deferred to later phases and do not exist yet — see

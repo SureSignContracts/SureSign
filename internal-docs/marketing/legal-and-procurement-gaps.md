@@ -1,18 +1,44 @@
 # Marketing legal and procurement content gaps
 
-Status: requires approved business or legal input before publication.
+Status: partially addressed — a Privacy Policy and Terms of Use are live;
+the remaining items below still require approved business or legal input.
 
-The marketing footer intentionally does not link to invented Privacy, Terms or
-Cookie pages. Add public routes and footer links only after approved copy exists.
+**Correction (2026-09-14):** this file previously stated "the marketing
+footer intentionally does not link to invented Privacy, Terms or Cookie
+pages" — that was already stale by the time this file itself was added.
+`/privacy` and `/terms` (and the footer's links to them) have existed since
+2026-07-28 (commit `2435bdf`), about two hours before this file's own first
+commit (`3f013d4`); this file was never updated to reflect it, and the
+inconsistency stood for roughly seven weeks. Whether that Privacy/Terms
+content actually received the "approved business or legal input" this
+file's own status line calls for is a real business/legal question this
+documentation pass cannot answer from the repository alone — flagging it
+for a genuine decision rather than assuming either way.
 
-Required legal decisions:
+What the live pages actually contain (verified directly against
+`marketing/src/app/privacy/page.tsx` / `terms/page.tsx`): generic,
+non-specific privacy/terms content — no claimed ISO 27001, SOC 2, Cyber
+Essentials, UK-only hosting, recovery-time guarantee, or other
+certification; no specific company registration number or registered
+address stated (the entity is referred to only as "SureSign Contracts").
+A Cookie Policy page does not exist — that part of the original statement
+above remains accurate.
 
-- privacy notice, controller identity and company details;
-- terms of service or customer terms;
-- cookie policy and whether non-essential cookies are used;
-- data retention and deletion commitments;
-- data export or return process when a customer leaves;
-- approved company registration and contact details.
+Required legal decisions (still open — not addressed by the live content):
+
+- controller identity, company registration number, and registered address
+  (the live Privacy Policy does not state any of these);
+- a standalone cookie policy — the live Privacy Policy states essential
+  cookies only, no tracking/advertising cookies, but there is no dedicated
+  Cookie Policy page;
+- specific data retention and deletion periods (the live Privacy Policy
+  describes retention only in general terms — "as long as your account is
+  active", "a reasonable period" — with no stated timeframe);
+- a data export or return process when a customer leaves;
+- confirmation that the live Terms of Use's specific commercial terms
+  (liability cap of fees paid in the preceding twelve months, 5/10
+  working-day response commitments, etc.) reflect actual approved policy
+  rather than placeholder figures.
 
 Required procurement evidence:
 
