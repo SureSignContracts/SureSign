@@ -91,6 +91,15 @@ class PricingSeeder extends Seeder
                 'Projects & contracts'  => ['included', 'included', 'included'],
                 'Document management'   => ['included', 'included', 'included'],
                 'Payment applications'  => ['limited', 'included', 'included'],
+                // Marketing, Pricing & Documentation Refresh — Batch 1.
+                // Mirrors Feature::FRIDAY_PACKS's real plan entitlement
+                // (see 2026_09_04_000002_add_friday_packs_entitlement_to_pricing_plans.php)
+                // and the fact that Toolbox Talks/Site Inductions/Incidents/
+                // H&S Inspections/Plant & Equipment/Statutory Inspections are
+                // all genuinely all-plan today — a single row avoids
+                // inventing differentiation that doesn't exist.
+                'Weekly Friday Packs'   => ['not_included', 'included', 'included'],
+                'Health & Safety records' => ['included', 'included', 'included'],
             ],
             'Commercial' => [
                 'Variations'          => ['not_included', 'included', 'included'],
