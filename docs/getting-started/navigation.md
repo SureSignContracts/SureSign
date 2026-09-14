@@ -32,7 +32,12 @@ Opening a project shows a project-specific sidebar with:
   [Notices](../notices/overview.md), Programme, Delay & EOT, Risk Register.
 - **Communications group** — RFIs, Meetings.
 - **Delivery group** — QA Reports, Snagging, Site Reports, Toolbox Talks,
-  Friday Packs, Delivery Documents, Closeout.
+  Friday Packs, Delivery Documents, Drawings, Closeout.
+- **Health & Safety group** — [Site Inductions](../site-inductions/overview.md),
+  [Incidents](../incidents/overview.md),
+  [H&S Inspections](../hs-inspections/overview.md),
+  [Plant & Equipment](../plant-equipment/overview.md),
+  [Statutory Inspections](../statutory-inspections/overview.md).
 - **Disputes group** — Adjudication (if enabled for your organisation).
 - **Documents** and **Calendar** (always shown at the bottom of the project menu).
 

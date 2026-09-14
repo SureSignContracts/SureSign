@@ -53,6 +53,31 @@ review and confirmation by a person.
 **Generated Document** — A PDF or Excel file SureSign automatically produces
 from a record (such as a Payment Certificate or Variation Order).
 
+**Site Report** — A daily record of site activity: workforce, works carried
+out, materials, and site issues, with photographs and evidence attached.
+
+**Toolbox Talk** — A recorded site safety briefing: topic, date, presenter,
+attendance, and evidence.
+
+**Site Induction** — A recorded induction session, with the date, an
+optional session title and company/trade, and the number of people
+inducted in that session.
+
+**Incident** — A recorded accident, incident, or near miss, with its own
+assessment of injury and regulatory reportability.
+
+**H&S Inspection** — A recorded health & safety inspection or check, kept
+separate from QA Reports and the Contract Risk Register, with its own
+outcome and status.
+
+**Statutory Inspection** — A recorded statutory inspection or check event,
+kept separate from Delivery Documents, H&S Inspections, and Plant &
+Equipment deployments.
+
+**Friday Pack** — A weekly site progress, workforce, and health & safety
+report for a project, built from that week's Site Reports, Toolbox Talks,
+and Health & Safety records, and reviewed and approved before it is sent.
+
 **Organisation** — A construction company using SureSign; the boundary within
 which a Client user's data access is scoped.
 

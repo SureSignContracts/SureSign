@@ -32,8 +32,10 @@ project's Overview page whenever you're ready. See
 
 A new project appears in your project list, with a full workspace (Overview,
 Contracts, Commercial, Variations, Notices, Programme, Delay & EOT, Risk
-Register, RFIs, Meetings, QA Reports, Snagging, Site Reports, Delivery
-Documents, Closeout, Documents, Calendar, and Adjudication if enabled).
+Register, RFIs, Meetings, QA Reports, Snagging, Site Reports, Toolbox Talks,
+Friday Packs, Delivery Documents, Drawings, Closeout, Site Inductions,
+Incidents, H&S Inspections, Plant & Equipment, Statutory Inspections,
+Documents, Calendar, and Adjudication if enabled).
 
 ## Linked modules
 

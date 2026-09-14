@@ -75,6 +75,33 @@ Expired / Superseded. See [Delivery Documents](../delivery-documents/overview.md
 
 Pending → In Progress → Completed → Approved. See [Closeout](../closeout/overview.md).
 
+## Site Inductions
+
+No status. Each record is one induction session. See
+[Site Inductions](../site-inductions/overview.md).
+
+## Incidents
+
+Open, Closed — a record-keeping status only, tracked separately from
+injury and regulatory reportability. See [Incidents](../incidents/overview.md).
+
+## H&S Inspections
+
+Outcome: Satisfactory or Issues Found. Status: Open or Closed, tracked
+independently of outcome. See [H&S Inspections](../hs-inspections/overview.md).
+
+## Plant & Equipment
+
+Register status: Active or Inactive, separate from whether the item has
+a recorded deployment period on site. See
+[Plant & Equipment](../plant-equipment/overview.md).
+
+## Statutory Inspections
+
+Outcome: Satisfactory or Issues Found. Status: Open or Closed, tracked
+independently of outcome. See
+[Statutory Inspections](../statutory-inspections/overview.md).
+
 ## Adjudication Cases
 
 Draft, Notice of Dispute, Notice of Adjudication, Adjudicator Appointment,

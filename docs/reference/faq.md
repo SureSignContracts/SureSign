@@ -104,6 +104,47 @@ You will see a message telling you the rate limit has been exceeded and to try
 again later, or that an analysis is already in progress if you try to start a
 second one on the same record.
 
+**What Health & Safety records does SureSign keep?**
+Toolbox Talks, Site Inductions, Incidents (accidents, incidents and near
+misses), H&S Inspections, Plant & Equipment, and Statutory Inspections each
+have their own dedicated record, kept with the project alongside your
+commercial and programme data. See [Toolbox Talks](../toolbox-talks/overview.md),
+[Site Inductions](../site-inductions/overview.md),
+[Incidents](../incidents/overview.md),
+[H&S Inspections](../hs-inspections/overview.md),
+[Plant & Equipment](../plant-equipment/overview.md), and
+[Statutory Inspections](../statutory-inspections/overview.md).
+
+**Does an "Issues Found" H&S Inspection outcome close the record automatically?**
+No. Outcome (Satisfactory or Issues Found) and Status (Open or Closed) are
+always tracked separately, so an inspection can find issues and still be
+marked closed once the follow-up is dealt with.
+
+**Does SureSign decide whether an incident is reportable to a regulator?**
+No. Regulatory reportability is always your own manual classification.
+Selecting "Reportable" records your assessment; it does not mean a regulator
+has actually been notified.
+
+**What is a Friday Pack?**
+A weekly site progress, workforce, and health & safety report for a
+project, running Monday through Friday. It brings together that week's
+Site Reports, Toolbox Talks, and Health & Safety records into one reviewed
+document you can generate as a branded PDF and send on. See
+[Friday Packs](../friday-packs/overview.md).
+
+**Which plans include Friday Packs?**
+Professional and Enterprise.
+
+**Can I get a Friday Pack draft automatically each week?**
+Yes, if you turn on Automatic Draft Generation in a project's Friday Pack
+Settings. It always produces a plain Draft on Friday, in your
+organisation's timezone. A person still reviews and approves it, and
+nothing is sent on your behalf.
+
+**Can a Friday Pack be edited once it's approved?**
+No. Approving a Friday Pack permanently locks its snapshot and commentary.
+Use Return to Draft to make corrections before approval.
+
 **Why does a module show a "Maintenance" or "Coming soon" badge?**
 SureSign can place an individual module into Maintenance (temporarily
 unavailable while an issue is being fixed) or Coming Soon (not yet released)

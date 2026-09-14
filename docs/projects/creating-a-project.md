@@ -208,8 +208,9 @@ confirmation — it will never be set automatically.
 - A project workspace is created with all the standard sections (Overview,
   Contracts, Commercial, Variations, Notices, Programme, Delay & EOT, Risk
   Register, RFIs, Meetings, QA Reports, Snagging, Site Reports, Toolbox
-  Talks, Friday Packs, Delivery Documents, Closeout, Documents, Calendar,
-  and Adjudication if enabled).
+  Talks, Friday Packs, Delivery Documents, Drawings, Closeout, Site
+  Inductions, Incidents, H&S Inspections, Plant & Equipment, Statutory
+  Inspections, Documents, Calendar, and Adjudication if enabled).
 - The project appears in relevant dashboard tiles (Active Projects) for users
   in your organisation.
 
