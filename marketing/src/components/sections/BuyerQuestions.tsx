@@ -32,6 +32,25 @@ const QUESTIONS = [
       'SureSign can hold existing project and contract records, but the appropriate setup and document migration scope depends on the project. Bring the project to the demo so the team can assess it without making a blanket migration promise.',
   },
   {
+    question: 'What is a Friday Pack?',
+    answer:
+      'A structured weekly construction report that brings together relevant project records: workforce, site photographs, Health & Safety information, materials, site issues, and next week’s look ahead, for review and issue as a professional PDF.',
+  },
+  {
+    question: 'Which plans include Friday Packs?',
+    answer: 'Professional and Enterprise.',
+  },
+  {
+    question: 'Does SureSign support Health & Safety records?',
+    answer:
+      'Yes. Toolbox Talks, Site Inductions, Incidents, H&S Inspections, Plant & Equipment and Statutory Inspections are each recorded against the project, connected to the same environment as contract administration and weekly reporting.',
+  },
+  {
+    question: 'Can Site Reports include photographs and evidence?',
+    answer:
+      'Yes. Photographs and other supporting files can be attached directly to a Site Report, and that evidence can later be brought into a project’s Friday Pack without uploading it again.',
+  },
+  {
     question: 'Does SureSign provide legal advice?',
     answer:
       'No. SureSign supports contract administration and organises project information. It does not replace professional judgement or provide legal advice.',

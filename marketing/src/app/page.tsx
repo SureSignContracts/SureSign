@@ -7,6 +7,7 @@ import { CommercialOutcomes } from '@/components/sections/CommercialOutcomes';
 import { ContractAnalysis } from '@/components/sections/ContractAnalysis';
 import { ProductWalkthrough } from '@/components/demo/ProductWalkthrough';
 import { OperationalValue } from '@/components/sections/OperationalValue';
+import { ProjectRecords } from '@/components/sections/ProjectRecords';
 import { ConnectedPlatform } from '@/components/sections/ConnectedPlatform';
 import { Security } from '@/components/sections/Security';
 import { BuyerQuestions } from '@/components/sections/BuyerQuestions';
@@ -17,12 +18,12 @@ import { getPricingData } from '@/lib/pricing';
 export const metadata: Metadata = {
   title: 'Construction Contract Administration, Connected',
   description:
-    'Turn the contract into a controlled commercial workflow. SureSign connects human-reviewed contract intelligence to notices, applications, programme events and the complete project record.',
+    'Turn the contract into a controlled commercial workflow. SureSign connects human-reviewed contract intelligence to notices, applications, site records, Health & Safety and weekly Friday Pack reporting in one project record.',
   alternates: { canonical: '/' },
   openGraph: {
     title: 'Turn the contract into a controlled commercial workflow | SureSign',
     description:
-      'Human-reviewed contract intelligence connected to construction commercial workflows and one project record.',
+      'Human-reviewed contract intelligence connected to construction commercial workflows, site records and weekly reporting in one project record.',
     url: '/',
     siteName: 'SureSign',
     locale: 'en_GB',
@@ -50,7 +51,7 @@ const JSON_LD = {
       applicationCategory: 'BusinessApplication',
       operatingSystem: 'Web',
       description:
-        'Construction contract administration platform with automated contract analysis, trade packages, payment applications, statutory notices, programme, risk, and drawings in one connected workflow.',
+        'Construction contract administration platform with contract analysis, trade packages, payment applications, statutory notices, programme, risk, drawings, site reports, Health & Safety records and weekly Friday Pack reporting in one connected workflow.',
     },
   ],
 };
@@ -72,6 +73,7 @@ export default async function HomePage() {
         <ProductWalkthrough />
         <ContractAnalysis />
         <OperationalValue />
+        <ProjectRecords />
         <ConnectedPlatform />
         <Security />
         <BuyerQuestions />

@@ -424,6 +424,119 @@ export function DrawingHotspotViewer() {
   );
 }
 
+/** Site Report — daily record with workforce, works carried out, and evidence. */
+export function SiteReportEvidence() {
+  const photos = 6;
+  return (
+    <div className="bg-white p-5">
+      <div className="flex items-center justify-between gap-4">
+        <div className="font-mono text-xs text-[#8a8a8a]">site_report · 04 Sep 2026</div>
+        <span className="rounded-full bg-[#eaf6ee] px-2.5 py-0.5 text-xs font-medium text-[#397154]">Submitted</span>
+      </div>
+      <div className="mt-4 grid grid-cols-3 gap-2.5">
+        <div data-stat-tile className="rounded-lg border border-[#e4e4e4] px-3 py-2.5">
+          <div className="text-[10px] uppercase tracking-wide text-[#8a8a8a]">Workers on site</div>
+          <div className="mt-1 text-sm font-medium text-[#0a0a0a]">18</div>
+        </div>
+        <div data-stat-tile className="rounded-lg border border-[#e4e4e4] px-3 py-2.5">
+          <div className="text-[10px] uppercase tracking-wide text-[#8a8a8a]">Visitors</div>
+          <div className="mt-1 text-sm font-medium text-[#0a0a0a]">2</div>
+        </div>
+        <div data-stat-tile className="rounded-lg border border-[#e4e4e4] px-3 py-2.5">
+          <div className="text-[10px] uppercase tracking-wide text-[#8a8a8a]">Issues logged</div>
+          <div className="mt-1 text-sm font-medium text-[#0a0a0a]">1</div>
+        </div>
+      </div>
+      <div className="mt-4 text-xs font-medium text-[#8a8a8a]">Photos & evidence</div>
+      <div className="mt-2 grid grid-cols-6 gap-1.5">
+        {Array.from({ length: photos }).map((_, i) => (
+          <div
+            key={i}
+            data-photo-tile
+            className="aspect-square rounded-md"
+            style={{ background: i % 2 === 0 ? '#eaf1fb' : '#eaf6ee' }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const HS_RECORDS: Array<{ label: string; detail: string; tone: string; bg: string }> = [
+  { label: 'Toolbox Talks', detail: '2 this week', tone: '#397154', bg: '#eaf6ee' },
+  { label: 'Site Inductions', detail: '5 inducted', tone: '#3a68b0', bg: '#eaf1fb' },
+  { label: 'Incidents', detail: 'None this week', tone: '#525252', bg: '#f4f4f4' },
+  { label: 'H&S Inspections', detail: 'Satisfactory', tone: '#397154', bg: '#eaf6ee' },
+  { label: 'Plant & Equipment', detail: '3 on site', tone: '#3a68b0', bg: '#eaf1fb' },
+  { label: 'Statutory Inspections', detail: '1 due soon', tone: '#a3821a', bg: '#fdf6e3' },
+];
+
+/** Health & Safety record types, each its own dedicated record. */
+export function HsRecordsPanel() {
+  return (
+    <div className="divide-y divide-[#e4e4e4] bg-white">
+      {HS_RECORDS.map((r) => (
+        <div key={r.label} data-hs-row className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
+          <span className="text-[#0a0a0a]">{r.label}</span>
+          <span
+            data-hs-status
+            className="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium"
+            style={{ backgroundColor: r.bg, color: r.tone }}
+          >
+            {r.detail}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const FRIDAY_PACK_SECTIONS = [
+  'Report Information', 'Weekly Summary', 'Workforce on Site', 'Site Photographs',
+  'Health & Safety', 'Plant & Equipment', 'Look Ahead', 'Sign Off',
+];
+
+/** Friday Pack — a structured weekly report built from the week's own project records. */
+export function FridayPackPreview() {
+  return (
+    <div className="bg-white">
+      <div className="flex items-center justify-between border-b border-[#e4e4e4] px-5 py-3 text-xs">
+        <span className="font-mono text-[#0a0a0a]">Friday Pack · w/c 31 Aug 2026</span>
+        {/*
+         * Two stacked pills, not one animated text swap — GSAP crossfades
+         * between them (Draft → Ready for Review) when motion is enabled,
+         * but the DOM's own default state (Draft hidden, Ready for Review
+         * visible) already shows the true, final status with no JS at all,
+         * so nothing here depends on the animation running.
+         */}
+        <span className="relative inline-flex whitespace-nowrap">
+          <span data-pack-status="ready" className="rounded-full bg-[#fdf6e3] px-2.5 py-0.5 font-medium text-[#a3821a]">
+            Ready for Review
+          </span>
+          <span
+            data-pack-status="draft"
+            aria-hidden="true"
+            className="absolute inset-y-0 left-0 flex items-center whitespace-nowrap rounded-full bg-[#f4f4f4] px-2.5 py-0.5 font-medium text-[#525252] opacity-0"
+          >
+            Draft
+          </span>
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-2 p-5">
+        {FRIDAY_PACK_SECTIONS.map((s) => (
+          <div key={s} data-pack-section className="flex items-center gap-2 rounded-lg border border-[#e4e4e4] px-3 py-2.5 text-xs text-[#0a0a0a]">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#397154]" />
+            {s}
+          </div>
+        ))}
+      </div>
+      <div className="border-t border-[#e4e4e4] px-5 py-2.5 text-xs text-[#8a8a8a]">
+        Compiled from this week&apos;s Site Reports and Toolbox Talks
+      </div>
+    </div>
+  );
+}
+
 export function StatutoryChainScreen() {
   const stages = ['Payment Application', 'Due Date', 'Payment Notice', 'Pay Less Notice', 'Final Date for Payment', 'Paid'];
   return (
