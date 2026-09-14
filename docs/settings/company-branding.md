@@ -2,11 +2,11 @@
 
 ## Where to find it
 
-Tenant workspace → **Settings**, which has five tabs: **Company Branding**,
+Tenant workspace → **Settings**, which has five tabs: **Branding**,
 **Branding Preview**, **Company Information**, **My Preferences**, and
 **Change Password**.
 
-## Company Branding tab
+## Branding tab
 
 - **Company Logo** and **Cover/Banner Image**
 - **Display Name**, **Company Description**, **Tagline**

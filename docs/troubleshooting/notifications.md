@@ -14,7 +14,8 @@ your platform's notification settings, your organisation's email sending is
 configured, and there is a valid recipient (your organisation's contact email,
 or a Client-role user's email). If any of these is missing, no email is sent —
 but the action you took (for example submitting a payment application) still
-succeeds normally. Ask your Super Admin to check the relevant setting.
+succeeds normally. Ask your organisation's administrator to check the
+relevant setting.
 
 ## A notification won't go away
 

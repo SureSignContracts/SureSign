@@ -7,7 +7,8 @@ This generic message covers several possible causes:
 - **Unsupported file type** — try a different format (see
   [File Restrictions](../documents/file-restrictions.md)).
 - **File too large** — check against your platform's maximum upload size (50MB
-  by default; your Super Admin can confirm the current limit).
+  by default; your organisation's administrator can confirm the current
+  limit).
 - **File content does not match its extension** — for example, a file renamed
   to `.pdf` that is not really a PDF will be rejected. Re-export the file from
   its original application and try again.

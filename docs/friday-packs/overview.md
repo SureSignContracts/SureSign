@@ -16,9 +16,8 @@ project data changes later. A Draft can be refreshed with current data
 by regenerating it; once approved, a Friday Pack's content is locked
 permanently.
 
-Friday Pack content is being built out in stages — see "What a Friday
-Pack includes" below for which sections currently collect real data
-versus which are still awaiting their own dedicated implementation.
+See "What a Friday Pack includes" below for the full list of sections and
+where each one's content comes from.
 
 ## Who can use it
 
@@ -495,10 +494,7 @@ Review, or Approved) and, once available, who reviewed and approved it.
 ## Sending an approved pack
 
 Once a Friday Pack is **Approved** and has a current PDF, you can
-explicitly send it to your configured delivery recipients. Because of
-the temporary PDF limitation noted above, this is not currently
-reachable for a newly generated pack — it remains fully available for
-any pack whose PDF was generated before that limitation began.
+explicitly send it to your configured delivery recipients.
 
 - **Recipients** are configured per project in Friday Pack Settings —
   each recipient has a required email address and an optional name.

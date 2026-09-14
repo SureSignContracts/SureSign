@@ -28,8 +28,9 @@ Every record shown here also lives inside its own project:
 - **RFIs** — a project's [RFIs](../rfis/overview.md) area.
 - **Site Instructions** — the **Site Instructions** tab on a project's
   **Notices** page. See [Notices](../notices/overview.md).
-- **Site Diaries** — the **Site Diaries** tab on a project's
-  [Site Reports](../site-reports/overview.md) page.
+- **Site Diaries** — a project's [Site Reports](../site-reports/overview.md)
+  page (Site Reports are recorded internally as "site diaries" — the same
+  record type, not a separate tab).
 - **Meeting Minutes** — a project's [Meetings](../meetings/overview.md) area.
 - **EOTs** — the **EOT Requests** tab on a project's **Notices** page. See
   [Delay and Extension of Time](../delay-and-eot/overview.md) and

@@ -15,7 +15,7 @@
 You will see a generic toast message: **"Upload failed. Please try again."**
 Common reasons include the file type not being supported, the file not
 matching its extension, or the file exceeding the maximum upload size set by
-your Super Admin. See [File Restrictions](file-restrictions.md) and
+your organisation's administrator. See [File Restrictions](file-restrictions.md) and
 [Troubleshooting: Upload rejected](../troubleshooting/uploads.md) for more
 detail and next steps.
 

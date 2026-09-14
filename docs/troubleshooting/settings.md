@@ -8,7 +8,7 @@ administrator if it persists.
 
 ## The Save button is disabled
 
-Each settings tab (for example Company Branding, Company Information, Change
+Each settings tab (for example Branding, Company Information, Change
 Password) only enables its Save button once you have actually changed
 something on that tab, or once the underlying data has loaded successfully. If
 Save stays disabled with no changes visible, try refreshing the page.
@@ -17,7 +17,7 @@ Save stays disabled with no changes visible, try refreshing the page.
 
 Some branding elements (logo, accent colour) may need a page refresh to show
 everywhere they are used. If they still don't apply after refreshing, confirm
-you saved the correct tab under Company Branding.
+you saved the correct tab under Branding.
 
 ## Related
 

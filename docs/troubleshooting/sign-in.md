@@ -34,7 +34,7 @@ a bug — contact your Super Admin if you believe this happened in error.
   to check if you are not sure.
 - Your organisation's email sending must be configured for these emails to go
   out at all; if your organisation has never received any SureSign emails,
-  ask your Super Admin to check this.
+  ask your organisation's administrator to check this.
 
 ## Related
 

@@ -12,9 +12,10 @@ Project → **Delay & EOT** → **EOT Requests** tab.
 ## How to submit an EOT request
 
 1. Select **Create EOT Request**.
-2. Link the relevant **Delay Event**, if applicable.
-3. Enter the days claimed, grounds, and relevant dates.
-4. Save as Draft, or submit directly.
+2. Enter a **Title** (required) and the **Notice Date** (required).
+3. Link the relevant **Delay Event**, if applicable.
+4. Optionally enter the **Days Claimed** and **Grounds**.
+5. Save as Draft, or submit directly.
 
 ## Statuses
 

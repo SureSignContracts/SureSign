@@ -19,7 +19,8 @@ contract you want to add a document to.
 
 - Supported document types generally include PDF, Word (DOC/DOCX), Excel
   (XLS/XLSX/CSV), plain text, and common image formats.
-- The maximum upload size is set by your Super Admin (50MB by default).
+- The maximum upload size is set by your organisation's administrator (50MB
+  by default).
 - SureSign checks uploaded files for a supported format and safe processing.
   Files that fail this check are rejected with a message such as **"This file
   type is not supported"** or **"The uploaded file does not match its

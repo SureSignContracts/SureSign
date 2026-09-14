@@ -25,8 +25,10 @@ action, or use the Notices section of the project.
    only if required.
 5. Enter the **Total Deductions** (required) — the amount by which the paying
    party intends to pay less than the notified sum.
-6. Enter **Issued By**.
-7. Confirm.
+6. Enter the **Basis of Calculation** (required) — why the deduction is being
+   made. You can add further detail in the optional Detailed Deduction Notes.
+7. Enter **Issued By**.
+8. Confirm.
 
 ## What happens after you issue it
 

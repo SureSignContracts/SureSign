@@ -24,8 +24,10 @@ Have ready the notice date and the sum you consider due (the notified sum).
 2. Select **Issue Payment Notice**.
 3. Enter the **Notice Date** (required).
 4. Optionally enter a **Payment Notice Reference**.
-5. Enter **Issued By** (who is issuing the notice).
-6. Confirm.
+5. Enter the **Notified Sum** (required) — the sum you consider due.
+6. Optionally add a **Basis of Assessment / Notes**.
+7. Enter **Issued By** (who is issuing the notice).
+8. Confirm.
 
 ## What happens after you issue it
 
