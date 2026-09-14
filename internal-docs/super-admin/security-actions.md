@@ -1,7 +1,12 @@
 # Security Actions (Super Admin)
 
 The main security-related actions available to a Super Admin all live on the
-**Users** screen — see [User Management](users.md) for the full list:
+**Users** screen — see [User Management](users.md) for the full list. An
+Admin can perform every one of these against an ordinary Admin/Client
+target too, but only if a Super Admin has granted them the
+`admin.module.users` module; none of them work against an existing Super
+Admin account regardless of that grant — see
+[Super Admin Configurable Admin Access](admin-access.md).
 
 - Deactivate / reactivate an account
 - Ban / unban an account (with a required reason)

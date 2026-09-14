@@ -7,7 +7,17 @@ cause (ban).
 
 ## Role required
 
-Super Admin only.
+For an ordinary Admin/Client target: Super Admin always, or an Admin who
+has been granted the `admin.module.users` module (see
+[Super Admin Configurable Admin Access](../super-admin/admin-access.md)) —
+it is no longer a hardcoded Super-Admin-only action.
+
+For a **Super Admin** target: Super Admin only, regardless of any
+`admin.module.users` grant — an Admin can never deactivate, ban, or even
+see an existing Super Admin account (the Users module's one deliberate
+carve-out — see that same document). A Super Admin acting on another
+Super Admin account is still subject to the last-active-Super-Admin
+safeguard below.
 
 ## Steps — Deactivate
 

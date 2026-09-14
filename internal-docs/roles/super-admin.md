@@ -54,8 +54,14 @@ SureSign will not let a Super Admin lock the platform out of administration:
 
 Sign in and you are taken to the **admin dashboard**. The admin sidebar exposes
 Companies, Projects, Documents, Users, Templates, Prompt Library, Find Company,
-Billing, SureSign, and (Super Admin only) AI Config, Storage, Support, System
-Logs, and Audit Log.
+Billing, SureSign, AI Config, Storage, Support, System Logs, and Audit Log.
+
+Users, AI Config, Storage, Support, Announcements, System Logs, and Audit Log
+are not exclusively Super Admin's — since the Full Parity Access Expansion
+(2026-08-26), a Super Admin can individually grant any of these to a specific
+Admin (see [Super Admin Configurable Admin Access](../super-admin/admin-access.md)
+and [Admin](admin.md)). They default to off for a new Admin, but "Super Admin
+only" is no longer an accurate blanket description of them.
 
 ## Related
 

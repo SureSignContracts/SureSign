@@ -2,7 +2,21 @@
 
 ## Who can use it
 
-Super Admin only.
+Reached via the profile popover's own **Settings** link, not any
+AdminSidebar module. Not uniformly Super Admin only:
+
+- **General settings** and **Notification settings** below are
+  deliberately kept OUTSIDE the configurable `admin.module.*` catalogue
+  (`AdminController::settings()`/`updateSettings()`,
+  `SuresignSettingController::updateNotifications()`) — every Admin can
+  reach these regardless of their configured Access. See
+  [Super Admin Configurable Admin Access](../super-admin/admin-access.md)'s
+  "Deliberately left ungated" section.
+- **AI settings** below is a genuine `admin.module.ai_config` catalogue
+  key (`permission:admin.module.ai_config`) — configurable, but default OFF
+  for a brand-new Admin (one of the eight modules the Full Parity Access
+  Expansion added). A Super Admin can grant it to a specific Admin; "Super
+  Admin only" is only accurate for the default, unconfigured case.
 
 ## Where to find it
 

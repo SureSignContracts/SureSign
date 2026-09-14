@@ -47,7 +47,8 @@ branding is set up.
 
 ## Linked modules
 
-- [Roles](../roles/overview.md)
+- [Admin role](../roles/admin.md)
+- [Super Admin role](../roles/super-admin.md)
 - [User Management](../super-admin/users.md)
 - Company Branding is documented in the public User Guide.
 
@@ -59,9 +60,11 @@ account and verifies their email in one step.
 
 ## Common mistakes
 
-- Inviting a user with the wrong role — only a Super Admin can change this
-  later, so check before sending.
+- Inviting a user with the wrong role — changing it later requires Super
+  Admin, or an Admin granted the Users module (and even then, never to or
+  from Super Admin — see [User Management](../super-admin/users.md)), so
+  check before sending.
 
 ## What to do next
 
-[Create a project](new-project.md) for the new organisation.
+[Create a project](../../docs/workflows/new-project.md) for the new organisation.
