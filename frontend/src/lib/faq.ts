@@ -1,7 +1,7 @@
 import {
   Rocket, FolderKanban, FileText, Package, Sparkles, DollarSign,
   MessageSquare, Users2, Clock, FolderOpen, FileStack, CheckSquare,
-  Bell, Settings,
+  Bell, Settings, ShieldCheck, CalendarCheck,
 } from 'lucide-react';
 
 export interface FaqItem {
@@ -119,6 +119,29 @@ export const FAQ_CATEGORIES: FaqCategory[] = [
     icon: CheckSquare,
     items: [
       { q: 'What’s the difference between QA Reports, Snagging and Site Reports?', a: 'QA Reports record quality assurance checks against work stages. Snagging tracks defects that need resolving before handover. Site Reports capture day-to-day site activity and conditions.' },
+      { q: 'Can a Site Report include photographs?', a: 'Yes. Open a Site Report and use "Photos & evidence" to attach photographs and other supporting files. Those photos can later be brought into a project’s Friday Pack without uploading them again.' },
+    ],
+  },
+  {
+    key: 'health-safety',
+    label: 'Health & Safety',
+    icon: ShieldCheck,
+    items: [
+      { q: 'What Health & Safety records does SureSign keep?', a: 'Toolbox Talks, Site Inductions, Incidents (accidents, incidents and near misses), H&S Inspections, Plant & Equipment, and Statutory Inspections each have their own dedicated record, kept with the project alongside your commercial and programme data.' },
+      { q: 'Does an "Issues Found" H&S Inspection outcome affect the record’s status?', a: 'No. Outcome (Satisfactory or Issues Found) and Status (Open or Closed) are tracked separately, so an inspection can find issues and still be closed once the follow-up is dealt with.' },
+      { q: 'Does SureSign decide whether an incident is reportable to a regulator?', a: 'No. Regulatory reportability is always your own manual classification. Selecting "Reportable" records your assessment; it doesn’t mean a regulator has actually been notified.' },
+      { q: 'Does recording Plant & Equipment on site require an inspection?', a: 'No. Plant presence and Statutory Inspections are separate records. An item can appear as present on site without any inspection or certification record existing for it.' },
+    ],
+  },
+  {
+    key: 'friday-packs',
+    label: 'Friday Packs',
+    icon: CalendarCheck,
+    items: [
+      { q: 'What is a Friday Pack?', a: 'A weekly site progress, workforce and health & safety report for a project, running Monday through Friday. It brings together that week’s Site Reports, Toolbox Talks and Health & Safety records into one reviewed document you can generate as a branded PDF and send on.' },
+      { q: 'Which plans include Friday Packs?', a: 'Professional and Enterprise.' },
+      { q: 'Can I get a Friday Pack draft automatically each week?', a: 'Yes, if you turn on Automatic Draft Generation in a project’s Friday Pack Settings. It always produces a plain Draft on Friday, in your organisation’s timezone. A person still reviews and approves it, and nothing is sent on your behalf.' },
+      { q: 'Can a Friday Pack be edited once it’s approved?', a: 'No. Approving a Friday Pack permanently locks its snapshot and commentary. Use "Return to Draft" to make corrections before approval.' },
     ],
   },
   {
