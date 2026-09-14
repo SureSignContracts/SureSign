@@ -8,9 +8,9 @@ export function Documentation() {
           <div>
             <h2 className="text-2xl font-medium tracking-tight text-text-primary">Need help?</h2>
             <p className="mt-3 max-w-[42ch] text-text-secondary">
-              A complete, 114-page User Guide. Searchable. Step-by-step. Always
-              available, whether you&apos;re setting up your first project or issuing your
-              hundredth notice.
+              A complete User Guide covering every module. Searchable.
+              Step-by-step. Always available, whether you&apos;re setting up your
+              first project or issuing your hundredth notice.
             </p>
           </div>
           <a

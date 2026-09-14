@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react';
 import Link from 'next/link';
 import { AlertCircle, ArrowUpRight, Check, Clock3, Mail } from 'lucide-react';
 import { Container } from '@/components/shared/Container';
@@ -8,6 +8,13 @@ import { getGsap } from '@/lib/gsap';
 import { useReducedMotion } from '@/lib/useReducedMotion';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+
+// Known ?subject= slugs a marketing link may land here with, mapped to the
+// human-readable text the Subject field should start with. An unrecognised
+// or missing slug leaves the field blank rather than showing a raw slug.
+const SUBJECT_PREFILLS: Record<string, string> = {
+  'founding-customer': 'Founding customer / early access',
+};
 
 type FieldName = 'name' | 'company' | 'email' | 'phone' | 'subject' | 'message';
 type FieldErrors = Partial<Record<FieldName, string>>;
@@ -52,10 +59,23 @@ function focusField(form: HTMLFormElement, errors: FieldErrors) {
 
 export function ContactExperience() {
   const rootRef = useRef<HTMLDivElement>(null);
+  const subjectInputRef = useRef<HTMLInputElement>(null);
   const reduced = useReducedMotion();
   const [status, setStatus] = useState<FormStatus>('idle');
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Reads the URL directly (client-only, after mount) rather than
+  // next/navigation's useSearchParams — this page renders ContactExperience
+  // without a Suspense boundary, and useSearchParams would require adding
+  // one just for this one optional prefill.
+  useEffect(() => {
+    const slug = new URLSearchParams(window.location.search).get('subject');
+    const prefill = slug ? SUBJECT_PREFILLS[slug] : undefined;
+    if (prefill && subjectInputRef.current && !subjectInputRef.current.value) {
+      subjectInputRef.current.value = prefill;
+    }
+  }, []);
 
   useEffect(() => {
     if (reduced || !rootRef.current) return;
@@ -292,6 +312,7 @@ export function ContactExperience() {
                         required
                         error={errors.subject}
                         disabled={status === 'submitting'}
+                        inputRef={subjectInputRef}
                       />
                     </div>
 
@@ -363,6 +384,7 @@ function Field({
   required = false,
   error,
   disabled = false,
+  inputRef,
 }: {
   label: string;
   name: FieldName;
@@ -372,6 +394,7 @@ function Field({
   required?: boolean;
   error?: string;
   disabled?: boolean;
+  inputRef?: RefObject<HTMLInputElement | null>;
 }) {
   const errorId = `${name}-error`;
 
@@ -384,6 +407,7 @@ function Field({
         {hint && <span className="text-xs text-text-muted">{hint}</span>}
       </div>
       <input
+        ref={inputRef}
         id={name}
         name={name}
         type={type}
