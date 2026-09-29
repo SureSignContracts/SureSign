@@ -210,6 +210,63 @@ class InvitationFlowTest extends TestCase
             ->assertStatus(422);
     }
 
+    // ── Resending the invitation ─────────────────────────────────────────
+
+    public function test_resend_dispatches_a_fresh_invitation_email_for_a_pending_user(): void
+    {
+        $this->fakeBrevo();
+        Bus::fake();
+        $this->actingAsSuperAdmin();
+        $user = User::factory()->create(['email' => 'pending@example.com', 'email_verified_at' => null]);
+
+        $this->postJson("/api/users/{$user->id}/resend-invitation")->assertStatus(200);
+
+        Bus::assertDispatched(SendInvitationEmailJob::class, fn ($job) => $job->email === 'pending@example.com');
+    }
+
+    public function test_resend_extends_the_signed_link_expiry_from_now(): void
+    {
+        $this->fakeBrevo();
+        $this->actingAsSuperAdmin();
+        $user = User::factory()->create(['email_verified_at' => null]);
+
+        // Simulate the original link having already expired.
+        $expiredQuery = [];
+        parse_str((string) parse_url(\Illuminate\Support\Facades\URL::temporarySignedRoute(
+            'invitations.show',
+            now()->subMinute(),
+            ['user' => $user->id],
+        ), PHP_URL_QUERY), $expiredQuery);
+        $this->getJson("/api/public/invitations/{$user->id}?" . http_build_query($expiredQuery))
+            ->assertStatus(403);
+
+        $this->postJson("/api/users/{$user->id}/resend-invitation")->assertStatus(200);
+
+        $freshUrls = $this->signedInvitationUrls($user);
+        $this->getJson($freshUrls['path'] . '?' . http_build_query($freshUrls['query']))
+            ->assertStatus(200);
+    }
+
+    public function test_resend_rejects_an_already_accepted_invitation(): void
+    {
+        $this->actingAsSuperAdmin();
+        $user = User::factory()->create(['email_verified_at' => now()]);
+
+        $this->postJson("/api/users/{$user->id}/resend-invitation")->assertStatus(422);
+    }
+
+    public function test_admin_cannot_resend_invitation_for_a_super_admin(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole(Role::firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']));
+        Sanctum::actingAs($admin);
+
+        $superAdmin = User::factory()->create(['email_verified_at' => null]);
+        $superAdmin->assignRole(Role::firstOrCreate(['name' => 'Super Admin', 'guard_name' => 'web']));
+
+        $this->postJson("/api/users/{$superAdmin->id}/resend-invitation")->assertStatus(403);
+    }
+
     // ── Accepting the invitation ─────────────────────────────────────────
 
     public function test_invitation_link_resolves_correct_user_and_shows_setup_details(): void

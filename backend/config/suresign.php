@@ -88,7 +88,7 @@ return [
     */
 
     'invitation' => [
-        'link_expiry_days' => env('SURESIGN_INVITATION_LINK_EXPIRY_DAYS', 7),
+        'link_expiry_days' => env('SURESIGN_INVITATION_LINK_EXPIRY_DAYS', 14),
 
         // P2 Security Remediation (Bulk Invite Email-Volume Abuse) — the
         // existing 30 requests/minute throttle on POST /users/bulk-invite

@@ -486,6 +486,31 @@ class UserController extends Controller
         ];
     }
 
+    /**
+     * Resends the invitation email for an already-created, not-yet-accepted
+     * User — generates a fresh signed link (via InvitationService::send(),
+     * shared with invite()/bulkInvite()), so expiry restarts from now
+     * regardless of how much of the original link_expiry_days window is
+     * left. Refuses on a User who has already completed setup, matching
+     * InvitationService::accept()'s own "already accepted" definition
+     * (email_verified_at !== null).
+     */
+    public function resendInvitation(string $id)
+    {
+        $user = User::findOrFail($id);
+        SuperAdminGuard::assertActorMayActOnTarget(Auth::user(), $user);
+
+        if ($user->email_verified_at !== null) {
+            return response()->json(['message' => 'This invitation has already been accepted.'], 422);
+        }
+
+        $this->invitations->send($user);
+
+        ActivityLog::record('user.invitation_resent', "Resent invitation to {$user->email}", Auth::user(), $user);
+
+        return response()->json(['message' => "Invitation resent to {$user->email}."]);
+    }
+
     public function show(string $id)
     {
         $user = User::with('roles')->findOrFail($id);

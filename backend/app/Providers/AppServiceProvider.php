@@ -154,6 +154,14 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinutes(15, 3)->by($request->user()?->id ?: $request->ip());
         });
 
+        // Resend Invitation — same rationale as email-verification-resend
+        // above (authenticated admin.module.users endpoint; keyed on the
+        // acting admin, not the target user, since one admin could
+        // otherwise hammer resends across many different pending invites).
+        RateLimiter::for('invitation-resend', function (Request $request) {
+            return Limit::perMinutes(15, 3)->by($request->user()?->id ?: $request->ip());
+        });
+
         // Demo request (public marketing site form, no auth) — keyed per-IP
         // only, since there's no authenticated user or email-enumeration risk
         // to protect, just a public form that shouldn't be spammable.

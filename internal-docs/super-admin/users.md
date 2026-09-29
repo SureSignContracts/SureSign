@@ -25,10 +25,10 @@ Admin panel → **Users**.
 The recipient gets a SureSign invitation email ("You've been invited to
 SureSign") with an **Accept Invitation & Set Up Account** link. No password is
 ever generated for you to share — the recipient chooses their own password
-when they accept. The link is specific to that person, expires after 7 days,
-and cannot be reused once they've completed setup. If they haven't provided a
-first name, the email uses a generic greeting rather than guessing one from
-their email address.
+when they accept. The link is specific to that person, expires after 14 days
+(`SURESIGN_INVITATION_LINK_EXPIRY_DAYS`), and cannot be reused once they've
+completed setup. If they haven't provided a first name, the email uses a
+generic greeting rather than guessing one from their email address.
 
 After setup, the recipient is taken to Login with a short-lived "Your
 SureSign account is ready" message and their email address already filled
@@ -43,8 +43,12 @@ they are never sent through customer Organisation onboarding.
 Until the invitation is accepted, the account shows as **Unverified** on the
 Users list — the same badge a self-registered user who hasn't verified their
 email yet would show. There is currently no separate "Pending Invitation"
-label and no resend action; if an invitation link expires before the
-recipient uses it, remove the account and send a new invite.
+label, but opening an unverified user's action panel shows an **Invitation
+Pending** row with a **Resend** button — this sends a brand-new invitation
+email with a fresh link (expiry restarts from the moment you click it), so
+there's no need to remove and re-invite the account if the original link may
+have expired or gone unnoticed. Resend is rate-limited per admin (3 per 15
+minutes) and refuses once the invitation has already been accepted.
 
 ## Managing an existing user
 

@@ -7,7 +7,7 @@ import Link from 'next/link';
 import {
   Users, UserPlus, Shield, Mail, Search, Copy, Check,
   Settings2, Trash2, X,
-  KeyRound, RotateCcw, LogOut, Compass, ShieldCheck, ExternalLink, UserMinus,
+  KeyRound, RotateCcw, LogOut, Compass, ShieldCheck, ExternalLink, UserMinus, Send,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
@@ -555,6 +555,7 @@ function ManageUserModal({
   onSetPassword,
   onRevokeTokens,
   onResetTours,
+  onResendInvitation,
   onRemove,
   onRemoveAndDetach,
   onConfirmLastClientDetach,
@@ -577,6 +578,7 @@ function ManageUserModal({
   onSetPassword: () => void;
   onRevokeTokens: () => void;
   onResetTours: () => void;
+  onResendInvitation: () => void;
   onRemove: () => void;
   onRemoveAndDetach: () => void;
   onConfirmLastClientDetach: () => void;
@@ -793,6 +795,27 @@ function ManageUserModal({
               onChange={onToggleVerify}
               disabled={actionLoading}
             />
+            {!user.email_verified_at && (
+              <div className="py-2.5">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Invitation Pending</p>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                      Resend the invitation email with a fresh link if the original may have expired.
+                    </p>
+                  </div>
+                  <button
+                    onClick={onResendInvitation}
+                    disabled={actionLoading}
+                    className="flex shrink-0 items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium disabled:opacity-60 transition-colors hover:bg-[var(--bg-hover)]"
+                    style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+                  >
+                    <Send size={12} />
+                    Resend
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="py-2.5">
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
@@ -1244,6 +1267,7 @@ export default function AdminUsersPage() {
       case 'force-password-reset':  return 'User must change their password on next login.';
       case 'revoke-tokens':         return 'Active sessions revoked.';
       case 'reset-tours':           return 'Onboarding tours reset for this user.';
+      case 'resend-invitation':     return 'Invitation resent.';
       default:                      return 'Done.';
     }
   }
@@ -1502,6 +1526,7 @@ export default function AdminUsersPage() {
           onSetPassword={() => setPasswordUser(manageUser)}
           onRevokeTokens={() => actionMutation.mutate({ id: manageUser.id, action: 'revoke-tokens' })}
           onResetTours={() => actionMutation.mutate({ id: manageUser.id, action: 'reset-tours' })}
+          onResendInvitation={() => actionMutation.mutate({ id: manageUser.id, action: 'resend-invitation' })}
           onRemove={() => removeMutation.mutate(manageUser.id)}
           onRemoveAndDetach={() => removeAndDetachMutation.mutate({ id: manageUser.id })}
           onConfirmLastClientDetach={() => removeAndDetachMutation.mutate({ id: manageUser.id, confirmLastClient: true })}

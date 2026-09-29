@@ -1073,6 +1073,8 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
             Route::post('users/{id}/ban',                  [UserController::class, 'ban']);
             Route::post('users/{id}/unban',                [UserController::class, 'unban']);
             Route::post('users/{id}/force-password-reset', [UserController::class, 'forcePasswordReset']);
+            Route::post('users/{id}/resend-invitation', [UserController::class, 'resendInvitation'])
+                ->middleware('throttle:invitation-resend');
             Route::post('users/{id}/set-password',         [UserController::class, 'setPassword']);
             Route::post('users/{id}/revoke-tokens',        [UserController::class, 'revokeTokens']);
             Route::post('users/{id}/reset-tours',          [UserController::class, 'resetTours']);
