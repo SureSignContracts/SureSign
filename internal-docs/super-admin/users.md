@@ -50,6 +50,13 @@ there's no need to remove and re-invite the account if the original link may
 have expired or gone unnoticed. Resend is rate-limited per admin (3 per 15
 minutes) and refuses once the invitation has already been accepted.
 
+To resend to many people at once, select their rows with the checkboxes
+(the same multi-select used by **Remove Selected**) — the bulk selection
+toolbar then shows a **Resend N invitations** button, counting only the
+selected rows that are still pending. Any selected row that's already
+accepted is silently skipped and reported back individually, never
+treated as a batch failure.
+
 ## Managing an existing user
 
 Open a user to see their action panel:

@@ -511,6 +511,64 @@ class UserController extends Controller
         return response()->json(['message' => "Invitation resent to {$user->email}."]);
     }
 
+    /**
+     * Same per-user resend path as resendInvitation() above, just fed from
+     * a checkbox-driven id list instead of one row — mirrors
+     * bulkRemove()'s partial-success shape exactly (each id validated
+     * independently, a bad row never aborts the rest). Deliberately no
+     * dedicated email-volume budget the way bulkInvite() has (P2 Security
+     * Remediation) — the recipient set here is bounded to already-existing
+     * pending accounts an admin can already see on this page, not
+     * arbitrary new addresses, so the outer group's existing
+     * throttle:30,1 plus the per-admin invitation-resend limiter already
+     * cover it; a dedicated volume budget would be overengineering for
+     * this risk profile.
+     */
+    public function bulkResendInvitations(Request $request)
+    {
+        $validated = $request->validate([
+            'ids'   => 'required|array|min:1|max:100',
+            'ids.*' => 'integer',
+        ]);
+
+        $ids = array_values(array_unique($validated['ids']));
+
+        $resent = [];
+        $failed = [];
+
+        foreach ($ids as $id) {
+            $user = User::find($id);
+
+            if (! $user) {
+                $failed[] = ['id' => $id, 'reason' => 'User not found.'];
+                continue;
+            }
+
+            if (! SuperAdminGuard::actorMayActOnTarget(Auth::user(), $user)) {
+                $failed[] = ['id' => $id, 'email' => $user->email, 'reason' => 'Access denied.'];
+                continue;
+            }
+
+            if ($user->email_verified_at !== null) {
+                $failed[] = ['id' => $id, 'email' => $user->email, 'reason' => 'This invitation has already been accepted.'];
+                continue;
+            }
+
+            $this->invitations->send($user);
+            ActivityLog::record('user.invitation_resent', "Resent invitation to {$user->email}", Auth::user(), $user);
+
+            $resent[] = ['id' => $user->id, 'email' => $user->email];
+        }
+
+        return response()->json([
+            'message' => count($resent) . ' of ' . count($ids) . ' invitation(s) resent.',
+            'data'    => [
+                'resent' => $resent,
+                'failed' => $failed,
+            ],
+        ]);
+    }
+
     public function show(string $id)
     {
         $user = User::with('roles')->findOrFail($id);

@@ -1061,6 +1061,8 @@ Route::middleware(['auth:sanctum', 'account.status', 'password.current', 'track.
             Route::post('users/invite', [UserController::class, 'invite']);
             Route::post('users/bulk-invite', [UserController::class, 'bulkInvite']);
             Route::post('users/bulk-remove', [UserController::class, 'bulkRemove']);
+            Route::post('users/bulk-resend-invitation', [UserController::class, 'bulkResendInvitations'])
+                ->middleware('throttle:invitation-resend');
             // Two User Removal Modes — "Remove & Detach" (UserController::
             // removeAndDetach()). A separate action from DELETE /users/{id}
             // ("Remove User"), not a mode flag on it — see that method's own

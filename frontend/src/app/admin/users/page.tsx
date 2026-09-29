@@ -1233,6 +1233,28 @@ export default function AdminUsersPage() {
     },
   });
 
+  // Users page multi-select "Resend Invitations" — same partial-success
+  // shape as bulkRemoveMutation above (UserController::bulkResendInvitations()).
+  // Selection isn't pre-filtered to pending-only client-side; an already-
+  // accepted row in the batch is simply reported back as a per-row failure.
+  const bulkResendMutation = useMutation({
+    mutationFn: (ids: number[]) => api.post('/users/bulk-resend-invitation', { ids }).then(r => r.data),
+    onSuccess: (res: any) => {
+      qc.invalidateQueries({ queryKey: ['admin-users'] });
+      const resent: { id: number; email: string }[] = res?.data?.resent ?? [];
+      const failed: { id: number; email?: string; reason: string }[] = res?.data?.failed ?? [];
+      setSelectedIds([]);
+      if (failed.length === 0) {
+        toast.success(res?.message ?? `${resent.length} invitation(s) resent.`);
+      } else {
+        toast.error(`${res?.message ?? ''} ${failed.length} could not be resent: ${failed.map(f => f.reason).join(' ')}`.trim());
+      }
+    },
+    onError: (e: any) => {
+      toast.error(getErrorMessage(e, 'Failed to resend selected invitations.'));
+    },
+  });
+
   // Generic action mutation for the simple POST /users/{id}/{action} endpoints.
   const actionMutation = useMutation({
     mutationFn: ({ id, action, payload }: { id: number; action: string; payload?: Record<string, unknown> }) =>
@@ -1339,6 +1361,23 @@ export default function AdminUsersPage() {
                 >
                   Clear
                 </button>
+                {(() => {
+                  const pendingSelectedCount = users.filter(u => selectedIds.includes(u.id) && !u.email_verified_at).length;
+                  if (pendingSelectedCount === 0) return null;
+                  return (
+                    <button
+                      onClick={() => bulkResendMutation.mutate(selectedIds)}
+                      disabled={bulkResendMutation.isPending}
+                      className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium disabled:opacity-60"
+                      style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+                    >
+                      <Send size={12} />
+                      {bulkResendMutation.isPending
+                        ? 'Resending…'
+                        : `Resend ${pendingSelectedCount} invitation${pendingSelectedCount === 1 ? '' : 's'}`}
+                    </button>
+                  );
+                })()}
                 <button
                   onClick={() => setConfirmingBulkRemove(true)}
                   className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium"

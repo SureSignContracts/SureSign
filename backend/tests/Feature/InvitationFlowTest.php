@@ -267,6 +267,51 @@ class InvitationFlowTest extends TestCase
         $this->postJson("/api/users/{$superAdmin->id}/resend-invitation")->assertStatus(403);
     }
 
+    // ── Bulk resending invitations ────────────────────────────────────────
+
+    public function test_bulk_resend_dispatches_an_invitation_email_for_each_pending_user(): void
+    {
+        $this->fakeBrevo();
+        Bus::fake();
+        $this->actingAsSuperAdmin();
+        $userA = User::factory()->create(['email' => 'bulkpendinga@example.com', 'email_verified_at' => null]);
+        $userB = User::factory()->create(['email' => 'bulkpendingb@example.com', 'email_verified_at' => null]);
+
+        $response = $this->postJson('/api/users/bulk-resend-invitation', ['ids' => [$userA->id, $userB->id]]);
+
+        $response->assertStatus(200);
+        $this->assertCount(2, $response->json('data.resent'));
+        Bus::assertDispatched(SendInvitationEmailJob::class, fn ($job) => $job->email === 'bulkpendinga@example.com');
+        Bus::assertDispatched(SendInvitationEmailJob::class, fn ($job) => $job->email === 'bulkpendingb@example.com');
+    }
+
+    public function test_bulk_resend_reports_an_already_accepted_row_as_a_partial_failure(): void
+    {
+        $this->fakeBrevo();
+        Bus::fake();
+        $this->actingAsSuperAdmin();
+        $pending  = User::factory()->create(['email' => 'stillpending@example.com', 'email_verified_at' => null]);
+        $accepted = User::factory()->create(['email' => 'alreadyaccepted@example.com', 'email_verified_at' => now()]);
+
+        $response = $this->postJson('/api/users/bulk-resend-invitation', ['ids' => [$pending->id, $accepted->id]]);
+
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data.resent'));
+        $this->assertCount(1, $response->json('data.failed'));
+        Bus::assertDispatched(SendInvitationEmailJob::class, fn ($job) => $job->email === 'stillpending@example.com');
+        Bus::assertNotDispatched(SendInvitationEmailJob::class, fn ($job) => $job->email === 'alreadyaccepted@example.com');
+    }
+
+    public function test_bulk_resend_is_forbidden_for_a_client(): void
+    {
+        $client = User::factory()->create();
+        $client->assignRole(Role::firstOrCreate(['name' => 'Client', 'guard_name' => 'web']));
+        Sanctum::actingAs($client);
+        $pending = User::factory()->create(['email_verified_at' => null]);
+
+        $this->postJson('/api/users/bulk-resend-invitation', ['ids' => [$pending->id]])->assertStatus(403);
+    }
+
     // ── Accepting the invitation ─────────────────────────────────────────
 
     public function test_invitation_link_resolves_correct_user_and_shows_setup_details(): void
